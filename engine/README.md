@@ -9,7 +9,8 @@ The v1 host deliberately keeps the control surface narrow:
 - No TCP, HTTP, WebSocket, named-pipe listener, or remote authentication surface.
 - Protocol input is newline-delimited JSON on `stdin`; protocol output is JSON on `stdout`; logs go to `stderr`.
 - A request line is limited to 256 KiB.
-- OBS modules are loaded with a non-empty `obs_add_safe_module` allowlist. `win-capture` is the only module enabled by default.
+- OBS modules are loaded with a non-empty `obs_add_safe_module` allowlist. Every Windows runtime module built or optionally buildable by this branch is allowlisted by default; `--plugin=NAME` can add and require an additional module.
+- Missing optional/default-allowlisted modules do not make startup fail. `win-capture` remains the required baseline module, and modules explicitly requested with `--plugin=NAME` are also required to load.
 - The executable is linked with `/DEPENDENTLOADFLAG:0xA00`, restricting implicit dependent-DLL resolution before `main()` to the application directory and System32 on supported Windows versions.
 - The process working directory is pinned to the engine executable directory before `obs_startup`, so libobs's relative runtime paths resolve against the packaged runtime.
 - After startup, Windows DLL search is restricted to the application directory, System32, explicit user DLL directories, and a loaded module's own directory.
@@ -42,7 +43,7 @@ obs-engine [--width=N] [--height=N] [--fps=N] [--locale=NAME]
            [--plugin=NAME ...] [--enable-game-capture]
 ```
 
-Defaults are `1920x1080 @ 60 FPS`, locale `en-US`, and only `win-capture` allowlisted.
+Defaults are `1920x1080 @ 60 FPS`, locale `en-US`, and all Windows runtime modules in this branch allowlisted. `win-capture` is required; an explicit `--plugin=NAME` adds that name to the allowlist and makes it required for that launch.
 
 ## Protocol
 
