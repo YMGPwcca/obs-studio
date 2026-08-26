@@ -14,6 +14,7 @@
 
 #define WIN_CAPTURE_LOG_STRING "[win-capture plugin] "
 #define WIN_CAPTURE_VER_STRING "win-capture plugin (libobs " OBS_VERSION ")"
+#define WIN_CAPTURE_CAPTURE_ONLY_ENV "OBS_WIN_CAPTURE_CAPTURE_ONLY"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("win-capture", "en-US")
@@ -43,6 +44,13 @@ extern bool load_graphics_offsets(bool is32bit, bool use_hook_address_cache, con
 #endif
 
 static const bool use_hook_address_cache = false;
+
+static bool capture_only_mode(void)
+{
+	char value[2] = {0};
+	DWORD length = GetEnvironmentVariableA(WIN_CAPTURE_CAPTURE_ONLY_ENV, value, sizeof(value));
+	return length == 1 && value[0] == '1';
+}
 
 static DWORD WINAPI init_hooks(LPVOID param)
 {
@@ -105,29 +113,30 @@ bool obs_module_load(void)
 {
 	struct win_version_info ver;
 	bool win8_or_above = false;
-	char *local_dir;
-	char *config_dir;
+	const bool capture_only = capture_only_mode();
 
-	char update_url[128];
-	snprintf(update_url, sizeof(update_url), "%s/v%d", COMPAT_URL, COMPAT_FORMAT_VERSION);
+	if (!capture_only) {
+		char *local_dir;
+		char *config_dir;
+		char update_url[128];
+
+		snprintf(update_url, sizeof(update_url), "%s/v%d", COMPAT_URL, COMPAT_FORMAT_VERSION);
+		local_dir = obs_module_file(NULL);
+		config_dir = obs_module_config_path(NULL);
+		if (config_dir) {
+			os_mkdirs(config_dir);
+
+			if (local_dir) {
+				update_info = update_info_create(WIN_CAPTURE_LOG_STRING, WIN_CAPTURE_VER_STRING, update_url,
+								 local_dir, config_dir, confirm_compat_file, NULL);
+			}
+		}
+		bfree(config_dir);
+		bfree(local_dir);
+	}
 
 	struct win_version_info win1903 = {.major = 10, .minor = 0, .build = 18362, .revis = 0};
-
-	local_dir = obs_module_file(NULL);
-	config_dir = obs_module_config_path(NULL);
-	if (config_dir) {
-		os_mkdirs(config_dir);
-
-		if (local_dir) {
-			update_info = update_info_create(WIN_CAPTURE_LOG_STRING, WIN_CAPTURE_VER_STRING, update_url,
-							 local_dir, config_dir, confirm_compat_file, NULL);
-		}
-	}
-	bfree(config_dir);
-	bfree(local_dir);
-
 	get_win_ver(&ver);
-
 	win8_or_above = ver.major > 6 || (ver.major == 6 && ver.minor >= 2);
 
 	obs_enter_graphics();
@@ -144,10 +153,23 @@ bool obs_module_load(void)
 
 	obs_register_source(&window_capture_info);
 
+	if (capture_only) {
+		blog(LOG_INFO, WIN_CAPTURE_LOG_STRING "capture-only mode: Game Capture hooks and compatibility updater disabled");
+		return true;
+	}
+
 	char *config_path = obs_module_config_path(NULL);
+	if (!config_path) {
+		blog(LOG_WARNING, WIN_CAPTURE_LOG_STRING "could not create Game Capture configuration path");
+		return true;
+	}
 
 	init_hook_files();
 	init_hooks_thread = CreateThread(NULL, 0, init_hooks, config_path, 0, NULL);
+	if (!init_hooks_thread) {
+		blog(LOG_WARNING, WIN_CAPTURE_LOG_STRING "failed to start Game Capture initialization thread");
+		bfree(config_path);
+	}
 	obs_register_source(&game_capture_info);
 
 	return true;
@@ -157,5 +179,6 @@ void obs_module_unload(void)
 {
 	wait_for_hook_initialization();
 	update_info_destroy(update_info);
+	update_info = NULL;
 	compat_json_free();
 }
