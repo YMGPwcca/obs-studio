@@ -6,6 +6,12 @@ target_compile_features(obs-engine PRIVATE cxx_std_20)
 target_compile_definitions(obs-engine PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 target_link_libraries(obs-engine PRIVATE OBS::libobs)
 
+# Restrict implicit dependent-DLL resolution before main() runs. 0xA00 is
+# LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32. Runtime
+# plugin loads are separately constrained by libobs plus the host's safe-module
+# allowlist and SetDefaultDllDirectories() hardening.
+target_link_options(obs-engine PRIVATE "/DEPENDENTLOADFLAG:0xA00")
+
 # Mirror the current OBS frontend pattern: pass the staged graphics backend
 # filename into the host at compile time rather than hard-coding a DLL name.
 if(TARGET OBS::libobs-d3d11)
