@@ -36,6 +36,13 @@ endif()
 
 set_target_properties_obs(obs-engine PROPERTIES FOLDER "engine")
 
+# obs-studio normally owns Windows third-party dependency bundling. This branch
+# intentionally omits that frontend, so make the headless host the bundle root
+# instead. Reusing OBS's dependency walker keeps FFmpeg, zlib, wxi, and plugin
+# runtime dependencies synchronized with the targets actually linked by this
+# build instead of maintaining a manual DLL allowlist here.
+_bundle_dependencies(obs-engine)
+
 # Building the host target directly must also stage the D3D11 backend and the
 # default Windows capture module into the normal OBS runtime layout.
 if(TARGET libobs-d3d11)
