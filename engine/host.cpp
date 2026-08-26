@@ -59,7 +59,34 @@ struct Config {
 	uint32_t height = 1080;
 	uint32_t fps = 60;
 	std::string locale = "en-US";
-	std::vector<std::string> plugins = {"win-capture"};
+	std::vector<std::string> plugins = {
+		"aja",
+		"coreaudio-encoder",
+		"decklink",
+		"decklink-captions",
+		"image-source",
+		"nv-filters",
+		"obs-browser",
+		"obs-ffmpeg",
+		"obs-filters",
+		"obs-libfdk",
+		"obs-nvenc",
+		"obs-outputs",
+		"obs-qsv11",
+		"obs-text",
+		"obs-transitions",
+		"obs-vst",
+		"obs-webrtc",
+		"obs-websocket",
+		"obs-x264",
+		"rtmp-services",
+		"text-freetype2",
+		"vlc-video",
+		"win-capture",
+		"win-dshow",
+		"win-wasapi",
+	};
+	std::vector<std::string> required_plugins = {"win-capture"};
 	bool enable_game_capture = false;
 	bool help = false;
 };
@@ -198,6 +225,7 @@ bool parse_args(int argc, char **argv, Config &config)
 			if (!is_safe_identifier(plugin, kMaxPluginNameBytes))
 				return false;
 			config.plugins.emplace_back(plugin);
+			config.required_plugins.emplace_back(plugin);
 		} else if (std::strncmp(arg, locale_prefix, std::strlen(locale_prefix)) == 0) {
 			const char *locale = arg + std::strlen(locale_prefix);
 			if (!is_safe_identifier(locale, 32))
@@ -210,6 +238,9 @@ bool parse_args(int argc, char **argv, Config &config)
 
 	std::sort(config.plugins.begin(), config.plugins.end());
 	config.plugins.erase(std::unique(config.plugins.begin(), config.plugins.end()), config.plugins.end());
+	std::sort(config.required_plugins.begin(), config.required_plugins.end());
+	config.required_plugins.erase(std::unique(config.required_plugins.begin(), config.required_plugins.end()),
+				      config.required_plugins.end());
 	return true;
 }
 
@@ -404,7 +435,7 @@ public:
 		obs_module_failure_info_free(&failures);
 		obs_post_load_modules();
 
-		for (const std::string &plugin : config_.plugins) {
+		for (const std::string &plugin : config_.required_plugins) {
 			if (!obs_get_module(plugin.c_str())) {
 				std::fprintf(stderr, "obs-engine: required module '%s' did not load\n", plugin.c_str());
 				return false;
@@ -934,9 +965,10 @@ void print_help()
 		   "  --height=N             Base/output height (16..16384)\n"
 		   "  --fps=N                Frame rate (1..240)\n"
 		   "  --locale=NAME          OBS module locale (default en-US)\n"
-		   "  --plugin=NAME          Add an OBS module to the safe-module allowlist\n"
+		   "  --plugin=NAME          Add/require an OBS module in the safe-module allowlist\n"
 		   "  --enable-game-capture  Enable win-capture hook/update initialization\n"
-		   "\nwin-capture is always allowlisted. Game Capture is disabled by default.\n"
+		   "\nAll Windows runtime modules built by this branch are allowlisted by default.\n"
+		   "Game Capture is disabled by default.\n"
 		   "Protocol: one JSON object per line on stdin/stdout. Logs go to stderr.\n",
 		   stderr);
 }
