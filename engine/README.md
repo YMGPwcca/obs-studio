@@ -10,8 +10,9 @@ The v1 host deliberately keeps the control surface narrow:
 - Protocol input is newline-delimited JSON on `stdin`; protocol output is JSON on `stdout`; logs go to `stderr`.
 - A request line is limited to 256 KiB.
 - OBS modules are loaded with a non-empty `obs_add_safe_module` allowlist. `win-capture` is the only module enabled by default.
+- The executable is linked with `/DEPENDENTLOADFLAG:0xA00`, restricting implicit dependent-DLL resolution before `main()` to the application directory and System32 on supported Windows versions.
 - The process working directory is pinned to the engine executable directory before `obs_startup`, so libobs's relative runtime paths resolve against the packaged runtime.
-- Windows DLL search is restricted to the application directory, System32, explicit user DLL directories, and a loaded module's own directory.
+- After startup, Windows DLL search is restricted to the application directory, System32, explicit user DLL directories, and a loaded module's own directory.
 - Source, scene, and scene-item pointers never cross the process boundary. The protocol exposes opaque integer handles only.
 - Sources and scenes are created as private libobs objects and are owned entirely by the host.
 - Scene items are explicitly reference-counted by the host before their handles are exposed.
