@@ -1,6 +1,16 @@
 add_executable(obs-engine)
 
-target_sources(obs-engine PRIVATE host.cpp)
+target_sources(
+  obs-engine
+  PRIVATE
+    config.cpp
+    config.hpp
+    host.cpp
+    protocol.cpp
+    protocol.hpp
+    runtime.cpp
+    runtime.hpp
+)
 
 target_compile_features(obs-engine PRIVATE cxx_std_20)
 target_compile_definitions(obs-engine PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
