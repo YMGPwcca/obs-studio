@@ -21,7 +21,17 @@ if(NOT DEFINED OBS_VERSION_OVERRIDE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git
   endif()
 
   if(_obs_version_result EQUAL 0)
-    string(REGEX REPLACE "([0-9]+)\\.([0-9]+)\\.([0-9]+).*" "\\1;\\2;\\3" _obs_version_canonical ${_obs_version})
+    # Forks created with GitHub's "copy the default branch only" option do not
+    # receive upstream tags. In that case git describe returns a bare commit
+    # hash, which upstream's semver extraction cannot parse. Keep a useful
+    # diagnostic version string while using the normal fallback canonical
+    # version so project(VERSION ...) remains valid.
+    if(_obs_version MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+).*")
+      string(REGEX REPLACE "([0-9]+)\\.([0-9]+)\\.([0-9]+).*" "\\1;\\2;\\3" _obs_version_canonical "${_obs_version}")
+    else()
+      set(_obs_version "0.0.1-git-${_obs_version}")
+      set(_obs_version_canonical ${_obs_default_version})
+    endif()
   endif()
 elseif(DEFINED OBS_VERSION_OVERRIDE)
   if(OBS_VERSION_OVERRIDE MATCHES "([0-9]+)\\.([0-9]+)\\.([0-9]+).*")
