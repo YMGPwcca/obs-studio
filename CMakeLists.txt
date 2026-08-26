@@ -27,5 +27,6 @@ add_subdirectory(libobs)
 add_subdirectory(libobs-d3d11)
 add_subdirectory(libobs-winrt)
 add_subdirectory(plugins)
+add_subdirectory(engine)
 
 message_configuration()
