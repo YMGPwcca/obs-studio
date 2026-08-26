@@ -1,0 +1,26 @@
+name: Windows Minimal
+
+on:
+  push:
+    branches:
+      - windows-minimal
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-x64:
+    name: Build x64
+    runs-on: windows-2025-vs2026
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Build Windows minimal runtime
+        uses: ./.github/actions/build-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
