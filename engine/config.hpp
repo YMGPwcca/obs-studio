@@ -15,7 +15,6 @@ struct Config {
 		"aja",
 		"coreaudio-encoder",
 		"decklink",
-		"decklink-captions",
 		"image-source",
 		"nv-filters",
 		"obs-browser",

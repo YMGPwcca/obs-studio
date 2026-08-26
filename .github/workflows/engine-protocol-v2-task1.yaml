@@ -1,4 +1,4 @@
-name: Engine Protocol v2 Task 1 Verification
+name: Engine Protocol v2 Task 1.1 Verification
 
 on:
   push:
@@ -24,6 +24,35 @@ jobs:
         with:
           target: x64
           config: RelWithDebInfo
+
+      - name: Verify headless runtime footprint
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $InstallRoot = Resolve-Path 'build_x64/install'
+          $Files = Get-ChildItem -Path $InstallRoot -File -Recurse
+          $Forbidden = $Files | Where-Object {
+            $_.Name -like 'decklink-captions.*' -or
+            $_.Name -like 'obs-frontend-api.*'
+          }
+
+          if ( $Forbidden ) {
+            $Names = ($Forbidden | ForEach-Object { $_.FullName }) -join "`n"
+            throw "Stock OBS frontend-only files leaked into the headless runtime:`n$Names"
+          }
+
+          $DeckLink = $Files | Where-Object { $_.Name -eq 'decklink.dll' } | Select-Object -First 1
+          if ( $null -eq $DeckLink ) {
+            throw 'decklink.dll is missing; Task 1.1 should remove only decklink-captions, not DeckLink runtime support.'
+          }
+
+          $Vst = $Files | Where-Object { $_.Name -eq 'obs-vst.dll' } | Select-Object -First 1
+          if ( $null -eq $Vst ) {
+            throw 'obs-vst.dll is missing; Qt is intentionally retained because VST support still depends on it.'
+          }
+
+          Write-Host 'Headless runtime footprint verified: DeckLink and VST kept; DeckLink captions and frontend API absent.'
 
       - name: Smoke test obs-engine protocol v1
         id: smoke
@@ -244,9 +273,9 @@ jobs:
 
       - name: Upload installed Windows runtime
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: obs-engine-windows-x64-task1
+          name: obs-engine-windows-x64-task1-1
           path: build_x64/install/
           if-no-files-found: error
           compression-level: 6
