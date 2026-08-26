@@ -7,10 +7,11 @@ This branch keeps upstream `master` clean and turns the build into a Windows-onl
 - `libobs`
 - `libobs-d3d11`
 - `libobs-winrt`
+- the lightweight `obs-frontend-api` ABI library required by a small number of otherwise headless Windows modules
 - Windows-capable OBS runtime plugins
 - `obs-engine`, the minimal headless host
 
-The OBS Studio Qt frontend, tests, OpenGL backend, and non-Windows platform plugins are not part of the default build.
+The OBS Studio Qt frontend/application, tests, OpenGL backend, and non-Windows platform plugins are not part of the default build. `obs-frontend-api` is built on its own; it does not pull the Qt frontend back into the runtime.
 
 ## Capture plugins
 
