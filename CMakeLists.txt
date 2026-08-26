@@ -26,6 +26,12 @@ option(ENABLE_HEVC "Enable HEVC encoders" ON)
 add_subdirectory(libobs)
 add_subdirectory(libobs-d3d11)
 add_subdirectory(libobs-winrt)
+
+# A small number of otherwise headless Windows modules (currently DeckLink
+# captions) link to the frontend API ABI. Build only that API library; do not
+# add the Qt frontend or any frontend application code.
+add_subdirectory(frontend/api)
+
 add_subdirectory(plugins)
 add_subdirectory(engine)
 
