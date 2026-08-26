@@ -21,9 +21,9 @@ The important Windows capture modules are kept and built:
 - `win-dshow` — DirectShow capture devices/webcams
 - `win-wasapi` — Windows audio capture
 
-`obs-engine` allowlists only `win-capture` by default. It sets `win-capture` to capture-only mode, which keeps Display Capture and Window Capture available while suppressing the compatibility updater and Game Capture hook initialization. Launching `obs-engine --enable-game-capture` explicitly opts back into the upstream Game Capture initialization behavior.
+`obs-engine` uses an explicit non-empty safe-module allowlist containing every Windows runtime module built or optionally buildable by this branch. Missing optional/default-allowlisted modules do not make startup fail. `win-capture` remains the required baseline module, while `--plugin=NAME` adds and requires an additional module for that launch.
 
-Other Windows-capable runtime modules are retained in the build but are not loaded by `obs-engine` unless they are explicitly added to its safe-module allowlist with `--plugin=NAME`.
+`win-capture` still starts in capture-only mode by default, which keeps Display Capture and Window Capture available while suppressing the compatibility updater and Game Capture hook initialization. Launching `obs-engine --enable-game-capture` explicitly opts back into the upstream Game Capture initialization behavior.
 
 ## Heavy optional modules
 
@@ -33,6 +33,8 @@ Two modules are opt-in at build time:
 -DENABLE_BROWSER_SOURCE=ON
 -DENABLE_WEBSOCKET=ON
 ```
+
+Their module names are already present in the host's default safe-module allowlist, so enabling either build option does not require an additional runtime `--plugin` argument.
 
 `obs-browser` is disabled by default because of the large CEF dependency. `obs-websocket` is disabled because the intended controller should use a purpose-built IPC boundary instead of OBS Studio's remote-control protocol.
 
