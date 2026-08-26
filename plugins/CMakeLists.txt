@@ -1,10 +1,5 @@
 cmake_minimum_required(VERSION 3.28...3.30)
 
-option(ENABLE_PLUGINS "Enable OBS runtime plugins" ON)
-option(ENABLE_BROWSER_SOURCE "Build obs-browser (large CEF dependency)" OFF)
-option(ENABLE_WEBSOCKET "Build obs-websocket" OFF)
-option(ENABLE_DECKLINK_CAPTIONS "Build DeckLink captions OBS frontend UI plugin" OFF)
-
 if(NOT ENABLE_PLUGINS)
   set_property(GLOBAL APPEND PROPERTY OBS_FEATURES_DISABLED "Plugin Support")
   return()
@@ -27,10 +22,23 @@ endif()
 add_obs_plugin(image-source PLATFORMS WINDOWS)
 add_obs_plugin(nv-filters PLATFORMS WINDOWS)
 
+# obs-browser consumes the obs-websocket API target even when the websocket
+# plugin itself is disabled, so configure the submodule whenever either feature
+# is requested. Its CMake defines the API target before honoring ENABLE_WEBSOCKET.
+if(ENABLE_WEBSOCKET OR ENABLE_BROWSER_SOURCE)
+  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/obs-websocket/CMakeLists.txt")
+    message(FATAL_ERROR "Required submodule 'obs-websocket' not available.")
+  endif()
+  add_subdirectory(obs-websocket)
+endif()
+
 if(ENABLE_BROWSER_SOURCE)
   if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/obs-browser/CMakeLists.txt")
     message(FATAL_ERROR "Required submodule 'obs-browser' not available.")
   endif()
+  # The obs-browser submodule uses its upstream ENABLE_BROWSER switch. The
+  # outer option controls whether this headless branch includes that submodule.
+  set(ENABLE_BROWSER ON)
   add_subdirectory(obs-browser)
 endif()
 
@@ -44,13 +52,6 @@ add_obs_plugin(obs-text PLATFORMS WINDOWS)
 add_obs_plugin(obs-transitions PLATFORMS WINDOWS)
 add_obs_plugin(obs-vst PLATFORMS WINDOWS WITH_MESSAGE)
 add_obs_plugin(obs-webrtc PLATFORMS WINDOWS)
-
-if(ENABLE_WEBSOCKET)
-  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/obs-websocket/CMakeLists.txt")
-    message(FATAL_ERROR "Required submodule 'obs-websocket' not available.")
-  endif()
-  add_subdirectory(obs-websocket)
-endif()
 
 add_obs_plugin(obs-x264 PLATFORMS WINDOWS)
 add_obs_plugin(rtmp-services PLATFORMS WINDOWS)

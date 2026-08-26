@@ -22,15 +22,20 @@ include(helpers)
 option(ENABLE_FRONTEND "Enable the OBS Studio Qt frontend" OFF)
 option(ENABLE_SCRIPTING "Enable scripting support" OFF)
 option(ENABLE_HEVC "Enable HEVC encoders" ON)
+option(ENABLE_PLUGINS "Enable OBS runtime plugins" ON)
+option(ENABLE_BROWSER_SOURCE "Build obs-browser (large CEF dependency)" OFF)
+option(ENABLE_WEBSOCKET "Build obs-websocket" OFF)
+option(ENABLE_DECKLINK_CAPTIONS "Build DeckLink captions OBS frontend UI plugin" OFF)
 
 add_subdirectory(libobs)
 add_subdirectory(libobs-d3d11)
 add_subdirectory(libobs-winrt)
 
-# A small number of otherwise headless Windows modules (currently DeckLink
-# captions) link to the frontend API ABI. Build only that API library; do not
-# add the Qt frontend or any frontend application code.
-add_subdirectory(frontend/api)
+# Keep the stock frontend API ABI out of the default headless runtime. Only
+# opt-in plugins that explicitly depend on OBS frontend semantics get it.
+if(ENABLE_PLUGINS AND (ENABLE_DECKLINK_CAPTIONS OR ENABLE_WEBSOCKET OR ENABLE_BROWSER_SOURCE))
+  add_subdirectory(frontend/api)
+endif()
 
 add_subdirectory(plugins)
 add_subdirectory(engine)
