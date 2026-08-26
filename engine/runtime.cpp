@@ -1,6 +1,7 @@
 #include "runtime.hpp"
 
 #include "protocol.hpp"
+#include "validation.hpp"
 
 #include <windows.h>
 
@@ -21,23 +22,6 @@ namespace {
 constexpr size_t kMaxSourceTypeBytes = 128;
 constexpr size_t kMaxSourceNameBytes = 256;
 constexpr wchar_t kCaptureOnlyEnvironment[] = L"OBS_WIN_CAPTURE_CAPTURE_ONLY";
-
-bool is_safe_identifier(const char *value, size_t max_bytes)
-{
-	if (!value || !*value)
-		return false;
-
-	for (size_t index = 0; value[index] != '\0'; ++index) {
-		if (index >= max_bytes)
-			return false;
-		const unsigned char ch = static_cast<unsigned char>(value[index]);
-		const bool alpha_num = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-				       (ch >= '0' && ch <= '9');
-		if (!alpha_num && ch != '_' && ch != '-' && ch != '.')
-			return false;
-	}
-	return true;
-}
 
 bool is_bounded_string(const char *value, size_t max_bytes)
 {

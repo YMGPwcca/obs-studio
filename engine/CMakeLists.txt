@@ -10,6 +10,7 @@ target_sources(
     protocol.hpp
     runtime.cpp
     runtime.hpp
+    validation.hpp
 )
 
 target_compile_features(obs-engine PRIVATE cxx_std_20)

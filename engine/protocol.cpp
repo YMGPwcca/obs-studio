@@ -1,7 +1,5 @@
 #include "protocol.hpp"
 
-#include <windows.h>
-
 #include <cmath>
 #include <cstdio>
 
@@ -113,20 +111,6 @@ bool read_finite_double(obs_data_t *data, const char *name, double min_value, do
 		return false;
 	out = value;
 	return true;
-}
-
-void send_ready_event(const Config &config)
-{
-	ObsDataPtr event(obs_data_create());
-	obs_data_set_string(event.get(), "event", "ready");
-	obs_data_set_int(event.get(), "protocol", kProtocolVersion);
-	obs_data_set_string(event.get(), "libobs_version", obs_get_version_string());
-	obs_data_set_int(event.get(), "pid", static_cast<long long>(GetCurrentProcessId()));
-	obs_data_set_int(event.get(), "width", config.width);
-	obs_data_set_int(event.get(), "height", config.height);
-	obs_data_set_int(event.get(), "fps", config.fps);
-	obs_data_set_bool(event.get(), "game_capture_enabled", config.enable_game_capture);
-	write_json(event.get());
 }
 
 } // namespace obs_engine

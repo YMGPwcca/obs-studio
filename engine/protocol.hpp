@@ -1,7 +1,5 @@
 #pragma once
 
-#include "config.hpp"
-
 #include <obs.h>
 
 #include <cstdint>
@@ -42,6 +40,5 @@ bool read_integer(obs_data_t *data, const char *name, long long &out, bool &pres
 bool request_handle(obs_data_t *request, const char *field, uint64_t &out, bool allow_zero = false);
 bool read_finite_double(obs_data_t *data, const char *name, double min_value, double max_value, double &out,
 			bool &present);
-void send_ready_event(const Config &config);
 
 } // namespace obs_engine

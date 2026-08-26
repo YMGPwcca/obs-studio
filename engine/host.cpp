@@ -65,6 +65,20 @@ bool harden_dll_search_path()
 	return SetDllDirectoryW(L"") != FALSE;
 }
 
+void send_ready_event(const obs_engine::Config &config)
+{
+	obs_engine::ObsDataPtr event(obs_data_create());
+	obs_data_set_string(event.get(), "event", "ready");
+	obs_data_set_int(event.get(), "protocol", obs_engine::kProtocolVersion);
+	obs_data_set_string(event.get(), "libobs_version", obs_get_version_string());
+	obs_data_set_int(event.get(), "pid", static_cast<long long>(GetCurrentProcessId()));
+	obs_data_set_int(event.get(), "width", config.width);
+	obs_data_set_int(event.get(), "height", config.height);
+	obs_data_set_int(event.get(), "fps", config.fps);
+	obs_data_set_bool(event.get(), "game_capture_enabled", config.enable_game_capture);
+	obs_engine::write_json(event.get());
+}
+
 } // namespace
 
 int main(int argc, char **argv)
@@ -103,7 +117,7 @@ int main(int argc, char **argv)
 		if (!engine.start())
 			return 3;
 
-		obs_engine::send_ready_event(config);
+		send_ready_event(config);
 		std::string line;
 		for (;;) {
 			const obs_engine::ReadLineResult read_result = obs_engine::read_line_limited(line);
