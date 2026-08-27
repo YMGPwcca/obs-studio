@@ -135,7 +135,7 @@ jobs:
               }
             }
             if ( $HelloNames -contains 'source.v1' ) {
-              throw 'Capability advertisement must not claim source.v1 before the source namespace is ported.'
+              throw 'Partial method support must not claim the complete source.v1 namespace capability.'
             }
 
             $GetCapabilities = Send-V2Request @{
@@ -158,12 +158,12 @@ jobs:
             $Unknown = Send-V2Request @{
               op = 'request'
               id = 'task3.unimplemented'
-              method = 'source.create'
+              method = 'source.rename'
               params = @{}
             }
             if ( $Unknown.id -ne 'task3.unimplemented' -or $Unknown.status.ok -or
                  $Unknown.status.code -ne 'unsupported_method' ) {
-              throw 'Capability advertisement leaked an unimplemented v2 namespace.'
+              throw 'Capability advertisement leaked an unimplemented v2 semantic method.'
             }
 
             $Ping = Send-V2Request @{

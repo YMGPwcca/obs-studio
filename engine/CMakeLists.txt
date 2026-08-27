@@ -15,6 +15,7 @@ target_sources(
     revision.hpp
     runtime.cpp
     runtime.hpp
+    runtime_v2.cpp
     validation.hpp
 )
 

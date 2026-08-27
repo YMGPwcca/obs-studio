@@ -128,7 +128,7 @@ jobs:
             $Unknown = Send-V2Request @{
               op = 'request'
               id = 'task2.unknown'
-              method = 'source.create'
+              method = 'source.rename'
               params = @{}
             }
             if ( $Unknown.id -ne 'task2.unknown' -or $Unknown.status.ok -or

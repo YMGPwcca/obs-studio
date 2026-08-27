@@ -159,7 +159,7 @@ jobs:
               return @($Response.data.subscriptions | ForEach-Object { [string]$_.pattern })
             }
 
-            $ExpectedCapabilities = @(
+            $RequiredCapabilities = @(
               'engine.capabilities.v1'
               'event.delivery.v1'
               'session.close.v1'
@@ -182,8 +182,13 @@ jobs:
               params = @{}
             }
             $HelloCapabilities = @($Hello.data.capabilities | ForEach-Object { [string]$_.name })
-            if ( -not $Hello.status.ok -or ($HelloCapabilities -join '|') -ne ($ExpectedCapabilities -join '|') ) {
-              throw "Task 5 capability advertisement is incorrect: $($HelloCapabilities -join ', ')"
+            if ( -not $Hello.status.ok ) {
+              throw 'Task 5 session.hello failed.'
+            }
+            foreach ( $Required in $RequiredCapabilities ) {
+              if ( $HelloCapabilities -notcontains $Required ) {
+                throw "Task 5 capability regressed: $Required"
+              }
             }
             if ( [int64]$Hello.revision -ne 0 ) {
               throw 'New engine did not begin at revision 0.'

@@ -155,7 +155,7 @@ bool dispatch_request(obs_engine::Engine &engine, const obs_engine::Config &conf
 						  revisions.current());
 			return true;
 		}
-		return obs_engine::handle_v2_request(config, revisions, events, v2_request);
+		return obs_engine::handle_v2_request(engine, config, revisions, events, v2_request);
 	} catch (const std::exception &error) {
 		std::fprintf(stderr, "obs-engine: protocol v2 request failed internally: %s\n", error.what());
 		obs_engine::send_v2_error(v2_request.id, "internal_error", "request failed internally", nullptr,

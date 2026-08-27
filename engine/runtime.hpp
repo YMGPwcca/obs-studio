@@ -1,11 +1,14 @@
 #pragma once
 
 #include "config.hpp"
+#include "protocol.hpp"
 
 #include <obs.h>
 
 #include <cstdint>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace obs_engine {
 
@@ -13,6 +16,22 @@ struct ItemEntry {
 	uint64_t scene_id = 0;
 	uint64_t source_id = 0;
 	obs_sceneitem_t *item = nullptr;
+};
+
+struct RuntimeV2Error {
+	std::string code;
+	std::string message;
+};
+
+struct RuntimeV2Event {
+	std::string name;
+	ObsDataPtr data;
+};
+
+struct RuntimeV2Result {
+	ObsDataPtr data;
+	std::vector<RuntimeV2Event> events;
+	bool mutated = false;
 };
 
 class Engine {
@@ -25,6 +44,18 @@ public:
 
 	bool start();
 	bool handle(obs_data_t *request);
+
+	bool v2_source_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_kind_defaults(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_get_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_patch_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_scene_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_transform(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 
 private:
 	using ItemMap = std::unordered_map<uint64_t, ItemEntry>;

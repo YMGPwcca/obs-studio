@@ -19,12 +19,16 @@ public:
 		return current() == expected;
 	}
 
+	bool can_commit_mutation() const noexcept
+	{
+		return current() < max_revision();
+	}
+
 	uint64_t commit_mutation()
 	{
-		constexpr uint64_t kMaxRevision = static_cast<uint64_t>(std::numeric_limits<long long>::max());
 		uint64_t observed = revision_.load(std::memory_order_acquire);
 		for (;;) {
-			if (observed >= kMaxRevision)
+			if (observed >= max_revision())
 				throw std::overflow_error("revision space exhausted");
 			const uint64_t next = observed + 1;
 			if (revision_.compare_exchange_weak(observed, next, std::memory_order_acq_rel,
@@ -34,6 +38,11 @@ public:
 	}
 
 private:
+	static constexpr uint64_t max_revision() noexcept
+	{
+		return static_cast<uint64_t>(std::numeric_limits<long long>::max());
+	}
+
 	std::atomic<uint64_t> revision_{0};
 };
 
