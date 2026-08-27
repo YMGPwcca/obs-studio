@@ -1,10 +1,13 @@
 #include "protocol_v2.hpp"
 
+#include "revision.hpp"
 #include "validation.hpp"
 
 #include <windows.h>
 
 #include <obs.h>
+
+#include <string_view>
 
 namespace obs_engine {
 namespace {
@@ -20,6 +23,32 @@ constexpr CapabilityDescriptor kCapabilities[] = {
 	{"session.hello.v1", false},
 	{"session.ping.v1", false},
 };
+
+enum class V2Method {
+	SessionHello,
+	SessionPing,
+	SessionClose,
+	EngineGetCapabilities,
+	Unknown,
+};
+
+V2Method classify_method(std::string_view method)
+{
+	if (method == "session.hello")
+		return V2Method::SessionHello;
+	if (method == "session.ping")
+		return V2Method::SessionPing;
+	if (method == "session.close")
+		return V2Method::SessionClose;
+	if (method == "engine.getCapabilities")
+		return V2Method::EngineGetCapabilities;
+	return V2Method::Unknown;
+}
+
+bool method_is_mutating(V2Method method)
+{
+	return method == V2Method::SessionClose;
+}
 
 bool read_string_field(obs_data_t *data, const char *name, std::string &out, bool &present)
 {
@@ -83,6 +112,30 @@ void set_capabilities(obs_data_t *data)
 {
 	ObsArrayPtr capabilities = make_capabilities_array();
 	obs_data_set_array(data, "capabilities", capabilities.get());
+}
+
+bool validate_revision_guard(RevisionState &revisions, const V2Request &request, V2Method method)
+{
+	const uint64_t current_revision = revisions.current();
+	if (!request.has_if_revision)
+		return true;
+
+	if (!method_is_mutating(method)) {
+		send_v2_error(request.id, "bad_request", "ifRevision is only valid for mutating methods", nullptr,
+			      current_revision);
+		return false;
+	}
+
+	const uint64_t expected_revision = static_cast<uint64_t>(request.if_revision);
+	if (expected_revision == current_revision)
+		return true;
+
+	ObsDataPtr details(obs_data_create());
+	obs_data_set_int(details.get(), "expectedRevision", request.if_revision);
+	obs_data_set_int(details.get(), "actualRevision", static_cast<long long>(current_revision));
+	send_v2_error(request.id, "revision_conflict", "ifRevision does not match the current engine revision",
+		      details.get(), current_revision);
+	return false;
 }
 
 } // namespace
@@ -176,9 +229,20 @@ void send_v2_ok(const std::string &request_id, obs_data_t *data, uint64_t revisi
 	write_json(response.get());
 }
 
-bool handle_v2_request(const Config &, const V2Request &request)
+bool handle_v2_request(const Config &, RevisionState &revisions, const V2Request &request)
 {
-	if (request.method == "session.hello") {
+	const V2Method method = classify_method(request.method);
+	if (method == V2Method::Unknown) {
+		send_v2_error(request.id, "unsupported_method", "method is not implemented by protocol v2 yet", nullptr,
+			      revisions.current());
+		return true;
+	}
+
+	if (!validate_revision_guard(revisions, request, method))
+		return true;
+
+	if (method == V2Method::SessionHello) {
+		const uint64_t revision = revisions.current();
 		ObsDataPtr data(obs_data_create());
 		ObsDataPtr protocol(obs_data_create());
 
@@ -192,31 +256,32 @@ bool handle_v2_request(const Config &, const V2Request &request)
 		obs_data_set_string(data.get(), "encoding", "utf-8");
 		obs_data_set_int(data.get(), "maxMessageBytes", static_cast<long long>(kMaxMessageBytes));
 		set_capabilities(data.get());
-		obs_data_set_int(data.get(), "revision", 0);
-		send_v2_ok(request.id, data.get());
+		obs_data_set_int(data.get(), "revision", static_cast<long long>(revision));
+		send_v2_ok(request.id, data.get(), revision);
 		return true;
 	}
 
-	if (request.method == "session.ping") {
+	if (method == V2Method::SessionPing) {
 		ObsDataPtr data(obs_data_create());
 		obs_data_set_bool(data.get(), "pong", true);
-		send_v2_ok(request.id, data.get());
+		send_v2_ok(request.id, data.get(), revisions.current());
 		return true;
 	}
 
-	if (request.method == "session.close") {
-		send_v2_ok(request.id);
+	if (method == V2Method::SessionClose) {
+		const uint64_t revision = revisions.commit_mutation();
+		send_v2_ok(request.id, nullptr, revision);
 		return false;
 	}
 
-	if (request.method == "engine.getCapabilities") {
+	if (method == V2Method::EngineGetCapabilities) {
 		ObsDataPtr data(obs_data_create());
 		set_capabilities(data.get());
-		send_v2_ok(request.id, data.get());
+		send_v2_ok(request.id, data.get(), revisions.current());
 		return true;
 	}
 
-	send_v2_error(request.id, "unsupported_method", "method is not implemented by protocol v2 yet");
+	send_v2_error(request.id, "internal_error", "method dispatch failed internally", nullptr, revisions.current());
 	return true;
 }
 

@@ -1,6 +1,7 @@
 #include "config.hpp"
 #include "protocol.hpp"
 #include "protocol_v2.hpp"
+#include "revision.hpp"
 #include "runtime.hpp"
 
 #include <windows.h>
@@ -106,7 +107,8 @@ bool looks_like_v2_request(obs_data_t *request)
 	return has_field(request, "op") || has_field(request, "method") || field_is_string(request, "id");
 }
 
-bool dispatch_request(obs_engine::Engine &engine, const obs_engine::Config &config, obs_data_t *request)
+bool dispatch_request(obs_engine::Engine &engine, const obs_engine::Config &config, obs_engine::RevisionState &revisions,
+		      obs_data_t *request)
 {
 	if (!looks_like_v2_request(request)) {
 		try {
@@ -125,16 +127,19 @@ bool dispatch_request(obs_engine::Engine &engine, const obs_engine::Config &conf
 	obs_engine::V2ParseError parse_error;
 	try {
 		if (!obs_engine::parse_v2_request(request, v2_request, parse_error)) {
-			obs_engine::send_v2_error(parse_error.id, parse_error.code.c_str(), parse_error.message.c_str());
+			obs_engine::send_v2_error(parse_error.id, parse_error.code.c_str(), parse_error.message.c_str(), nullptr,
+						  revisions.current());
 			return true;
 		}
-		return obs_engine::handle_v2_request(config, v2_request);
+		return obs_engine::handle_v2_request(config, revisions, v2_request);
 	} catch (const std::exception &error) {
 		std::fprintf(stderr, "obs-engine: protocol v2 request failed internally: %s\n", error.what());
-		obs_engine::send_v2_error(v2_request.id, "internal_error", "request failed internally");
+		obs_engine::send_v2_error(v2_request.id, "internal_error", "request failed internally", nullptr,
+				      revisions.current());
 	} catch (...) {
 		std::fprintf(stderr, "obs-engine: protocol v2 request failed with an unknown exception\n");
-		obs_engine::send_v2_error(v2_request.id, "internal_error", "request failed internally");
+		obs_engine::send_v2_error(v2_request.id, "internal_error", "request failed internally", nullptr,
+				      revisions.current());
 	}
 	return true;
 }
@@ -177,6 +182,7 @@ int main(int argc, char **argv)
 		if (!engine.start())
 			return 3;
 
+		obs_engine::RevisionState revisions;
 		send_ready_event(config);
 		std::string line;
 		for (;;) {
@@ -196,7 +202,7 @@ int main(int argc, char **argv)
 				continue;
 			}
 
-			if (!dispatch_request(engine, config, request.get()))
+			if (!dispatch_request(engine, config, revisions, request.get()))
 				break;
 		}
 	} catch (const std::exception &error) {

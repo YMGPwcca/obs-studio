@@ -10,6 +10,7 @@ target_sources(
     protocol.hpp
     protocol_v2.cpp
     protocol_v2.hpp
+    revision.hpp
     runtime.cpp
     runtime.hpp
     validation.hpp

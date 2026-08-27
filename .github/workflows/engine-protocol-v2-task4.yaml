@@ -1,0 +1,248 @@
+name: Engine Protocol v2 Task 4 Verification
+
+on:
+  push:
+    branches:
+      - engine-protocol-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-smoke-package-x64:
+    name: Build, revision smoke test, and package x64
+    runs-on: windows-2025-vs2026
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Build Windows minimal runtime
+        uses: ./.github/actions/build-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
+
+      - name: Smoke test protocol v2 revisions
+        id: smoke_v2_revisions
+        continue-on-error: true
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $InstallRoot = Resolve-Path 'build_x64/install'
+          $DiagnosticDir = Join-Path $InstallRoot '_task4-diagnostics'
+          New-Item -ItemType Directory -Force -Path $DiagnosticDir | Out-Null
+          $DiagnosticFile = Join-Path $DiagnosticDir 'v2-revisions-smoke.txt'
+
+          $Process = $null
+          $ErrorTask = $null
+          $Engine = $null
+          $FailureText = $null
+
+          try {
+            $Engine = Get-ChildItem -Path $InstallRoot -Filter 'obs-engine.exe' -File -Recurse |
+              Select-Object -First 1
+            if ( $null -eq $Engine ) {
+              throw 'obs-engine.exe was not found in the installed runtime.'
+            }
+
+            $StartInfo = [System.Diagnostics.ProcessStartInfo]::new()
+            $StartInfo.FileName = $Engine.FullName
+            $StartInfo.WorkingDirectory = $Engine.Directory.FullName
+            $StartInfo.UseShellExecute = $false
+            $StartInfo.RedirectStandardInput = $true
+            $StartInfo.RedirectStandardOutput = $true
+            $StartInfo.RedirectStandardError = $true
+            $StartInfo.CreateNoWindow = $true
+
+            $Process = [System.Diagnostics.Process]::new()
+            $Process.StartInfo = $StartInfo
+            if ( -not $Process.Start() ) {
+              throw 'Failed to start obs-engine.exe.'
+            }
+            $ErrorTask = $Process.StandardError.ReadToEndAsync()
+
+            function Read-EngineMessage {
+              $ReadTask = $Process.StandardOutput.ReadLineAsync()
+              if ( -not $ReadTask.Wait(30000) ) {
+                throw 'Timed out waiting 30 seconds for obs-engine stdout.'
+              }
+              $Line = $ReadTask.Result
+              if ( $null -eq $Line ) {
+                $ExitText = if ( $Process.HasExited ) { "exit=$($Process.ExitCode)" } else { 'process still running' }
+                throw "obs-engine closed stdout unexpectedly ($ExitText)."
+              }
+              Write-Host "obs-engine stdout: $Line"
+              return ($Line | ConvertFrom-Json)
+            }
+
+            function Send-V2Request([hashtable] $Request) {
+              $Json = $Request | ConvertTo-Json -Compress -Depth 20
+              Write-Host "obs-engine stdin:  $Json"
+              $Process.StandardInput.WriteLine($Json)
+              $Process.StandardInput.Flush()
+              return Read-EngineMessage
+            }
+
+            $Ready = Read-EngineMessage
+            if ( $Ready.event -ne 'ready' -or [int]$Ready.protocol -ne 1 ) {
+              throw 'Migration bootstrap ready event changed unexpectedly.'
+            }
+
+            $Hello = Send-V2Request @{
+              op = 'request'
+              id = 'task4.hello'
+              method = 'session.hello'
+              params = @{}
+            }
+            if ( $Hello.id -ne 'task4.hello' -or -not $Hello.status.ok ) {
+              throw 'session.hello failed.'
+            }
+            if ( [int64]$Hello.revision -ne 0 -or [int64]$Hello.data.revision -ne 0 ) {
+              throw 'A new engine process must begin at revision 0.'
+            }
+
+            $ReadOnlyGuard = Send-V2Request @{
+              op = 'request'
+              id = 'task4.readonly-guard'
+              method = 'session.ping'
+              params = @{}
+              ifRevision = 0
+            }
+            if ( $ReadOnlyGuard.status.ok -or $ReadOnlyGuard.status.code -ne 'bad_request' -or
+                 [int64]$ReadOnlyGuard.revision -ne 0 ) {
+              throw 'Read-only methods must reject ifRevision without changing revision.'
+            }
+
+            $UnsupportedGuard = Send-V2Request @{
+              op = 'request'
+              id = 'task4.unsupported-guard'
+              method = 'source.create'
+              params = @{}
+              ifRevision = 0
+            }
+            if ( $UnsupportedGuard.status.ok -or $UnsupportedGuard.status.code -ne 'unsupported_method' -or
+                 [int64]$UnsupportedGuard.revision -ne 0 ) {
+              throw 'Unimplemented methods must remain unsupported without consuming revision state.'
+            }
+
+            $StaleClose = Send-V2Request @{
+              op = 'request'
+              id = 'task4.stale-close'
+              method = 'session.close'
+              params = @{}
+              ifRevision = 1
+            }
+            if ( $StaleClose.status.ok -or $StaleClose.status.code -ne 'revision_conflict' ) {
+              throw 'A stale guarded mutation must return revision_conflict.'
+            }
+            if ( [int64]$StaleClose.revision -ne 0 -or
+                 [int64]$StaleClose.status.details.expectedRevision -ne 1 -or
+                 [int64]$StaleClose.status.details.actualRevision -ne 0 ) {
+              throw 'revision_conflict returned incorrect revision details.'
+            }
+            if ( $Process.HasExited ) {
+              throw 'Rejected session.close unexpectedly terminated the engine.'
+            }
+
+            $PingAfterConflict = Send-V2Request @{
+              op = 'request'
+              id = 'task4.ping-after-conflict'
+              method = 'session.ping'
+              params = @{}
+            }
+            if ( -not $PingAfterConflict.status.ok -or -not $PingAfterConflict.data.pong -or
+                 [int64]$PingAfterConflict.revision -ne 0 ) {
+              throw 'Rejected mutation changed state or broke request processing.'
+            }
+
+            $Close = Send-V2Request @{
+              op = 'request'
+              id = 'task4.close'
+              method = 'session.close'
+              params = @{}
+              ifRevision = 0
+            }
+            if ( $Close.id -ne 'task4.close' -or -not $Close.status.ok -or [int64]$Close.revision -ne 1 ) {
+              throw 'Matching guarded mutation must commit exactly one revision.'
+            }
+
+            $Process.StandardInput.Close()
+            if ( -not $Process.WaitForExit(15000) ) {
+              $Process.Kill($true)
+              throw 'obs-engine did not exit after committed session.close.'
+            }
+            if ( $Process.ExitCode -ne 0 ) {
+              throw "obs-engine exited with code $($Process.ExitCode)."
+            }
+
+            Write-Host 'Protocol-v2 revision smoke test passed.'
+          }
+          catch {
+            $FailureText = ($_ | Out-String)
+            Write-Error $FailureText
+            if ( $null -ne $Process -and -not $Process.HasExited ) {
+              try {
+                $Process.Kill($true)
+                $Process.WaitForExit(5000) | Out-Null
+              }
+              catch {
+                Write-Warning "Failed to terminate obs-engine after Task 4 smoke failure: $_"
+              }
+            }
+          }
+          finally {
+            $StderrText = ''
+            if ( $null -ne $ErrorTask ) {
+              try {
+                $StderrText = $ErrorTask.GetAwaiter().GetResult()
+              }
+              catch {
+                $StderrText = "Failed to collect redirected stderr: $_"
+              }
+            }
+
+            $ExitState = 'not-started'
+            if ( $null -ne $Process ) {
+              if ( $Process.HasExited ) {
+                $ExitState = "exited:$($Process.ExitCode)"
+              } else {
+                $ExitState = 'still-running'
+              }
+            }
+
+            @(
+              "engine=$($Engine.FullName)"
+              "exit_state=$ExitState"
+              ''
+              '=== smoke failure ==='
+              $FailureText
+              ''
+              '=== obs-engine stderr ==='
+              $StderrText
+            ) | Set-Content -Path $DiagnosticFile -Encoding utf8
+          }
+
+          if ( $null -ne $FailureText ) {
+            throw 'Protocol-v2 revision smoke test failed. See _task4-diagnostics/v2-revisions-smoke.txt in the runtime artifact.'
+          }
+
+      - name: Upload Task 4 Windows runtime
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: obs-engine-windows-x64-task4
+          path: build_x64/install/
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 7
+
+      - name: Enforce Task 4 smoke result
+        if: steps.smoke_v2_revisions.outcome != 'success'
+        shell: pwsh
+        run: |
+          throw 'Protocol-v2 revision smoke test failed; runtime artifact was preserved for diagnostics.'
