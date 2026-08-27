@@ -151,7 +151,7 @@ jobs:
                 throw "Task 6 capability was not advertised: $Required"
               }
             }
-            foreach ( $ForbiddenNamespace in @('source.v1', 'scene.v1', 'item.v1') ) {
+            foreach ( $ForbiddenNamespace in @('scene.v1', 'item.v1') ) {
               if ( $CapabilityNames -contains $ForbiddenNamespace ) {
                 throw "Partial Task 6 support must not claim complete namespace capability $ForbiddenNamespace."
               }
@@ -363,6 +363,11 @@ jobs:
             if ( [string]$SettingsChanged.data.source -ne $SourceHandle -or
                  [int]$SettingsChanged.data.settings.width -ne 640 ) {
               throw 'source.settingsChanged payload was incorrect.'
+            }
+            $DimensionsChanged = Read-StateEvent 'source.dimensionsChanged' 5
+            if ( [string]$DimensionsChanged.data.source -ne $SourceHandle -or
+                 [int]$DimensionsChanged.data.width -ne 640 -or [int]$DimensionsChanged.data.height -ne 360 ) {
+              throw 'Task 8 source bridge did not normalize the Color Source dimension change.'
             }
 
             $RemoveItem = Send-V2Request @{

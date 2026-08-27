@@ -41,6 +41,28 @@ private:
 	bool started_ = false;
 };
 
+class SourceEventBridgeScope {
+public:
+	SourceEventBridgeScope(obs_engine::Engine &engine, obs_engine::RevisionState &revisions,
+			       obs_engine::EventDispatcher &events)
+		: engine_(engine)
+	{
+		engine_.v2_bind_source_events(&revisions, &events);
+		engine_.v2_sync_source_observers();
+	}
+
+	~SourceEventBridgeScope()
+	{
+		engine_.v2_prepare_shutdown();
+	}
+
+	SourceEventBridgeScope(const SourceEventBridgeScope &) = delete;
+	SourceEventBridgeScope &operator=(const SourceEventBridgeScope &) = delete;
+
+private:
+	obs_engine::Engine &engine_;
+};
+
 const char *log_level_name(int level)
 {
 	switch (level) {
@@ -215,6 +237,7 @@ int main(int argc, char **argv)
 		obs_engine::EventDispatcher events;
 		events.start();
 		obs_engine::RevisionState revisions;
+		SourceEventBridgeScope source_events(engine, revisions, events);
 		send_ready_event(config);
 
 		std::string line;

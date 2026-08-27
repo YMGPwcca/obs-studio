@@ -228,6 +228,26 @@ EventPublishResult EventDispatcher::publish(EngineEventKind kind, std::string_vi
 	return EventPublishResult::Enqueued;
 }
 
+void EventDispatcher::require_resync_due_to_overflow(uint64_t revision) noexcept
+{
+	try {
+		std::lock_guard lock(mutex_);
+		if (stopping_)
+			return;
+
+		uint64_t highest_lost_revision = revision;
+		for (const PendingEvent &queued : queue_)
+			highest_lost_revision = std::max(highest_lost_revision, queued.revision);
+		queue_.clear();
+		resync_pending_ = true;
+		resync_revision_ = std::max(resync_revision_, highest_lost_revision);
+		cv_.notify_one();
+	} catch (...) {
+		std::fprintf(stderr, "obs-engine: failed to schedule mandatory resync after event overflow\n");
+		std::fflush(stderr);
+	}
+}
+
 void EventDispatcher::run() noexcept
 {
 	try {

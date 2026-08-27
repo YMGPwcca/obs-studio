@@ -19,7 +19,10 @@ target_sources(
     runtime.cpp
     runtime.hpp
     runtime_properties_v2.cpp
+    runtime_source_settle_v2.cpp
+    runtime_source_v2.cpp
     runtime_v2.cpp
+    source_event_capture.hpp
     validation.hpp
 )
 

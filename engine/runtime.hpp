@@ -2,15 +2,20 @@
 
 #include "config.hpp"
 #include "protocol.hpp"
+#include "revision.hpp"
 
 #include <obs.h>
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace obs_engine {
+
+class EventDispatcher;
+struct SourceV2State;
 
 struct ItemEntry {
 	uint64_t scene_id = 0;
@@ -45,12 +50,41 @@ public:
 	bool start();
 	bool handle(obs_data_t *request);
 
+	void v2_bind_source_events(RevisionState *revisions, EventDispatcher *events);
+	void v2_begin_event_capture(RuntimeV2Result &result);
+	void v2_end_event_capture() noexcept;
+	void v2_drain_deferred_source_events(RevisionState::MutationGuard &guard);
+	void v2_flush_deferred_source_events(RevisionState::MutationGuard &guard);
+	void v2_sync_source_observers();
+	void v2_prepare_shutdown() noexcept;
+	void v2_settle_source_mutation(obs_data_t *params, RuntimeV2Result &result);
+	void v2_normalize_source_kind_metadata(RuntimeV2Result &result);
+
 	bool v2_source_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_kind_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_source_kind_defaults(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_kind_properties(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_source_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_duplicate(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_rename(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_source_get_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_source_patch_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
-	bool v2_source_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_replace_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_reset_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_get_properties(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_get_flags(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_get_dimensions(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_get_state(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_get_active(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_get_showing(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_get_missing_files(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_refresh(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_save_state(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_source_load_state(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+
 	bool v2_scene_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_item_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -98,6 +132,7 @@ private:
 	std::unordered_map<uint64_t, obs_source_t *> sources_;
 	std::unordered_map<uint64_t, obs_scene_t *> scenes_;
 	ItemMap items_;
+	std::shared_ptr<SourceV2State> source_v2_state_;
 };
 
 } // namespace obs_engine

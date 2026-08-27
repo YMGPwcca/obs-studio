@@ -121,7 +121,7 @@ jobs:
             $UnsupportedGuard = Send-V2Request @{
               op = 'request'
               id = 'task4.unsupported-guard'
-              method = 'source.rename'
+              method = 'interaction.focus'
               params = @{}
               ifRevision = 0
             }
