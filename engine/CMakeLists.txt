@@ -8,6 +8,8 @@ target_sources(
     host.cpp
     protocol.cpp
     protocol.hpp
+    protocol_v2.cpp
+    protocol_v2.hpp
     runtime.cpp
     runtime.hpp
     validation.hpp

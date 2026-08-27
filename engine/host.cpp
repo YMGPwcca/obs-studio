@@ -1,5 +1,6 @@
 #include "config.hpp"
 #include "protocol.hpp"
+#include "protocol_v2.hpp"
 #include "runtime.hpp"
 
 #include <windows.h>
@@ -79,6 +80,65 @@ void send_ready_event(const obs_engine::Config &config)
 	obs_engine::write_json(event.get());
 }
 
+bool has_field(obs_data_t *request, const char *name)
+{
+	obs_data_item_t *item = obs_data_item_byname(request, name);
+	if (!item)
+		return false;
+	obs_data_item_release(&item);
+	return true;
+}
+
+bool field_is_string(obs_data_t *request, const char *name)
+{
+	obs_data_item_t *item = obs_data_item_byname(request, name);
+	if (!item)
+		return false;
+	const bool is_string = obs_data_item_gettype(item) == OBS_DATA_STRING;
+	obs_data_item_release(&item);
+	return is_string;
+}
+
+bool looks_like_v2_request(obs_data_t *request)
+{
+	if (has_field(request, "cmd"))
+		return false;
+	return has_field(request, "op") || has_field(request, "method") || field_is_string(request, "id");
+}
+
+bool dispatch_request(obs_engine::Engine &engine, const obs_engine::Config &config, obs_data_t *request)
+{
+	if (!looks_like_v2_request(request)) {
+		try {
+			return engine.handle(request);
+		} catch (const std::exception &error) {
+			std::fprintf(stderr, "obs-engine: command failed internally: %s\n", error.what());
+			obs_engine::send_error(0, "internal_error", "command failed internally");
+		} catch (...) {
+			std::fprintf(stderr, "obs-engine: command failed with an unknown exception\n");
+			obs_engine::send_error(0, "internal_error", "command failed internally");
+		}
+		return true;
+	}
+
+	obs_engine::V2Request v2_request;
+	obs_engine::V2ParseError parse_error;
+	try {
+		if (!obs_engine::parse_v2_request(request, v2_request, parse_error)) {
+			obs_engine::send_v2_error(parse_error.id, parse_error.code.c_str(), parse_error.message.c_str());
+			return true;
+		}
+		return obs_engine::handle_v2_request(config, v2_request);
+	} catch (const std::exception &error) {
+		std::fprintf(stderr, "obs-engine: protocol v2 request failed internally: %s\n", error.what());
+		obs_engine::send_v2_error(v2_request.id, "internal_error", "request failed internally");
+	} catch (...) {
+		std::fprintf(stderr, "obs-engine: protocol v2 request failed with an unknown exception\n");
+		obs_engine::send_v2_error(v2_request.id, "internal_error", "request failed internally");
+	}
+	return true;
+}
+
 } // namespace
 
 int main(int argc, char **argv)
@@ -136,17 +196,7 @@ int main(int argc, char **argv)
 				continue;
 			}
 
-			bool keep_running = true;
-			try {
-				keep_running = engine.handle(request.get());
-			} catch (const std::exception &error) {
-				std::fprintf(stderr, "obs-engine: command failed internally: %s\n", error.what());
-				obs_engine::send_error(0, "internal_error", "command failed internally");
-			} catch (...) {
-				std::fprintf(stderr, "obs-engine: command failed with an unknown exception\n");
-				obs_engine::send_error(0, "internal_error", "command failed internally");
-			}
-			if (!keep_running)
+			if (!dispatch_request(engine, config, request.get()))
 				break;
 		}
 	} catch (const std::exception &error) {
