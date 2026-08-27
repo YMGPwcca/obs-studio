@@ -9,6 +9,18 @@
 namespace obs_engine {
 namespace {
 
+struct CapabilityDescriptor {
+	const char *name;
+	bool experimental;
+};
+
+constexpr CapabilityDescriptor kCapabilities[] = {
+	{"engine.capabilities.v1", false},
+	{"session.close.v1", false},
+	{"session.hello.v1", false},
+	{"session.ping.v1", false},
+};
+
 bool read_string_field(obs_data_t *data, const char *name, std::string &out, bool &present)
 {
 	obs_data_item_t *item = obs_data_item_byname(data, name);
@@ -53,6 +65,24 @@ void set_parse_error(V2ParseError &error, const std::string &id, const char *cod
 	error.id = id;
 	error.code = code;
 	error.message = message;
+}
+
+ObsArrayPtr make_capabilities_array()
+{
+	ObsArrayPtr capabilities(obs_data_array_create());
+	for (const CapabilityDescriptor &descriptor : kCapabilities) {
+		ObsDataPtr capability(obs_data_create());
+		obs_data_set_string(capability.get(), "name", descriptor.name);
+		obs_data_set_bool(capability.get(), "experimental", descriptor.experimental);
+		obs_data_array_push_back(capabilities.get(), capability.get());
+	}
+	return capabilities;
+}
+
+void set_capabilities(obs_data_t *data)
+{
+	ObsArrayPtr capabilities = make_capabilities_array();
+	obs_data_set_array(data, "capabilities", capabilities.get());
 }
 
 } // namespace
@@ -151,7 +181,6 @@ bool handle_v2_request(const Config &, const V2Request &request)
 	if (request.method == "session.hello") {
 		ObsDataPtr data(obs_data_create());
 		ObsDataPtr protocol(obs_data_create());
-		ObsArrayPtr capabilities(obs_data_array_create());
 
 		obs_data_set_int(protocol.get(), "major", kProtocolV2Major);
 		obs_data_set_int(protocol.get(), "minor", kProtocolV2Minor);
@@ -162,7 +191,7 @@ bool handle_v2_request(const Config &, const V2Request &request)
 		obs_data_set_int(data.get(), "pid", static_cast<long long>(GetCurrentProcessId()));
 		obs_data_set_string(data.get(), "encoding", "utf-8");
 		obs_data_set_int(data.get(), "maxMessageBytes", static_cast<long long>(kMaxMessageBytes));
-		obs_data_set_array(data.get(), "capabilities", capabilities.get());
+		set_capabilities(data.get());
 		obs_data_set_int(data.get(), "revision", 0);
 		send_v2_ok(request.id, data.get());
 		return true;
@@ -178,6 +207,13 @@ bool handle_v2_request(const Config &, const V2Request &request)
 	if (request.method == "session.close") {
 		send_v2_ok(request.id);
 		return false;
+	}
+
+	if (request.method == "engine.getCapabilities") {
+		ObsDataPtr data(obs_data_create());
+		set_capabilities(data.get());
+		send_v2_ok(request.id, data.get());
+		return true;
 	}
 
 	send_v2_error(request.id, "unsupported_method", "method is not implemented by protocol v2 yet");

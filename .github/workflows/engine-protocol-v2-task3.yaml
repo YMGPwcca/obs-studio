@@ -1,4 +1,4 @@
-name: Engine Protocol v2 Task 2 Verification
+name: Engine Protocol v2 Task 3 Verification
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-smoke-package-x64:
-    name: Build, smoke test, and package x64
+    name: Build, capability smoke test, and package x64
     runs-on: windows-2025-vs2026
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -25,8 +25,8 @@ jobs:
           target: x64
           config: RelWithDebInfo
 
-      - name: Smoke test protocol v2 framing
-        id: smoke_v2
+      - name: Smoke test protocol v2 capabilities
+        id: smoke_v2_capabilities
         continue-on-error: true
         timeout-minutes: 5
         shell: pwsh
@@ -34,9 +34,9 @@ jobs:
           $ErrorActionPreference = 'Stop'
 
           $InstallRoot = Resolve-Path 'build_x64/install'
-          $DiagnosticDir = Join-Path $InstallRoot '_task2-diagnostics'
+          $DiagnosticDir = Join-Path $InstallRoot '_task3-diagnostics'
           New-Item -ItemType Directory -Force -Path $DiagnosticDir | Out-Null
-          $DiagnosticFile = Join-Path $DiagnosticDir 'v2-smoke.txt'
+          $DiagnosticFile = Join-Path $DiagnosticDir 'v2-capabilities-smoke.txt'
 
           $Process = $null
           $ErrorTask = $null
@@ -88,6 +88,17 @@ jobs:
               return Read-EngineMessage
             }
 
+            function Get-CapabilityNames($Response) {
+              return @($Response.data.capabilities | ForEach-Object { [string]$_.name })
+            }
+
+            $ExpectedCapabilities = @(
+              'engine.capabilities.v1'
+              'session.close.v1'
+              'session.hello.v1'
+              'session.ping.v1'
+            )
+
             $Ready = Read-EngineMessage
             if ( $Ready.event -ne 'ready' -or [int]$Ready.protocol -ne 1 ) {
               throw 'Migration bootstrap ready event changed unexpectedly.'
@@ -95,76 +106,82 @@ jobs:
 
             $Hello = Send-V2Request @{
               op = 'request'
-              id = 'task2.hello'
+              id = 'task3.hello'
               method = 'session.hello'
               params = @{}
             }
-            if ( $Hello.op -ne 'response' -or $Hello.id -ne 'task2.hello' -or -not $Hello.status.ok ) {
+            if ( $Hello.op -ne 'response' -or $Hello.id -ne 'task3.hello' -or -not $Hello.status.ok ) {
               throw 'session.hello did not return a valid v2 success envelope.'
             }
             if ( [int]$Hello.data.protocol.major -ne 2 -or [int]$Hello.data.protocol.minor -ne 0 ) {
               throw 'session.hello returned an unexpected protocol version.'
             }
             if ( [int64]$Hello.revision -ne 0 -or [int64]$Hello.data.revision -ne 0 ) {
-              throw 'Task 2 framing must remain at revision 0 before revision tracking is implemented.'
-            }
-            if ( [int64]$Hello.data.maxMessageBytes -ne 262144 ) {
-              throw 'session.hello returned an unexpected message-size limit.'
-            }
-            if ( -not ($Hello.data.PSObject.Properties.Name -contains 'capabilities') ) {
-              throw 'session.hello must expose the capabilities field used by later protocol tasks.'
+              throw 'Task 3 must not implement revision tracking.'
             }
 
-            $Ping = Send-V2Request @{
+            $HelloNames = Get-CapabilityNames $Hello
+            if ( ($HelloNames -join '|') -ne ($ExpectedCapabilities -join '|') ) {
+              throw "session.hello returned unexpected capabilities: $($HelloNames -join ', ')"
+            }
+            foreach ( $Capability in @($Hello.data.capabilities) ) {
+              if ( [string]::IsNullOrWhiteSpace([string]$Capability.name) ) {
+                throw 'Capability descriptor is missing a name.'
+              }
+              if ( [bool]$Capability.experimental ) {
+                throw "Stable Task 3 capability was unexpectedly marked experimental: $($Capability.name)"
+              }
+            }
+            if ( $HelloNames -contains 'source.v1' ) {
+              throw 'Task 3 must not advertise source.v1 before the source namespace is ported.'
+            }
+
+            $GetCapabilities = Send-V2Request @{
               op = 'request'
-              id = 'task2.ping'
-              method = 'session.ping'
+              id = 'task3.capabilities'
+              method = 'engine.getCapabilities'
               params = @{}
             }
-            if ( $Ping.id -ne 'task2.ping' -or -not $Ping.status.ok -or -not $Ping.data.pong ) {
-              throw 'session.ping failed v2 request correlation.'
+            if ( $GetCapabilities.id -ne 'task3.capabilities' -or -not $GetCapabilities.status.ok ) {
+              throw 'engine.getCapabilities failed.'
+            }
+            if ( [int64]$GetCapabilities.revision -ne 0 ) {
+              throw 'engine.getCapabilities unexpectedly changed the revision.'
+            }
+            $GetCapabilityNames = Get-CapabilityNames $GetCapabilities
+            if ( ($GetCapabilityNames -join '|') -ne ($ExpectedCapabilities -join '|') ) {
+              throw 'engine.getCapabilities does not match session.hello capability advertisement.'
             }
 
             $Unknown = Send-V2Request @{
               op = 'request'
-              id = 'task2.unknown'
+              id = 'task3.unimplemented'
               method = 'source.create'
               params = @{}
             }
-            if ( $Unknown.id -ne 'task2.unknown' -or $Unknown.status.ok -or
+            if ( $Unknown.id -ne 'task3.unimplemented' -or $Unknown.status.ok -or
                  $Unknown.status.code -ne 'unsupported_method' ) {
-              throw 'Unimplemented v2 semantic methods must return unsupported_method.'
+              throw 'Capability advertisement leaked an unimplemented v2 namespace.'
             }
 
-            $BadParams = Send-V2Request @{
+            $Ping = Send-V2Request @{
               op = 'request'
-              id = 'task2.badparams'
-              method = 'session.ping'
-              params = 7
-            }
-            if ( $BadParams.id -ne 'task2.badparams' -or $BadParams.status.ok -or
-                 $BadParams.status.code -ne 'bad_request' ) {
-              throw 'Wrong-typed v2 params did not return a correlated bad_request.'
-            }
-
-            $BadId = Send-V2Request @{
-              op = 'request'
-              id = 42
+              id = 'task3.ping'
               method = 'session.ping'
               params = @{}
             }
-            if ( [string]$BadId.id -ne '' -or $BadId.status.ok -or $BadId.status.code -ne 'bad_request' ) {
-              throw 'Invalid v2 request IDs must return an uncorrelated bad_request envelope.'
+            if ( $Ping.id -ne 'task3.ping' -or -not $Ping.status.ok -or -not $Ping.data.pong ) {
+              throw 'session.ping regressed during Task 3.'
             }
 
             $Close = Send-V2Request @{
               op = 'request'
-              id = 'task2.close'
+              id = 'task3.close'
               method = 'session.close'
               params = @{}
             }
-            if ( $Close.id -ne 'task2.close' -or -not $Close.status.ok ) {
-              throw 'session.close did not return a valid v2 success envelope.'
+            if ( $Close.id -ne 'task3.close' -or -not $Close.status.ok ) {
+              throw 'session.close regressed during Task 3.'
             }
 
             $Process.StandardInput.Close()
@@ -176,7 +193,7 @@ jobs:
               throw "obs-engine exited with code $($Process.ExitCode)."
             }
 
-            Write-Host 'Protocol-v2 framing smoke test passed.'
+            Write-Host 'Protocol-v2 capability smoke test passed.'
           }
           catch {
             $FailureText = ($_ | Out-String)
@@ -187,7 +204,7 @@ jobs:
                 $Process.WaitForExit(5000) | Out-Null
               }
               catch {
-                Write-Warning "Failed to terminate obs-engine after Task 2 smoke failure: $_"
+                Write-Warning "Failed to terminate obs-engine after Task 3 smoke failure: $_"
               }
             }
           }
@@ -224,21 +241,21 @@ jobs:
           }
 
           if ( $null -ne $FailureText ) {
-            throw 'Protocol-v2 framing smoke test failed. See _task2-diagnostics/v2-smoke.txt in the runtime artifact.'
+            throw 'Protocol-v2 capability smoke test failed. See _task3-diagnostics/v2-capabilities-smoke.txt in the runtime artifact.'
           }
 
-      - name: Upload Task 2 Windows runtime
+      - name: Upload Task 3 Windows runtime
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: obs-engine-windows-x64-task2
+          name: obs-engine-windows-x64-task3
           path: build_x64/install/
           if-no-files-found: error
           compression-level: 6
           retention-days: 7
 
-      - name: Enforce Task 2 smoke result
-        if: steps.smoke_v2.outcome != 'success'
+      - name: Enforce Task 3 smoke result
+        if: steps.smoke_v2_capabilities.outcome != 'success'
         shell: pwsh
         run: |
-          throw 'Protocol-v2 framing smoke test failed; runtime artifact was preserved for diagnostics.'
+          throw 'Protocol-v2 capability smoke test failed; runtime artifact was preserved for diagnostics.'
