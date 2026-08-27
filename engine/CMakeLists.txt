@@ -8,6 +8,9 @@ target_sources(
     events.cpp
     events.hpp
     host.cpp
+    properties.cpp
+    properties.hpp
+    properties_sensitive.cpp
     protocol.cpp
     protocol.hpp
     protocol_v2.cpp
@@ -15,6 +18,7 @@ target_sources(
     revision.hpp
     runtime.cpp
     runtime.hpp
+    runtime_properties_v2.cpp
     runtime_v2.cpp
     validation.hpp
 )
@@ -31,6 +35,22 @@ target_compile_features(obs-engine-events-test PRIVATE cxx_std_20)
 target_compile_definitions(obs-engine-events-test PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 target_link_libraries(obs-engine-events-test PRIVATE OBS::libobs)
 set_target_properties(obs-engine-events-test PROPERTIES FOLDER "engine/tests")
+
+# Task 7 properties-schema verification. This exercises the generic libobs
+# property bridge without shipping a test executable in the runtime package.
+add_executable(
+  obs-engine-properties-test
+  EXCLUDE_FROM_ALL
+  properties_test.cpp
+  properties.cpp
+  properties.hpp
+  properties_sensitive.cpp
+  protocol.hpp
+)
+target_compile_features(obs-engine-properties-test PRIVATE cxx_std_20)
+target_compile_definitions(obs-engine-properties-test PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+target_link_libraries(obs-engine-properties-test PRIVATE OBS::libobs)
+set_target_properties(obs-engine-properties-test PROPERTIES FOLDER "engine/tests")
 
 # Restrict implicit dependent-DLL resolution before main() runs. 0xA00 is
 # LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32. Runtime

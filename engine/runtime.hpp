@@ -57,12 +57,21 @@ public:
 	bool v2_item_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_item_set_transform(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 
+	bool v2_properties_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_properties_resolve(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_properties_get_list_items(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_properties_invoke_button(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_properties_validate(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_properties_refresh(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+
 private:
 	using ItemMap = std::unordered_map<uint64_t, ItemEntry>;
 
 	uint64_t allocate_handle();
 	bool input_type_exists(const char *type) const;
 	bool validate_source_type(long long request_id, obs_data_t *request, const char *&type) const;
+	bool v2_build_property_target(obs_data_t *params, ObsDataPtr &target, ObsDataPtr &settings,
+				      obs_properties_t *&properties, obs_source_t *&source, RuntimeV2Error &error);
 
 	bool command_hello(long long request_id);
 	bool command_source_types(long long request_id);

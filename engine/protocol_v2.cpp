@@ -28,6 +28,13 @@ constexpr CapabilityDescriptor kCapabilities[] = {
 	{"item.create.v1", false},
 	{"item.remove.v1", false},
 	{"item.setTransform.v1", false},
+	{"properties.v1", false},
+	{"properties.get.v1", false},
+	{"properties.getListItems.v1", false},
+	{"properties.invokeButton.v1", false},
+	{"properties.refresh.v1", false},
+	{"properties.resolve.v1", false},
+	{"properties.validate.v1", false},
 	{"scene.create.v1", false},
 	{"scene.remove.v1", false},
 	{"session.close.v1", false},
@@ -52,6 +59,12 @@ enum class V2Method {
 	SessionGetSubscriptions,
 	SessionClose,
 	EngineGetCapabilities,
+	PropertiesGet,
+	PropertiesResolve,
+	PropertiesGetListItems,
+	PropertiesInvokeButton,
+	PropertiesValidate,
+	PropertiesRefresh,
 	SourceKindList,
 	SourceKindDefaults,
 	SourceCreate,
@@ -82,6 +95,18 @@ V2Method classify_method(std::string_view method)
 		return V2Method::SessionClose;
 	if (method == "engine.getCapabilities")
 		return V2Method::EngineGetCapabilities;
+	if (method == "properties.get")
+		return V2Method::PropertiesGet;
+	if (method == "properties.resolve")
+		return V2Method::PropertiesResolve;
+	if (method == "properties.getListItems")
+		return V2Method::PropertiesGetListItems;
+	if (method == "properties.invokeButton")
+		return V2Method::PropertiesInvokeButton;
+	if (method == "properties.validate")
+		return V2Method::PropertiesValidate;
+	if (method == "properties.refresh")
+		return V2Method::PropertiesRefresh;
 	if (method == "source.kindList")
 		return V2Method::SourceKindList;
 	if (method == "source.kindDefaults")
@@ -111,6 +136,7 @@ bool method_is_mutating(V2Method method)
 {
 	switch (method) {
 	case V2Method::SessionClose:
+	case V2Method::PropertiesInvokeButton:
 	case V2Method::SourceCreate:
 	case V2Method::SourcePatchSettings:
 	case V2Method::SourceRemove:
@@ -128,6 +154,12 @@ bool method_is_mutating(V2Method method)
 bool method_is_runtime(V2Method method)
 {
 	switch (method) {
+	case V2Method::PropertiesGet:
+	case V2Method::PropertiesResolve:
+	case V2Method::PropertiesGetListItems:
+	case V2Method::PropertiesInvokeButton:
+	case V2Method::PropertiesValidate:
+	case V2Method::PropertiesRefresh:
 	case V2Method::SourceKindList:
 	case V2Method::SourceKindDefaults:
 	case V2Method::SourceCreate:
@@ -149,6 +181,18 @@ bool execute_runtime_method(Engine &engine, V2Method method, obs_data_t *params,
 			    RuntimeV2Error &error)
 {
 	switch (method) {
+	case V2Method::PropertiesGet:
+		return engine.v2_properties_get(params, result, error);
+	case V2Method::PropertiesResolve:
+		return engine.v2_properties_resolve(params, result, error);
+	case V2Method::PropertiesGetListItems:
+		return engine.v2_properties_get_list_items(params, result, error);
+	case V2Method::PropertiesInvokeButton:
+		return engine.v2_properties_invoke_button(params, result, error);
+	case V2Method::PropertiesValidate:
+		return engine.v2_properties_validate(params, result, error);
+	case V2Method::PropertiesRefresh:
+		return engine.v2_properties_refresh(params, result, error);
 	case V2Method::SourceKindList:
 		return engine.v2_source_kind_list(params, result, error);
 	case V2Method::SourceKindDefaults:
@@ -538,7 +582,7 @@ bool handle_v2_request(Engine &engine, const Config &, RevisionState &revisions,
 			return true;
 		}
 		uint64_t revision = revisions.current();
-		if (method_is_mutating(method))
+		if (result.mutated)
 			revision = revisions.commit_mutation();
 		send_v2_ok(request.id, result.data.get(), revision);
 		publish_runtime_events(events, revision, result);
