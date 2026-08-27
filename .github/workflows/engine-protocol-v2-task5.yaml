@@ -1,0 +1,394 @@
+name: Engine Protocol v2 Task 5 Verification
+
+on:
+  push:
+    branches:
+      - engine-protocol-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-smoke-package-x64:
+    name: Build, event queue/subscription smoke test, and package x64
+    runs-on: windows-2025-vs2026
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Build Windows minimal runtime
+        uses: ./.github/actions/build-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
+
+      - name: Build and run bounded event queue policy test
+        id: queue_policy
+        continue-on-error: true
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $InstallRoot = Resolve-Path 'build_x64/install'
+          $DiagnosticDir = Join-Path $InstallRoot '_task5-diagnostics'
+          New-Item -ItemType Directory -Force -Path $DiagnosticDir | Out-Null
+          $DiagnosticFile = Join-Path $DiagnosticDir 'event-queue-policy.txt'
+          $FailureText = $null
+          $OutputText = ''
+
+          try {
+            & cmake --build build_x64 --config RelWithDebInfo --target obs-engine-events-test 2>&1 |
+              Tee-Object -Variable BuildOutput | Write-Host
+            if ( $LASTEXITCODE -ne 0 ) {
+              throw "obs-engine-events-test failed to build (exit=$LASTEXITCODE)."
+            }
+
+            $QueueTest = Get-ChildItem -Path 'build_x64' -Filter 'obs-engine-events-test.exe' -File -Recurse |
+              Select-Object -First 1
+            if ( $null -eq $QueueTest ) {
+              throw 'obs-engine-events-test.exe was not found after explicit test-target build.'
+            }
+
+            $Engine = Get-ChildItem -Path $InstallRoot -Filter 'obs-engine.exe' -File -Recurse |
+              Select-Object -First 1
+            if ( $null -eq $Engine ) {
+              throw 'obs-engine.exe was not found in the installed runtime.'
+            }
+            $Env:PATH = "$($Engine.Directory.FullName);$Env:PATH"
+
+            $OutputText = (& $QueueTest.FullName 2>&1 | Out-String)
+            Write-Host $OutputText
+            if ( $LASTEXITCODE -ne 0 ) {
+              throw "obs-engine-events-test.exe failed (exit=$LASTEXITCODE)."
+            }
+            if ( $OutputText -notmatch 'events-test: passed' ) {
+              throw 'Event queue test did not report its success marker.'
+            }
+
+            $LeakedTest = Get-ChildItem -Path $InstallRoot -Filter 'obs-engine-events-test.exe' -File -Recurse |
+              Select-Object -First 1
+            if ( $null -ne $LeakedTest ) {
+              throw 'CI-only event queue test executable leaked into the installed runtime.'
+            }
+          }
+          catch {
+            $FailureText = ($_ | Out-String)
+            Write-Error $FailureText
+          }
+          finally {
+            @(
+              '=== queue test output ==='
+              $OutputText
+              ''
+              '=== queue test failure ==='
+              $FailureText
+            ) | Set-Content -Path $DiagnosticFile -Encoding utf8
+          }
+
+          if ( $null -ne $FailureText ) {
+            throw 'Bounded event queue policy test failed. See _task5-diagnostics/event-queue-policy.txt in the runtime artifact.'
+          }
+
+      - name: Smoke test protocol v2 subscriptions and event delivery
+        id: smoke_v2_events
+        continue-on-error: true
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $InstallRoot = Resolve-Path 'build_x64/install'
+          $DiagnosticDir = Join-Path $InstallRoot '_task5-diagnostics'
+          New-Item -ItemType Directory -Force -Path $DiagnosticDir | Out-Null
+          $DiagnosticFile = Join-Path $DiagnosticDir 'v2-events-smoke.txt'
+
+          $Process = $null
+          $ErrorTask = $null
+          $Engine = $null
+          $FailureText = $null
+
+          try {
+            $Engine = Get-ChildItem -Path $InstallRoot -Filter 'obs-engine.exe' -File -Recurse |
+              Select-Object -First 1
+            if ( $null -eq $Engine ) {
+              throw 'obs-engine.exe was not found in the installed runtime.'
+            }
+
+            $StartInfo = [System.Diagnostics.ProcessStartInfo]::new()
+            $StartInfo.FileName = $Engine.FullName
+            $StartInfo.WorkingDirectory = $Engine.Directory.FullName
+            $StartInfo.UseShellExecute = $false
+            $StartInfo.RedirectStandardInput = $true
+            $StartInfo.RedirectStandardOutput = $true
+            $StartInfo.RedirectStandardError = $true
+            $StartInfo.CreateNoWindow = $true
+
+            $Process = [System.Diagnostics.Process]::new()
+            $Process.StartInfo = $StartInfo
+            if ( -not $Process.Start() ) {
+              throw 'Failed to start obs-engine.exe.'
+            }
+            $ErrorTask = $Process.StandardError.ReadToEndAsync()
+
+            function Read-EngineMessage {
+              $ReadTask = $Process.StandardOutput.ReadLineAsync()
+              if ( -not $ReadTask.Wait(30000) ) {
+                throw 'Timed out waiting 30 seconds for obs-engine stdout.'
+              }
+              $Line = $ReadTask.Result
+              if ( $null -eq $Line ) {
+                $ExitText = if ( $Process.HasExited ) { "exit=$($Process.ExitCode)" } else { 'process still running' }
+                throw "obs-engine closed stdout unexpectedly ($ExitText)."
+              }
+              Write-Host "obs-engine stdout: $Line"
+              return ($Line | ConvertFrom-Json)
+            }
+
+            function Send-V2Request([hashtable] $Request) {
+              $Json = $Request | ConvertTo-Json -Compress -Depth 20
+              Write-Host "obs-engine stdin:  $Json"
+              $Process.StandardInput.WriteLine($Json)
+              $Process.StandardInput.Flush()
+              return Read-EngineMessage
+            }
+
+            function Get-SubscriptionPatterns($Response) {
+              return @($Response.data.subscriptions | ForEach-Object { [string]$_.pattern })
+            }
+
+            $ExpectedCapabilities = @(
+              'engine.capabilities.v1'
+              'event.delivery.v1'
+              'session.close.v1'
+              'session.getSubscriptions.v1'
+              'session.hello.v1'
+              'session.ping.v1'
+              'session.subscribe.v1'
+              'session.unsubscribe.v1'
+            )
+
+            $Ready = Read-EngineMessage
+            if ( $Ready.event -ne 'ready' -or [int]$Ready.protocol -ne 1 ) {
+              throw 'Migration bootstrap ready event changed unexpectedly.'
+            }
+
+            $Hello = Send-V2Request @{
+              op = 'request'
+              id = 'task5.hello'
+              method = 'session.hello'
+              params = @{}
+            }
+            $HelloCapabilities = @($Hello.data.capabilities | ForEach-Object { [string]$_.name })
+            if ( -not $Hello.status.ok -or ($HelloCapabilities -join '|') -ne ($ExpectedCapabilities -join '|') ) {
+              throw "Task 5 capability advertisement is incorrect: $($HelloCapabilities -join ', ')"
+            }
+            if ( [int64]$Hello.revision -ne 0 ) {
+              throw 'New engine did not begin at revision 0.'
+            }
+
+            $Initial = Send-V2Request @{
+              op = 'request'
+              id = 'task5.subscriptions.initial'
+              method = 'session.getSubscriptions'
+              params = @{}
+            }
+            if ( -not $Initial.status.ok -or @($Initial.data.subscriptions).Count -ne 0 -or [int64]$Initial.revision -ne 0 ) {
+              throw 'New session did not begin with an empty subscription set.'
+            }
+
+            $Invalid = Send-V2Request @{
+              op = 'request'
+              id = 'task5.subscribe.invalid'
+              method = 'session.subscribe'
+              params = @{
+                subscriptions = @(
+                  @{ pattern = 'engine.*.bad' }
+                )
+              }
+            }
+            if ( $Invalid.status.ok -or $Invalid.status.code -ne 'bad_request' -or [int64]$Invalid.revision -ne 0 ) {
+              throw 'Invalid wildcard subscription was not rejected cleanly.'
+            }
+
+            $GuardedSubscribe = Send-V2Request @{
+              op = 'request'
+              id = 'task5.subscribe.guarded'
+              method = 'session.subscribe'
+              params = @{
+                subscriptions = @(
+                  @{ pattern = 'engine.*' }
+                )
+              }
+              ifRevision = 0
+            }
+            if ( $GuardedSubscribe.status.ok -or $GuardedSubscribe.status.code -ne 'bad_request' -or
+                 [int64]$GuardedSubscribe.revision -ne 0 ) {
+              throw 'Session-local subscription changes must reject engine ifRevision guards.'
+            }
+
+            $Subscribe = Send-V2Request @{
+              op = 'request'
+              id = 'task5.subscribe'
+              method = 'session.subscribe'
+              params = @{
+                subscriptions = @(
+                  @{ pattern = 'engine.*' }
+                  @{ pattern = 'engine.stopping' }
+                  @{ pattern = 'engine.*' }
+                  @{ pattern = 'meter.*'; telemetry = $false }
+                )
+              }
+            }
+            $Patterns = Get-SubscriptionPatterns $Subscribe
+            if ( -not $Subscribe.status.ok -or ($Patterns -join '|') -ne 'engine.*|engine.stopping|meter.*' -or
+                 [int64]$Subscribe.revision -ne 0 ) {
+              throw "Subscription dedupe/order failed: $($Patterns -join ', ')"
+            }
+
+            $UpgradeTelemetry = Send-V2Request @{
+              op = 'request'
+              id = 'task5.subscribe.telemetry'
+              method = 'session.subscribe'
+              params = @{
+                subscriptions = @(
+                  @{ pattern = 'meter.*'; telemetry = $true }
+                )
+              }
+            }
+            $Meter = @($UpgradeTelemetry.data.subscriptions | Where-Object { $_.pattern -eq 'meter.*' })
+            if ( -not $UpgradeTelemetry.status.ok -or $Meter.Count -ne 1 -or -not [bool]$Meter[0].telemetry -or
+                 [int64]$UpgradeTelemetry.revision -ne 0 ) {
+              throw 'Telemetry opt-in did not upgrade the existing effective subscription.'
+            }
+
+            $UnsubscribeTelemetry = Send-V2Request @{
+              op = 'request'
+              id = 'task5.unsubscribe.telemetry'
+              method = 'session.unsubscribe'
+              params = @{
+                subscriptions = @(
+                  @{ pattern = 'meter.*' }
+                )
+              }
+            }
+            $Patterns = Get-SubscriptionPatterns $UnsubscribeTelemetry
+            if ( -not $UnsubscribeTelemetry.status.ok -or ($Patterns -join '|') -ne 'engine.*|engine.stopping' -or
+                 [int64]$UnsubscribeTelemetry.revision -ne 0 ) {
+              throw 'Unsubscribe did not remove exactly the requested effective pattern.'
+            }
+
+            $GetSubscriptions = Send-V2Request @{
+              op = 'request'
+              id = 'task5.subscriptions.final'
+              method = 'session.getSubscriptions'
+              params = @{}
+            }
+            $Patterns = Get-SubscriptionPatterns $GetSubscriptions
+            if ( -not $GetSubscriptions.status.ok -or ($Patterns -join '|') -ne 'engine.*|engine.stopping' -or
+                 [int64]$GetSubscriptions.revision -ne 0 ) {
+              throw 'session.getSubscriptions did not return the effective subscription set.'
+            }
+
+            $Close = Send-V2Request @{
+              op = 'request'
+              id = 'task5.close'
+              method = 'session.close'
+              params = @{}
+              ifRevision = 0
+            }
+            if ( -not $Close.status.ok -or [int64]$Close.revision -ne 1 ) {
+              throw 'Guarded session.close did not commit revision 1.'
+            }
+
+            $Stopping = Read-EngineMessage
+            if ( $Stopping.op -ne 'event' -or [uint64]$Stopping.seq -ne 1 -or [int64]$Stopping.revision -ne 1 -or
+                 $Stopping.event -ne 'engine.stopping' -or $Stopping.data.reason -ne 'session.close' ) {
+              throw 'Subscribed engine.stopping event envelope was incorrect.'
+            }
+            if ( $null -ne $Stopping.telemetry ) {
+              throw 'State event was incorrectly identified as telemetry.'
+            }
+
+            $Process.StandardInput.Close()
+            if ( -not $Process.WaitForExit(15000) ) {
+              $Process.Kill($true)
+              throw 'obs-engine did not exit after session.close.'
+            }
+            if ( $Process.ExitCode -ne 0 ) {
+              throw "obs-engine exited with code $($Process.ExitCode)."
+            }
+
+            $Remaining = $Process.StandardOutput.ReadToEnd()
+            if ( -not [string]::IsNullOrWhiteSpace($Remaining) ) {
+              throw "Overlapping exact/wildcard subscriptions emitted duplicate/unexpected events: $Remaining"
+            }
+
+            Write-Host 'Protocol-v2 event/subscription smoke test passed.'
+          }
+          catch {
+            $FailureText = ($_ | Out-String)
+            Write-Error $FailureText
+            if ( $null -ne $Process -and -not $Process.HasExited ) {
+              try {
+                $Process.Kill($true)
+                $Process.WaitForExit(5000) | Out-Null
+              }
+              catch {
+                Write-Warning "Failed to terminate obs-engine after Task 5 smoke failure: $_"
+              }
+            }
+          }
+          finally {
+            $StderrText = ''
+            if ( $null -ne $ErrorTask ) {
+              try {
+                $StderrText = $ErrorTask.GetAwaiter().GetResult()
+              }
+              catch {
+                $StderrText = "Failed to collect redirected stderr: $_"
+              }
+            }
+
+            $ExitState = 'not-started'
+            if ( $null -ne $Process ) {
+              if ( $Process.HasExited ) {
+                $ExitState = "exited:$($Process.ExitCode)"
+              } else {
+                $ExitState = 'still-running'
+              }
+            }
+
+            @(
+              "engine=$($Engine.FullName)"
+              "exit_state=$ExitState"
+              ''
+              '=== smoke failure ==='
+              $FailureText
+              ''
+              '=== obs-engine stderr ==='
+              $StderrText
+            ) | Set-Content -Path $DiagnosticFile -Encoding utf8
+          }
+
+          if ( $null -ne $FailureText ) {
+            throw 'Protocol-v2 event/subscription smoke test failed. See _task5-diagnostics/v2-events-smoke.txt in the runtime artifact.'
+          }
+
+      - name: Upload Task 5 Windows runtime
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: obs-engine-windows-x64-task5
+          path: build_x64/install/
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 7
+
+      - name: Enforce Task 5 verification result
+        if: steps.queue_policy.outcome != 'success' || steps.smoke_v2_events.outcome != 'success'
+        shell: pwsh
+        run: |
+          throw 'Task 5 event queue/subscription verification failed; runtime artifact was preserved for diagnostics.'

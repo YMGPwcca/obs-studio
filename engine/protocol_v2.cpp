@@ -1,5 +1,6 @@
 #include "protocol_v2.hpp"
 
+#include "events.hpp"
 #include "revision.hpp"
 #include "validation.hpp"
 
@@ -7,7 +8,9 @@
 
 #include <obs.h>
 
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace obs_engine {
 namespace {
@@ -19,14 +22,21 @@ struct CapabilityDescriptor {
 
 constexpr CapabilityDescriptor kCapabilities[] = {
 	{"engine.capabilities.v1", false},
+	{"event.delivery.v1", false},
 	{"session.close.v1", false},
+	{"session.getSubscriptions.v1", false},
 	{"session.hello.v1", false},
 	{"session.ping.v1", false},
+	{"session.subscribe.v1", false},
+	{"session.unsubscribe.v1", false},
 };
 
 enum class V2Method {
 	SessionHello,
 	SessionPing,
+	SessionSubscribe,
+	SessionUnsubscribe,
+	SessionGetSubscriptions,
 	SessionClose,
 	EngineGetCapabilities,
 	Unknown,
@@ -38,6 +48,12 @@ V2Method classify_method(std::string_view method)
 		return V2Method::SessionHello;
 	if (method == "session.ping")
 		return V2Method::SessionPing;
+	if (method == "session.subscribe")
+		return V2Method::SessionSubscribe;
+	if (method == "session.unsubscribe")
+		return V2Method::SessionUnsubscribe;
+	if (method == "session.getSubscriptions")
+		return V2Method::SessionGetSubscriptions;
 	if (method == "session.close")
 		return V2Method::SessionClose;
 	if (method == "engine.getCapabilities")
@@ -70,6 +86,25 @@ bool read_string_field(obs_data_t *data, const char *name, std::string &out, boo
 	return true;
 }
 
+bool read_bool_field(obs_data_t *data, const char *name, bool &out, bool &present)
+{
+	obs_data_item_t *item = obs_data_item_byname(data, name);
+	if (!item) {
+		present = false;
+		return true;
+	}
+
+	present = true;
+	if (obs_data_item_gettype(item) != OBS_DATA_BOOLEAN) {
+		obs_data_item_release(&item);
+		return false;
+	}
+
+	out = obs_data_item_get_bool(item);
+	obs_data_item_release(&item);
+	return true;
+}
+
 bool read_object_field(obs_data_t *data, const char *name, ObsDataPtr &out, bool &present)
 {
 	obs_data_item_t *item = obs_data_item_byname(data, name);
@@ -85,6 +120,25 @@ bool read_object_field(obs_data_t *data, const char *name, ObsDataPtr &out, bool
 	}
 
 	out.reset(obs_data_item_get_obj(item));
+	obs_data_item_release(&item);
+	return static_cast<bool>(out);
+}
+
+bool read_array_field(obs_data_t *data, const char *name, ObsArrayPtr &out, bool &present)
+{
+	obs_data_item_t *item = obs_data_item_byname(data, name);
+	if (!item) {
+		present = false;
+		return true;
+	}
+
+	present = true;
+	if (obs_data_item_gettype(item) != OBS_DATA_ARRAY) {
+		obs_data_item_release(&item);
+		return false;
+	}
+
+	out.reset(obs_data_item_get_array(item));
 	obs_data_item_release(&item);
 	return static_cast<bool>(out);
 }
@@ -114,6 +168,69 @@ void set_capabilities(obs_data_t *data)
 	obs_data_set_array(data, "capabilities", capabilities.get());
 }
 
+void set_subscriptions(obs_data_t *data, const std::vector<EventSubscription> &subscriptions)
+{
+	ObsArrayPtr array(obs_data_array_create());
+	for (const EventSubscription &subscription : subscriptions) {
+		ObsDataPtr entry(obs_data_create());
+		obs_data_set_string(entry.get(), "pattern", subscription.pattern.c_str());
+		obs_data_set_bool(entry.get(), "telemetry", subscription.telemetry);
+		obs_data_array_push_back(array.get(), entry.get());
+	}
+	obs_data_set_array(data, "subscriptions", array.get());
+}
+
+bool parse_subscription_list(obs_data_t *params, std::vector<EventSubscription> &subscriptions, std::string &error)
+{
+	subscriptions.clear();
+	error.clear();
+
+	ObsArrayPtr array;
+	bool present = false;
+	if (!read_array_field(params, "subscriptions", array, present) || !present) {
+		error = "params.subscriptions must be an array";
+		return false;
+	}
+
+	const size_t count = obs_data_array_count(array.get());
+	if (count == 0 || count > kMaxEventSubscriptions) {
+		error = "params.subscriptions must contain between 1 and 256 entries";
+		return false;
+	}
+
+	subscriptions.reserve(count);
+	for (size_t index = 0; index < count; ++index) {
+		ObsDataPtr entry(obs_data_array_item(array.get(), index));
+		if (!entry) {
+			error = "each subscription must be an object";
+			return false;
+		}
+
+		EventSubscription subscription;
+		if (!read_string_field(entry.get(), "pattern", subscription.pattern, present) || !present ||
+		    !is_valid_event_pattern(subscription.pattern)) {
+			error = "subscription pattern must be an exact event name or a namespace wildcard such as 'source.*'";
+			return false;
+		}
+
+		bool telemetry = false;
+		if (!read_bool_field(entry.get(), "telemetry", telemetry, present)) {
+			error = "subscription telemetry must be a boolean when present";
+			return false;
+		}
+		subscription.telemetry = present && telemetry;
+		subscriptions.push_back(std::move(subscription));
+	}
+	return true;
+}
+
+void send_subscription_state(const V2Request &request, RevisionState &revisions, EventDispatcher &events)
+{
+	ObsDataPtr data(obs_data_create());
+	set_subscriptions(data.get(), events.subscriptions());
+	send_v2_ok(request.id, data.get(), revisions.current());
+}
+
 bool validate_revision_guard(RevisionState &revisions, const V2Request &request, V2Method method)
 {
 	const uint64_t current_revision = revisions.current();
@@ -121,7 +238,7 @@ bool validate_revision_guard(RevisionState &revisions, const V2Request &request,
 		return true;
 
 	if (!method_is_mutating(method)) {
-		send_v2_error(request.id, "bad_request", "ifRevision is only valid for mutating methods", nullptr,
+		send_v2_error(request.id, "bad_request", "ifRevision is only valid for engine-state mutating methods", nullptr,
 			      current_revision);
 		return false;
 	}
@@ -229,7 +346,7 @@ void send_v2_ok(const std::string &request_id, obs_data_t *data, uint64_t revisi
 	write_json(response.get());
 }
 
-bool handle_v2_request(const Config &, RevisionState &revisions, const V2Request &request)
+bool handle_v2_request(const Config &, RevisionState &revisions, EventDispatcher &events, const V2Request &request)
 {
 	const V2Method method = classify_method(request.method);
 	if (method == V2Method::Unknown) {
@@ -268,9 +385,49 @@ bool handle_v2_request(const Config &, RevisionState &revisions, const V2Request
 		return true;
 	}
 
+	if (method == V2Method::SessionSubscribe) {
+		std::vector<EventSubscription> requested;
+		std::string error;
+		if (!parse_subscription_list(request.params.get(), requested, error) || !events.subscribe(requested, error)) {
+			send_v2_error(request.id, "bad_request", error.c_str(), nullptr, revisions.current());
+			return true;
+		}
+		send_subscription_state(request, revisions, events);
+		return true;
+	}
+
+	if (method == V2Method::SessionUnsubscribe) {
+		std::vector<EventSubscription> requested;
+		std::string error;
+		if (!parse_subscription_list(request.params.get(), requested, error)) {
+			send_v2_error(request.id, "bad_request", error.c_str(), nullptr, revisions.current());
+			return true;
+		}
+
+		std::vector<std::string> patterns;
+		patterns.reserve(requested.size());
+		for (const EventSubscription &subscription : requested)
+			patterns.push_back(subscription.pattern);
+		if (!events.unsubscribe(patterns, error)) {
+			send_v2_error(request.id, "bad_request", error.c_str(), nullptr, revisions.current());
+			return true;
+		}
+		send_subscription_state(request, revisions, events);
+		return true;
+	}
+
+	if (method == V2Method::SessionGetSubscriptions) {
+		send_subscription_state(request, revisions, events);
+		return true;
+	}
+
 	if (method == V2Method::SessionClose) {
 		const uint64_t revision = revisions.commit_mutation();
 		send_v2_ok(request.id, nullptr, revision);
+
+		ObsDataPtr event_data(obs_data_create());
+		obs_data_set_string(event_data.get(), "reason", "session.close");
+		events.publish(EngineEventKind::State, "engine.stopping", revision, event_data.get());
 		return false;
 	}
 

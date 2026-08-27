@@ -92,7 +92,7 @@ jobs:
               return @($Response.data.capabilities | ForEach-Object { [string]$_.name })
             }
 
-            $ExpectedCapabilities = @(
+            $RequiredCapabilities = @(
               'engine.capabilities.v1'
               'session.close.v1'
               'session.hello.v1'
@@ -117,23 +117,25 @@ jobs:
               throw 'session.hello returned an unexpected protocol version.'
             }
             if ( [int64]$Hello.revision -ne 0 -or [int64]$Hello.data.revision -ne 0 ) {
-              throw 'Task 3 must not implement revision tracking.'
+              throw 'Read-only session.hello unexpectedly changed revision state.'
             }
 
             $HelloNames = Get-CapabilityNames $Hello
-            if ( ($HelloNames -join '|') -ne ($ExpectedCapabilities -join '|') ) {
-              throw "session.hello returned unexpected capabilities: $($HelloNames -join ', ')"
+            foreach ( $Required in $RequiredCapabilities ) {
+              if ( $HelloNames -notcontains $Required ) {
+                throw "session.hello lost required Task 3 capability: $Required"
+              }
             }
             foreach ( $Capability in @($Hello.data.capabilities) ) {
               if ( [string]::IsNullOrWhiteSpace([string]$Capability.name) ) {
                 throw 'Capability descriptor is missing a name.'
               }
               if ( [bool]$Capability.experimental ) {
-                throw "Stable Task 3 capability was unexpectedly marked experimental: $($Capability.name)"
+                throw "Stable capability was unexpectedly marked experimental: $($Capability.name)"
               }
             }
             if ( $HelloNames -contains 'source.v1' ) {
-              throw 'Task 3 must not advertise source.v1 before the source namespace is ported.'
+              throw 'Capability advertisement must not claim source.v1 before the source namespace is ported.'
             }
 
             $GetCapabilities = Send-V2Request @{
@@ -149,7 +151,7 @@ jobs:
               throw 'engine.getCapabilities unexpectedly changed the revision.'
             }
             $GetCapabilityNames = Get-CapabilityNames $GetCapabilities
-            if ( ($GetCapabilityNames -join '|') -ne ($ExpectedCapabilities -join '|') ) {
+            if ( ($GetCapabilityNames -join '|') -ne ($HelloNames -join '|') ) {
               throw 'engine.getCapabilities does not match session.hello capability advertisement.'
             }
 

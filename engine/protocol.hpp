@@ -33,6 +33,9 @@ using ObsArrayPtr = std::unique_ptr<obs_data_array_t, ObsArrayDeleter>;
 enum class ReadLineResult { Ok, Eof, TooLong };
 
 ReadLineResult read_line_limited(std::string &line);
+bool start_protocol_writer();
+void stop_protocol_writer() noexcept;
+void write_json_line(std::string json);
 void write_json(obs_data_t *data);
 void send_error(long long request_id, const char *code, const char *message);
 void send_ok(long long request_id, obs_data_t *result = nullptr);

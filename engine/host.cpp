@@ -1,4 +1,5 @@
 #include "config.hpp"
+#include "events.hpp"
 #include "protocol.hpp"
 #include "protocol_v2.hpp"
 #include "revision.hpp"
@@ -16,6 +17,29 @@
 #include <vector>
 
 namespace {
+
+class ProtocolWriterScope {
+public:
+	ProtocolWriterScope() = default;
+
+	bool start()
+	{
+		started_ = obs_engine::start_protocol_writer();
+		return started_;
+	}
+
+	~ProtocolWriterScope()
+	{
+		if (started_)
+			obs_engine::stop_protocol_writer();
+	}
+
+	ProtocolWriterScope(const ProtocolWriterScope &) = delete;
+	ProtocolWriterScope &operator=(const ProtocolWriterScope &) = delete;
+
+private:
+	bool started_ = false;
+};
 
 const char *log_level_name(int level)
 {
@@ -108,7 +132,7 @@ bool looks_like_v2_request(obs_data_t *request)
 }
 
 bool dispatch_request(obs_engine::Engine &engine, const obs_engine::Config &config, obs_engine::RevisionState &revisions,
-		      obs_data_t *request)
+		      obs_engine::EventDispatcher &events, obs_data_t *request)
 {
 	if (!looks_like_v2_request(request)) {
 		try {
@@ -131,7 +155,7 @@ bool dispatch_request(obs_engine::Engine &engine, const obs_engine::Config &conf
 						  revisions.current());
 			return true;
 		}
-		return obs_engine::handle_v2_request(config, revisions, v2_request);
+		return obs_engine::handle_v2_request(config, revisions, events, v2_request);
 	} catch (const std::exception &error) {
 		std::fprintf(stderr, "obs-engine: protocol v2 request failed internally: %s\n", error.what());
 		obs_engine::send_v2_error(v2_request.id, "internal_error", "request failed internally", nullptr,
@@ -182,8 +206,17 @@ int main(int argc, char **argv)
 		if (!engine.start())
 			return 3;
 
+		ProtocolWriterScope writer;
+		if (!writer.start()) {
+			std::fprintf(stderr, "obs-engine: failed to start protocol writer\n");
+			return 5;
+		}
+
+		obs_engine::EventDispatcher events;
+		events.start();
 		obs_engine::RevisionState revisions;
 		send_ready_event(config);
+
 		std::string line;
 		for (;;) {
 			const obs_engine::ReadLineResult read_result = obs_engine::read_line_limited(line);
@@ -202,7 +235,7 @@ int main(int argc, char **argv)
 				continue;
 			}
 
-			if (!dispatch_request(engine, config, revisions, request.get()))
+			if (!dispatch_request(engine, config, revisions, events, request.get()))
 				break;
 		}
 	} catch (const std::exception &error) {

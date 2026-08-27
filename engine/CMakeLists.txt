@@ -5,6 +5,8 @@ target_sources(
   PRIVATE
     config.cpp
     config.hpp
+    events.cpp
+    events.hpp
     host.cpp
     protocol.cpp
     protocol.hpp
@@ -19,6 +21,15 @@ target_sources(
 target_compile_features(obs-engine PRIVATE cxx_std_20)
 target_compile_definitions(obs-engine PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 target_link_libraries(obs-engine PRIVATE OBS::libobs)
+
+# Task 5 queue-policy verification. EXCLUDE_FROM_ALL keeps this helper out of
+# normal builds/install packages; CI builds it explicitly when testing the
+# event dispatcher in isolation.
+add_executable(obs-engine-events-test EXCLUDE_FROM_ALL events_test.cpp events.cpp events.hpp protocol.hpp)
+target_compile_features(obs-engine-events-test PRIVATE cxx_std_20)
+target_compile_definitions(obs-engine-events-test PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+target_link_libraries(obs-engine-events-test PRIVATE OBS::libobs)
+set_target_properties(obs-engine-events-test PROPERTIES FOLDER "engine/tests")
 
 # Restrict implicit dependent-DLL resolution before main() runs. 0xA00 is
 # LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32. Runtime

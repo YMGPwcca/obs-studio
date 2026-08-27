@@ -9,6 +9,7 @@
 
 namespace obs_engine {
 
+class EventDispatcher;
 class RevisionState;
 
 inline constexpr uint32_t kProtocolV2Major = 2;
@@ -36,6 +37,7 @@ bool parse_v2_request(obs_data_t *request, V2Request &out, V2ParseError &error);
 void send_v2_error(const std::string &request_id, const char *code, const char *message, obs_data_t *details = nullptr,
 		   uint64_t revision = 0);
 void send_v2_ok(const std::string &request_id, obs_data_t *data = nullptr, uint64_t revision = 0);
-bool handle_v2_request(const Config &config, RevisionState &revisions, const V2Request &request);
+bool handle_v2_request(const Config &config, RevisionState &revisions, EventDispatcher &events,
+		       const V2Request &request);
 
 } // namespace obs_engine
