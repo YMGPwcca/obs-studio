@@ -85,6 +85,28 @@ bool read_source_handle(obs_data_t *params, uint64_t &handle)
 	return parsed;
 }
 
+bool read_settings_json(obs_data_t *data, std::string &json)
+{
+	if (!data)
+		return false;
+	obs_data_item_t *item = obs_data_item_byname(data, "settings");
+	if (!item)
+		return false;
+	if (obs_data_item_gettype(item) != OBS_DATA_OBJECT) {
+		obs_data_item_release(&item);
+		return false;
+	}
+	ObsDataPtr settings(obs_data_item_get_obj(item));
+	obs_data_item_release(&item);
+	if (!settings)
+		return false;
+	const char *value = obs_data_get_json(settings.get());
+	if (!value)
+		return false;
+	json = value;
+	return true;
+}
+
 bool result_has_source_event(const RuntimeV2Result &result, std::string_view name, uint64_t handle)
 {
 	return std::any_of(result.events.begin(), result.events.end(), [&](const RuntimeV2Event &event) {
@@ -95,7 +117,8 @@ bool result_has_source_event(const RuntimeV2Result &result, std::string_view nam
 	});
 }
 
-bool batch_has_source_update(const DeferredSourceEventBatch &batch, uint64_t handle)
+bool batch_matches_source_update(const DeferredSourceEventBatch &batch, uint64_t handle,
+				 const std::string &expected_settings_json)
 {
 	if (batch.handle != handle)
 		return false;
@@ -103,15 +126,19 @@ bool batch_has_source_update(const DeferredSourceEventBatch &batch, uint64_t han
 		if (event.name != "source.settingsChanged" || !event.data)
 			return false;
 		uint64_t event_handle = 0;
-		return read_source_handle(event.data.get(), event_handle) && event_handle == handle;
+		if (!read_source_handle(event.data.get(), event_handle) || event_handle != handle)
+			return false;
+		std::string settings_json;
+		return read_settings_json(event.data.get(), settings_json) && settings_json == expected_settings_json;
 	});
 }
 
-bool promote_deferred_source_update(SourceV2State &state, uint64_t handle, RuntimeV2Result &result)
+bool promote_deferred_source_update(SourceV2State &state, uint64_t handle,
+				    const std::string &expected_settings_json, RuntimeV2Result &result)
 {
 	std::lock_guard lock(state.mutex);
 	for (auto it = state.deferred.begin(); it != state.deferred.end(); ++it) {
-		if (!batch_has_source_update(*it, handle))
+		if (!batch_matches_source_update(*it, handle, expected_settings_json))
 			continue;
 
 		const size_t event_count = it->events.size();
@@ -129,15 +156,16 @@ bool promote_deferred_source_update(SourceV2State &state, uint64_t handle, Runti
 void mark_source_settlement_lost(SourceV2State &state)
 {
 	std::lock_guard lock(state.mutex);
-	state.deferred.clear();
-	state.deferred_event_count = 0;
+	// Preserve already-normalized unrelated batches. Setting overflow makes the
+	// existing flush path publish session.resyncRequired and prevents silent
+	// incremental delivery after ownership can no longer be proven.
 	state.deferred_overflow = true;
 }
 
 struct SourceUpdateWaiter {
 	std::mutex mutex;
 	std::condition_variable cv;
-	bool signalled = false;
+	uint64_t signal_count = 0;
 };
 
 void source_update_settle_cb(void *data, calldata_t *)
@@ -145,17 +173,19 @@ void source_update_settle_cb(void *data, calldata_t *)
 	auto *waiter = static_cast<SourceUpdateWaiter *>(data);
 	{
 		std::lock_guard lock(waiter->mutex);
-		waiter->signalled = true;
+		++waiter->signal_count;
 	}
 	waiter->cv.notify_one();
 }
 
 bool settle_deferred_source_update(SourceV2State &state, uint64_t handle, obs_source_t *source,
-				   RuntimeV2Result &result)
+				   const std::string &expected_settings_json, RuntimeV2Result &result)
 {
-	// The observer may already have received the deferred update before we get
-	// here. This is the fast path and also closes the race before registration.
-	if (promote_deferred_source_update(state, handle, result))
+	// Callbacks that predate capture are drained by protocol_v2.cpp before the
+	// mutation executes. A matching batch here therefore belongs to the active
+	// capture window, and matching canonical settings protects against claiming
+	// an unrelated same-source update.
+	if (promote_deferred_source_update(state, handle, expected_settings_json, result))
 		return true;
 
 	signal_handler_t *handler = obs_source_get_signal_handler(source);
@@ -168,22 +198,31 @@ bool settle_deferred_source_update(SourceV2State &state, uint64_t handle, obs_so
 	// signal_handler_connect() serializes on the signal mutex. If the update
 	// raced with registration, the already-connected Source observer has
 	// finished normalizing its batch before this call can return.
-	if (promote_deferred_source_update(state, handle, result)) {
+	if (promote_deferred_source_update(state, handle, expected_settings_json, result)) {
 		signal_handler_disconnect(handler, "update", source_update_settle_cb, &waiter);
 		return true;
 	}
 
-	bool signalled = false;
-	{
-		std::unique_lock lock(waiter.mutex);
-		signalled = waiter.cv.wait_for(lock, kSourceUpdateSettleTimeout, [&] { return waiter.signalled; });
+	const auto deadline = std::chrono::steady_clock::now() + kSourceUpdateSettleTimeout;
+	uint64_t observed_signals = 0;
+	for (;;) {
+		{
+			std::unique_lock lock(waiter.mutex);
+			if (!waiter.cv.wait_until(lock, deadline, [&] { return waiter.signal_count != observed_signals; }))
+				break;
+			observed_signals = waiter.signal_count;
+		}
+
+		if (promote_deferred_source_update(state, handle, expected_settings_json, result)) {
+			signal_handler_disconnect(handler, "update", source_update_settle_cb, &waiter);
+			return true;
+		}
 	}
 
-	// Disconnecting also serializes on the signal mutex. The permanent Source
-	// observer was connected first, and libobs invokes callbacks in connection
-	// order, so its deferred batch is complete when this returns.
+	// Disconnecting serializes with an in-flight signal. One final scan closes
+	// the timeout-boundary race without claiming a mismatched same-source batch.
 	signal_handler_disconnect(handler, "update", source_update_settle_cb, &waiter);
-	return signalled && promote_deferred_source_update(state, handle, result);
+	return promote_deferred_source_update(state, handle, expected_settings_json, result);
 }
 
 void canonicalize_source_result(RuntimeV2Result &result, obs_source_t *source)
@@ -282,18 +321,19 @@ void Engine::v2_settle_source_mutation(obs_data_t *params, RuntimeV2Result &resu
 		return;
 
 	obs_source_t *source = it->second;
-	// Protocol dispatch calls this helper only for source setting mutations
-	// (patch/replace/reset/loadState). Every video-source obs_source_update is
-	// deferred by libobs, so settlement must not depend on an event that cannot
-	// exist until the video-thread update has actually happened.
 	const bool deferred_video_update = (obs_source_get_output_flags(source) & OBS_SOURCE_VIDEO) != 0;
-	if (deferred_video_update && source_v2_state_ &&
-	    !settle_deferred_source_update(*source_v2_state_, handle, source, result)) {
-		std::fprintf(stderr,
-			     "obs-engine: timed out settling deferred update for source %llu; controller resync required\n",
-			     static_cast<unsigned long long>(handle));
-		std::fflush(stderr);
-		mark_source_settlement_lost(*source_v2_state_);
+	if (deferred_video_update && source_v2_state_) {
+		ObsDataPtr expected_settings(obs_source_get_settings(source));
+		const char *expected_json = expected_settings ? obs_data_get_json(expected_settings.get()) : nullptr;
+		const std::string expected_settings_json = expected_json ? expected_json : "";
+		if (expected_settings_json.empty() ||
+		    !settle_deferred_source_update(*source_v2_state_, handle, source, expected_settings_json, result)) {
+			std::fprintf(stderr,
+				     "obs-engine: timed out settling deferred update for source %llu; controller resync required\n",
+				     static_cast<unsigned long long>(handle));
+			std::fflush(stderr);
+			mark_source_settlement_lost(*source_v2_state_);
+		}
 	}
 
 	canonicalize_source_result(result, source);
