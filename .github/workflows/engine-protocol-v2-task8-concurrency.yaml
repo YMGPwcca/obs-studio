@@ -168,28 +168,59 @@ jobs:
           }
 
       - name: Run deterministic A-F integration regression
+        id: concurrency_regression
+        continue-on-error: true
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $InstallRoot = Resolve-Path 'build_x64/install'
-          $Plugin = Get-ChildItem -Path 'build_x64' -Filter 'task8-concurrency-source.dll' -File -Recurse |
-            Where-Object { $_.FullName -notlike "$InstallRoot*" } |
-            Select-Object -First 1
-          if ($null -eq $Plugin) {
-              throw 'Built Task 8 concurrency module was not found.'
+          $DiagnosticDir = Join-Path $InstallRoot '_task8-concurrency-diagnostics'
+          New-Item -ItemType Directory -Force -Path $DiagnosticDir | Out-Null
+          $DiagnosticFile = Join-Path $DiagnosticDir 'a-f-regression.txt'
+
+          try {
+              $Plugin = Get-ChildItem -Path 'build_x64' -Filter 'task8-concurrency-source.dll' -File -Recurse |
+                Where-Object { $_.FullName -notlike "$InstallRoot*" } |
+                Select-Object -First 1
+              if ($null -eq $Plugin) {
+                  throw 'Built Task 8 concurrency module was not found.'
+              }
+
+              $RuntimeModule = Get-ChildItem -Path $InstallRoot -Filter 'image-source.dll' -File -Recurse |
+                Select-Object -First 1
+              if ($null -eq $RuntimeModule) {
+                  throw 'Could not locate the installed OBS module directory.'
+              }
+
+              $Destination = Join-Path $RuntimeModule.Directory.FullName $Plugin.Name
+              Copy-Item -LiteralPath $Plugin.FullName -Destination $Destination -Force
+              "Staged CI-only module: $Destination" | Tee-Object -FilePath $DiagnosticFile
+
+              & '.github/scripts/engine-protocol-v2-task8-concurrency.ps1' -InstallRoot $InstallRoot *>&1 |
+                Tee-Object -FilePath $DiagnosticFile -Append
+              if ($LASTEXITCODE -ne 0) {
+                  throw "Task 8 deterministic concurrency regression failed (exit=$LASTEXITCODE)."
+              }
+          }
+          catch {
+              $Failure = ($_ | Out-String)
+              @('', '=== workflow failure ===', $Failure) | Add-Content -Path $DiagnosticFile -Encoding utf8
+              Write-Error $Failure
+              throw
           }
 
-          $RuntimeModule = Get-ChildItem -Path $InstallRoot -Filter 'image-source.dll' -File -Recurse |
-            Select-Object -First 1
-          if ($null -eq $RuntimeModule) {
-              throw 'Could not locate the installed OBS module directory.'
-          }
+      - name: Upload Task 8 concurrency diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: obs-engine-task8-concurrency-diagnostics
+          path: build_x64/install/_task8-concurrency-diagnostics/
+          if-no-files-found: warn
+          compression-level: 6
+          retention-days: 7
 
-          $Destination = Join-Path $RuntimeModule.Directory.FullName $Plugin.Name
-          Copy-Item -LiteralPath $Plugin.FullName -Destination $Destination -Force
-          Write-Host "Staged CI-only module: $Destination"
-
-          & '.github/scripts/engine-protocol-v2-task8-concurrency.ps1' -InstallRoot $InstallRoot
-          if ($LASTEXITCODE -ne 0) {
-              throw "Task 8 deterministic concurrency regression failed (exit=$LASTEXITCODE)."
-          }
+      - name: Enforce deterministic A-F regression
+        if: steps.concurrency_regression.outcome != 'success'
+        shell: pwsh
+        run: |
+          throw 'Task 8 deterministic concurrency regression failed; diagnostic transcript was preserved.'
