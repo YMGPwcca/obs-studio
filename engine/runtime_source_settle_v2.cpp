@@ -282,8 +282,11 @@ void Engine::v2_settle_source_mutation(obs_data_t *params, RuntimeV2Result &resu
 		return;
 
 	obs_source_t *source = it->second;
-	const bool deferred_video_update = (obs_source_get_output_flags(source) & OBS_SOURCE_VIDEO) != 0 &&
-					   result_has_source_event(result, "source.settingsChanged", handle);
+	// Protocol dispatch calls this helper only for source setting mutations
+	// (patch/replace/reset/loadState). Every video-source obs_source_update is
+	// deferred by libobs, so settlement must not depend on an event that cannot
+	// exist until the video-thread update has actually happened.
+	const bool deferred_video_update = (obs_source_get_output_flags(source) & OBS_SOURCE_VIDEO) != 0;
 	if (deferred_video_update && source_v2_state_ &&
 	    !settle_deferred_source_update(*source_v2_state_, handle, source, result)) {
 		std::fprintf(stderr,
