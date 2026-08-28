@@ -1,0 +1,79 @@
+name: Task 9 Physical Acceptance Bundle
+
+on:
+  push:
+    branches:
+      - task9-physical-acceptance
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  physical-acceptance-bundle:
+    name: Build physical acceptance bundle
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Build Windows minimal runtime
+        uses: ./.github/actions/build-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
+
+      - name: Build CI-only deterministic interaction source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cmake --build build_x64 --config RelWithDebInfo --target obs-engine-task9-interaction-plugin --parallel
+          if ($LASTEXITCODE -ne 0) {
+            throw "Task 9 interaction source build failed (exit=$LASTEXITCODE)."
+          }
+
+      - name: Stage interaction source for physical acceptance only
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $InstallRoot = Resolve-Path 'build_x64/install'
+          $Plugin = Get-ChildItem -Path 'build_x64' -Filter 'task9-interaction-source.dll' -File -Recurse |
+            Where-Object { $_.FullName -notlike "$InstallRoot*" } |
+            Select-Object -First 1
+          if ($null -eq $Plugin) {
+            throw 'Built Task 9 interaction source was not found.'
+          }
+          $RuntimeModule = Get-ChildItem -Path $InstallRoot -Filter 'image-source.dll' -File -Recurse |
+            Select-Object -First 1
+          if ($null -eq $RuntimeModule) {
+            throw 'Could not locate the installed OBS module directory.'
+          }
+          Copy-Item -LiteralPath $Plugin.FullName -Destination (Join-Path $RuntimeModule.Directory.FullName $Plugin.Name) -Force
+          $Staged = Get-ChildItem -Path $InstallRoot -Filter 'task9-interaction-source.dll' -File -Recurse
+          if (@($Staged).Count -ne 1) {
+            throw 'Expected exactly one staged Task 9 interaction module.'
+          }
+          @"
+          PHYSICAL TEST BUNDLE ONLY
+          Base Task 9 production SHA: f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc
+          Includes task9-interaction-source.dll solely for physical acceptance testing.
+          Do not distribute this ZIP as the production runtime artifact.
+          "@ | Set-Content -LiteralPath (Join-Path $InstallRoot 'TASK9-PHYSICAL-TEST-ONLY.txt') -Encoding utf8
+
+      - name: Verify staged source with Task 9 integration regression
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & '.github/scripts/engine-protocol-v2-task9.ps1' -InstallRoot (Resolve-Path 'build_x64/install')
+
+      - name: Upload physical acceptance bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: obs-engine-windows-x64-task9-physical-acceptance
+          path: build_x64/install/
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 2
