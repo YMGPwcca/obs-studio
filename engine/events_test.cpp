@@ -125,6 +125,31 @@ bool test_state_prefers_telemetry_eviction()
 		       "evicted telemetry was still delivered");
 }
 
+bool test_ordered_resync_preserves_queued_event()
+{
+	using namespace obs_engine;
+	reset_output();
+	EventDispatcher events(2);
+	std::string error;
+	if (!require(events.subscribe({{"engine.*", false}, {"session.*", false}}, error),
+		     "ordered-resync subscriptions rejected"))
+		return false;
+	if (!require(events.publish(EngineEventKind::State, "engine.command", 7) == EventPublishResult::Enqueued,
+		     "command event was not enqueued before ordered resync"))
+		return false;
+	events.require_resync_after_queued_events(8);
+	events.start();
+	events.stop_and_drain();
+	const auto lines = output_lines();
+	return require(lines.size() == 2, "ordered resync did not preserve both queued messages") &&
+	       require(contains(lines[0], "\"event\":\"engine.command\""),
+		       "ordered resync overtook the queued command event") &&
+	       require(contains(lines[1], "\"event\":\"session.resyncRequired\""),
+		       "ordered resync marker was not delivered") &&
+	       require(contains(lines[1], "\"revision\":8"),
+		       "ordered resync revision was not preserved");
+}
+
 bool test_telemetry_policy()
 {
 	using namespace obs_engine;
@@ -183,7 +208,8 @@ void write_json_line(std::string json)
 int main()
 {
 	if (!test_patterns_and_overlap() || !test_state_overflow_requires_resync() ||
-	    !test_state_prefers_telemetry_eviction() || !test_telemetry_policy())
+	    !test_state_prefers_telemetry_eviction() || !test_ordered_resync_preserves_queued_event() ||
+	    !test_telemetry_policy())
 		return 1;
 	std::puts("events-test: passed");
 	return 0;

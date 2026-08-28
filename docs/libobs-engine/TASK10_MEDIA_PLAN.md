@@ -1,9 +1,9 @@
 # Task 10 Plan — Complete `media.*` Namespace
 
-**Status:** COMPLETE  
-**Prerequisite:** Tasks 1–9 accepted  
-**Accepted Task-10 implementation SHA:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`  
-**Record:** this plan now serves as the source-research and acceptance record for the implemented namespace. The next task is Task 11 (`filter.*`).
+**Status:** IMPLEMENTED / FIX IN REVIEW / FINAL ACCEPTANCE PENDING
+**Prerequisite:** Tasks 1–9 accepted
+**Task-10 implementation baseline:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`
+**Record:** this plan now serves as the source-research and corrective-review record for the implemented namespace. Task 11 (`filter.*`) remains planned, quarantined, and not accepted.
 
 This plan is deliberately more detailed than a normal task ticket. A local coding agent should use it as an investigation checklist, then amend it if current source/libobs behavior differs.
 
@@ -471,16 +471,25 @@ Design a media-specific observer/settler rather than force-fitting `SourceV2Stat
 
 ### 8.3 Candidate implementation structure
 
-Consider:
+The corrective implementation uses:
 
 - `struct MediaV2State` owned by `Engine`;
 - per-source media observer with weak source reference and cached `obs_media_state`;
 - connections to media source signals;
 - bounded deferred event/action batches during command capture;
-- a command token/expected action kind to distinguish command-owned signal from unrelated async state;
-- condition variable waiter on the specific processed action signal;
-- for `setPosition`, a source-tick barrier/observer or testable position predicate because no raw generic set-time signal was observed;
+- a monotonic source-local libobs action ticket carried through each queued
+  action and its core signal;
+- a permanent observer plus condition variable waiter matching the exact source
+  handle, expected signal, and action ticket;
+- for `setPosition`, the internal `media_time` signal emitted after the queued
+  set-time callback returns; it proves callback processing, not decoder seek
+  completion;
 - bounded timeout; on uncertain canonical ownership either return `timeout`/`obs_error` without claiming a mutation, or require resync if state may have changed after ownership was lost.
+
+Timed-out tickets are retained as orphan candidates. A late orphan completion is
+never promoted to a later request; it remains an independent uncertainty
+boundary and forces resynchronization when its canonical effect is not otherwise
+represented.
 
 The exact strategy must be derived from upstream behavior and tests.
 
@@ -644,6 +653,9 @@ At minimum implement these before Task 10 acceptance.
 - no event refers to invalid removed source after removal ordering contract;
 - no use-after-free.
 
+The corrective fixture also removes a source while a timed-out callback remains
+active and verifies the handle is not reused in later events.
+
 ### M14 — overflow/resync if media observer uses bounded deferred queue
 
 - deliberately overflow deterministic media deferred event capture;
@@ -653,6 +665,10 @@ At minimum implement these before Task 10 acceptance.
 
 - issue action near shutdown;
 - ensure observers disconnect, queued state does not access destroyed fixture, process exits cleanly.
+
+The corrective fixture keeps a timed-out media signal active through shutdown and
+releases it through a condition-variable-controlled deadline so teardown is
+exercised without a test sleep.
 
 ---
 
@@ -918,47 +934,56 @@ Record artifact name, CI run ID, artifact ID, byte size and SHA-256 in `PROJECT_
 
 ---
 
-## 21. Completion criteria
+## 21. Final acceptance criteria
 
-Task 10 is COMPLETE only when all are true:
+Task 10 is currently IMPLEMENTED / FIX IN REVIEW / FINAL ACCEPTANCE PENDING.
+It must not be marked COMPLETE or ACCEPTED until the remaining human and exact
+final-SHA gates are satisfied.
 
 - [x] Source/libobs/plugin research documented.
 - [x] `MEDIA_V1.md` concrete schema frozen for v1.
 - [x] All 11 methods implemented.
 - [x] Stable media state mapping implemented.
 - [x] Unsupported source validation implemented.
-- [x] Queue/tick asynchronous action settlement solved without sleeps.
-- [x] Command-owned events/revisions correct.
+- [x] Queue/tick asynchronous action settlement uses exact queued-action tickets
+      and a permanent observer without sleeps.
+- [x] Command-owned events/revisions are covered by the local corrective tests.
 - [x] Natural async ended/error transitions independently revisioned.
 - [x] Position progression kept out of revision spam.
 - [x] Deterministic media fixture exists and is CI-only.
 - [x] Required integration matrix M1–M15 (or justified equivalent) green locally.
-- [x] All previous Task 1–9 regressions green on the final local tree.
-- [x] Production package audit clean.
-- [x] Full diff reviewed twice.
-- [x] Physical Windows fixture acceptance completed.
-- [x] Status/handoff/roadmap updated.
-- [x] One clean Task-10 production commit boundary.
-- [x] Task 11 NOT started.
+- [x] All previous Task 1–9 regressions green on the local corrective tree.
+- [x] Production package audit clean for the scoped forbidden artifacts.
+- [x] Corrective diff reviewed twice.
+- [x] Local Windows fixture execution completed.
+- [x] Status/handoff/roadmap updated to pending acceptance.
+- [x] Clean Task-10 corrective commit boundary created.
+- [x] Task 11 is not started and remains quarantined.
+- [ ] Hosted Task-10 workflow passes on the exact final candidate SHA.
+- [ ] Human approval promotes Task 10 to final acceptance.
 
-The hosted Task-10 workflow has not run because the accepted SHA is local and
-unpushed; this is recorded explicitly rather than treated as hosted evidence.
+The hosted Task-10 workflow has not run because the corrective candidate is
+local and unpushed; this is recorded explicitly rather than treated as hosted
+evidence.
 
 ---
 
-## 22. Task-10 completion record
+## 22. Task-10 corrective-review record
 
-Task 10 was implemented after the required source audit. The final local acceptance
-reported:
+Task 10 was implemented after the required source audit. The corrective review
+adds exact action identity at the libobs queue boundary, removes temporary
+per-request signal waiters, and covers same-source stale actions, orphaned
+timeouts, late set-position completion, overflow, removal, and shutdown.
 
-> I verified the current `engine-protocol-v2` HEAD and the docs-only handoff delta from accepted engine SHA `f59d6b6c...`. I read the Protocol-v2 media section, current v2 dispatch/revision/event code, Task-8 settlement, Task-9 interaction implementation, libobs media public APIs and `process_media_actions`, plus representative media plugins. The critical Task-10 issue was that media controls are queued and processed on source tick, so the accepted implementation uses a media-specific bounded settlement/observer rather than a synchronous call/return assumption.
+> I verified the current `engine-protocol-v2` HEAD and the handoff delta from accepted Task-9 SHA `f59d6b6c...`. I read the Protocol-v2 media section, current v2 dispatch/revision/event code, Task-8 settlement, Task-9 interaction implementation, libobs media public APIs and `process_media_actions`, plus representative media plugins. The critical Task-10 issue was that media controls are queued and processed on source tick, so the implemented baseline uses a media-specific bounded settlement/observer rather than a synchronous call/return assumption.
 
 The implementation is in `engine/runtime_media_v2.cpp`, the concrete schema is
 `engine/MEDIA_V1.md`, and deterministic coverage is in
 `.github/scripts/engine-protocol-v2-task10.ps1` with workflow
-`.github/workflows/engine-protocol-v2-task10.yaml`. Full local VS2022 x64 build,
-unit lanes, Task 8/9 regressions, media integration, package audit, and physical
-Windows fixture acceptance passed on the final SHA. Hosted execution of the new
-workflow remains pending because this final local SHA has not been pushed.
+`.github/workflows/engine-protocol-v2-task10.yaml`. Local VS2022 x64 build,
+unit lanes, Task 8/9 regressions, media integration, package audit, and Windows
+fixture execution are green on the corrective tree. Hosted execution of the new
+workflow remains pending on the exact final candidate SHA, and no acceptance is
+claimed here.
 
 If the local agent cannot truthfully say that, it has not completed the handoff audit.

@@ -30,6 +30,7 @@
 
 #include "obs.h"
 #include "obs-internal.h"
+#include "obs-source-media-internal.h"
 
 #define get_weak(source) ((obs_weak_source_t *)source->context.control)
 
@@ -105,13 +106,13 @@ static const char *source_signals[] = {
 	"void transition_start(ptr source)",
 	"void transition_video_stop(ptr source)",
 	"void transition_stop(ptr source)",
-	"void media_play(ptr source)",
-	"void media_pause(ptr source)",
-	"void media_restart(ptr source)",
-	"void media_stopped(ptr source)",
-	"void media_next(ptr source)",
-	"void media_previous(ptr source)",
-	"void media_time(ptr source)",
+	"void media_play(ptr source, int action_serial)",
+	"void media_pause(ptr source, int action_serial)",
+	"void media_restart(ptr source, int action_serial)",
+	"void media_stopped(ptr source, int action_serial)",
+	"void media_next(ptr source, int action_serial)",
+	"void media_previous(ptr source, int action_serial)",
+	"void media_time(ptr source, int action_serial)",
 	"void media_started(ptr source)",
 	"void media_ended(ptr source)",
 	NULL,
@@ -1334,31 +1335,31 @@ void process_media_actions(obs_source_t *source)
 			source->info.media_play_pause(source->context.data, action.pause);
 
 			if (action.pause)
-				obs_source_dosignal(source, NULL, "media_pause");
+				obs_source_dosignal_media_action(source, "media_pause", action.serial);
 			else
-				obs_source_dosignal(source, NULL, "media_play");
+				obs_source_dosignal_media_action(source, "media_play", action.serial);
 			break;
 
 		case MEDIA_ACTION_RESTART:
 			source->info.media_restart(source->context.data);
-			obs_source_dosignal(source, NULL, "media_restart");
+			obs_source_dosignal_media_action(source, "media_restart", action.serial);
 			break;
 
 		case MEDIA_ACTION_STOP:
 			source->info.media_stop(source->context.data);
-			obs_source_dosignal(source, NULL, "media_stopped");
+			obs_source_dosignal_media_action(source, "media_stopped", action.serial);
 			break;
 		case MEDIA_ACTION_NEXT:
 			source->info.media_next(source->context.data);
-			obs_source_dosignal(source, NULL, "media_next");
+			obs_source_dosignal_media_action(source, "media_next", action.serial);
 			break;
 		case MEDIA_ACTION_PREVIOUS:
 			source->info.media_previous(source->context.data);
-			obs_source_dosignal(source, NULL, "media_previous");
+			obs_source_dosignal_media_action(source, "media_previous", action.serial);
 			break;
 		case MEDIA_ACTION_SET_TIME:
 			source->info.media_set_time(source->context.data, action.ms);
-			obs_source_dosignal(source, NULL, "media_time");
+			obs_source_dosignal_media_action(source, "media_time", action.serial);
 			break;
 		}
 	}
@@ -5792,100 +5793,97 @@ const char *obs_source_get_light_icon(const char *id)
 	return (info && info->get_light_icon) ? info->get_light_icon(info->type_data) : NULL;
 }
 
-void obs_source_media_play_pause(obs_source_t *source, bool pause)
+EXPORT enum obs_source_media_action_enqueue_status obs_source_media_action_enqueue(
+	obs_source_t *source, enum obs_source_media_action_type type, int64_t value, uint64_t *serial)
 {
-	if (!data_valid(source, "obs_source_media_play_pause"))
-		return;
-
+	if (serial)
+		*serial = 0;
+	if (!data_valid(source, "obs_source_media_action_enqueue"))
+		return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
 	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return;
-	if (!source->info.media_play_pause)
-		return;
+		return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
+
+	enum media_action_type internal_type = MEDIA_ACTION_NONE;
+	switch (type) {
+	case OBS_SOURCE_MEDIA_ACTION_PLAY_PAUSE:
+		if (!source->info.media_play_pause)
+			return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
+		internal_type = MEDIA_ACTION_PLAY_PAUSE;
+		break;
+	case OBS_SOURCE_MEDIA_ACTION_RESTART:
+		if (!source->info.media_restart)
+			return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
+		internal_type = MEDIA_ACTION_RESTART;
+		break;
+	case OBS_SOURCE_MEDIA_ACTION_STOP:
+		if (!source->info.media_stop)
+			return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
+		internal_type = MEDIA_ACTION_STOP;
+		break;
+	case OBS_SOURCE_MEDIA_ACTION_NEXT:
+		if (!source->info.media_next)
+			return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
+		internal_type = MEDIA_ACTION_NEXT;
+		break;
+	case OBS_SOURCE_MEDIA_ACTION_PREVIOUS:
+		if (!source->info.media_previous)
+			return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
+		internal_type = MEDIA_ACTION_PREVIOUS;
+		break;
+	case OBS_SOURCE_MEDIA_ACTION_SET_TIME:
+		if (!source->info.media_set_time)
+			return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
+		internal_type = MEDIA_ACTION_SET_TIME;
+		break;
+	default:
+		return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
+	}
 
 	struct media_action action = {
-		.type = MEDIA_ACTION_PLAY_PAUSE,
-		.pause = pause,
+		.type = internal_type,
+		.serial = 0,
 	};
+	if (internal_type == MEDIA_ACTION_PLAY_PAUSE)
+		action.pause = value != 0;
+	else if (internal_type == MEDIA_ACTION_SET_TIME)
+		action.ms = value;
 
 	pthread_mutex_lock(&source->media_actions_mutex);
+	if (source->media_action_serial >= INT64_MAX) {
+		pthread_mutex_unlock(&source->media_actions_mutex);
+		return OBS_SOURCE_MEDIA_ACTION_SERIAL_EXHAUSTED;
+	}
+	action.serial = ++source->media_action_serial;
 	da_push_back(source->media_actions, &action);
 	pthread_mutex_unlock(&source->media_actions_mutex);
+	if (serial)
+		*serial = action.serial;
+	return OBS_SOURCE_MEDIA_ACTION_ENQUEUED;
+}
+
+void obs_source_media_play_pause(obs_source_t *source, bool pause)
+{
+	(void)obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_PLAY_PAUSE, pause ? 1 : 0, NULL);
 }
 
 void obs_source_media_restart(obs_source_t *source)
 {
-	if (!data_valid(source, "obs_source_media_restart"))
-		return;
-
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return;
-	if (!source->info.media_restart)
-		return;
-
-	struct media_action action = {
-		.type = MEDIA_ACTION_RESTART,
-	};
-
-	pthread_mutex_lock(&source->media_actions_mutex);
-	da_push_back(source->media_actions, &action);
-	pthread_mutex_unlock(&source->media_actions_mutex);
+	(void)obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_RESTART, 0, NULL);
 }
 
 void obs_source_media_stop(obs_source_t *source)
 {
-	if (!data_valid(source, "obs_source_media_stop"))
-		return;
-
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return;
-	if (!source->info.media_stop)
-		return;
-
-	struct media_action action = {
-		.type = MEDIA_ACTION_STOP,
-	};
-
-	pthread_mutex_lock(&source->media_actions_mutex);
-	da_push_back(source->media_actions, &action);
-	pthread_mutex_unlock(&source->media_actions_mutex);
+	(void)obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_STOP, 0, NULL);
 }
 
 void obs_source_media_next(obs_source_t *source)
 {
-	if (!data_valid(source, "obs_source_media_next"))
-		return;
-
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return;
-	if (!source->info.media_next)
-		return;
-
-	struct media_action action = {
-		.type = MEDIA_ACTION_NEXT,
-	};
-
-	pthread_mutex_lock(&source->media_actions_mutex);
-	da_push_back(source->media_actions, &action);
-	pthread_mutex_unlock(&source->media_actions_mutex);
+	(void)obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_NEXT, 0, NULL);
 }
 
 void obs_source_media_previous(obs_source_t *source)
 {
-	if (!data_valid(source, "obs_source_media_previous"))
-		return;
-
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return;
-	if (!source->info.media_previous)
-		return;
-
-	struct media_action action = {
-		.type = MEDIA_ACTION_PREVIOUS,
-	};
-
-	pthread_mutex_lock(&source->media_actions_mutex);
-	da_push_back(source->media_actions, &action);
-	pthread_mutex_unlock(&source->media_actions_mutex);
+	(void)obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_PREVIOUS, 0, NULL);
 }
 
 int64_t obs_source_media_get_duration(obs_source_t *source)
@@ -5916,21 +5914,7 @@ int64_t obs_source_media_get_time(obs_source_t *source)
 
 void obs_source_media_set_time(obs_source_t *source, int64_t ms)
 {
-	if (!data_valid(source, "obs_source_media_set_time"))
-		return;
-	if ((source->info.output_flags & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return;
-	if (!source->info.media_set_time)
-		return;
-
-	struct media_action action = {
-		.type = MEDIA_ACTION_SET_TIME,
-		.ms = ms,
-	};
-
-	pthread_mutex_lock(&source->media_actions_mutex);
-	da_push_back(source->media_actions, &action);
-	pthread_mutex_unlock(&source->media_actions_mutex);
+	(void)obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_SET_TIME, ms, NULL);
 }
 
 enum obs_media_state obs_source_media_get_state(obs_source_t *source)

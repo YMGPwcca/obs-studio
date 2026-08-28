@@ -79,15 +79,16 @@ Architecture requirements you must preserve:
 - CI-only test plugins must never leak into production artifacts;
 - implement one roadmap task at a time and stop before the next one.
 
-Current accepted status to verify:
+Current status to verify:
 
-- Tasks 1–10 complete.
+- Tasks 1–9 complete; Task 10 is implemented but remains in corrective review
+  with final acceptance pending.
 - Task 8 deterministic A–F source concurrency + physical Windows acceptance complete.
 - Task 9 all seven `interaction.*` methods complete; same-SHA regression matrix green; physical Windows acceptance complete.
-- Task 10 `media.*` complete at `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`; `engine/MEDIA_V1.md` and the media settlement limits are authoritative.
-- Task 11 `filter.*` is next and NOT STARTED.
+- Task 10 `media.*` is implemented at `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`; `engine/MEDIA_V1.md` and the media settlement limits are authoritative, but exact-final-SHA acceptance is pending.
+- Task 11 `filter.*` remains planned, quarantined, and NOT ACCEPTED.
 
-**Do not begin Task 11 before the handoff/source audit.** After the audit, the operator has authorized sequential continuation into Task 11.
+**Do not begin Task 11.** Its unauthorized implementation remains quarantined, and no later task is authorized.
 
 After the audit, report back with:
 

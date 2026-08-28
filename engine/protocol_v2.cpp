@@ -819,6 +819,8 @@ bool handle_v2_request(Engine &engine, const Config &, RevisionState &revisions,
 	// can never hold a libobs signal mutex while waiting behind this request.
 	if (method_is_runtime(method) && method_is_mutating(method))
 		capture.emplace(engine, runtime_result);
+	if (capture)
+		engine.v2_wait_for_event_capture_callbacks();
 	if (method_is_mutating(method))
 		mutation_guard.emplace(revisions.lock_mutation());
 

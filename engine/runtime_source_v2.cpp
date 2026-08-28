@@ -673,6 +673,17 @@ void Engine::v2_begin_event_capture(RuntimeV2Result &result)
 	v2_begin_media_event_capture(result);
 }
 
+void Engine::v2_wait_for_event_capture_callbacks()
+{
+	if (source_v2_state_) {
+		std::unique_lock lock(source_v2_state_->mutex);
+		source_v2_state_->callback_cv.wait(lock, [&] {
+			return !source_v2_state_->accepting || source_v2_state_->direct_callbacks_inflight == 0;
+		});
+	}
+	v2_wait_for_media_event_callbacks();
+}
+
 void Engine::v2_end_event_capture() noexcept
 {
 	if (source_v2_state_) {

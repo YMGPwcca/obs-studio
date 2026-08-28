@@ -3,9 +3,9 @@
 **Handoff date:** 2026-08-29  
 **Repository:** `YMGPwcca/obs-studio`  
 **Working branch:** `engine-protocol-v2`  
-**Accepted engine baseline:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff` (`feat(engine): complete protocol v2 media namespace`)  
-**Next roadmap task:** Task 11 — `filter.*`  
-**Task 10 implementation status:** COMPLETE
+**Task-10 implementation baseline under corrective review:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff` (`feat(engine): complete protocol v2 media namespace`)
+**Next roadmap task:** Task 11 — `filter.*` (planned; quarantined and not accepted)
+**Task 10 implementation status:** IMPLEMENTED / FIX IN REVIEW / FINAL ACCEPTANCE PENDING
 
 This file exists so a local AI coding agent can continue the project without access to the previous ChatGPT conversation. It records project decisions, accepted behavior, verification evidence, known traps, and the required working process. **Verify everything against the checked-out source before changing it.**
 
@@ -148,7 +148,8 @@ Do not leak raw pointers, C++ exception internals, Win32 object pointers, or plu
 
 ## 4. Current implementation status
 
-Tasks 1–10 are accepted. See `PROJECT_STATUS.md` for detailed evidence.
+Tasks 1–9 are accepted. Task 10 is implemented but remains in corrective review
+with final acceptance pending. See `PROJECT_STATUS.md` for detailed evidence.
 
 ### Task 1 / 1.1 — headless host and package cleanup
 
@@ -190,10 +191,11 @@ Completed and physically accepted on Windows. See section 7 below.
 
 ### Task 10 — `media.*`
 
-Completed in `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`. The namespace has all
-11 planned methods, stable state strings, a source-correlated deferred media
-observer, signal-based action settlement, deterministic timeout/overflow resync,
-and a CI-only fixture. The concrete wire contract is `engine/MEDIA_V1.md`.
+Implemented in `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`, with the corrective
+candidate adding exact queued-action tickets and permanent-observer settlement.
+The namespace has all 11 planned methods, stable state strings, deterministic
+timeout/orphan/overflow resync, and a CI-only fixture. The concrete wire contract
+is `engine/MEDIA_V1.md`; final acceptance remains pending.
 
 ---
 
@@ -390,9 +392,9 @@ Task 9 is therefore physically accepted.
 
 ## 8. Task 10 deep handoff: media settlement
 
-Task 10 is accepted at `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`. The concrete
-wire contract is `engine/MEDIA_V1.md`; the implementation is
-`engine/runtime_media_v2.cpp`.
+Task 10 is implemented at `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`, with a
+corrective action-ownership fix in review. The concrete wire contract is
+`engine/MEDIA_V1.md`; the implementation is `engine/runtime_media_v2.cpp`.
 
 ### 8.1 Upstream behavior verified
 
@@ -414,21 +416,25 @@ from a libobs function return.
 
 - Every media-capable source has a weak-reference observer for core action and
   lifecycle signals.
-- Mutating requests establish a media capture gate before taking the revision
-  guard, drain pre-capture batches, connect an action-specific waiter, enqueue
-  the public libobs action, and wait up to five seconds for the normalized
-  source/action batch. No sleep-based synchronization is used.
-- Deferred media batches are bounded to the existing 1024-event scale and are
-  correlated by source handle plus the expected action signal. Other sources'
-  batches remain independent and receive later revisions.
+- Mutating requests establish a media capture gate, retire any pre-capture direct
+  callbacks before taking the revision guard, obtain an exact source-local action
+  ticket from the private libobs enqueue bridge, and wait up to five seconds on
+  the permanent observer's condition variable. No per-request signal waiter or
+  sleep-based synchronization is used.
+- Deferred media batches are bounded to the existing 1024-event scale and retain
+  the source-local action ticket. Settlement matches source handle, expected
+  signal, and exact ticket; other same-source or other-source batches remain
+  independent and receive later revisions or resync as required.
 - `setPosition` uses the branch's internal `media_time` signal emitted by
   libobs after the queued plugin callback returns. It proves action callback
   processing, not completion of plugin-internal decoder work; the response
   position is a fresh signed millisecond snapshot.
 - On timeout or uncertain ownership, the request does not claim a successful
-  command mutation and the media bridge forces `session.resyncRequired` during
-  deferred flush. Natural state/lifecycle events outside a request get their
-  own revision. Position ticks never create revisions.
+  command mutation. The timed-out ticket is retained so a late completion cannot
+  be claimed by a later request; the bridge forces `session.resyncRequired` after
+  the late completion, even when it has no normal state event. Natural
+  state/lifecycle events outside a request get their own revision. Position ticks
+  never create revisions.
 - `media.error` is emitted only when an observable media signal finds a
   transition to `OBS_MEDIA_STATE_ERROR`; `media.getState` remains authoritative
   when a plugin changes state without a generic signal.
@@ -436,14 +442,13 @@ from a libobs function return.
 ### 8.3 Task-10 fixture and acceptance
 
 `engine/task10_media_source.cpp` is `EXCLUDE_FROM_ALL`, has no install rule, and
-registers `task10_media_source` plus a no-seek variant. The integration script
-covers capability/query behavior, all controls, idempotent no-ops, toggle rules,
-seek bounds/readback, lifecycle/error transitions, stale guards, cross-source
-ownership, missing-callback timeout, deferred overflow, removal, and clean
-shutdown. The normal package audit confirmed that the fixture and frontend/
-WebSocket binaries are absent. Physical Windows acceptance passed locally on
-the documented AMD/Windows 25H2 machine; hosted execution on the unpushed
-final SHA remains pending.
+registers `task10_media_source` plus a no-seek variant. The corrective integration
+coverage adds pre-existing same-signal actions, timed-out/orphan follow-up
+actions, late set-position completion, blocking callback teardown, removal with
+an outstanding callback, and shutdown with an outstanding callback. The normal
+package audit confirms that the fixture and frontend/WebSocket binaries are
+absent. Local Windows validation is green; hosted execution on the exact final
+corrective SHA remains pending, so Task 10 is not accepted.
 
 The handoff audit also removed `obs-websocket` and `obs-browser` from the default
 safe-module list in `08010cdc6` and `2744b3bcb`. They remain explicit opt-in or
@@ -549,7 +554,9 @@ Normal artifact must not contain test fixtures. Assert this in CI before explici
 
 ## 11. What to do next
 
-Task 10 is complete. The next local agent should first report that it has:
+Task 10 corrective acceptance is still pending. Do not begin Task 11; its
+unauthorized implementation remains quarantined and not accepted. Any future
+operator should first report that it has:
 
 - verified branch/HEAD;
 - read all handoff docs;
@@ -560,8 +567,9 @@ Task 10 is complete. The next local agent should first report that it has:
 - inspected representative filter plugins and the generic properties bridge;
 - read the Task-11 plan if one is added.
 
-Implement Task 11 as the next isolated roadmap task. Preserve the media bridge's
-separate bounded queue, the source-correlated settlement rules, the internal
+Do not begin Task 11. It remains planned only, and the unauthorized Task-11
+implementation is quarantined on `wip/task11-unauthorized`. Preserve the media
+bridge's separate bounded queue, exact-ticket settlement rules, the internal
 `media_time` signal contract, and the no-WebSocket/no-browser default allowlist.
 
 ---
@@ -590,7 +598,8 @@ This handoff is successful if a local agent can, using only the repository:
 
 1. explain the process/license/state boundary;
 2. explain revision/event semantics;
-3. identify Tasks 1–10 as accepted and Task 11 as next/not started;
+3. identify Tasks 1–9 as accepted, Task 10 as implemented but pending final
+   acceptance, and Task 11 as quarantined/not accepted;
 4. explain the Task-8 deferred update bug and why the current settlement exists;
 5. explain Task-9 transient interaction semantics and physical acceptance;
 6. explain Task-10 media action settlement, media-time limitations, and resync behavior;

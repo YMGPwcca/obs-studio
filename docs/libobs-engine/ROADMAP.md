@@ -105,7 +105,7 @@ Every task follows the same gate:
 
 **Accepted semantics:** transient/non-revisioned delivery, source-local validation, semantic modifiers, bounded held-key tracking, reset cleanup, no OS-native message injection, deterministic callback fixture, physical Windows acceptance.
 
-## Task 10 — `media.*` — COMPLETE
+## Task 10 — `media.*` — IMPLEMENTED / FIX IN REVIEW / FINAL ACCEPTANCE PENDING
 
 **Goal:** expose controllable media playback state and transport controls for sources that support libobs media control.
 
@@ -135,9 +135,9 @@ Every task follows the same gate:
 
 **Key design question:** transport-state changes are canonical runtime state, but position progression is high-frequency telemetry. Do not increment revision for every playback tick.
 
-**Accepted implementation:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff` adds `MEDIA_V1.md`, a source-correlated bounded media observer/settler, and the CI-only `task10_media_source` fixture. The fork's internal `media_time` signal marks queued set-time callback completion because upstream has no generic seek signal. Missing callback/ownership and deferred overflow paths return/emit resynchronization rather than fabricate success. Full research and acceptance record: `TASK10_MEDIA_PLAN.md`.
+**Implementation baseline under corrective review:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff` adds `MEDIA_V1.md`, a source-correlated bounded media observer/settler, and the CI-only `task10_media_source` fixture. The corrective candidate adds exact source-local queued-action tickets, permanent-observer settlement, and orphan completion resynchronization. The fork's internal `media_time` signal marks queued set-time callback processing because upstream has no generic seek signal. Missing callback/ownership and deferred overflow paths return/emit resynchronization rather than fabricate success. Full research and corrective-review record: `TASK10_MEDIA_PLAN.md`.
 
-Local final-tree acceptance passed with the Task 1–9 regression lanes, full Windows x64 build/install, package audit, deterministic M1–M15-equivalent coverage, and physical Windows fixture execution. The dedicated hosted Task-10 workflow is present but has not run for the unpushed local SHA.
+Local validation passed with the Task 1–9 regression lanes, full Windows x64 build/install, package audit, deterministic M1–M15-equivalent coverage, and Windows fixture execution. Final acceptance remains pending because the dedicated hosted Task-10 workflow has not run on the exact unpushed corrective SHA.
 
 ## Task 11 — `filter.*` — PLANNED
 
@@ -478,4 +478,4 @@ After each accepted task:
 4. add any newly discovered architectural invariant/known debt to `HANDOFF.md`/`ARCHITECTURE.md`;
 5. do not mark a later task active until operator explicitly authorizes it.
 
-The current transition point is **Task 10 complete -> Task 11 `filter.*`**. Task 11 is not started.
+The current transition point is **Task 10 corrective acceptance pending -> Task 11 `filter.*` planned**. Task 11 is not started; its unauthorized implementation remains quarantined and not accepted.

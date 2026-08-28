@@ -2,8 +2,8 @@
 
 **Status snapshot date:** 2026-08-29  
 **Production branch:** `engine-protocol-v2`  
-**Accepted production engine/runtime baseline:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`  
-**Next task:** Task 11 `filter.*` — NOT STARTED
+**Task-10 implementation baseline under corrective review:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`
+**Next task:** Task 11 `filter.*` — PLANNED, QUARANTINED, NOT ACCEPTED
 
 This file is the current status ledger for the LibOBS split-engine project. If an older roadmap says Task 8 is active or Task 9 is only proposed, that older status is stale. Verify this ledger against Git/source/CI whenever resuming work.
 
@@ -23,8 +23,8 @@ This file is the current status ledger for the LibOBS split-engine project. If a
 | 7 | Generic `properties.*` | COMPLETE | plugin property schema/control bridge |
 | 8 | Complete `source.*` | COMPLETE | full namespace + deferred callback settlement + deterministic A–F + physical Windows |
 | 9 | `interaction.*` | COMPLETE | seven methods + deterministic callback fixture + same-SHA matrix + physical Windows |
-| 10 | `media.*` | COMPLETE | 11 methods, async settlement, deterministic fixture, resync/error coverage, physical Windows |
-| 11–50 | Later roadmap | NOT STARTED | Task 11 `filter.*` is next |
+| 10 | `media.*` | IMPLEMENTED / FIX IN REVIEW / FINAL ACCEPTANCE PENDING | 11 methods, exact queued-action settlement, deterministic fixture, resync/error coverage |
+| 11–50 | Later roadmap | NOT STARTED | Task 11 `filter.*` remains planned and quarantined |
 
 ---
 
@@ -63,12 +63,13 @@ Task-9 diff against Task 8 contained exactly these 11 paths:
 10. `engine/runtime_interaction_v2.cpp` — production implementation.
 11. `engine/task9_interaction_source.cpp` — deterministic CI-only source.
 
-### Task 10
+### Task 10 — corrective review
 
 - `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`
 - subject: `feat(engine): complete protocol v2 media namespace`
 - parent: `2744b3bcb` (the preceding browser-allowlist audit fix)
-- production implementation and protocol contract are complete; no Task-11 code is included.
+- the original production implementation is present; the corrective candidate adds
+  exact queued-action ownership and contains no Task-11 code.
 
 Implemented methods:
 
@@ -99,31 +100,35 @@ Important semantics:
 - `obs_source_media_*` controls are settled from source-specific libobs signals,
   not assumed synchronous. The fork adds the internal `media_time` signal after
   the queued set-time callback returns because upstream has no generic seek
-  completion signal.
+  completion signal; the signal carries an engine/libobs-only action ticket.
 - Transport state is revisioned; playback position snapshots are not a
   high-frequency revision stream. Idempotent play/pause/stop and equal seeks do
   not churn revisions.
-- Media callbacks use a separate bounded, source-correlated deferred bridge.
-  Uncertain ownership or overflow produces `session.resyncRequired`.
+- Media callbacks use a separate bounded, source-correlated deferred bridge with
+  exact source-local action tickets. Uncertain ownership, orphan completion, or
+  overflow produces `session.resyncRequired` without silently reassigning a
+  callback to a later request.
 - The generic libobs snapshot has no reliable error signal, so `media.error` is
   emitted only when ERROR is observed during another media signal; `getState` is
   authoritative for a point-in-time query.
 
-Verification on the final local Task-10 tree:
+Verification on the local Task-10 corrective candidate:
 
 - VS2022 17.14 x64 `RelWithDebInfo` full build and install passed.
 - `obs-engine-events-test` and `obs-engine-properties-test` passed.
 - Task 8 A–F, Task 9 interaction, and Task 10 media integration passed on the
-  same built engine. Task 10 covered all methods, bounds, stale guards,
-  unsupported sources, cross-source ownership, missing seek callback timeout,
-  deferred overflow, removal, and clean shutdown.
+  same built engine. Task 10 now covers all methods, bounds, stale guards,
+  unsupported sources, exact same-source action ownership, timed-out/orphan
+  completion including set-position, deferred overflow, removal with an active
+  callback, and clean shutdown with an active callback.
 - Normal package audit passed: one `obs-engine.exe`; no `obs64.exe`, `obs32.exe`,
   browser/WebSocket module, or Task 8/9/10 fixture DLL. The Task-10 workflow is
   added at `.github/workflows/engine-protocol-v2-task10.yaml`; hosted execution
   on this unpushed final SHA remains pending.
-- Physical Windows fixture acceptance passed on the local AMD/Windows 25H2
-  machine using the deterministic Task-10 module. Optional AJA/DeckLink/NVENC/
-  VLC warnings were expected and did not affect the engine run.
+- Local Windows fixture execution passed on the AMD/Windows 25H2 machine.
+  Optional AJA/DeckLink/NVENC/VLC warnings were expected and did not affect the
+  engine run. Hosted acceptance of the exact final corrective SHA is still
+  pending.
 
 ---
 
@@ -370,11 +375,11 @@ The media bridge has a private deferred queue separate from the accepted source
 bridge and duplicates the canonical decimal handle reader until a safe shared
 private helper can be introduced. Upstream libobs has no generic media-error or
 seek-completion signal; this branch adds only the internal `media_time` signal
-after the queued set-time callback returns. Real plugins may apply a seek or
-enter ERROR asynchronously, so the returned position is a snapshot and
-`media.error` is emitted only when an observable media signal exposes the ERROR
-transition. Task 42 should extend this with stress coverage before any stronger
-completion guarantee is promised.
+after the queued set-time callback returns, plus a private tracked-enqueue
+ticket mechanism. Real plugins may apply a seek or enter ERROR asynchronously,
+so the returned position is a snapshot and `media.error` is emitted only when
+an observable media signal exposes the ERROR transition. Task 42 should extend
+this with stress coverage before any stronger completion guarantee is promised.
 
 ### 8.7 Allowlist boundary corrections
 
@@ -408,6 +413,7 @@ Record exact final SHA and acceptance evidence in this file after each completed
 
 The next project state transition is:
 
-`Task 10 media.* complete` -> `Task 11 filter.* active`.
+`Task 10 corrective review pending` -> `Task 10 final acceptance` -> `Task 11 filter.* planned`.
 
-Task 11 has not started. The operator has authorized sequential continuation of the remaining roadmap.
+Task 11 has not started and is not authorized. The unauthorized implementation is
+preserved only on `wip/task11-unauthorized` and is not accepted.

@@ -248,6 +248,35 @@ void EventDispatcher::require_resync_due_to_overflow(uint64_t revision) noexcept
 	}
 }
 
+void EventDispatcher::require_resync_after_queued_events(uint64_t revision) noexcept
+{
+	try {
+		PendingEvent event;
+		event.kind = EngineEventKind::State;
+		event.name = "session.resyncRequired";
+		event.revision = revision;
+		event.data_json = "{\"reason\":\"event_queue_overflow\"}";
+
+		std::lock_guard lock(mutex_);
+		if (stopping_)
+			return;
+		if (queue_.size() >= capacity_) {
+			uint64_t highest_lost_revision = revision;
+			for (const PendingEvent &queued : queue_)
+				highest_lost_revision = std::max(highest_lost_revision, queued.revision);
+			queue_.clear();
+			resync_pending_ = true;
+			resync_revision_ = std::max(resync_revision_, highest_lost_revision);
+		} else {
+			queue_.push_back(std::move(event));
+		}
+		cv_.notify_one();
+	} catch (...) {
+		std::fprintf(stderr, "obs-engine: failed to schedule ordered controller resync\n");
+		std::fflush(stderr);
+	}
+}
+
 void EventDispatcher::run() noexcept
 {
 	try {

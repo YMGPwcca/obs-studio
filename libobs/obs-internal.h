@@ -800,6 +800,7 @@ enum media_action_type {
 
 struct media_action {
 	enum media_action_type type;
+	uint64_t serial;
 	union {
 		bool pause;
 		int64_t ms;
@@ -999,6 +1000,7 @@ struct obs_source {
 	/* media action queue */
 	DARRAY(struct media_action) media_actions;
 	pthread_mutex_t media_actions_mutex;
+	uint64_t media_action_serial;
 
 	/* private data */
 	obs_data_t *private_settings;
@@ -1043,6 +1045,18 @@ static inline void obs_source_dosignal(struct obs_source *source, const char *si
 		signal_handler_signal(obs->signals, signal_obs, &data);
 	if (signal_source)
 		signal_handler_signal(source->context.signals, signal_source, &data);
+}
+
+static inline void obs_source_dosignal_media_action(struct obs_source *source, const char *signal_source,
+							    uint64_t action_serial)
+{
+	struct calldata data;
+	uint8_t stack[128];
+
+	calldata_init_fixed(&data, stack, sizeof(stack));
+	calldata_set_ptr(&data, "source", source);
+	calldata_set_int(&data, "action_serial", (long long)action_serial);
+	signal_handler_signal(source->context.signals, signal_source, &data);
 }
 
 static inline void obs_source_dosignal_canvas(struct obs_source *source, struct obs_canvas *canvas,

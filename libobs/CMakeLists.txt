@@ -66,6 +66,7 @@ target_sources(
     obs-service.c
     obs-service.h
     obs-source-deinterlace.c
+    obs-source-media-internal.h
     obs-source-transition.c
     obs-source.c
     obs-source.h

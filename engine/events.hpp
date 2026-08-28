@@ -55,6 +55,7 @@ public:
 	EventPublishResult publish(EngineEventKind kind, std::string_view event_name, uint64_t revision,
 				   obs_data_t *data = nullptr);
 	void require_resync_due_to_overflow(uint64_t revision) noexcept;
+	void require_resync_after_queued_events(uint64_t revision) noexcept;
 
 private:
 	struct PendingEvent {

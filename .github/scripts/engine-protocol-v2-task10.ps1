@@ -208,6 +208,22 @@ try {
         Fail "fresh deterministic media source expected handle 2, got $($Source.Handle)."
     }
 
+    $Prequeue = Create-Source 'task10.create-prequeue' 'task10_media_source' 'task10-prequeue' @{
+        label = 'prequeue'; scenario = 'prequeue'
+    } $Revision
+    $Revision = $Prequeue.Revision
+    $PrequeuedSeek = Send-V2Request @{
+        op = 'request'; id = 'task10.seek.after-prequeue'; method = 'media.setPosition'; ifRevision = $Revision
+        params = @{ source = $Prequeue.Handle; positionMs = 2000 }
+    }
+    Assert-Ok $PrequeuedSeek ($Revision + 1) 'media.setPosition after pre-existing same-source seek'
+    $Revision++
+    if ([int64]$PrequeuedSeek.data.positionMs -ne 2000 -or -not [bool]$PrequeuedSeek.data.processed) {
+        Fail 'media.setPosition claimed the wrong pre-existing same-source action.'
+    }
+    $PrequeueResync = Read-Until-Resync ($Revision + 1)
+    $Revision = [int64]$PrequeueResync.revision
+
     $State = Send-V2Request @{ op = 'request'; id = 'task10.state.initial'; method = 'media.getState'; params = @{ source = $Source.Handle } }
     Assert-Ok $State $Revision 'media.getState initial'
     if ([string]$State.data.state -ne 'stopped') { Fail 'initial media state was not stopped.' }
@@ -297,6 +313,12 @@ try {
         $Revision++
         if ([int64]$BoundaryResponse.data.positionMs -ne $Boundary) { Fail "boundary seek $Boundary did not read back exactly." }
     }
+    $EqualSeek = Send-V2Request @{
+        op = 'request'; id = 'task10.seek.equal-noop'; method = 'media.setPosition'; ifRevision = $Revision
+        params = @{ source = $Source.Handle; positionMs = 10000 }
+    }
+    Assert-Ok $EqualSeek $Revision 'equal-position media.setPosition no-op'
+    if ([bool]$EqualSeek.data.processed) { Fail 'equal-position media.setPosition unexpectedly processed an action.' }
     $NegativeSeek = Send-V2Request @{ op = 'request'; id = 'task10.seek.negative'; method = 'media.setPosition'; params = @{ source = $Source.Handle; positionMs = -1 } }
     Assert-Error $NegativeSeek 'bad_request' $Revision 'negative media.setPosition'
     $LargeSeek = Send-V2Request @{ op = 'request'; id = 'task10.seek.too-large'; method = 'media.setPosition'; params = @{ source = $Source.Handle; positionMs = 10001 } }
@@ -376,6 +398,13 @@ try {
         params = @{ source = $Source.Handle }
     }
     Assert-Error $Stale 'revision_conflict' $Revision 'stale media.play'
+    $StateAfterStale = Send-V2Request @{ op = 'request'; id = 'task10.state.after-stale'; method = 'media.getState'; params = @{ source = $Source.Handle } }
+    Assert-Ok $StateAfterStale $Revision 'media.getState after stale media.play'
+    if ([string]$StateAfterStale.data.state -ne 'error') { Fail 'stale media.play changed media state.' }
+    $StaleMediaEvents = @($script:Events | Where-Object {
+        [string]$_.event -like 'media.*' -and [string]$_.data.source -eq $Source.Handle
+    })
+    if ($StaleMediaEvents.Count -ne 0) { Fail 'stale media.play produced media events or queued work.' }
 
     $Unsupported = Create-Source 'task10.create-non-media' ([string]$ColorKind.id) 'task10-non-media' @{ width = 320; height = 180 } $Revision
     $Revision = $Unsupported.Revision
@@ -394,6 +423,105 @@ try {
     $TimeoutResync = Read-Until-Resync ($Revision + 1)
     $Revision = [int64]$TimeoutResync.revision
 
+    $LateSeek = Create-Source 'task10.create-late-seek' 'task10_media_source' 'task10-late-seek' @{
+        label = 'late-seek'; scenario = 'blockTimeAutoRelease'
+    } $Revision
+    $Revision = $LateSeek.Revision
+    $LateSeekTimeout = Send-V2Request @{
+        op = 'request'; id = 'task10.seek.late-timeout'; method = 'media.setPosition'; ifRevision = $Revision
+        params = @{ source = $LateSeek.Handle; positionMs = 1000 }
+    }
+    Assert-Error $LateSeekTimeout 'timeout' $Revision 'media.setPosition with late completion'
+    $LateSeekTimeoutResync = Read-Until-Resync ($Revision + 1)
+    $Revision = [int64]$LateSeekTimeoutResync.revision
+    $LatePosition = Send-V2Request @{ op = 'request'; id = 'task10.position.late-seek'; method = 'media.getPosition'; params = @{ source = $LateSeek.Handle } }
+    if (-not $LatePosition.status.ok -or [int64]$LatePosition.data.positionMs -ne 1000) {
+        Fail 'timed-out setPosition did not eventually reach the fixture callback.'
+    }
+    $Revision = [int64]$LatePosition.revision
+    $LateSeekOrphanResync = Read-Until-Resync $Revision
+    $Revision = [int64]$LateSeekOrphanResync.revision
+    $RemoveLateSeek = Send-V2Request @{
+        op = 'request'; id = 'task10.remove-late-seek'; method = 'source.remove'; ifRevision = $Revision
+        params = @{ source = $LateSeek.Handle }
+    }
+    Assert-Ok $RemoveLateSeek ($Revision + 1) 'source.remove after late setPosition completion'
+    $Revision++
+    $null = Read-Event 'source.removed' $Revision $LateSeek.Handle
+
+    $BlockingFollowup = Create-Source 'task10.create-blocking-followup' 'task10_media_source' 'task10-blocking-followup' @{
+        label = 'blocking-followup'; scenario = 'blockSignalFollowup'
+    } $Revision
+    $Revision = $BlockingFollowup.Revision
+    $BlockedFollowupPlay = Send-V2Request @{
+        op = 'request'; id = 'task10.play.blocking-followup'; method = 'media.play'; ifRevision = $Revision
+        params = @{ source = $BlockingFollowup.Handle }
+    }
+    Assert-Error $BlockedFollowupPlay 'timeout' $Revision 'media.play before same-source follow-up action'
+    $FollowupTimeoutResync = Read-Until-Resync ($Revision + 1)
+    $Revision = [int64]$FollowupTimeoutResync.revision
+    $FollowupPause = Send-V2Request @{
+        op = 'request'; id = 'task10.pause.following-orphan'; method = 'media.pause'; ifRevision = $Revision
+        params = @{ source = $BlockingFollowup.Handle }
+    }
+    Assert-Ok $FollowupPause ($Revision + 1) 'media.pause while prior media.play is unresolved'
+    $Revision++
+    if ([string]$FollowupPause.data.state -ne 'paused' -or -not [bool]$FollowupPause.data.processed) {
+        Fail 'same-source follow-up media.pause did not settle on its own action ticket.'
+    }
+    $null = Read-Event 'media.paused' $Revision $BlockingFollowup.Handle
+    $FollowupOrphanResync = Read-Until-Resync ($Revision + 1)
+    $Revision = [int64]$FollowupOrphanResync.revision
+    $null = Read-Event 'media.stateChanged' ($Revision + 1) $BlockingFollowup.Handle
+    $null = Read-Event 'media.paused' ($Revision + 1) $BlockingFollowup.Handle
+    $Revision++
+
+    $BlockingLate = Create-Source 'task10.create-blocking-signal' 'task10_media_source' 'task10-blocking-signal' @{
+        label = 'blocking-signal'; scenario = 'blockSignal'
+    } $Revision
+    $Revision = $BlockingLate.Revision
+    $BlockedPlay = Send-V2Request @{
+        op = 'request'; id = 'task10.play.blocking-signal'; method = 'media.play'; ifRevision = $Revision
+        params = @{ source = $BlockingLate.Handle }
+    }
+    Assert-Error $BlockedPlay 'timeout' $Revision 'media.play with blocking signal callback'
+    $BlockingTimeoutResync = Read-Until-Resync ($Revision + 1)
+    $Revision = [int64]$BlockingTimeoutResync.revision
+    $ReleasedState = Send-V2Request @{ op = 'request'; id = 'task10.state.release-blocking-signal'; method = 'media.getState'; params = @{ source = $BlockingLate.Handle } }
+    if (-not $ReleasedState.status.ok -or [string]$ReleasedState.data.state -ne 'playing') {
+        Fail 'blocking-signal source did not release to the expected playing state.'
+    }
+    $Revision = [int64]$ReleasedState.revision
+    $LateOrphanResync = Read-Until-Resync $Revision
+    $Revision = [int64]$LateOrphanResync.revision
+    $PauseAfterOrphan = Send-V2Request @{
+        op = 'request'; id = 'task10.pause.after-orphan'; method = 'media.pause'; ifRevision = $Revision
+        params = @{ source = $BlockingLate.Handle }
+    }
+    Assert-Ok $PauseAfterOrphan ($Revision + 1) 'media.pause after orphan completion'
+    $Revision++
+    $null = Read-Event 'media.stateChanged' $Revision $BlockingLate.Handle
+    $null = Read-Event 'media.paused' $Revision $BlockingLate.Handle
+
+    $RemovalOutstanding = Create-Source 'task10.create-removal-outstanding' 'task10_media_source' 'task10-removal-outstanding' @{
+        label = 'removal-outstanding'; scenario = 'blockSignalAutoRelease'
+    } $Revision
+    $Revision = $RemovalOutstanding.Revision
+    $RemovalTimeout = Send-V2Request @{
+        op = 'request'; id = 'task10.play.removal-outstanding'; method = 'media.play'; ifRevision = $Revision
+        params = @{ source = $RemovalOutstanding.Handle }
+    }
+    Assert-Error $RemovalTimeout 'timeout' $Revision 'media.play before source removal with outstanding callback'
+    $RemovalTimeoutResync = Read-Until-Resync ($Revision + 1)
+    $Revision = [int64]$RemovalTimeoutResync.revision
+    $RemoveOutstanding = Send-V2Request @{
+        op = 'request'; id = 'task10.remove.outstanding'; method = 'source.remove'; ifRevision = $Revision
+        params = @{ source = $RemovalOutstanding.Handle }
+    }
+    Assert-Ok $RemoveOutstanding ($Revision + 1) 'source.remove with timed-out media callback'
+    $Revision++
+    $null = Read-Event 'source.removed' $Revision $RemovalOutstanding.Handle
+
     $Malformed = Send-V2Request @{ op = 'request'; id = 'task10.bad-handle'; method = 'media.getState'; params = @{ source = '01' } }
     Assert-Error $Malformed 'bad_request' $Revision 'non-canonical media source handle'
 
@@ -407,6 +535,9 @@ try {
     $Revision = [int64]$Resync.revision
 
     foreach ($Entry in @(
+        @{ Handle = $Prequeue.Handle; Name = 'task10.remove-prequeue' },
+        @{ Handle = $BlockingFollowup.Handle; Name = 'task10.remove-blocking-followup' },
+        @{ Handle = $BlockingLate.Handle; Name = 'task10.remove-blocking-signal' },
         @{ Handle = $NoSeek.Handle; Name = 'task10.remove-no-seek' },
         @{ Handle = $Unsupported.Handle; Name = 'task10.remove-non-media' },
         @{ Handle = $Source.Handle; Name = 'task10.remove-source' },
@@ -420,6 +551,18 @@ try {
         $Revision++
         $null = Read-Event 'source.removed' $Revision $Entry.Handle
     }
+
+    $ShutdownOutstanding = Create-Source 'task10.create-shutdown-outstanding' 'task10_media_source' 'task10-shutdown-outstanding' @{
+        label = 'shutdown-outstanding'; scenario = 'blockSignalAutoRelease'
+    } $Revision
+    $Revision = $ShutdownOutstanding.Revision
+    $ShutdownTimeout = Send-V2Request @{
+        op = 'request'; id = 'task10.play.shutdown-outstanding'; method = 'media.play'; ifRevision = $Revision
+        params = @{ source = $ShutdownOutstanding.Handle }
+    }
+    Assert-Error $ShutdownTimeout 'timeout' $Revision 'media.play before shutdown with outstanding callback'
+    $ShutdownTimeoutResync = Read-Until-Resync ($Revision + 1)
+    $Revision = [int64]$ShutdownTimeoutResync.revision
 
     $Close = Send-V2Request @{
         op = 'request'; id = 'task10.close'; method = 'session.close'; ifRevision = $Revision; params = @{}

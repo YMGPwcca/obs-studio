@@ -54,6 +54,7 @@ public:
 
 	void v2_bind_source_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_begin_event_capture(RuntimeV2Result &result);
+	void v2_wait_for_event_capture_callbacks();
 	void v2_end_event_capture() noexcept;
 	void v2_drain_deferred_source_events(RevisionState::MutationGuard &guard);
 	void v2_flush_deferred_source_events(RevisionState::MutationGuard &guard);
@@ -63,6 +64,7 @@ public:
 	void v2_normalize_source_kind_metadata(RuntimeV2Result &result);
 	void v2_bind_media_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_begin_media_event_capture(RuntimeV2Result &result);
+	void v2_wait_for_media_event_callbacks();
 	void v2_end_media_event_capture() noexcept;
 	void v2_drain_deferred_media_events(RevisionState::MutationGuard &guard);
 	void v2_flush_deferred_media_events(RevisionState::MutationGuard &guard);

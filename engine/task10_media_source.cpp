@@ -1,8 +1,11 @@
 #include <obs-module.h>
 
 #include <cstdint>
+#include <chrono>
+#include <condition_variable>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <unordered_map>
 
 OBS_DECLARE_MODULE()
@@ -22,10 +25,46 @@ struct Task10MediaSource {
 	std::string scenario;
 	std::string peer_label;
 	bool peer_triggered = false;
+	bool prequeue_triggered = false;
+	bool followup_triggered = false;
+	std::mutex block_mutex;
+	std::condition_variable block_cv;
+	bool block_waiting = false;
+	bool release_block = false;
+	bool stop_release_worker = false;
+	bool block_signal_connected = false;
+	std::string block_signal;
+	std::thread release_worker;
 };
 
 std::mutex g_sources_mutex;
 std::unordered_map<std::string, Task10MediaSource *> g_sources;
+
+void block_media_signal_cb(void *data, calldata_t *)
+{
+	auto *context = static_cast<Task10MediaSource *>(data);
+	std::unique_lock lock(context->block_mutex);
+	context->block_waiting = true;
+	context->block_cv.notify_all();
+	context->block_cv.wait(lock, [&] { return context->release_block; });
+}
+
+void release_block_after_test_deadline(Task10MediaSource *context)
+{
+	std::unique_lock lock(context->block_mutex);
+	context->block_cv.wait(lock, [&] { return context->stop_release_worker || context->block_waiting; });
+	if (context->stop_release_worker)
+		return;
+
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(7);
+	context->block_cv.wait_until(lock, deadline, [&] {
+		return context->stop_release_worker || context->release_block;
+	});
+	if (!context->stop_release_worker)
+		context->release_block = true;
+	lock.unlock();
+	context->block_cv.notify_all();
+}
 
 void trigger_peer_started(const std::string &label)
 {
@@ -73,6 +112,15 @@ void *source_create(obs_data_t *settings, obs_source_t *source)
 	context->scenario = scenario ? scenario : "";
 	const char *peer_label = obs_data_get_string(settings, "peerLabel");
 	context->peer_label = peer_label ? peer_label : "";
+	if (context->scenario == "blockSignal" || context->scenario == "blockSignalFollowup" ||
+	    context->scenario == "blockSignalAutoRelease" || context->scenario == "blockTimeAutoRelease") {
+		context->block_signal = context->scenario == "blockTimeAutoRelease" ? "media_time" : "media_play";
+		signal_handler_connect(obs_source_get_signal_handler(source), context->block_signal.c_str(), block_media_signal_cb,
+				       context);
+		context->block_signal_connected = true;
+	}
+	if (context->scenario == "blockSignalAutoRelease" || context->scenario == "blockTimeAutoRelease")
+		context->release_worker = std::thread(release_block_after_test_deadline, context);
 
 	{
 		std::lock_guard lock(g_sources_mutex);
@@ -86,6 +134,18 @@ void source_destroy(void *data)
 	auto *context = static_cast<Task10MediaSource *>(data);
 	if (!context)
 		return;
+	if (context->release_worker.joinable()) {
+		{
+			std::lock_guard lock(context->block_mutex);
+			context->stop_release_worker = true;
+			context->release_block = true;
+		}
+		context->block_cv.notify_all();
+		context->release_worker.join();
+	}
+	if (context->block_signal_connected)
+		signal_handler_disconnect(obs_source_get_signal_handler(context->source), context->block_signal.c_str(),
+					 block_media_signal_cb, context);
 
 	{
 		std::lock_guard lock(g_sources_mutex);
@@ -244,8 +304,18 @@ int64_t media_get_duration(void *)
 int64_t media_get_time(void *data)
 {
 	auto *context = static_cast<Task10MediaSource *>(data);
-	std::lock_guard lock(context->mutex);
-	return context->position_ms;
+	bool queue_preexisting_seek = false;
+	int64_t position = 0;
+	{
+		std::lock_guard lock(context->mutex);
+		queue_preexisting_seek = context->scenario == "prequeue" && !context->prequeue_triggered;
+		if (queue_preexisting_seek)
+			context->prequeue_triggered = true;
+		position = context->position_ms;
+	}
+	if (queue_preexisting_seek)
+		obs_source_media_set_time(context->source, 1000);
+	return position;
 }
 
 void media_set_time(void *data, int64_t milliseconds)
@@ -258,6 +328,29 @@ void media_set_time(void *data, int64_t milliseconds)
 enum obs_media_state media_get_state(void *data)
 {
 	auto *context = static_cast<Task10MediaSource *>(data);
+	bool release_block = false;
+	bool queue_followup_pause = false;
+	{
+		std::lock_guard lock(context->mutex);
+		if (context->scenario == "blockSignal") {
+			std::lock_guard block_lock(context->block_mutex);
+			release_block = context->block_waiting;
+			if (release_block)
+				context->release_block = true;
+		} else if (context->scenario == "blockSignalFollowup") {
+			std::lock_guard block_lock(context->block_mutex);
+			if (context->block_waiting && !context->followup_triggered) {
+				context->followup_triggered = true;
+				context->release_block = true;
+				release_block = true;
+				queue_followup_pause = true;
+			}
+		}
+	}
+	if (queue_followup_pause)
+		obs_source_media_play_pause(context->source, true);
+	if (release_block)
+		context->block_cv.notify_all();
 	std::lock_guard lock(context->mutex);
 	return context->state;
 }

@@ -162,8 +162,10 @@ Request:
 `positionMs` is required, an integer in `0..INT64_MAX`. If the current duration
 is non-negative, the requested position must not exceed it. If duration is
 negative, any non-negative signed 64-bit position is accepted. The engine
-submits `obs_source_media_set_time(source, positionMs)` and waits for the fork's
-internal `media_time` signal emitted after the queued plugin callback returns.
+submits the queued set-time action through its private tracked libobs bridge and
+waits for the fork's internal `media_time` signal emitted after the queued
+plugin callback returns. The signal carries a private source-local action ticket
+used only inside the engine/libobs boundary.
 
 The result is:
 
@@ -182,9 +184,11 @@ not a revisioned event stream.
 ## Events
 
 All media state events are state events, not telemetry. Their `source` value is a
-canonical handle. A command-owned event uses the command response revision and
-is published after the response. An unrelated callback receives its own later
-revision. Event sequence numbers follow `EVENTS_V1.md`.
+canonical handle. A command-owned core action event is command-owned only when
+the observer has the exact source-local action ticket submitted by that request;
+it uses the command response revision and is published after the response. An
+unrelated callback receives its own later revision. Event sequence numbers follow
+`EVENTS_V1.md`.
 
 ### State transition event
 
@@ -220,6 +224,14 @@ These events have the following payload shape:
 - `media.error` — an observed media signal found a transition into
   `OBS_MEDIA_STATE_ERROR`.
 
+The core `media_play`, `media_pause`, `media_restart`, `media_stopped`,
+`media_next`, `media_previous`, and internal `media_time` signals carry an
+engine/libobs-only action ticket. The ticket is not exposed in protocol events.
+`media.started` and `media.ended` do not carry a ticket and are always treated as
+independent lifecycle observations, including when a source settings callback
+emits one as a side effect of a request. Same-source ordering or signal names do
+not establish command ownership.
+
 There is no generic libobs `media_error` signal in this upstream snapshot. A
 source that enters `ERROR` without emitting another observable media signal can
 still be queried with `media.getState`, but cannot produce a real-time
@@ -230,21 +242,33 @@ not churn the canonical engine revision.
 
 ## Asynchronous settlement and errors
 
-libobs enqueues media actions and processes them from the video source tick. The
-engine connects an action-specific waiter before enqueueing, observes the
-source's normalized signal batch, and waits up to five seconds for completion.
-No wall-clock sleep is used.
+libobs enqueues FIFO media-action records and processes them from the video
+source tick. Each record receives a monotonic source-local action ticket. The
+engine's permanent media observer receives the ticket with the core action
+signal, stores the normalized batch in the bounded deferred bridge, notifies a
+condition variable, and waits up to five seconds for the exact
+`(source handle, expected signal, action ticket)` tuple. There is no per-request
+signal callback connection/disconnection and no wall-clock sleep.
+
+Older or unrelated same-source batches are never folded into a settled command.
+They remain independent asynchronous state and receive their own revision or a
+resynchronization boundary when their effect cannot be represented incrementally.
 
 If the signal is not observed before the deadline, the request returns
 `timeout` without claiming a successful mutation. Because the action may have
-executed after observation was lost, the media bridge marks incremental delivery
-uncertain and the normal event flush emits mandatory
-`session.resyncRequired` with reason `event_queue_overflow`.
+executed after observation was lost, the exact timed-out ticket is retained as an
+orphan candidate and the normal event flush emits mandatory
+`session.resyncRequired` with reason `event_queue_overflow`. If that ticket later
+completes, it cannot be claimed by a later request. Its completion is handled as
+an independent uncertainty boundary; the resync marker is ordered after already
+queued command events. This also applies when the completion produces no ordinary
+event, including `media_time`, restart, next, and previous.
 
-Deferred media batches are bounded. They are correlated by source handle and
-action signal; batches for other sources remain independent and receive their
-own revisions. Observer teardown occurs before source/libobs shutdown and before
-engine-owned source references are released.
+Deferred media batches are bounded and retain their action ticket. Overflow or
+unreliable ticket tracking discards incremental ownership and requires resync.
+Observer teardown occurs before source/libobs shutdown and before engine-owned
+source references are released. A shutdown or source-removal boundary never
+publishes an event for an invalid handle.
 
 ## Revision rules
 
@@ -253,9 +277,9 @@ engine-owned source references are released.
 - A successful idempotent no-op does not consume a revision.
 - A successfully processed play, pause, stop, or seek consumes one revision
   only when the resulting state/position or an observed lifecycle event changes
-  canonical state. Restart/next/previous consume one revision after their core
-  action signal because their selected-entry effect is not generically
-  introspectable, even when the state enum is unchanged.
+  canonical state. Restart/next/previous consume one revision after their exact
+  core action ticket settles because their selected-entry effect is not
+  generically introspectable, even when the state enum is unchanged.
 - A failed validation, unsupported target, stale guard, or timeout does not
   claim a successful command revision.
 - Natural started/ended/error/state transitions outside a request receive their
