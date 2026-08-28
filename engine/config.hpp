@@ -17,7 +17,6 @@ struct Config {
 		"decklink",
 		"image-source",
 		"nv-filters",
-		"obs-browser",
 		"obs-ffmpeg",
 		"obs-filters",
 		"obs-libfdk",
