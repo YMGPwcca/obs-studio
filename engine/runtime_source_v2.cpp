@@ -654,62 +654,68 @@ void Engine::v2_bind_source_events(RevisionState *revisions, EventDispatcher *ev
 {
 	if (!source_v2_state_)
 		source_v2_state_ = std::make_shared<SourceV2State>();
-	std::lock_guard lock(source_v2_state_->mutex);
-	source_v2_state_->revisions = revisions;
-	source_v2_state_->events = events;
-	source_v2_state_->accepting = revisions && events;
+	{
+		std::lock_guard lock(source_v2_state_->mutex);
+		source_v2_state_->revisions = revisions;
+		source_v2_state_->events = events;
+		source_v2_state_->accepting = revisions && events;
+	}
+	v2_bind_media_events(revisions, events);
 }
 
 void Engine::v2_begin_event_capture(RuntimeV2Result &result)
 {
-	if (!source_v2_state_)
-		return;
-	std::lock_guard lock(source_v2_state_->mutex);
-	source_v2_state_->capture = &result;
-	source_v2_state_->capture_gate.begin();
+	if (source_v2_state_) {
+		std::lock_guard lock(source_v2_state_->mutex);
+		source_v2_state_->capture = &result;
+		source_v2_state_->capture_gate.begin();
+	}
+	v2_begin_media_event_capture(result);
 }
 
 void Engine::v2_end_event_capture() noexcept
 {
-	if (!source_v2_state_)
-		return;
+	if (source_v2_state_) {
+		RevisionState *revisions = nullptr;
+		EventDispatcher *events = nullptr;
+		bool lost_deferred = false;
+		{
+			std::lock_guard lock(source_v2_state_->mutex);
+			source_v2_state_->capture = nullptr;
+			source_v2_state_->capture_gate.end();
+			lost_deferred = source_v2_state_->deferred_overflow || !source_v2_state_->deferred.empty();
+			if (lost_deferred) {
+				clear_deferred_source_events(*source_v2_state_);
+				revisions = source_v2_state_->revisions;
+				events = source_v2_state_->events;
+			}
+		}
 
-	RevisionState *revisions = nullptr;
-	EventDispatcher *events = nullptr;
-	bool lost_deferred = false;
-	{
-		std::lock_guard lock(source_v2_state_->mutex);
-		source_v2_state_->capture = nullptr;
-		source_v2_state_->capture_gate.end();
-		lost_deferred = source_v2_state_->deferred_overflow || !source_v2_state_->deferred.empty();
-		if (lost_deferred) {
-			clear_deferred_source_events(*source_v2_state_);
-			revisions = source_v2_state_->revisions;
-			events = source_v2_state_->events;
+		if (lost_deferred && revisions && events) {
+			std::fprintf(stderr, "obs-engine: deferred source events abandoned; forcing controller resync\n");
+			std::fflush(stderr);
+			events->require_resync_due_to_overflow(revisions->current());
 		}
 	}
-
-	if (lost_deferred && revisions && events) {
-		std::fprintf(stderr, "obs-engine: deferred source events abandoned; forcing controller resync\n");
-		std::fflush(stderr);
-		events->require_resync_due_to_overflow(revisions->current());
-	}
+	v2_end_media_event_capture();
 }
 
 void Engine::v2_drain_deferred_source_events(RevisionState::MutationGuard &guard)
 {
-	if (!source_v2_state_)
-		return;
-	DeferredSourceEventSnapshot snapshot = take_deferred_source_events(*source_v2_state_, true, false);
-	publish_deferred_source_snapshot(std::move(snapshot), guard);
+	if (source_v2_state_) {
+		DeferredSourceEventSnapshot snapshot = take_deferred_source_events(*source_v2_state_, true, false);
+		publish_deferred_source_snapshot(std::move(snapshot), guard);
+	}
+	v2_drain_deferred_media_events(guard);
 }
 
 void Engine::v2_flush_deferred_source_events(RevisionState::MutationGuard &guard)
 {
-	if (!source_v2_state_)
-		return;
-	DeferredSourceEventSnapshot snapshot = take_deferred_source_events(*source_v2_state_, false, true);
-	publish_deferred_source_snapshot(std::move(snapshot), guard);
+	if (source_v2_state_) {
+		DeferredSourceEventSnapshot snapshot = take_deferred_source_events(*source_v2_state_, false, true);
+		publish_deferred_source_snapshot(std::move(snapshot), guard);
+	}
+	v2_flush_deferred_media_events(guard);
 }
 
 void Engine::v2_sync_source_observers()
@@ -771,10 +777,12 @@ void Engine::v2_sync_source_observers()
 		std::lock_guard lock(source_v2_state_->mutex);
 		source_v2_state_->retired.insert(source_v2_state_->retired.end(), retire.begin(), retire.end());
 	}
+	v2_sync_media_observers();
 }
 
 void Engine::v2_prepare_shutdown() noexcept
 {
+	v2_prepare_media_shutdown();
 	if (!source_v2_state_)
 		return;
 

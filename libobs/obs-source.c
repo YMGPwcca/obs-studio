@@ -111,6 +111,7 @@ static const char *source_signals[] = {
 	"void media_stopped(ptr source)",
 	"void media_next(ptr source)",
 	"void media_previous(ptr source)",
+	"void media_time(ptr source)",
 	"void media_started(ptr source)",
 	"void media_ended(ptr source)",
 	NULL,
@@ -1357,6 +1358,7 @@ void process_media_actions(obs_source_t *source)
 			break;
 		case MEDIA_ACTION_SET_TIME:
 			source->info.media_set_time(source->context.data, action.ms);
+			obs_source_dosignal(source, NULL, "media_time");
 			break;
 		}
 	}

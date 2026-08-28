@@ -37,6 +37,18 @@ constexpr CapabilityDescriptor kCapabilities[] = {
 	{"item.create.v1", false},
 	{"item.remove.v1", false},
 	{"item.setTransform.v1", false},
+	{"media.getDuration.v1", false},
+	{"media.getPosition.v1", false},
+	{"media.getState.v1", false},
+	{"media.next.v1", false},
+	{"media.pause.v1", false},
+	{"media.play.v1", false},
+	{"media.previous.v1", false},
+	{"media.restart.v1", false},
+	{"media.setPosition.v1", false},
+	{"media.stop.v1", false},
+	{"media.togglePause.v1", false},
+	{"media.v1", false},
 	{"properties.v1", false},
 	{"properties.get.v1", false},
 	{"properties.getListItems.v1", false},
@@ -129,6 +141,17 @@ enum class V2Method {
 	ItemCreate,
 	ItemRemove,
 	ItemSetTransform,
+	MediaGetState,
+	MediaPlay,
+	MediaPause,
+	MediaTogglePause,
+	MediaStop,
+	MediaRestart,
+	MediaNext,
+	MediaPrevious,
+	MediaGetDuration,
+	MediaGetPosition,
+	MediaSetPosition,
 	Unknown,
 };
 
@@ -232,6 +255,28 @@ V2Method classify_method(std::string_view method)
 		return V2Method::ItemRemove;
 	if (method == "item.setTransform")
 		return V2Method::ItemSetTransform;
+	if (method == "media.getState")
+		return V2Method::MediaGetState;
+	if (method == "media.play")
+		return V2Method::MediaPlay;
+	if (method == "media.pause")
+		return V2Method::MediaPause;
+	if (method == "media.togglePause")
+		return V2Method::MediaTogglePause;
+	if (method == "media.stop")
+		return V2Method::MediaStop;
+	if (method == "media.restart")
+		return V2Method::MediaRestart;
+	if (method == "media.next")
+		return V2Method::MediaNext;
+	if (method == "media.previous")
+		return V2Method::MediaPrevious;
+	if (method == "media.getDuration")
+		return V2Method::MediaGetDuration;
+	if (method == "media.getPosition")
+		return V2Method::MediaGetPosition;
+	if (method == "media.setPosition")
+		return V2Method::MediaSetPosition;
 	return V2Method::Unknown;
 }
 
@@ -253,6 +298,14 @@ bool method_is_mutating(V2Method method)
 	case V2Method::ItemCreate:
 	case V2Method::ItemRemove:
 	case V2Method::ItemSetTransform:
+	case V2Method::MediaPlay:
+	case V2Method::MediaPause:
+	case V2Method::MediaTogglePause:
+	case V2Method::MediaStop:
+	case V2Method::MediaRestart:
+	case V2Method::MediaNext:
+	case V2Method::MediaPrevious:
+	case V2Method::MediaSetPosition:
 		return true;
 	default:
 		return false;
@@ -304,6 +357,17 @@ bool method_is_runtime(V2Method method)
 	case V2Method::ItemCreate:
 	case V2Method::ItemRemove:
 	case V2Method::ItemSetTransform:
+	case V2Method::MediaGetState:
+	case V2Method::MediaPlay:
+	case V2Method::MediaPause:
+	case V2Method::MediaTogglePause:
+	case V2Method::MediaStop:
+	case V2Method::MediaRestart:
+	case V2Method::MediaNext:
+	case V2Method::MediaPrevious:
+	case V2Method::MediaGetDuration:
+	case V2Method::MediaGetPosition:
+	case V2Method::MediaSetPosition:
 		return true;
 	default:
 		return false;
@@ -411,6 +475,28 @@ bool execute_runtime_method(Engine &engine, V2Method method, obs_data_t *params,
 		return engine.v2_item_remove(params, result, error);
 	case V2Method::ItemSetTransform:
 		return engine.v2_item_set_transform(params, result, error);
+	case V2Method::MediaGetState:
+		return engine.v2_media_get_state(params, result, error);
+	case V2Method::MediaPlay:
+		return engine.v2_media_play(params, result, error);
+	case V2Method::MediaPause:
+		return engine.v2_media_pause(params, result, error);
+	case V2Method::MediaTogglePause:
+		return engine.v2_media_toggle_pause(params, result, error);
+	case V2Method::MediaStop:
+		return engine.v2_media_stop(params, result, error);
+	case V2Method::MediaRestart:
+		return engine.v2_media_restart(params, result, error);
+	case V2Method::MediaNext:
+		return engine.v2_media_next(params, result, error);
+	case V2Method::MediaPrevious:
+		return engine.v2_media_previous(params, result, error);
+	case V2Method::MediaGetDuration:
+		return engine.v2_media_get_duration(params, result, error);
+	case V2Method::MediaGetPosition:
+		return engine.v2_media_get_position(params, result, error);
+	case V2Method::MediaSetPosition:
+		return engine.v2_media_set_position(params, result, error);
 	default:
 		error.code = "internal_error";
 		error.message = "runtime method dispatch failed";

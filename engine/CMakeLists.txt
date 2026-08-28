@@ -19,6 +19,7 @@ target_sources(
     runtime.cpp
     runtime.hpp
     runtime_interaction_v2.cpp
+    runtime_media_v2.cpp
     runtime_properties_v2.cpp
     runtime_source_settle_v2.cpp
     runtime_source_v2.cpp
@@ -84,6 +85,20 @@ target_link_libraries(obs-engine-task9-interaction-plugin PRIVATE OBS::libobs)
 set_target_properties(
   obs-engine-task9-interaction-plugin
   PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task9-interaction-source"
+)
+
+# Task 10 deterministic controllable-media source. It is built and staged only
+# by the Task-10 integration workflow and has no install rule.
+add_library(obs-engine-task10-media-plugin MODULE EXCLUDE_FROM_ALL task10_media_source.cpp)
+target_compile_features(obs-engine-task10-media-plugin PRIVATE cxx_std_20)
+target_compile_definitions(
+  obs-engine-task10-media-plugin
+  PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+)
+target_link_libraries(obs-engine-task10-media-plugin PRIVATE OBS::libobs)
+set_target_properties(
+  obs-engine-task10-media-plugin
+  PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task10-media-source"
 )
 
 # Restrict implicit dependent-DLL resolution before main() runs. 0xA00 is

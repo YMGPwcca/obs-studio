@@ -16,6 +16,7 @@ namespace obs_engine {
 
 class EventDispatcher;
 struct InteractionV2State;
+struct MediaV2State;
 struct SourceV2State;
 
 struct ItemEntry {
@@ -60,6 +61,13 @@ public:
 	void v2_prepare_shutdown() noexcept;
 	void v2_settle_source_mutation(obs_data_t *params, RuntimeV2Result &result);
 	void v2_normalize_source_kind_metadata(RuntimeV2Result &result);
+	void v2_bind_media_events(RevisionState *revisions, EventDispatcher *events);
+	void v2_begin_media_event_capture(RuntimeV2Result &result);
+	void v2_end_media_event_capture() noexcept;
+	void v2_drain_deferred_media_events(RevisionState::MutationGuard &guard);
+	void v2_flush_deferred_media_events(RevisionState::MutationGuard &guard);
+	void v2_sync_media_observers();
+	void v2_prepare_media_shutdown() noexcept;
 
 	bool v2_source_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_source_kind_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -93,6 +101,18 @@ public:
 	bool v2_interaction_key(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_interaction_text(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_interaction_reset(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+
+	bool v2_media_get_state(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_media_play(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_media_pause(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_media_toggle_pause(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_media_stop(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_media_restart(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_media_next(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_media_previous(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_media_get_duration(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_media_get_position(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_media_set_position(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 
 	bool v2_scene_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -145,6 +165,7 @@ private:
 	ItemMap items_;
 	std::shared_ptr<SourceV2State> source_v2_state_;
 	std::shared_ptr<InteractionV2State> interaction_v2_state_;
+	std::shared_ptr<MediaV2State> media_v2_state_;
 };
 
 } // namespace obs_engine
