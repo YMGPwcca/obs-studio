@@ -19,6 +19,7 @@ target_sources(
     runtime.cpp
     runtime.hpp
     runtime_interaction_v2.cpp
+    runtime_filter_v2.cpp
     runtime_media_v2.cpp
     runtime_properties_v2.cpp
     runtime_source_settle_v2.cpp
@@ -99,6 +100,20 @@ target_link_libraries(obs-engine-task10-media-plugin PRIVATE OBS::libobs)
 set_target_properties(
   obs-engine-task10-media-plugin
   PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task10-media-source"
+)
+
+# Task 11 deterministic parent/filter source. It is built and staged only by
+# the Task-11 integration workflow and has no install rule.
+add_library(obs-engine-task11-filter-plugin MODULE EXCLUDE_FROM_ALL task11_filter_source.cpp)
+target_compile_features(obs-engine-task11-filter-plugin PRIVATE cxx_std_20)
+target_compile_definitions(
+  obs-engine-task11-filter-plugin
+  PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+)
+target_link_libraries(obs-engine-task11-filter-plugin PRIVATE OBS::libobs)
+set_target_properties(
+  obs-engine-task11-filter-plugin
+  PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task11-filter-source"
 )
 
 # Restrict implicit dependent-DLL resolution before main() runs. 0xA00 is

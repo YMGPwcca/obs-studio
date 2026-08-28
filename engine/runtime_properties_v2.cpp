@@ -46,6 +46,16 @@ bool is_bounded_string(const std::string &value, size_t max_bytes)
 	return !value.empty() && value.size() <= max_bytes;
 }
 
+bool filter_type_exists(const char *kind)
+{
+	const char *candidate = nullptr;
+	for (size_t index = 0; obs_enum_filter_types(index, &candidate); ++index) {
+		if (candidate && std::strcmp(candidate, kind) == 0)
+			return true;
+	}
+	return false;
+}
+
 bool read_string_field(obs_data_t *data, const char *name, std::string &out, bool &present)
 {
 	obs_data_item_t *item = obs_data_item_byname(data, name);
@@ -245,9 +255,39 @@ bool Engine::v2_build_property_target(obs_data_t *params, ObsDataPtr &target, Ob
 		target.reset(obs_data_create());
 		obs_data_set_string(target.get(), "type", "sourceKind");
 		obs_data_set_string(target.get(), "kind", kind.c_str());
+	} else if (type == "filter") {
+		uint64_t handle = 0;
+		if (!read_handle_field(requested_target.get(), "filter", handle))
+			return fail(error, "bad_request", "filter property targets require a canonical decimal target.filter handle");
+		auto it = filters_.find(handle);
+		if (it == filters_.end())
+			return fail(error, "not_found", "filter property target was not found");
+		source = it->second.filter;
+		properties = obs_source_properties(source);
+		if (!properties)
+			return fail(error, "not_available", "filter does not expose configurable libobs properties");
+		base_settings.reset(obs_source_get_settings(source));
+		target.reset(obs_data_create());
+		obs_data_set_string(target.get(), "type", "filter");
+		set_handle(target.get(), "filter", handle);
+		set_handle(target.get(), "source", it->second.source_id);
+	} else if (type == "filterKind") {
+		std::string kind;
+		if (!read_string_field(requested_target.get(), "kind", kind, present) || !present ||
+		    !is_safe_identifier(kind.c_str(), kMaxSourceKindBytes))
+			return fail(error, "bad_request", "filterKind property targets require a valid target.kind identifier");
+		if (!filter_type_exists(kind.c_str()))
+			return fail(error, "not_found", "filter kind property target is not registered");
+		properties = obs_get_source_properties(kind.c_str());
+		if (!properties)
+			return fail(error, "not_available", "filter kind does not expose configurable libobs properties");
+		base_settings.reset(obs_get_source_defaults(kind.c_str()));
+		target.reset(obs_data_create());
+		obs_data_set_string(target.get(), "type", "filterKind");
+		obs_data_set_string(target.get(), "kind", kind.c_str());
 	} else {
 		return fail(error, "unsupported_capability",
-			    "Task 7 properties currently supports only source and sourceKind targets");
+			    "properties target type is not supported by the current engine");
 	}
 
 	settings = clone_property_settings(base_settings.get());

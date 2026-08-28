@@ -37,6 +37,26 @@ constexpr CapabilityDescriptor kCapabilities[] = {
 	{"item.create.v1", false},
 	{"item.remove.v1", false},
 	{"item.setTransform.v1", false},
+	{"filter.create.v1", false},
+	{"filter.duplicate.v1", false},
+	{"filter.get.v1", false},
+	{"filter.getEnabled.v1", false},
+	{"filter.getSettings.v1", false},
+	{"filter.kindDefaults.v1", false},
+	{"filter.kindList.v1", false},
+	{"filter.kindProperties.v1", false},
+	{"filter.list.v1", false},
+	{"filter.moveBottom.v1", false},
+	{"filter.moveDown.v1", false},
+	{"filter.moveTop.v1", false},
+	{"filter.moveUp.v1", false},
+	{"filter.patchSettings.v1", false},
+	{"filter.remove.v1", false},
+	{"filter.rename.v1", false},
+	{"filter.replaceSettings.v1", false},
+	{"filter.setEnabled.v1", false},
+	{"filter.setOrder.v1", false},
+	{"filter.v1", false},
 	{"media.getDuration.v1", false},
 	{"media.getPosition.v1", false},
 	{"media.getState.v1", false},
@@ -141,6 +161,25 @@ enum class V2Method {
 	ItemCreate,
 	ItemRemove,
 	ItemSetTransform,
+	FilterKindList,
+	FilterKindDefaults,
+	FilterKindProperties,
+	FilterList,
+	FilterGet,
+	FilterCreate,
+	FilterRemove,
+	FilterRename,
+	FilterDuplicate,
+	FilterGetSettings,
+	FilterPatchSettings,
+	FilterReplaceSettings,
+	FilterSetEnabled,
+	FilterGetEnabled,
+	FilterSetOrder,
+	FilterMoveUp,
+	FilterMoveDown,
+	FilterMoveTop,
+	FilterMoveBottom,
 	MediaGetState,
 	MediaPlay,
 	MediaPause,
@@ -255,6 +294,44 @@ V2Method classify_method(std::string_view method)
 		return V2Method::ItemRemove;
 	if (method == "item.setTransform")
 		return V2Method::ItemSetTransform;
+	if (method == "filter.kindList")
+		return V2Method::FilterKindList;
+	if (method == "filter.kindDefaults")
+		return V2Method::FilterKindDefaults;
+	if (method == "filter.kindProperties")
+		return V2Method::FilterKindProperties;
+	if (method == "filter.list")
+		return V2Method::FilterList;
+	if (method == "filter.get")
+		return V2Method::FilterGet;
+	if (method == "filter.create")
+		return V2Method::FilterCreate;
+	if (method == "filter.remove")
+		return V2Method::FilterRemove;
+	if (method == "filter.rename")
+		return V2Method::FilterRename;
+	if (method == "filter.duplicate")
+		return V2Method::FilterDuplicate;
+	if (method == "filter.getSettings")
+		return V2Method::FilterGetSettings;
+	if (method == "filter.patchSettings")
+		return V2Method::FilterPatchSettings;
+	if (method == "filter.replaceSettings")
+		return V2Method::FilterReplaceSettings;
+	if (method == "filter.setEnabled")
+		return V2Method::FilterSetEnabled;
+	if (method == "filter.getEnabled")
+		return V2Method::FilterGetEnabled;
+	if (method == "filter.setOrder")
+		return V2Method::FilterSetOrder;
+	if (method == "filter.moveUp")
+		return V2Method::FilterMoveUp;
+	if (method == "filter.moveDown")
+		return V2Method::FilterMoveDown;
+	if (method == "filter.moveTop")
+		return V2Method::FilterMoveTop;
+	if (method == "filter.moveBottom")
+		return V2Method::FilterMoveBottom;
 	if (method == "media.getState")
 		return V2Method::MediaGetState;
 	if (method == "media.play")
@@ -298,6 +375,18 @@ bool method_is_mutating(V2Method method)
 	case V2Method::ItemCreate:
 	case V2Method::ItemRemove:
 	case V2Method::ItemSetTransform:
+	case V2Method::FilterCreate:
+	case V2Method::FilterRemove:
+	case V2Method::FilterRename:
+	case V2Method::FilterDuplicate:
+	case V2Method::FilterPatchSettings:
+	case V2Method::FilterReplaceSettings:
+	case V2Method::FilterSetEnabled:
+	case V2Method::FilterSetOrder:
+	case V2Method::FilterMoveUp:
+	case V2Method::FilterMoveDown:
+	case V2Method::FilterMoveTop:
+	case V2Method::FilterMoveBottom:
 	case V2Method::MediaPlay:
 	case V2Method::MediaPause:
 	case V2Method::MediaTogglePause:
@@ -357,6 +446,25 @@ bool method_is_runtime(V2Method method)
 	case V2Method::ItemCreate:
 	case V2Method::ItemRemove:
 	case V2Method::ItemSetTransform:
+	case V2Method::FilterKindList:
+	case V2Method::FilterKindDefaults:
+	case V2Method::FilterKindProperties:
+	case V2Method::FilterList:
+	case V2Method::FilterGet:
+	case V2Method::FilterCreate:
+	case V2Method::FilterRemove:
+	case V2Method::FilterRename:
+	case V2Method::FilterDuplicate:
+	case V2Method::FilterGetSettings:
+	case V2Method::FilterPatchSettings:
+	case V2Method::FilterReplaceSettings:
+	case V2Method::FilterSetEnabled:
+	case V2Method::FilterGetEnabled:
+	case V2Method::FilterSetOrder:
+	case V2Method::FilterMoveUp:
+	case V2Method::FilterMoveDown:
+	case V2Method::FilterMoveTop:
+	case V2Method::FilterMoveBottom:
 	case V2Method::MediaGetState:
 	case V2Method::MediaPlay:
 	case V2Method::MediaPause:
@@ -381,6 +489,17 @@ bool method_needs_source_settle(V2Method method)
 	case V2Method::SourceReplaceSettings:
 	case V2Method::SourceResetSettings:
 	case V2Method::SourceLoadState:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool method_needs_filter_settle(V2Method method)
+{
+	switch (method) {
+	case V2Method::FilterPatchSettings:
+	case V2Method::FilterReplaceSettings:
 		return true;
 	default:
 		return false;
@@ -475,6 +594,44 @@ bool execute_runtime_method(Engine &engine, V2Method method, obs_data_t *params,
 		return engine.v2_item_remove(params, result, error);
 	case V2Method::ItemSetTransform:
 		return engine.v2_item_set_transform(params, result, error);
+	case V2Method::FilterKindList:
+		return engine.v2_filter_kind_list(params, result, error);
+	case V2Method::FilterKindDefaults:
+		return engine.v2_filter_kind_defaults(params, result, error);
+	case V2Method::FilterKindProperties:
+		return engine.v2_filter_kind_properties(params, result, error);
+	case V2Method::FilterList:
+		return engine.v2_filter_list(params, result, error);
+	case V2Method::FilterGet:
+		return engine.v2_filter_get(params, result, error);
+	case V2Method::FilterCreate:
+		return engine.v2_filter_create(params, result, error);
+	case V2Method::FilterRemove:
+		return engine.v2_filter_remove(params, result, error);
+	case V2Method::FilterRename:
+		return engine.v2_filter_rename(params, result, error);
+	case V2Method::FilterDuplicate:
+		return engine.v2_filter_duplicate(params, result, error);
+	case V2Method::FilterGetSettings:
+		return engine.v2_filter_get_settings(params, result, error);
+	case V2Method::FilterPatchSettings:
+		return engine.v2_filter_patch_settings(params, result, error);
+	case V2Method::FilterReplaceSettings:
+		return engine.v2_filter_replace_settings(params, result, error);
+	case V2Method::FilterSetEnabled:
+		return engine.v2_filter_set_enabled(params, result, error);
+	case V2Method::FilterGetEnabled:
+		return engine.v2_filter_get_enabled(params, result, error);
+	case V2Method::FilterSetOrder:
+		return engine.v2_filter_set_order(params, result, error);
+	case V2Method::FilterMoveUp:
+		return engine.v2_filter_move_up(params, result, error);
+	case V2Method::FilterMoveDown:
+		return engine.v2_filter_move_down(params, result, error);
+	case V2Method::FilterMoveTop:
+		return engine.v2_filter_move_top(params, result, error);
+	case V2Method::FilterMoveBottom:
+		return engine.v2_filter_move_bottom(params, result, error);
 	case V2Method::MediaGetState:
 		return engine.v2_media_get_state(params, result, error);
 	case V2Method::MediaPlay:
@@ -921,6 +1078,8 @@ bool handle_v2_request(Engine &engine, const Config &, RevisionState &revisions,
 			engine.v2_normalize_source_kind_metadata(result);
 		if (succeeded && capture && method_needs_source_settle(method))
 			engine.v2_settle_source_mutation(request.params.get(), result);
+		if (succeeded && capture && method_needs_filter_settle(method))
+			engine.v2_settle_filter_mutation(request.params.get(), result);
 
 		// Observer connect/disconnect can take libobs signal mutexes. Keep the
 		// capture gate active until synchronization is complete so cross-thread

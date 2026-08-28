@@ -17,12 +17,18 @@ namespace obs_engine {
 class EventDispatcher;
 struct InteractionV2State;
 struct MediaV2State;
+struct FilterV2State;
 struct SourceV2State;
 
 struct ItemEntry {
 	uint64_t scene_id = 0;
 	uint64_t source_id = 0;
 	obs_sceneitem_t *item = nullptr;
+};
+
+struct FilterEntry {
+	uint64_t source_id = 0;
+	obs_source_t *filter = nullptr;
 };
 
 struct RuntimeV2Error {
@@ -68,6 +74,17 @@ public:
 	void v2_flush_deferred_media_events(RevisionState::MutationGuard &guard);
 	void v2_sync_media_observers();
 	void v2_prepare_media_shutdown() noexcept;
+	void v2_bind_filter_events(RevisionState *revisions, EventDispatcher *events);
+	void v2_begin_filter_event_capture(RuntimeV2Result &result);
+	void v2_end_filter_event_capture() noexcept;
+	void v2_drain_deferred_filter_events(RevisionState::MutationGuard &guard);
+	void v2_flush_deferred_filter_events(RevisionState::MutationGuard &guard);
+	void v2_sync_filter_observers();
+	void v2_prepare_filter_shutdown() noexcept;
+	void v2_settle_filter_mutation(obs_data_t *params, RuntimeV2Result &result);
+	void v2_filter_prepare_parent_removal(uint64_t source_id, RuntimeV2Result &result);
+	void v2_filter_register_source_filters(uint64_t source_id, obs_source_t *source, RuntimeV2Result *result = nullptr,
+					       uint64_t duplicate_of = 0);
 
 	bool v2_source_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_source_kind_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -114,6 +131,26 @@ public:
 	bool v2_media_get_position(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_media_set_position(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 
+	bool v2_filter_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_kind_defaults(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_kind_properties(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_rename(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_duplicate(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_get_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_patch_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_replace_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_set_enabled(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_get_enabled(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_set_order(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_move_up(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_move_down(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_move_top(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_filter_move_bottom(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+
 	bool v2_scene_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_item_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -129,12 +166,14 @@ public:
 
 private:
 	using ItemMap = std::unordered_map<uint64_t, ItemEntry>;
+	using FilterMap = std::unordered_map<uint64_t, FilterEntry>;
 
 	uint64_t allocate_handle();
 	bool input_type_exists(const char *type) const;
 	bool validate_source_type(long long request_id, obs_data_t *request, const char *&type) const;
 	bool v2_build_property_target(obs_data_t *params, ObsDataPtr &target, ObsDataPtr &settings,
 				      obs_properties_t *&properties, obs_source_t *&source, RuntimeV2Error &error);
+	ObsDataPtr v2_filter_order_data(uint64_t source_id, uint64_t changed, obs_source_t *parent) const;
 	bool v2_get_interaction_source(obs_data_t *params, uint64_t &handle, obs_source_t *&source,
 				       RuntimeV2Error &error);
 
@@ -163,9 +202,12 @@ private:
 	std::unordered_map<uint64_t, obs_source_t *> sources_;
 	std::unordered_map<uint64_t, obs_scene_t *> scenes_;
 	ItemMap items_;
+	FilterMap filters_;
+	std::unordered_map<obs_source_t *, uint64_t> filter_handles_;
 	std::shared_ptr<SourceV2State> source_v2_state_;
 	std::shared_ptr<InteractionV2State> interaction_v2_state_;
 	std::shared_ptr<MediaV2State> media_v2_state_;
+	std::shared_ptr<FilterV2State> filter_v2_state_;
 };
 
 } // namespace obs_engine

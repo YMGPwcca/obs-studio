@@ -222,13 +222,13 @@ Start with `SOURCE_REVIEW_GUIDE.md`, but the core current engine map is:
 - `engine/task10_media_source.cpp` — CI-only deterministic Task-10 media source.
 - `engine/CMakeLists.txt` — headless executable plus test-only target definitions.
 - `engine/PROTOCOL_V2.md` — canonical protocol method/event namespace contract.
-- `engine/SOURCE_V1.md`, `INTERACTION_V1.md`, `PROPERTIES_V1.md`, `RUNTIME_OBJECTS_V1.md`, `EVENTS_V1.md` — concrete namespace/task contracts.
+- `engine/SOURCE_V1.md`, `INTERACTION_V1.md`, `PROPERTIES_V1.md`, `RUNTIME_OBJECTS_V1.md`, `EVENTS_V1.md`, `MEDIA_V1.md` — concrete namespace/task contracts.
 
 CI:
 
 - `.github/actions/build-obs/` — project Windows build action used by task workflows.
 - `.github/scripts/engine-protocol-v2-*.ps1` — deterministic Windows integration drivers.
-- `.github/workflows/engine-protocol-v2-task1.yaml` through `task9.yaml` plus `task8-concurrency.yaml` — regression lanes.
+- `.github/workflows/engine-protocol-v2-task1.yaml` through `task10.yaml` plus `task8-concurrency.yaml` — regression lanes.
 
 ---
 
@@ -470,7 +470,7 @@ When GPU-specific tasks arrive (shared texture, preview output, device-loss, enc
 
 ## 10. Local-agent operating procedure
 
-### 9.1 Initial checkout audit
+### 10.1 Initial checkout audit
 
 Before editing:
 
@@ -486,12 +486,12 @@ Expected branch is `engine-protocol-v2`. If HEAD has moved past the handoff comm
 Then:
 
 ```bash
-git diff f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc..HEAD -- engine .github docs/libobs-engine AGENTS.md
+git diff e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff..HEAD -- engine .github docs/libobs-engine AGENTS.md
 ```
 
-If only documentation handoff changes are present, `f59d6b6c...` remains the engine baseline. If production engine code moved, re-evaluate status from source and CI.
+If only documentation/handoff changes are present, `e3ced05dc...` remains the engine baseline. If production engine code moved, re-evaluate status from source and CI.
 
-### 9.2 Read before code
+### 10.2 Read before code
 
 For a new namespace:
 
@@ -506,17 +506,17 @@ For a new namespace:
 9. Decide revision/event ownership and asynchronous callback settlement before coding.
 10. Decide deterministic test fixture strategy before coding.
 
-### 9.3 Do not blindly mirror OBS frontend code
+### 10.3 Do not blindly mirror OBS frontend code
 
 The project needs frontend-equivalent semantics, but the engine is not `obs64.exe` and should not grow Qt/frontend dependencies merely to copy OBS UI behavior. Prefer public libobs APIs and semantic protocol models.
 
-### 9.4 Make tests deterministic
+### 10.4 Make tests deterministic
 
 For plugin-specific behavior, build a tiny CI-only OBS source/filter/output test module that exposes exactly the signal/callback transitions needed. This was successful for Tasks 8 and 9.
 
 Normal artifact must not contain test fixtures. Assert this in CI before explicit staging, and preferably again after cleanup.
 
-### 9.5 Review twice
+### 10.5 Review twice
 
 **Pass 1 — implementation correctness:**
 

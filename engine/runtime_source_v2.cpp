@@ -661,6 +661,7 @@ void Engine::v2_bind_source_events(RevisionState *revisions, EventDispatcher *ev
 		source_v2_state_->accepting = revisions && events;
 	}
 	v2_bind_media_events(revisions, events);
+	v2_bind_filter_events(revisions, events);
 }
 
 void Engine::v2_begin_event_capture(RuntimeV2Result &result)
@@ -671,6 +672,7 @@ void Engine::v2_begin_event_capture(RuntimeV2Result &result)
 		source_v2_state_->capture_gate.begin();
 	}
 	v2_begin_media_event_capture(result);
+	v2_begin_filter_event_capture(result);
 }
 
 void Engine::v2_end_event_capture() noexcept
@@ -698,6 +700,7 @@ void Engine::v2_end_event_capture() noexcept
 		}
 	}
 	v2_end_media_event_capture();
+	v2_end_filter_event_capture();
 }
 
 void Engine::v2_drain_deferred_source_events(RevisionState::MutationGuard &guard)
@@ -707,6 +710,7 @@ void Engine::v2_drain_deferred_source_events(RevisionState::MutationGuard &guard
 		publish_deferred_source_snapshot(std::move(snapshot), guard);
 	}
 	v2_drain_deferred_media_events(guard);
+	v2_drain_deferred_filter_events(guard);
 }
 
 void Engine::v2_flush_deferred_source_events(RevisionState::MutationGuard &guard)
@@ -716,6 +720,7 @@ void Engine::v2_flush_deferred_source_events(RevisionState::MutationGuard &guard
 		publish_deferred_source_snapshot(std::move(snapshot), guard);
 	}
 	v2_flush_deferred_media_events(guard);
+	v2_flush_deferred_filter_events(guard);
 }
 
 void Engine::v2_sync_source_observers()
@@ -778,10 +783,12 @@ void Engine::v2_sync_source_observers()
 		source_v2_state_->retired.insert(source_v2_state_->retired.end(), retire.begin(), retire.end());
 	}
 	v2_sync_media_observers();
+	v2_sync_filter_observers();
 }
 
 void Engine::v2_prepare_shutdown() noexcept
 {
+	v2_prepare_filter_shutdown();
 	v2_prepare_media_shutdown();
 	if (!source_v2_state_)
 		return;
@@ -931,7 +938,12 @@ bool Engine::v2_source_duplicate(obs_data_t *params, RuntimeV2Result &result, Ru
 			obs_source_release(duplicate);
 			return fail(error, "internal_error", "source handle collision");
 		}
+		// obs_source_duplicate copies the source's filters. Register those
+		// copies before the command completes so their handles remain stable
+		// when the next filter request enumerates the duplicate.
+		v2_filter_register_source_filters(duplicate_handle, duplicate, nullptr, handle);
 	} catch (...) {
+		sources_.erase(duplicate_handle);
 		obs_source_release(duplicate);
 		throw;
 	}
