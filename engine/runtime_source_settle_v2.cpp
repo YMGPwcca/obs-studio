@@ -1,16 +1,57 @@
 #include "runtime.hpp"
 
+#include "events.hpp"
+#include "source_event_capture.hpp"
+
+#include <callback/signal.h>
+
 #include <algorithm>
 #include <charconv>
 #include <chrono>
+#include <condition_variable>
+#include <cstdio>
+#include <deque>
 #include <limits>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <system_error>
-#include <thread>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace obs_engine {
+
+// SourceV2State is shared with runtime_source_v2.cpp. Keep this definition
+// token-for-token equivalent to the definition there until the state is moved
+// into a dedicated private header.
+struct SourceV2Observer;
+
+struct DeferredSourceEventBatch {
+	uint64_t handle = 0;
+	std::vector<RuntimeV2Event> events;
+};
+
+struct SourceV2State {
+	std::mutex mutex;
+	std::condition_variable callback_cv;
+	RevisionState *revisions = nullptr;
+	EventDispatcher *events = nullptr;
+	RuntimeV2Result *capture = nullptr;
+	SourceEventCaptureGate capture_gate;
+	std::deque<DeferredSourceEventBatch> deferred;
+	size_t deferred_event_count = 0;
+	size_t direct_callbacks_inflight = 0;
+	bool deferred_overflow = false;
+	bool accepting = false;
+	std::unordered_map<uint64_t, std::shared_ptr<SourceV2Observer>> observers;
+	std::vector<std::shared_ptr<SourceV2Observer>> retired;
+};
+
 namespace {
+
+constexpr auto kSourceUpdateSettleTimeout = std::chrono::seconds(5);
 
 bool parse_handle_text(std::string_view text, uint64_t &out)
 {
@@ -42,6 +83,107 @@ bool read_source_handle(obs_data_t *params, uint64_t &handle)
 	const bool parsed = value && parse_handle_text(value, handle);
 	obs_data_item_release(&item);
 	return parsed;
+}
+
+bool result_has_source_event(const RuntimeV2Result &result, std::string_view name, uint64_t handle)
+{
+	return std::any_of(result.events.begin(), result.events.end(), [&](const RuntimeV2Event &event) {
+		if (event.name != name || !event.data)
+			return false;
+		uint64_t event_handle = 0;
+		return read_source_handle(event.data.get(), event_handle) && event_handle == handle;
+	});
+}
+
+bool batch_has_source_update(const DeferredSourceEventBatch &batch, uint64_t handle)
+{
+	if (batch.handle != handle)
+		return false;
+	return std::any_of(batch.events.begin(), batch.events.end(), [&](const RuntimeV2Event &event) {
+		if (event.name != "source.settingsChanged" || !event.data)
+			return false;
+		uint64_t event_handle = 0;
+		return read_source_handle(event.data.get(), event_handle) && event_handle == handle;
+	});
+}
+
+bool promote_deferred_source_update(SourceV2State &state, uint64_t handle, RuntimeV2Result &result)
+{
+	std::lock_guard lock(state.mutex);
+	for (auto it = state.deferred.begin(); it != state.deferred.end(); ++it) {
+		if (!batch_has_source_update(*it, handle))
+			continue;
+
+		const size_t event_count = it->events.size();
+		for (RuntimeV2Event &event : it->events) {
+			if (!result_has_source_event(result, event.name, handle))
+				result.events.push_back(std::move(event));
+		}
+		state.deferred_event_count -= event_count;
+		state.deferred.erase(it);
+		return true;
+	}
+	return false;
+}
+
+void mark_source_settlement_lost(SourceV2State &state)
+{
+	std::lock_guard lock(state.mutex);
+	state.deferred.clear();
+	state.deferred_event_count = 0;
+	state.deferred_overflow = true;
+}
+
+struct SourceUpdateWaiter {
+	std::mutex mutex;
+	std::condition_variable cv;
+	bool signalled = false;
+};
+
+void source_update_settle_cb(void *data, calldata_t *)
+{
+	auto *waiter = static_cast<SourceUpdateWaiter *>(data);
+	{
+		std::lock_guard lock(waiter->mutex);
+		waiter->signalled = true;
+	}
+	waiter->cv.notify_one();
+}
+
+bool settle_deferred_source_update(SourceV2State &state, uint64_t handle, obs_source_t *source,
+				   RuntimeV2Result &result)
+{
+	// The observer may already have received the deferred update before we get
+	// here. This is the fast path and also closes the race before registration.
+	if (promote_deferred_source_update(state, handle, result))
+		return true;
+
+	signal_handler_t *handler = obs_source_get_signal_handler(source);
+	if (!handler)
+		return false;
+
+	SourceUpdateWaiter waiter;
+	signal_handler_connect(handler, "update", source_update_settle_cb, &waiter);
+
+	// signal_handler_connect() serializes on the signal mutex. If the update
+	// raced with registration, the already-connected Source observer has
+	// finished normalizing its batch before this call can return.
+	if (promote_deferred_source_update(state, handle, result)) {
+		signal_handler_disconnect(handler, "update", source_update_settle_cb, &waiter);
+		return true;
+	}
+
+	bool signalled = false;
+	{
+		std::unique_lock lock(waiter.mutex);
+		signalled = waiter.cv.wait_for(lock, kSourceUpdateSettleTimeout, [&] { return waiter.signalled; });
+	}
+
+	// Disconnecting also serializes on the signal mutex. The permanent Source
+	// observer was connected first, and libobs invokes callbacks in connection
+	// order, so its deferred batch is complete when this returns.
+	signal_handler_disconnect(handler, "update", source_update_settle_cb, &waiter);
+	return signalled && promote_deferred_source_update(state, handle, result);
 }
 
 void canonicalize_source_result(RuntimeV2Result &result, obs_source_t *source)
@@ -140,11 +282,15 @@ void Engine::v2_settle_source_mutation(obs_data_t *params, RuntimeV2Result &resu
 		return;
 
 	obs_source_t *source = it->second;
-	if ((obs_source_get_output_flags(source) & OBS_SOURCE_VIDEO) != 0) {
-		const uint64_t fps = std::max<uint32_t>(config_.fps, 1u);
-		const uint64_t frame_ms = (1000u + fps - 1u) / fps;
-		const uint64_t settle_ms = std::clamp<uint64_t>(frame_ms * 4u + 100u, 100u, 5000u);
-		std::this_thread::sleep_for(std::chrono::milliseconds(settle_ms));
+	const bool deferred_video_update = (obs_source_get_output_flags(source) & OBS_SOURCE_VIDEO) != 0 &&
+					   result_has_source_event(result, "source.settingsChanged", handle);
+	if (deferred_video_update && source_v2_state_ &&
+	    !settle_deferred_source_update(*source_v2_state_, handle, source, result)) {
+		std::fprintf(stderr,
+			     "obs-engine: timed out settling deferred update for source %llu; controller resync required\n",
+			     static_cast<unsigned long long>(handle));
+		std::fflush(stderr);
+		mark_source_settlement_lost(*source_v2_state_);
 	}
 
 	canonicalize_source_result(result, source);
