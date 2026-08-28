@@ -28,7 +28,6 @@ struct Config {
 		"obs-transitions",
 		"obs-vst",
 		"obs-webrtc",
-		"obs-websocket",
 		"obs-x264",
 		"rtmp-services",
 		"text-freetype2",
