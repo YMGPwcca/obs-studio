@@ -128,12 +128,12 @@ jobs:
             $Unknown = Send-V2Request @{
               op = 'request'
               id = 'task2.unknown'
-              method = 'interaction.focus'
+              method = 'task2.nonexistent'
               params = @{}
             }
             if ( $Unknown.id -ne 'task2.unknown' -or $Unknown.status.ok -or
                  $Unknown.status.code -ne 'unsupported_method' ) {
-              throw 'Unimplemented v2 semantic methods must return unsupported_method.'
+              throw 'Unknown v2 semantic methods must return unsupported_method.'
             }
 
             $BadParams = Send-V2Request @{

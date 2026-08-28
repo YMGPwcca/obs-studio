@@ -15,6 +15,7 @@
 namespace obs_engine {
 
 class EventDispatcher;
+struct InteractionV2State;
 struct SourceV2State;
 
 struct ItemEntry {
@@ -85,6 +86,14 @@ public:
 	bool v2_source_save_state(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_source_load_state(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 
+	bool v2_interaction_focus(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_interaction_mouse_move(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_interaction_mouse_button(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_interaction_mouse_wheel(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_interaction_key(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_interaction_text(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_interaction_reset(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+
 	bool v2_scene_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_item_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -106,6 +115,8 @@ private:
 	bool validate_source_type(long long request_id, obs_data_t *request, const char *&type) const;
 	bool v2_build_property_target(obs_data_t *params, ObsDataPtr &target, ObsDataPtr &settings,
 				      obs_properties_t *&properties, obs_source_t *&source, RuntimeV2Error &error);
+	bool v2_get_interaction_source(obs_data_t *params, uint64_t &handle, obs_source_t *&source,
+				       RuntimeV2Error &error);
 
 	bool command_hello(long long request_id);
 	bool command_source_types(long long request_id);
@@ -133,6 +144,7 @@ private:
 	std::unordered_map<uint64_t, obs_scene_t *> scenes_;
 	ItemMap items_;
 	std::shared_ptr<SourceV2State> source_v2_state_;
+	std::shared_ptr<InteractionV2State> interaction_v2_state_;
 };
 
 } // namespace obs_engine

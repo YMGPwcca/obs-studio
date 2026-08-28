@@ -121,13 +121,13 @@ jobs:
             $UnsupportedGuard = Send-V2Request @{
               op = 'request'
               id = 'task4.unsupported-guard'
-              method = 'interaction.focus'
+              method = 'task4.nonexistent'
               params = @{}
               ifRevision = 0
             }
             if ( $UnsupportedGuard.status.ok -or $UnsupportedGuard.status.code -ne 'unsupported_method' -or
                  [int64]$UnsupportedGuard.revision -ne 0 ) {
-              throw 'Unimplemented methods must remain unsupported without consuming revision state.'
+              throw 'Unknown methods must remain unsupported without consuming revision state.'
             }
 
             $StaleClose = Send-V2Request @{

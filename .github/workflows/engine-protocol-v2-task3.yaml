@@ -155,12 +155,12 @@ jobs:
             $Unknown = Send-V2Request @{
               op = 'request'
               id = 'task3.unimplemented'
-              method = 'interaction.focus'
+              method = 'task3.nonexistent'
               params = @{}
             }
             if ( $Unknown.id -ne 'task3.unimplemented' -or $Unknown.status.ok -or
                  $Unknown.status.code -ne 'unsupported_method' ) {
-              throw 'Capability advertisement leaked an unimplemented v2 semantic method.'
+              throw 'Unknown v2 semantic methods must remain unsupported.'
             }
 
             $Ping = Send-V2Request @{

@@ -1,0 +1,94 @@
+name: Engine Protocol v2 Task 9 Verification
+
+on:
+  push:
+    branches:
+      - engine-protocol-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  interaction-v1:
+    name: Build and verify interaction namespace
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Build Windows minimal runtime
+        uses: ./.github/actions/build-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
+
+      - name: Verify normal package excludes Task 9 test source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $InstallRoot = Resolve-Path 'build_x64/install'
+          $Unexpected = Get-ChildItem -Path $InstallRoot -Filter 'task9-interaction-source.dll' -File -Recurse
+          if (@($Unexpected).Count -ne 0) {
+            throw 'Task 9 CI-only interaction module leaked into the normal install tree.'
+          }
+
+      - name: Build CI-only deterministic interaction source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cmake --build build_x64 --config RelWithDebInfo --target obs-engine-task9-interaction-plugin --parallel
+          if ($LASTEXITCODE -ne 0) {
+            throw "Task 9 interaction source build failed (exit=$LASTEXITCODE)."
+          }
+
+      - name: Stage CI-only interaction source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $InstallRoot = Resolve-Path 'build_x64/install'
+          $Plugin = Get-ChildItem -Path 'build_x64' -Filter 'task9-interaction-source.dll' -File -Recurse |
+            Where-Object { $_.FullName -notlike "$InstallRoot*" } |
+            Select-Object -First 1
+          if ($null -eq $Plugin) {
+            throw 'Built Task 9 interaction source was not found.'
+          }
+          $RuntimeModule = Get-ChildItem -Path $InstallRoot -Filter 'image-source.dll' -File -Recurse |
+            Select-Object -First 1
+          if ($null -eq $RuntimeModule) {
+            throw 'Could not locate the installed OBS module directory.'
+          }
+          Copy-Item -LiteralPath $Plugin.FullName -Destination (Join-Path $RuntimeModule.Directory.FullName $Plugin.Name) -Force
+
+      - name: Run Task 9 interaction integration regression
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & '.github/scripts/engine-protocol-v2-task9.ps1' -InstallRoot (Resolve-Path 'build_x64/install')
+
+      - name: Remove explicitly staged Task 9 test source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $InstallRoot = Resolve-Path 'build_x64/install'
+          $Installed = Get-ChildItem -Path $InstallRoot -Filter 'task9-interaction-source.dll' -File -Recurse
+          if (@($Installed).Count -ne 1) {
+            throw 'Expected exactly one explicitly staged Task 9 interaction module.'
+          }
+          Remove-Item -LiteralPath $Installed[0].FullName -Force
+          $Remaining = Get-ChildItem -Path $InstallRoot -Filter 'task9-interaction-source.dll' -File -Recurse
+          if (@($Remaining).Count -ne 0) {
+            throw 'Task 9 CI-only interaction module remained in the install tree after cleanup.'
+          }
+
+      - name: Upload Task 9 Windows runtime
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: obs-engine-windows-x64-task9
+          path: build_x64/install/
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 7

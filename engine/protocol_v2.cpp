@@ -26,6 +26,14 @@ struct CapabilityDescriptor {
 constexpr CapabilityDescriptor kCapabilities[] = {
 	{"engine.capabilities.v1", false},
 	{"event.delivery.v1", false},
+	{"interaction.v1", false},
+	{"interaction.focus.v1", false},
+	{"interaction.key.v1", false},
+	{"interaction.mouseButton.v1", false},
+	{"interaction.mouseMove.v1", false},
+	{"interaction.mouseWheel.v1", false},
+	{"interaction.reset.v1", false},
+	{"interaction.text.v1", false},
 	{"item.create.v1", false},
 	{"item.remove.v1", false},
 	{"item.setTransform.v1", false},
@@ -109,6 +117,13 @@ enum class V2Method {
 	SourceRefresh,
 	SourceSaveState,
 	SourceLoadState,
+	InteractionFocus,
+	InteractionMouseMove,
+	InteractionMouseButton,
+	InteractionMouseWheel,
+	InteractionKey,
+	InteractionText,
+	InteractionReset,
 	SceneCreate,
 	SceneRemove,
 	ItemCreate,
@@ -193,6 +208,20 @@ V2Method classify_method(std::string_view method)
 		return V2Method::SourceSaveState;
 	if (method == "source.loadState")
 		return V2Method::SourceLoadState;
+	if (method == "interaction.focus")
+		return V2Method::InteractionFocus;
+	if (method == "interaction.mouseMove")
+		return V2Method::InteractionMouseMove;
+	if (method == "interaction.mouseButton")
+		return V2Method::InteractionMouseButton;
+	if (method == "interaction.mouseWheel")
+		return V2Method::InteractionMouseWheel;
+	if (method == "interaction.key")
+		return V2Method::InteractionKey;
+	if (method == "interaction.text")
+		return V2Method::InteractionText;
+	if (method == "interaction.reset")
+		return V2Method::InteractionReset;
 	if (method == "scene.create")
 		return V2Method::SceneCreate;
 	if (method == "scene.remove")
@@ -263,6 +292,13 @@ bool method_is_runtime(V2Method method)
 	case V2Method::SourceRefresh:
 	case V2Method::SourceSaveState:
 	case V2Method::SourceLoadState:
+	case V2Method::InteractionFocus:
+	case V2Method::InteractionMouseMove:
+	case V2Method::InteractionMouseButton:
+	case V2Method::InteractionMouseWheel:
+	case V2Method::InteractionKey:
+	case V2Method::InteractionText:
+	case V2Method::InteractionReset:
 	case V2Method::SceneCreate:
 	case V2Method::SceneRemove:
 	case V2Method::ItemCreate:
@@ -351,6 +387,20 @@ bool execute_runtime_method(Engine &engine, V2Method method, obs_data_t *params,
 		return engine.v2_source_save_state(params, result, error);
 	case V2Method::SourceLoadState:
 		return engine.v2_source_load_state(params, result, error);
+	case V2Method::InteractionFocus:
+		return engine.v2_interaction_focus(params, result, error);
+	case V2Method::InteractionMouseMove:
+		return engine.v2_interaction_mouse_move(params, result, error);
+	case V2Method::InteractionMouseButton:
+		return engine.v2_interaction_mouse_button(params, result, error);
+	case V2Method::InteractionMouseWheel:
+		return engine.v2_interaction_mouse_wheel(params, result, error);
+	case V2Method::InteractionKey:
+		return engine.v2_interaction_key(params, result, error);
+	case V2Method::InteractionText:
+		return engine.v2_interaction_text(params, result, error);
+	case V2Method::InteractionReset:
+		return engine.v2_interaction_reset(params, result, error);
 	case V2Method::SceneCreate:
 		return engine.v2_scene_create(params, result, error);
 	case V2Method::SceneRemove:
