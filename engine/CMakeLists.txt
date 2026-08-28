@@ -55,6 +55,21 @@ target_compile_definitions(obs-engine-properties-test PRIVATE WIN32_LEAN_AND_MEA
 target_link_libraries(obs-engine-properties-test PRIVATE OBS::libobs)
 set_target_properties(obs-engine-properties-test PROPERTIES FOLDER "engine/tests")
 
+# Task 8 deterministic concurrency source. This module exists only for the
+# dedicated A-F CI regression job. EXCLUDE_FROM_ALL keeps it out of normal
+# builds and, because it has no install rule, out of runtime packages.
+add_library(obs-engine-task8-concurrency-plugin MODULE EXCLUDE_FROM_ALL task8_concurrency_source.cpp)
+target_compile_features(obs-engine-task8-concurrency-plugin PRIVATE cxx_std_20)
+target_compile_definitions(
+  obs-engine-task8-concurrency-plugin
+  PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+)
+target_link_libraries(obs-engine-task8-concurrency-plugin PRIVATE OBS::libobs)
+set_target_properties(
+  obs-engine-task8-concurrency-plugin
+  PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task8-concurrency-source"
+)
+
 # Restrict implicit dependent-DLL resolution before main() runs. 0xA00 is
 # LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32. Runtime
 # plugin loads are separately constrained by libobs plus the host's safe-module

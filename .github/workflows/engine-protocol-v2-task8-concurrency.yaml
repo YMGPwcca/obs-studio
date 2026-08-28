@@ -141,3 +141,55 @@ jobs:
           if ($SyncIndex -gt $ResponseIndex -or $ResponseIndex -gt $PublishIndex -or $PublishIndex -gt $FlushIndex) {
               throw 'Required ordering is observer sync -> response -> request events -> deferred async events.'
           }
+
+  deterministic-source-concurrency-a-f:
+    name: Verify deterministic source concurrency A-F
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Build Windows minimal runtime
+        uses: ./.github/actions/build-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
+
+      - name: Build CI-only deterministic source module
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cmake --build build_x64 --config RelWithDebInfo --target obs-engine-task8-concurrency-plugin --parallel
+          if ($LASTEXITCODE -ne 0) {
+              throw "Task 8 concurrency test module build failed (exit=$LASTEXITCODE)."
+          }
+
+      - name: Run deterministic A-F integration regression
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $InstallRoot = Resolve-Path 'build_x64/install'
+          $Plugin = Get-ChildItem -Path 'build_x64' -Filter 'task8-concurrency-source.dll' -File -Recurse |
+            Where-Object { $_.FullName -notlike "$InstallRoot*" } |
+            Select-Object -First 1
+          if ($null -eq $Plugin) {
+              throw 'Built Task 8 concurrency module was not found.'
+          }
+
+          $RuntimeModule = Get-ChildItem -Path $InstallRoot -Filter 'image-source.dll' -File -Recurse |
+            Select-Object -First 1
+          if ($null -eq $RuntimeModule) {
+              throw 'Could not locate the installed OBS module directory.'
+          }
+
+          $Destination = Join-Path $RuntimeModule.Directory.FullName $Plugin.Name
+          Copy-Item -LiteralPath $Plugin.FullName -Destination $Destination -Force
+          Write-Host "Staged CI-only module: $Destination"
+
+          & '.github/scripts/engine-protocol-v2-task8-concurrency.ps1' -InstallRoot $InstallRoot
+          if ($LASTEXITCODE -ne 0) {
+              throw "Task 8 deterministic concurrency regression failed (exit=$LASTEXITCODE)."
+          }
