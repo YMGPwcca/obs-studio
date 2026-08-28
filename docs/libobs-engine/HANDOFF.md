@@ -1,11 +1,11 @@
 # LibOBS Engine Protocol v2 — Local AI Agent Handoff
 
-**Handoff date:** 2026-08-28  
+**Handoff date:** 2026-08-29  
 **Repository:** `YMGPwcca/obs-studio`  
 **Working branch:** `engine-protocol-v2`  
-**Accepted engine baseline:** `f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc` (`feat(engine): complete protocol v2 interaction namespace`)  
-**Next roadmap task:** Task 10 — `media.*`  
-**Task 10 implementation status:** NOT STARTED
+**Accepted engine baseline:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff` (`feat(engine): complete protocol v2 media namespace`)  
+**Next roadmap task:** Task 11 — `filter.*`  
+**Task 10 implementation status:** COMPLETE
 
 This file exists so a local AI coding agent can continue the project without access to the previous ChatGPT conversation. It records project decisions, accepted behavior, verification evidence, known traps, and the required working process. **Verify everything against the checked-out source before changing it.**
 
@@ -148,7 +148,7 @@ Do not leak raw pointers, C++ exception internals, Win32 object pointers, or plu
 
 ## 4. Current implementation status
 
-Tasks 1–9 are accepted. See `PROJECT_STATUS.md` for detailed evidence.
+Tasks 1–10 are accepted. See `PROJECT_STATUS.md` for detailed evidence.
 
 ### Task 1 / 1.1 — headless host and package cleanup
 
@@ -190,7 +190,10 @@ Completed and physically accepted on Windows. See section 7 below.
 
 ### Task 10 — `media.*`
 
-Next task. **No production Task-10 code has been started.** Read `TASK10_MEDIA_PLAN.md` before doing anything.
+Completed in `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`. The namespace has all
+11 planned methods, stable state strings, a source-correlated deferred media
+observer, signal-based action settlement, deterministic timeout/overflow resync,
+and a CI-only fixture. The concrete wire contract is `engine/MEDIA_V1.md`.
 
 ---
 
@@ -198,8 +201,7 @@ Next task. **No production Task-10 code has been started.** Read `TASK10_MEDIA_P
 
 Start with `SOURCE_REVIEW_GUIDE.md`, but the core current engine map is:
 
-- `engine/main.cpp` — process entry/bootstrap.
-- `engine/host.cpp` / host headers — libobs/graphics/module host setup.
+- `engine/host.cpp` — process entry/bootstrap and host lifecycle.
 - `engine/config.cpp`, `engine/config.hpp` — command-line/runtime configuration.
 - `engine/protocol.cpp`/headers — shared/legacy protocol plumbing.
 - `engine/protocol_v2.cpp`, `engine/protocol_v2.hpp` — v2 method classification, capabilities, dispatch, common guard/revision/event behavior.
@@ -212,10 +214,12 @@ Start with `SOURCE_REVIEW_GUIDE.md`, but the core current engine map is:
 - `engine/runtime_properties_v2.cpp` — generic properties implementation.
 - `engine/runtime_source_v2.cpp` — complete source namespace and source callback/event bridge.
 - `engine/runtime_source_settle_v2.cpp` — deferred video-source update settlement.
-- `engine/source_event_capture.cpp/.hpp` — capture routing/thread isolation used by source event ownership.
+- `engine/source_event_capture.hpp` — header-only capture routing/thread isolation used by source event ownership.
 - `engine/runtime_interaction_v2.cpp` — Task-9 transient interaction bridge.
+- `engine/runtime_media_v2.cpp` — Task-10 media state observer, action settlement, and event bridge.
 - `engine/task8_concurrency_source.cpp` — CI-only deterministic Task-8 plugin.
 - `engine/task9_interaction_source.cpp` — CI-only deterministic Task-9 interaction source.
+- `engine/task10_media_source.cpp` — CI-only deterministic Task-10 media source.
 - `engine/CMakeLists.txt` — headless executable plus test-only target definitions.
 - `engine/PROTOCOL_V2.md` — canonical protocol method/event namespace contract.
 - `engine/SOURCE_V1.md`, `INTERACTION_V1.md`, `PROPERTIES_V1.md`, `RUNTIME_OBJECTS_V1.md`, `EVENTS_V1.md` — concrete namespace/task contracts.
@@ -384,7 +388,70 @@ Task 9 is therefore physically accepted.
 
 ---
 
-## 8. Physical Windows hardware context already proven
+## 8. Task 10 deep handoff: media settlement
+
+Task 10 is accepted at `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`. The concrete
+wire contract is `engine/MEDIA_V1.md`; the implementation is
+`engine/runtime_media_v2.cpp`.
+
+### 8.1 Upstream behavior verified
+
+The current libobs `obs_source_media_play_pause`, restart, stop, next, previous,
+and set-time APIs enqueue `MEDIA_ACTION_*` records under
+`source->media_actions_mutex`. `process_media_actions()` drains them from
+`obs_source_video_tick()` and then emits the corresponding core signal. The
+public APIs return before that processing. `media_started` and `media_ended` are
+source-originated signals; this snapshot has no generic media-error signal.
+
+Built-in behavior is not uniform: `obs-ffmpeg` updates its state in the media
+callback while its decoder/seek work can continue asynchronously; VLC delegates
+to libVLC and reports opening/ended transitions from worker callbacks; slideshow
+sources update a local state machine and emit lifecycle signals. The Controller
+must therefore use the normalized state/event contract rather than infer timing
+from a libobs function return.
+
+### 8.2 Current settlement contract
+
+- Every media-capable source has a weak-reference observer for core action and
+  lifecycle signals.
+- Mutating requests establish a media capture gate before taking the revision
+  guard, drain pre-capture batches, connect an action-specific waiter, enqueue
+  the public libobs action, and wait up to five seconds for the normalized
+  source/action batch. No sleep-based synchronization is used.
+- Deferred media batches are bounded to the existing 1024-event scale and are
+  correlated by source handle plus the expected action signal. Other sources'
+  batches remain independent and receive later revisions.
+- `setPosition` uses the branch's internal `media_time` signal emitted by
+  libobs after the queued plugin callback returns. It proves action callback
+  processing, not completion of plugin-internal decoder work; the response
+  position is a fresh signed millisecond snapshot.
+- On timeout or uncertain ownership, the request does not claim a successful
+  command mutation and the media bridge forces `session.resyncRequired` during
+  deferred flush. Natural state/lifecycle events outside a request get their
+  own revision. Position ticks never create revisions.
+- `media.error` is emitted only when an observable media signal finds a
+  transition to `OBS_MEDIA_STATE_ERROR`; `media.getState` remains authoritative
+  when a plugin changes state without a generic signal.
+
+### 8.3 Task-10 fixture and acceptance
+
+`engine/task10_media_source.cpp` is `EXCLUDE_FROM_ALL`, has no install rule, and
+registers `task10_media_source` plus a no-seek variant. The integration script
+covers capability/query behavior, all controls, idempotent no-ops, toggle rules,
+seek bounds/readback, lifecycle/error transitions, stale guards, cross-source
+ownership, missing-callback timeout, deferred overflow, removal, and clean
+shutdown. The normal package audit confirmed that the fixture and frontend/
+WebSocket binaries are absent. Physical Windows acceptance passed locally on
+the documented AMD/Windows 25H2 machine; hosted execution on the unpushed
+final SHA remains pending.
+
+The handoff audit also removed `obs-websocket` and `obs-browser` from the default
+safe-module list in `08010cdc6` and `2744b3bcb`. They remain explicit opt-in or
+build-disabled paths, not normal Controller runtime modules.
+
+---
+
+## 9. Physical Windows hardware context already proven
 
 Do not treat this as a requirement that every task use the exact same adapter selection, but it is useful acceptance history.
 
@@ -401,7 +468,7 @@ When GPU-specific tasks arrive (shared texture, preview output, device-loss, enc
 
 ---
 
-## 9. Local-agent operating procedure
+## 10. Local-agent operating procedure
 
 ### 9.1 Initial checkout audit
 
@@ -480,24 +547,26 @@ Normal artifact must not contain test fixtures. Assert this in CI before explici
 
 ---
 
-## 10. What to do next
+## 11. What to do next
 
-Do **not** jump straight into `media.*` code merely because this file says it is next. The operator requested this handoff so a local agent can take over. The next local agent should first report that it has:
+Task 10 is complete. The next local agent should first report that it has:
 
 - verified branch/HEAD;
 - read all handoff docs;
 - inspected current source;
 - reconciled any mismatch;
-- reviewed `engine/PROTOCOL_V2.md` media section;
-- inspected libobs media public APIs and implementation;
-- inspected at least one controllable-media plugin implementation;
-- read `TASK10_MEDIA_PLAN.md`.
+- reviewed the `filter.*` section of `engine/PROTOCOL_V2.md`;
+- inspected current libobs filter ownership/reference/reorder APIs;
+- inspected representative filter plugins and the generic properties bridge;
+- read the Task-11 plan if one is added.
 
-Once the operator explicitly authorizes Task 10, implement it as a single isolated roadmap task and stop after acceptance.
+Implement Task 11 as the next isolated roadmap task. Preserve the media bridge's
+separate bounded queue, the source-correlated settlement rules, the internal
+`media_time` signal contract, and the no-WebSocket/no-browser default allowlist.
 
 ---
 
-## 11. Things not to “fix” opportunistically
+## 12. Things not to “fix” opportunistically
 
 Unless they block the active task, do not bundle unrelated cleanup into a namespace implementation. In particular:
 
@@ -509,18 +578,22 @@ Unless they block the active task, do not bundle unrelated cleanup into a namesp
 - do not start browser-source bundling unless a roadmap task or concrete product requirement calls for it;
 - do not ship CI-only test modules;
 - do not claim physical acceptance from GitHub-hosted Windows CI.
+- do not claim that a media seek has completed merely because a plugin callback
+  returned; the current `media_time` signal records callback completion and the
+  returned position is still a libobs snapshot.
 
 ---
 
-## 12. Handoff completion definition
+## 13. Handoff completion definition
 
 This handoff is successful if a local agent can, using only the repository:
 
 1. explain the process/license/state boundary;
 2. explain revision/event semantics;
-3. identify Tasks 1–9 as accepted and Task 10 as next/not started;
+3. identify Tasks 1–10 as accepted and Task 11 as next/not started;
 4. explain the Task-8 deferred update bug and why the current settlement exists;
 5. explain Task-9 transient interaction semantics and physical acceptance;
-6. locate the relevant source/CI files;
-7. produce a source-verified design for Task 10 before editing;
-8. implement/test/review one roadmap task without accidentally changing the architectural contract.
+6. explain Task-10 media action settlement, media-time limitations, and resync behavior;
+7. locate the relevant source/CI files;
+8. produce a source-verified design for Task 11 before editing;
+9. implement/test/review one roadmap task without accidentally changing the architectural contract.

@@ -295,6 +295,7 @@ Current host security design includes:
 - no TCP/HTTP/WebSocket listener;
 - Controller launches process with redirected standard handles;
 - safe module allowlist;
+- `obs-websocket` and `obs-browser` are not in the default engine allowlist;
 - all expected Windows runtime modules in the branch allowlisted by default;
 - explicit `--plugin=NAME` adds/requires a module for a launch;
 - missing optional/default modules do not necessarily fail startup;
@@ -327,6 +328,13 @@ For every new namespace ask:
 12. Can callbacks arrive during shutdown?
 
 Task 8 is the canonical example of why these questions matter.
+
+Task 10 adds a second, media-specific observer because libobs media controls are
+queued and processed from the video-source tick. The observer waits on
+source/action signals and keeps bounded deferred batches source-correlated. The
+branch's internal `media_time` signal marks completion of the queued set-time
+callback; plugin decoder work can still be asynchronous, so the returned
+position is a snapshot and position progression is not revisioned telemetry.
 
 ---
 

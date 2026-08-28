@@ -1,6 +1,6 @@
 # LibOBS Engine Protocol v2 — Detailed Roadmap (Tasks 1–50)
 
-This is the current repo-native roadmap. It preserves the original staged plan while updating completion state through Task 9. Future-task details are **plans**, not claims that APIs already exist. Before each task, re-read `engine/PROTOCOL_V2.md` and inspect source/libobs; source reality may require refining the plan.
+This is the current repo-native roadmap. It preserves the original staged plan while updating completion state through Task 10. Future-task details are **plans**, not claims that APIs already exist. Before each task, re-read `engine/PROTOCOL_V2.md` and inspect source/libobs; source reality may require refining the plan.
 
 ## Roadmap operating rules
 
@@ -105,7 +105,7 @@ Every task follows the same gate:
 
 **Accepted semantics:** transient/non-revisioned delivery, source-local validation, semantic modifiers, bounded held-key tracking, reset cleanup, no OS-native message injection, deterministic callback fixture, physical Windows acceptance.
 
-## Task 10 — `media.*` — NEXT / NOT STARTED
+## Task 10 — `media.*` — COMPLETE
 
 **Goal:** expose controllable media playback state and transport controls for sources that support libobs media control.
 
@@ -123,7 +123,7 @@ Every task follows the same gate:
 - `media.getPosition`
 - `media.setPosition`
 
-**Planned events:**
+**Implemented events:**
 
 - `media.started`
 - `media.playing`
@@ -135,7 +135,9 @@ Every task follows the same gate:
 
 **Key design question:** transport-state changes are canonical runtime state, but position progression is high-frequency telemetry. Do not increment revision for every playback tick.
 
-**Required:** deterministic controllable-media fixture or fully deterministic local media file path; callback/state transition ownership tests; seek range validation; unsupported-capability behavior; end/error transition behavior; same-SHA regression matrix. Full plan: `TASK10_MEDIA_PLAN.md`.
+**Accepted implementation:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff` adds `MEDIA_V1.md`, a source-correlated bounded media observer/settler, and the CI-only `task10_media_source` fixture. The fork's internal `media_time` signal marks queued set-time callback completion because upstream has no generic seek signal. Missing callback/ownership and deferred overflow paths return/emit resynchronization rather than fabricate success. Full research and acceptance record: `TASK10_MEDIA_PLAN.md`.
+
+Local final-tree acceptance passed with the Task 1–9 regression lanes, full Windows x64 build/install, package audit, deterministic M1–M15-equivalent coverage, and physical Windows fixture execution. The dedicated hosted Task-10 workflow is present but has not run for the unpushed local SHA.
 
 ## Task 11 — `filter.*` — PLANNED
 
@@ -476,4 +478,4 @@ After each accepted task:
 4. add any newly discovered architectural invariant/known debt to `HANDOFF.md`/`ARCHITECTURE.md`;
 5. do not mark a later task active until operator explicitly authorizes it.
 
-The current transition point is **Task 9 complete -> Task 10 pending operator authorization**.
+The current transition point is **Task 10 complete -> Task 11 `filter.*`**. Task 11 is not started.

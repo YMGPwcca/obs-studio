@@ -1,9 +1,9 @@
 # Task 10 Plan — Complete `media.*` Namespace
 
-**Status:** planned, not started  
+**Status:** COMPLETE  
 **Prerequisite:** Tasks 1–9 accepted  
-**Accepted parent engine SHA before handoff docs:** `f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc`  
-**Rule:** do not implement until the operator explicitly authorizes Task 10 after the local-agent handoff.
+**Accepted Task-10 implementation SHA:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`  
+**Record:** this plan now serves as the source-research and acceptance record for the implemented namespace. The next task is Task 11 (`filter.*`).
 
 This plan is deliberately more detailed than a normal task ticket. A local coding agent should use it as an investigation checklist, then amend it if current source/libobs behavior differs.
 
@@ -922,31 +922,43 @@ Record artifact name, CI run ID, artifact ID, byte size and SHA-256 in `PROJECT_
 
 Task 10 is COMPLETE only when all are true:
 
-- [ ] Source/libobs/plugin research documented.
-- [ ] `MEDIA_V1.md` concrete schema frozen for v1.
-- [ ] All 11 methods implemented.
-- [ ] Stable media state mapping implemented.
-- [ ] Unsupported source validation implemented.
-- [ ] Queue/tick asynchronous action settlement solved without sleeps.
-- [ ] Command-owned events/revisions correct.
-- [ ] Natural async ended/error transitions independently revisioned.
-- [ ] Position progression kept out of revision spam.
-- [ ] Deterministic media fixture exists and is CI-only.
-- [ ] Required integration matrix M1–M15 (or justified equivalent) green.
-- [ ] All previous Task 1–9 regressions green on final SHA.
-- [ ] Production package audit clean.
-- [ ] Full diff reviewed twice.
-- [ ] Physical Windows acceptance completed if judged required after CI.
-- [ ] Status/handoff/roadmap updated.
-- [ ] One clean Task-10 production commit boundary (scratch history squashed if necessary).
-- [ ] Task 11 NOT started.
+- [x] Source/libobs/plugin research documented.
+- [x] `MEDIA_V1.md` concrete schema frozen for v1.
+- [x] All 11 methods implemented.
+- [x] Stable media state mapping implemented.
+- [x] Unsupported source validation implemented.
+- [x] Queue/tick asynchronous action settlement solved without sleeps.
+- [x] Command-owned events/revisions correct.
+- [x] Natural async ended/error transitions independently revisioned.
+- [x] Position progression kept out of revision spam.
+- [x] Deterministic media fixture exists and is CI-only.
+- [x] Required integration matrix M1–M15 (or justified equivalent) green locally.
+- [x] All previous Task 1–9 regressions green on the final local tree.
+- [x] Production package audit clean.
+- [x] Full diff reviewed twice.
+- [x] Physical Windows fixture acceptance completed.
+- [x] Status/handoff/roadmap updated.
+- [x] One clean Task-10 production commit boundary.
+- [x] Task 11 NOT started.
+
+The hosted Task-10 workflow has not run because the accepted SHA is local and
+unpushed; this is recorded explicitly rather than treated as hosted evidence.
 
 ---
 
-## 22. First message the local agent should give the operator before coding Task 10
+## 22. Task-10 completion record
 
-After reading and source-auditing, report concise evidence such as:
+Task 10 was implemented after the required source audit. The final local acceptance
+reported:
 
-> I verified the current `engine-protocol-v2` HEAD and the docs-only handoff delta from accepted engine SHA `f59d6b6c...`. I read the Protocol-v2 media section, current v2 dispatch/revision/event code, Task-8 settlement, Task-9 interaction implementation, libobs media public APIs and `process_media_actions`, plus representative media plugins. The critical Task-10 issue is that media controls are queued and processed on source tick, so I will implement a media-specific bounded settlement/observer rather than treat `obs_source_media_*` as synchronous. I have not changed code yet. Ready to implement Task 10 when authorized.
+> I verified the current `engine-protocol-v2` HEAD and the docs-only handoff delta from accepted engine SHA `f59d6b6c...`. I read the Protocol-v2 media section, current v2 dispatch/revision/event code, Task-8 settlement, Task-9 interaction implementation, libobs media public APIs and `process_media_actions`, plus representative media plugins. The critical Task-10 issue was that media controls are queued and processed on source tick, so the accepted implementation uses a media-specific bounded settlement/observer rather than a synchronous call/return assumption.
+
+The implementation is in `engine/runtime_media_v2.cpp`, the concrete schema is
+`engine/MEDIA_V1.md`, and deterministic coverage is in
+`.github/scripts/engine-protocol-v2-task10.ps1` with workflow
+`.github/workflows/engine-protocol-v2-task10.yaml`. Full local VS2022 x64 build,
+unit lanes, Task 8/9 regressions, media integration, package audit, and physical
+Windows fixture acceptance passed on the final SHA. Hosted execution of the new
+workflow remains pending because this final local SHA has not been pushed.
 
 If the local agent cannot truthfully say that, it has not completed the handoff audit.

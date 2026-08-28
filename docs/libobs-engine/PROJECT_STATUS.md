@@ -1,9 +1,9 @@
 # LibOBS Engine Protocol v2 — Project Status
 
-**Status snapshot date:** 2026-08-28  
+**Status snapshot date:** 2026-08-29  
 **Production branch:** `engine-protocol-v2`  
-**Accepted production engine/runtime baseline:** `f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc`  
-**Next task:** Task 10 `media.*` — NOT STARTED
+**Accepted production engine/runtime baseline:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`  
+**Next task:** Task 11 `filter.*` — NOT STARTED
 
 This file is the current status ledger for the LibOBS split-engine project. If an older roadmap says Task 8 is active or Task 9 is only proposed, that older status is stale. Verify this ledger against Git/source/CI whenever resuming work.
 
@@ -23,8 +23,8 @@ This file is the current status ledger for the LibOBS split-engine project. If a
 | 7 | Generic `properties.*` | COMPLETE | plugin property schema/control bridge |
 | 8 | Complete `source.*` | COMPLETE | full namespace + deferred callback settlement + deterministic A–F + physical Windows |
 | 9 | `interaction.*` | COMPLETE | seven methods + deterministic callback fixture + same-SHA matrix + physical Windows |
-| 10 | `media.*` | NOT STARTED | next task; see `TASK10_MEDIA_PLAN.md` |
-| 11–50 | Later roadmap | NOT STARTED | proceed in order unless roadmap is explicitly revised |
+| 10 | `media.*` | COMPLETE | 11 methods, async settlement, deterministic fixture, resync/error coverage, physical Windows |
+| 11–50 | Later roadmap | NOT STARTED | Task 11 `filter.*` is next |
 
 ---
 
@@ -63,7 +63,67 @@ Task-9 diff against Task 8 contained exactly these 11 paths:
 10. `engine/runtime_interaction_v2.cpp` — production implementation.
 11. `engine/task9_interaction_source.cpp` — deterministic CI-only source.
 
-No Task-10 production implementation was included.
+### Task 10
+
+- `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`
+- subject: `feat(engine): complete protocol v2 media namespace`
+- parent: `2744b3bcb` (the preceding browser-allowlist audit fix)
+- production implementation and protocol contract are complete; no Task-11 code is included.
+
+Implemented methods:
+
+- `media.getState`
+- `media.play`
+- `media.pause`
+- `media.togglePause`
+- `media.stop`
+- `media.restart`
+- `media.next`
+- `media.previous`
+- `media.getDuration`
+- `media.getPosition`
+- `media.setPosition`
+
+Implemented event normalization:
+
+- `media.started`
+- `media.playing`
+- `media.paused`
+- `media.stopped`
+- `media.ended`
+- `media.error` when an observable media signal finds an ERROR transition
+- `media.stateChanged`
+
+Important semantics:
+
+- `obs_source_media_*` controls are settled from source-specific libobs signals,
+  not assumed synchronous. The fork adds the internal `media_time` signal after
+  the queued set-time callback returns because upstream has no generic seek
+  completion signal.
+- Transport state is revisioned; playback position snapshots are not a
+  high-frequency revision stream. Idempotent play/pause/stop and equal seeks do
+  not churn revisions.
+- Media callbacks use a separate bounded, source-correlated deferred bridge.
+  Uncertain ownership or overflow produces `session.resyncRequired`.
+- The generic libobs snapshot has no reliable error signal, so `media.error` is
+  emitted only when ERROR is observed during another media signal; `getState` is
+  authoritative for a point-in-time query.
+
+Verification on the final local Task-10 tree:
+
+- VS2022 17.14 x64 `RelWithDebInfo` full build and install passed.
+- `obs-engine-events-test` and `obs-engine-properties-test` passed.
+- Task 8 A–F, Task 9 interaction, and Task 10 media integration passed on the
+  same built engine. Task 10 covered all methods, bounds, stale guards,
+  unsupported sources, cross-source ownership, missing seek callback timeout,
+  deferred overflow, removal, and clean shutdown.
+- Normal package audit passed: one `obs-engine.exe`; no `obs64.exe`, `obs32.exe`,
+  browser/WebSocket module, or Task 8/9/10 fixture DLL. The Task-10 workflow is
+  added at `.github/workflows/engine-protocol-v2-task10.yaml`; hosted execution
+  on this unpushed final SHA remains pending.
+- Physical Windows fixture acceptance passed on the local AMD/Windows 25H2
+  machine using the deterministic Task-10 module. Optional AJA/DeckLink/NVENC/
+  VLC warnings were expected and did not affect the engine run.
 
 ---
 
@@ -264,7 +324,7 @@ Result: **Task 9 physical acceptance PASS.**
 
 ---
 
-## 5. Current physical test environment history
+## 7. Current physical test environment history
 
 Latest physical acceptance machine reported:
 
@@ -282,31 +342,50 @@ At the time of Task-9 physical testing system free RAM was low (~517 MB), yet th
 
 ---
 
-## 6. Current known technical debt / watch list
+## 8. Current known technical debt / watch list
 
-### 6.1 Duplicated source bridge private state
+### 8.1 Duplicated source bridge private state
 
 `SourceV2State` and `DeferredSourceEventBatch` are duplicated in `runtime_source_v2.cpp` and `runtime_source_settle_v2.cpp`, with an explicit requirement to keep them token-for-token equivalent. Move them to a private shared header in a dedicated cleanup when safe. Do not mix this casually with `media.*`.
 
-### 6.2 Legacy `engine/README.md`
+### 8.2 Legacy `engine/README.md`
 
 The README’s security/host information remains useful, but many command examples describe v1 (`{"id":1,"cmd":"hello"}` style) and are not the current v2 Controller contract. A future documentation cleanup should update it without erasing useful host/security rationale.
 
-### 6.3 Protocol handle wording
+### 8.3 Protocol handle wording
 
 Generic `PROTOCOL_V2.md` handle wording is looser than current source/interaction canonical-string implementations. Decide and normalize this explicitly before multiple new object namespaces spread inconsistent encodings.
 
-### 6.4 Test-only fixture hygiene
+### 8.4 Test-only fixture hygiene
 
 Task 8/9 fixtures must remain CI-only. Every future deterministic plugin should follow the same no-install/package-assert pattern.
 
-### 6.5 Browser source not currently in the minimal package
+### 8.5 Browser source not currently in the minimal package
 
 Task-9 production package had no interaction-capable source. Do not infer browser source support from generic interaction API support. Browser/plugin packaging is a separate product/extension decision and should be handled deliberately in the relevant roadmap work.
 
+### 8.6 Media observer and upstream signal debt
+
+The media bridge has a private deferred queue separate from the accepted source
+bridge and duplicates the canonical decimal handle reader until a safe shared
+private helper can be introduced. Upstream libobs has no generic media-error or
+seek-completion signal; this branch adds only the internal `media_time` signal
+after the queued set-time callback returns. Real plugins may apply a seek or
+enter ERROR asynchronously, so the returned position is a snapshot and
+`media.error` is emitted only when an observable media signal exposes the ERROR
+transition. Task 42 should extend this with stress coverage before any stronger
+completion guarantee is promised.
+
+### 8.7 Allowlist boundary corrections
+
+The handoff audit removed `obs-websocket` and `obs-browser` from the default
+engine safe-module list in commits `08010cdc6` and `2744b3bcb`. Both remain
+explicit opt-in/build-disabled paths; the normal Controller runtime cannot
+accidentally activate either second API or browser payload.
+
 ---
 
-## 7. Acceptance policy going forward
+## 9. Acceptance policy going forward
 
 A future task is not complete merely because its new workflow is green. Completion requires, as applicable:
 
@@ -325,10 +404,10 @@ Record exact final SHA and acceptance evidence in this file after each completed
 
 ---
 
-## 8. Immediate next status transition
+## 10. Immediate next status transition
 
-The next legal project state transition is:
+The next project state transition is:
 
-`Tasks 1–9 complete` -> **operator explicitly authorizes Task 10** -> `Task 10 media.* active`.
+`Task 10 media.* complete` -> `Task 11 filter.* active`.
 
-Do not jump directly to Task 11 or later. Do not silently implement Task 10 just because it is documented as next. The handoff operation itself does not count as authorization to start media implementation.
+Task 11 has not started. The operator has authorized sequential continuation of the remaining roadmap.

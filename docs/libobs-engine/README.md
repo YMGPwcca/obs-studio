@@ -20,17 +20,19 @@ For Codex/Claude Code/Aider or a human engineer, read:
 
 - **Current source/Git/CI** wins over prose.
 - `/engine/PROTOCOL_V2.md` is the canonical semantic protocol contract.
-- Namespace docs such as `/engine/SOURCE_V1.md` and `/engine/INTERACTION_V1.md` pin concrete implemented schemas.
+- Namespace docs such as `/engine/SOURCE_V1.md`, `/engine/INTERACTION_V1.md`, and `/engine/MEDIA_V1.md` pin concrete implemented schemas.
 - `PROJECT_STATUS.md` is the current completion/evidence ledger.
 - This roadmap/handoff supersedes older status notes that still call Task 8 active or Task 9 proposed.
 
 ## Current handoff point
 
-Tasks **1–9 are accepted**. Accepted Task-9 production engine/runtime SHA before this docs-only handoff is:
+Tasks **1–10 are accepted**. Accepted Task-10 production engine/runtime SHA is:
 
-`f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc`
+`e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`
 
-Task 10 `media.*` is next but **not started** and should not be implemented without explicit operator authorization.
+Task 10 `media.*` includes a source-correlated asynchronous settlement bridge and
+the concrete contract in `engine/MEDIA_V1.md`. Task 11 `filter.*` is next and
+has not started.
 
 ## Why multiple documents?
 
@@ -41,7 +43,7 @@ The project has several kinds of knowledge that should not be collapsed into one
 - `HANDOFF.md`: deep context, tricky implementation history and resumption procedure.
 - `SOURCE_REVIEW_GUIDE.md`: how to verify prose against the codebase.
 - `ROADMAP.md`: planned work and acceptance gates through protocol freeze.
-- `TASK10_MEDIA_PLAN.md`: immediate next-task implementation/research plan.
+- `TASK10_MEDIA_PLAN.md`: Task-10 implementation/research and acceptance record.
 - `LOCAL_AGENT_START_PROMPT.md`: ready-to-paste initial instruction for a fresh local AI session.
 
 Update these after each accepted task so future agents do not have to reconstruct project intent from chat history.

@@ -16,11 +16,11 @@ git show --stat --oneline --decorate HEAD
 git log --oneline --decorate --graph -30
 ```
 
-At handoff creation, accepted engine implementation baseline is:
+The current accepted engine implementation baseline is:
 
 ```text
-f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc
-feat(engine): complete protocol v2 interaction namespace
+e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff
+feat(engine): complete protocol v2 media namespace
 ```
 
 The handoff documentation commit will be newer. Determine whether anything newer than the handoff changed production engine code. Never assume a SHA written in documentation is still HEAD.
@@ -28,8 +28,8 @@ The handoff documentation commit will be newer. Determine whether anything newer
 Useful diff:
 
 ```bash
-git diff --stat f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc..HEAD
-git diff f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc..HEAD -- engine .github
+git diff --stat e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff..HEAD
+git diff e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff..HEAD -- engine .github
 ```
 
 If that diff includes runtime/protocol behavior beyond documentation, stop and audit those changes before using the status file.
@@ -60,7 +60,7 @@ Then inspect source. Do not reverse this into “read the plan and start coding.
 
 Inspect:
 
-- `engine/main.cpp`
+- `engine/host.cpp` (contains `main()`)
 - `engine/host.cpp` and corresponding headers
 - `engine/config.cpp`
 - `engine/config.hpp`
@@ -192,8 +192,7 @@ Inspect completely:
 
 - `engine/runtime_source_v2.cpp`
 - `engine/runtime_source_settle_v2.cpp`
-- `engine/source_event_capture.cpp`
-- `engine/source_event_capture.hpp`
+- `engine/source_event_capture.hpp` (header-only)
 - `engine/task8_concurrency_source.cpp`
 - `.github/scripts/engine-protocol-v2-task8*.ps1`
 - `.github/workflows/engine-protocol-v2-task8.yaml`
@@ -225,6 +224,7 @@ If you cannot answer all 14, do not refactor the source bridge or reuse its conc
 Inspect:
 
 - `engine/runtime_interaction_v2.cpp`
+- `engine/runtime_media_v2.cpp`
 - `engine/INTERACTION_V1.md`
 - `engine/task9_interaction_source.cpp`
 - `.github/scripts/engine-protocol-v2-task9.ps1`
@@ -289,6 +289,7 @@ Current project-specific workflows:
 - `...task8.yaml`
 - `...task8-concurrency.yaml`
 - `...task9.yaml`
+- `...task10.yaml`
 
 There are 10 workflow files but Task-8 concurrency includes an additional thread-isolation job, which is why the final Task-9 SHA had 11 check runs/jobs in the project matrix.
 
