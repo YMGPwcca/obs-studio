@@ -123,6 +123,12 @@ jobs:
           $ErrorActionPreference = 'Stop'
           & '.github/scripts/engine-protocol-v2-task11.ps1' -InstallRoot (Resolve-Path 'build_x64/install')
 
+      - name: Run Task 11 timeout ownership race regression
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & '.github/scripts/engine-protocol-v2-task11-timeout-race.ps1' -InstallRoot (Resolve-Path 'build_x64/install')
+
       - name: Remove explicitly staged Task 11 test source
         if: always()
         shell: pwsh
