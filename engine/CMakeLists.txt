@@ -13,6 +13,7 @@ target_sources(
     properties_sensitive.cpp
     protocol.cpp
     protocol.hpp
+    protocol_filter_v2.cpp
     protocol_v2.cpp
     protocol_v2.hpp
     revision.hpp
@@ -29,6 +30,11 @@ target_sources(
     source_event_capture.hpp
     validation.hpp
 )
+
+# Keep the accepted Task-10 protocol implementation byte-for-byte unchanged.
+# Only its externally linked entry-point name is source-locally renamed; the
+# Task-11 router calls this core for every non-filter request.
+set_source_files_properties(protocol_v2.cpp PROPERTIES COMPILE_DEFINITIONS "handle_v2_request=handle_v2_request_core")
 
 target_compile_features(obs-engine PRIVATE cxx_std_20)
 target_compile_definitions(obs-engine PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
