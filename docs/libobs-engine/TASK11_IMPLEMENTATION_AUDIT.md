@@ -6,8 +6,8 @@
 **Quarantined unauthorized reference:** `4c8b616ca2115970af3e1e4000b162416be32dac`
 
 Task 11 was explicitly authorized after Task 10 final acceptance. The old
-quarantined Task-11 commit is a design/reference input only and must not be
-cherry-picked as-is.
+quarantined Task-11 commit and the later advisor WIP are design/reference
+inputs only; neither is used as a wholesale history or implementation import.
 
 ## Source findings
 
@@ -34,10 +34,10 @@ capture semantics.
 libobs documents them for filter callback contexts. The engine retains explicit
 parent-handle relationships instead.
 
-## Why the quarantined commit is not reusable as-is
+## WIP findings and candidate corrections
 
-The quarantined implementation was based on pre-corrective Task 10 state and has
-four confirmed blockers:
+The quarantined implementation was based on pre-corrective Task 10 state and
+has four confirmed blockers:
 
 1. Its protocol dispatch takes the mutation revision lock without the accepted
    `v2_wait_for_event_capture_callbacks()` pre-lock barrier, which would regress
@@ -53,6 +53,32 @@ four confirmed blockers:
    already-accepted `source.duplicate` operation. They receive fresh handles
    when registered/discovered through `filter.list`; no synthetic
    `filter.created` event is added to the source command.
+
+The advisor WIP at `137b2e5bd341caa1c3bc128bccd7b81376f27c32` also had these
+candidate-level defects, independently verified before porting:
+
+1. Its failing integration script assumed a default-only libobs setting was
+   serialized as `settings.value`; the raw run failed in PowerShell before the
+   first filter operation because `obs_data_set_default_int` does not emit a
+   value in JSON.
+2. Its settings settlement scanned deferred batches before taking the request
+   generation baseline, and batches carried no generation. A pre-request batch
+   with the same handle/settings could therefore be claimed by the request.
+3. A settings timeout still returned success and did not quarantine a late
+   completion from a later request.
+4. Filter/source registry insertion had incomplete rollback on allocation or
+   duplicate-map errors, and it carried an unused copied-filter adapter.
+5. The fixture/test lane did not cover source-duplicate wire compatibility,
+   inherited fresh handles, unrelated callbacks, blocking settlement, late
+   completion, or deferred-queue overflow; its original 6-second blocker was
+   also too close to the 5-second engine deadline for deterministic follow-up
+   testing.
+
+The candidate records an observer generation on every update observation,
+requires exact `(handle, post-update settings, generation > baseline)` proof,
+returns `timeout` on uncertain settlement, quarantines the affected handle,
+uses rollback-safe registry updates, removes the unused adapter, and exercises
+the missing cases in the exact-SHA Task-11 lane.
 
 ## Implementation rules for the authorized candidate
 
