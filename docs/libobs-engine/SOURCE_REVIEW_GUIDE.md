@@ -16,12 +16,15 @@ git show --stat --oneline --decorate HEAD
 git log --oneline --decorate --graph -30
 ```
 
-The current accepted engine implementation baseline is:
+The current accepted Task-10 engine implementation baseline is:
 
 ```text
-e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff
-feat(engine): complete protocol v2 media namespace
+6a590c2985a99d186c8eecd0241acdc824d32168
+fix(engine): correlate media actions by source ticket
 ```
+
+Task 11 is being developed only on the isolated `task11-codex` candidate and
+remains IMPLEMENTED / IN REVIEW / NOT ACCEPTED.
 
 The handoff documentation commit will be newer. Determine whether anything newer than the handoff changed production engine code. Never assume a SHA written in documentation is still HEAD.
 
@@ -49,8 +52,12 @@ If that diff includes runtime/protocol behavior beyond documentation, stop and a
    - `engine/PROPERTIES_V1.md`
    - `engine/SOURCE_V1.md`
    - `engine/INTERACTION_V1.md`
+   - `engine/MEDIA_V1.md`
+   - `engine/FILTER_V1.md`
 7. `docs/libobs-engine/ROADMAP.md`.
 8. immediate task plan, currently `docs/libobs-engine/TASK10_MEDIA_PLAN.md`.
+9. `docs/libobs-engine/TASK11_FILTER_PLAN.md` and
+   `docs/libobs-engine/TASK11_IMPLEMENTATION_AUDIT.md`.
 
 Then inspect source. Do not reverse this into “read the plan and start coding.”
 
@@ -219,7 +226,29 @@ If you cannot answer all 14, do not refactor the source bridge or reuse its conc
 
 ---
 
-## 8. Task-9 interaction audit
+## 8. Task-11 filter audit
+
+Inspect:
+
+- `engine/runtime_filter_v2.cpp`
+- `engine/FILTER_V1.md`
+- `engine/task11_filter_source.cpp`
+- `.github/scripts/engine-protocol-v2-task11.ps1`
+- `.github/workflows/engine-protocol-v2-task11.yaml`
+- libobs `obs_source_filter_*`, `obs_source_enum_filters`, and source
+  duplication implementation.
+
+Verify that filter ownership is represented by an explicit handle-to-parent
+map with strong engine references; `obs_filter_get_parent` and
+`obs_filter_get_target` are not used as lifetime APIs; settings settlement uses
+one permanent observer plus exact handle/settings/generation evidence; timeout
+and overflow force resynchronization; source removal orders filter removals
+before `source.removed`; and accepted `source.duplicate` does not gain
+synthetic `filter.created` events.
+
+---
+
+## 9. Task-9 interaction audit
 
 Inspect:
 
@@ -250,7 +279,7 @@ This namespace is a useful pattern for **transient method semantics**, not for c
 
 ---
 
-## 9. Upstream libobs audit procedure for a new namespace
+## 10. Upstream libobs audit procedure for a new namespace
 
 Do not stop at public header declarations. For Task 10 or any later namespace, search both declarations and implementation.
 
@@ -275,7 +304,7 @@ Record any disagreement between header intuition and implementation reality in t
 
 ---
 
-## 10. CI source map
+## 11. CI source map
 
 Current project-specific workflows:
 
@@ -290,6 +319,7 @@ Current project-specific workflows:
 - `...task8-concurrency.yaml`
 - `...task9.yaml`
 - `...task10.yaml`
+- `...task11.yaml`
 
 There are 10 workflow files but Task-8 concurrency includes an additional thread-isolation job, which is why the final Task-9 SHA had 11 check runs/jobs in the project matrix.
 
@@ -307,7 +337,7 @@ A new Task-N final SHA must have:
 
 ---
 
-## 11. CI-only test-module rule
+## 12. CI-only test-module rule
 
 Task 8 and 9 establish the pattern:
 
@@ -332,7 +362,7 @@ This lets tests observe exact libobs callbacks without contaminating product run
 
 ---
 
-## 12. Packaging audit
+## 13. Packaging audit
 
 For each final task artifact, inspect recursively. At minimum look for accidental:
 
@@ -348,7 +378,7 @@ Confirm `obs-engine.exe` plus intended runtime plugin/data/dependency set exists
 
 ---
 
-## 13. Physical Windows acceptance guide
+## 14. Physical Windows acceptance guide
 
 Hosted Windows CI is not physical acceptance.
 
@@ -375,7 +405,7 @@ If a normal production package cannot expose a deterministic target (Task 9 had 
 
 ---
 
-## 14. Two-pass review checklist
+## 15. Two-pass review checklist
 
 ### Pass A — runtime correctness
 
@@ -410,7 +440,7 @@ If a normal production package cannot expose a deterministic target (Task 9 had 
 
 ---
 
-## 15. Local build notes
+## 16. Local build notes
 
 The established CI path is Windows x64 `RelWithDebInfo` through `.github/actions/build-obs`, with install root under `build_x64/install` in workflows. A local agent may build directly with CMake, but should mirror CI configuration sufficiently to reproduce issues.
 
@@ -420,7 +450,7 @@ For Linux development hosts, remember the product acceptance target is Windows. 
 
 ---
 
-## 16. When the handoff and source disagree
+## 17. When the handoff and source disagree
 
 Do not silently choose the prose that is easier.
 

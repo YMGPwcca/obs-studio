@@ -1,8 +1,8 @@
 # Task 11 implementation audit
 
-**Status:** ACTIVE / IMPLEMENTATION AUTHORIZED / NOT ACCEPTED  
-**Accepted base:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`  
-**Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168`  
+**Status:** IMPLEMENTED / IN REVIEW / NOT ACCEPTED
+**Accepted base:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
+**Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168`
 **Quarantined unauthorized reference:** `4c8b616ca2115970af3e1e4000b162416be32dac`
 
 Task 11 was explicitly authorized after Task 10 final acceptance. The old

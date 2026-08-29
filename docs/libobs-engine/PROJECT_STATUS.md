@@ -2,8 +2,10 @@
 
 **Status snapshot date:** 2026-08-29  
 **Production branch:** `engine-protocol-v2`  
-**Task-10 implementation baseline under corrective review:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`
-**Next task:** Task 11 `filter.*` — PLANNED, QUARANTINED, NOT ACCEPTED
+**Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168`
+**Accepted Task-10 documentation checkpoint:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
+**Candidate branch:** `task11-codex`
+**Task-11 candidate status:** IMPLEMENTED / IN REVIEW / NOT ACCEPTED
 
 This file is the current status ledger for the LibOBS split-engine project. If an older roadmap says Task 8 is active or Task 9 is only proposed, that older status is stale. Verify this ledger against Git/source/CI whenever resuming work.
 
@@ -23,8 +25,9 @@ This file is the current status ledger for the LibOBS split-engine project. If a
 | 7 | Generic `properties.*` | COMPLETE | plugin property schema/control bridge |
 | 8 | Complete `source.*` | COMPLETE | full namespace + deferred callback settlement + deterministic A–F + physical Windows |
 | 9 | `interaction.*` | COMPLETE | seven methods + deterministic callback fixture + same-SHA matrix + physical Windows |
-| 10 | `media.*` | IMPLEMENTED / FIX IN REVIEW / FINAL ACCEPTANCE PENDING | 11 methods, exact queued-action settlement, deterministic fixture, resync/error coverage |
-| 11–50 | Later roadmap | NOT STARTED | Task 11 `filter.*` remains planned and quarantined |
+| 10 | `media.*` | COMPLETE / ACCEPTED | 11 methods, exact queued-action settlement, exact-SHA hosted and physical evidence |
+| 11 | `filter.*` | IMPLEMENTED / IN REVIEW / NOT ACCEPTED | candidate runtime, permanent observer settlement, deterministic fixture and exact-SHA lane |
+| 12–50 | Later roadmap | NOT STARTED | Task 12 remains planned and unauthorized |
 
 ---
 
@@ -63,13 +66,14 @@ Task-9 diff against Task 8 contained exactly these 11 paths:
 10. `engine/runtime_interaction_v2.cpp` — production implementation.
 11. `engine/task9_interaction_source.cpp` — deterministic CI-only source.
 
-### Task 10 — corrective review
+### Task 10 — accepted corrective implementation
 
-- `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`
-- subject: `feat(engine): complete protocol v2 media namespace`
-- parent: `2744b3bcb` (the preceding browser-allowlist audit fix)
-- the original production implementation is present; the corrective candidate adds
-  exact queued-action ownership and contains no Task-11 code.
+- `6a590c2985a99d186c8eecd0241acdc824d32168`
+- subject: `fix(engine): correlate media actions by source ticket`
+- accepted documentation checkpoint: `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
+- exact queued-action ownership, callback/mutation ordering correction, and
+  media action settlement are accepted; this Task-11 candidate does not alter
+  the Task-10 media implementation.
 
 Implemented methods:
 
@@ -123,12 +127,27 @@ Verification on the local Task-10 corrective candidate:
   callback, and clean shutdown with an active callback.
 - Normal package audit passed: one `obs-engine.exe`; no `obs64.exe`, `obs32.exe`,
   browser/WebSocket module, or Task 8/9/10 fixture DLL. The Task-10 workflow is
-  added at `.github/workflows/engine-protocol-v2-task10.yaml`; hosted execution
-  on this unpushed final SHA remains pending.
+  at `.github/workflows/engine-protocol-v2-task10.yaml`.
 - Local Windows fixture execution passed on the AMD/Windows 25H2 machine.
   Optional AJA/DeckLink/NVENC/VLC warnings were expected and did not affect the
-  engine run. Hosted acceptance of the exact final corrective SHA is still
-  pending.
+  engine run. The operator handoff records exact-SHA hosted CI, physical
+  Windows acceptance, and independent raw-evidence audit as complete.
+
+---
+
+## 2.1 Task 11 candidate — `filter.*`
+
+Task 11 is implemented on `task11-codex` from accepted documentation
+checkpoint `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea` and remains
+IMPLEMENTED / IN REVIEW / NOT ACCEPTED. The candidate adds the documented
+filter kind/runtime methods, explicit filter-handle-to-parent ownership,
+permanent update observers with generation-based settlement, parent-removal
+ordering, source-duplicate inherited-filter discovery, and a CI-only
+deterministic fixture/workflow. It does not change
+`engine/protocol_v2.cpp` or the accepted Task-10 media implementation.
+
+The candidate's exact SHA and hosted evidence are recorded in the operator
+handoff; human/advisor review and explicit acceptance remain outstanding.
 
 ---
 
@@ -413,7 +432,9 @@ Record exact final SHA and acceptance evidence in this file after each completed
 
 The next project state transition is:
 
-`Task 10 corrective review pending` -> `Task 10 final acceptance` -> `Task 11 filter.* planned`.
+`Task 11 candidate in review` -> `Task 11 independent review/physical gate` ->
+explicit Task 11 acceptance.
 
-Task 11 has not started and is not authorized. The unauthorized implementation is
-preserved only on `wip/task11-unauthorized` and is not accepted.
+Task 12 has not started and is not authorized. The advisor WIP is preserved on
+`wip/task11-advisor-handoff-137b2e5`; the older unauthorized implementation is
+preserved on `wip/task11-unauthorized`. Neither is accepted or merged.

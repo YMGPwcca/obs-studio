@@ -1,6 +1,6 @@
 # LibOBS Engine Protocol v2 — Detailed Roadmap (Tasks 1–50)
 
-This is the current repo-native roadmap. It preserves the original staged plan while updating completion state through Task 10. Future-task details are **plans**, not claims that APIs already exist. Before each task, re-read `engine/PROTOCOL_V2.md` and inspect source/libobs; source reality may require refining the plan.
+This is the current repo-native roadmap. It preserves the original staged plan while updating completion state through the Task-11 candidate. Future-task details are **plans**, not claims that APIs already exist. Before each task, re-read `engine/PROTOCOL_V2.md` and inspect source/libobs; source reality may require refining the plan.
 
 ## Roadmap operating rules
 
@@ -105,7 +105,7 @@ Every task follows the same gate:
 
 **Accepted semantics:** transient/non-revisioned delivery, source-local validation, semantic modifiers, bounded held-key tracking, reset cleanup, no OS-native message injection, deterministic callback fixture, physical Windows acceptance.
 
-## Task 10 — `media.*` — IMPLEMENTED / FIX IN REVIEW / FINAL ACCEPTANCE PENDING
+## Task 10 — `media.*` — COMPLETE / ACCEPTED
 
 **Goal:** expose controllable media playback state and transport controls for sources that support libobs media control.
 
@@ -135,11 +135,11 @@ Every task follows the same gate:
 
 **Key design question:** transport-state changes are canonical runtime state, but position progression is high-frequency telemetry. Do not increment revision for every playback tick.
 
-**Implementation baseline under corrective review:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff` adds `MEDIA_V1.md`, a source-correlated bounded media observer/settler, and the CI-only `task10_media_source` fixture. The corrective candidate adds exact source-local queued-action tickets, permanent-observer settlement, and orphan completion resynchronization. The fork's internal `media_time` signal marks queued set-time callback processing because upstream has no generic seek signal. Missing callback/ownership and deferred overflow paths return/emit resynchronization rather than fabricate success. Full research and corrective-review record: `TASK10_MEDIA_PLAN.md`.
+**Accepted implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168` adds `MEDIA_V1.md`, a source-correlated bounded media observer/settler, exact source-local queued-action tickets, permanent-observer settlement, orphan completion resynchronization, and the CI-only `task10_media_source` fixture. The fork's internal `media_time` signal marks queued set-time callback processing because upstream has no generic seek signal. Missing callback/ownership and deferred overflow paths return/emit resynchronization rather than fabricate success. Full research record: `TASK10_MEDIA_PLAN.md`.
 
-Local validation passed with the Task 1–9 regression lanes, full Windows x64 build/install, package audit, deterministic M1–M15-equivalent coverage, and Windows fixture execution. Final acceptance remains pending because the dedicated hosted Task-10 workflow has not run on the exact unpushed corrective SHA.
+Local validation passed with the Task 1–9 regression lanes, full Windows x64 build/install, package audit, deterministic M1–M15-equivalent coverage, and Windows fixture execution. The operator handoff records exact-SHA hosted CI, physical Windows acceptance, and independent raw-evidence audit as complete.
 
-## Task 11 — `filter.*` — PLANNED
+## Task 11 — `filter.*` — IMPLEMENTED / IN REVIEW / NOT ACCEPTED
 
 **Goal:** manage filters attached to source-like objects using generic source/filter semantics rather than plugin-specific UI logic.
 
@@ -156,6 +156,12 @@ Local validation passed with the Task 1–9 regression lanes, full Windows x64 b
 **Research requirements:** inspect libobs filter ownership/reference rules and filter reordering APIs; determine whether filters can emit source callbacks already covered by source bridge; avoid duplicate event streams.
 
 **Acceptance:** deterministic parent + filter fixture, ordering/lifetime tests, plugin-property reuse, stale parent/filter handle cases.
+
+The isolated candidate on `task11-codex` implements this scope from accepted
+Task-10 checkpoint `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`. Its exact-SHA
+Task-11 lane, full Task 1–11 regression matrix, package audit, and physical
+Windows gate remain review evidence; they do not by themselves mark Task 11
+accepted.
 
 ---
 
@@ -478,4 +484,7 @@ After each accepted task:
 4. add any newly discovered architectural invariant/known debt to `HANDOFF.md`/`ARCHITECTURE.md`;
 5. do not mark a later task active until operator explicitly authorizes it.
 
-The current transition point is **Task 10 corrective acceptance pending -> Task 11 `filter.*` planned**. Task 11 is not started; its unauthorized implementation remains quarantined and not accepted.
+The current transition point is **Task 11 candidate in review -> independent
+review/physical gate -> explicit Task 11 acceptance**. Task 12 remains planned
+and unauthorized. The advisor WIP and older unauthorized implementation remain
+quarantined reference branches only.

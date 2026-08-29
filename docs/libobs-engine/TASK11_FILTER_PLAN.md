@@ -1,7 +1,7 @@
 # Task 11 — `filter.*` plan and acceptance record
 
-**Status:** IMPLEMENTED / IN REVIEW / NOT ACCEPTED  
-**Accepted base:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`  
+**Status:** IMPLEMENTED / IN REVIEW / NOT ACCEPTED
+**Accepted base:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
 **Quarantined reference only:** `4c8b616ca2115970af3e1e4000b162416be32dac`
 
 ## Goal

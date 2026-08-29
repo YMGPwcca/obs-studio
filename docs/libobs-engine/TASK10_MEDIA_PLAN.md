@@ -1,9 +1,10 @@
 # Task 10 Plan — Complete `media.*` Namespace
 
-**Status:** IMPLEMENTED / FIX IN REVIEW / FINAL ACCEPTANCE PENDING
+**Status:** COMPLETE / ACCEPTED
 **Prerequisite:** Tasks 1–9 accepted
-**Task-10 implementation baseline:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`
-**Record:** this plan now serves as the source-research and corrective-review record for the implemented namespace. Task 11 (`filter.*`) remains planned, quarantined, and not accepted.
+**Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168`
+**Accepted documentation checkpoint:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
+**Record:** this plan serves as the source-research and corrective-review record for the accepted namespace. Task 11 (`filter.*`) is implemented on an isolated candidate and remains in review/not accepted.
 
 This plan is deliberately more detailed than a normal task ticket. A local coding agent should use it as an investigation checklist, then amend it if current source/libobs behavior differs.
 
@@ -936,9 +937,9 @@ Record artifact name, CI run ID, artifact ID, byte size and SHA-256 in `PROJECT_
 
 ## 21. Final acceptance criteria
 
-Task 10 is currently IMPLEMENTED / FIX IN REVIEW / FINAL ACCEPTANCE PENDING.
-It must not be marked COMPLETE or ACCEPTED until the remaining human and exact
-final-SHA gates are satisfied.
+Task 10 is COMPLETE / ACCEPTED at the operator-provided implementation and
+documentation checkpoints above. This historical plan does not confer or
+change Task 11 acceptance.
 
 - [x] Source/libobs/plugin research documented.
 - [x] `MEDIA_V1.md` concrete schema frozen for v1.
@@ -956,15 +957,15 @@ final-SHA gates are satisfied.
 - [x] Production package audit clean for the scoped forbidden artifacts.
 - [x] Corrective diff reviewed twice.
 - [x] Local Windows fixture execution completed.
-- [x] Status/handoff/roadmap updated to pending acceptance.
+- [x] Status/handoff/roadmap updated with the accepted Task-10 status.
 - [x] Clean Task-10 corrective commit boundary created.
-- [x] Task 11 is not started and remains quarantined.
-- [ ] Hosted Task-10 workflow passes on the exact final candidate SHA.
-- [ ] Human approval promotes Task 10 to final acceptance.
+- [x] Task 10 hosted exact-SHA and physical acceptance evidence recorded by the
+      operator handoff.
+- [x] Human approval promoted Task 10 to final acceptance.
+- [ ] Task 11 independent review and explicit acceptance.
 
-The hosted Task-10 workflow has not run because the corrective candidate is
-local and unpushed; this is recorded explicitly rather than treated as hosted
-evidence.
+Task 11 is intentionally the active review scope; no Task 12 work is included
+in this plan.
 
 ---
 
@@ -982,8 +983,8 @@ The implementation is in `engine/runtime_media_v2.cpp`, the concrete schema is
 `.github/scripts/engine-protocol-v2-task10.ps1` with workflow
 `.github/workflows/engine-protocol-v2-task10.yaml`. Local VS2022 x64 build,
 unit lanes, Task 8/9 regressions, media integration, package audit, and Windows
-fixture execution are green on the corrective tree. Hosted execution of the new
-workflow remains pending on the exact final candidate SHA, and no acceptance is
-claimed here.
+fixture execution are green on the accepted corrective tree. The operator
+handoff records the exact-SHA hosted workflow, physical Windows acceptance, and
+independent raw-evidence audit as complete.
 
 If the local agent cannot truthfully say that, it has not completed the handoff audit.

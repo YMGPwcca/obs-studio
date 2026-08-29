@@ -2,10 +2,13 @@
 
 **Handoff date:** 2026-08-29  
 **Repository:** `YMGPwcca/obs-studio`  
-**Working branch:** `engine-protocol-v2`  
-**Task-10 implementation baseline under corrective review:** `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff` (`feat(engine): complete protocol v2 media namespace`)
-**Next roadmap task:** Task 11 — `filter.*` (planned; quarantined and not accepted)
-**Task 10 implementation status:** IMPLEMENTED / FIX IN REVIEW / FINAL ACCEPTANCE PENDING
+**Production branch:** `engine-protocol-v2`
+**Candidate branch:** `task11-codex`
+**Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168` (`fix(engine): correlate media actions by source ticket`)
+**Accepted Task-10 documentation checkpoint:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
+**Next roadmap task:** Task 11 — `filter.*` candidate on `task11-codex`
+**Task 10 implementation status:** COMPLETE / ACCEPTED
+**Task 11 candidate status:** IMPLEMENTED / IN REVIEW / NOT ACCEPTED
 
 This file exists so a local AI coding agent can continue the project without access to the previous ChatGPT conversation. It records project decisions, accepted behavior, verification evidence, known traps, and the required working process. **Verify everything against the checked-out source before changing it.**
 
@@ -148,8 +151,9 @@ Do not leak raw pointers, C++ exception internals, Win32 object pointers, or plu
 
 ## 4. Current implementation status
 
-Tasks 1–9 are accepted. Task 10 is implemented but remains in corrective review
-with final acceptance pending. See `PROJECT_STATUS.md` for detailed evidence.
+Tasks 1–10 are accepted. Task 11 is implemented on the isolated candidate
+branch and remains in review; no acceptance is claimed here. See
+`PROJECT_STATUS.md` and the Task-11 audit for the evidence boundary.
 
 ### Task 1 / 1.1 — headless host and package cleanup
 
@@ -191,11 +195,10 @@ Completed and physically accepted on Windows. See section 7 below.
 
 ### Task 10 — `media.*`
 
-Implemented in `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`, with the corrective
-candidate adding exact queued-action tickets and permanent-observer settlement.
-The namespace has all 11 planned methods, stable state strings, deterministic
-timeout/orphan/overflow resync, and a CI-only fixture. The concrete wire contract
-is `engine/MEDIA_V1.md`; final acceptance remains pending.
+Accepted in `6a590c2985a99d186c8eecd0241acdc824d32168`, with exact queued-action
+tickets and permanent-observer settlement. The namespace has all 11 methods,
+stable state strings, deterministic timeout/orphan/overflow resync, and a
+CI-only fixture. The concrete wire contract is `engine/MEDIA_V1.md`.
 
 ---
 
@@ -219,18 +222,21 @@ Start with `SOURCE_REVIEW_GUIDE.md`, but the core current engine map is:
 - `engine/source_event_capture.hpp` — header-only capture routing/thread isolation used by source event ownership.
 - `engine/runtime_interaction_v2.cpp` — Task-9 transient interaction bridge.
 - `engine/runtime_media_v2.cpp` — Task-10 media state observer, action settlement, and event bridge.
+- `engine/runtime_filter_v2.cpp` — Task-11 filter ownership, observer, settlement, and event bridge.
+- `engine/protocol_filter_v2.cpp` — Task-11 capability/filter router around the unchanged v2 core.
+- `engine/task11_filter_source.cpp` — CI-only deterministic Task-11 parent/filter fixture.
 - `engine/task8_concurrency_source.cpp` — CI-only deterministic Task-8 plugin.
 - `engine/task9_interaction_source.cpp` — CI-only deterministic Task-9 interaction source.
 - `engine/task10_media_source.cpp` — CI-only deterministic Task-10 media source.
 - `engine/CMakeLists.txt` — headless executable plus test-only target definitions.
 - `engine/PROTOCOL_V2.md` — canonical protocol method/event namespace contract.
-- `engine/SOURCE_V1.md`, `INTERACTION_V1.md`, `PROPERTIES_V1.md`, `RUNTIME_OBJECTS_V1.md`, `EVENTS_V1.md` — concrete namespace/task contracts.
+- `engine/SOURCE_V1.md`, `INTERACTION_V1.md`, `MEDIA_V1.md`, `FILTER_V1.md`, `PROPERTIES_V1.md`, `RUNTIME_OBJECTS_V1.md`, `EVENTS_V1.md` — concrete namespace/task contracts.
 
 CI:
 
 - `.github/actions/build-obs/` — project Windows build action used by task workflows.
 - `.github/scripts/engine-protocol-v2-*.ps1` — deterministic Windows integration drivers.
-- `.github/workflows/engine-protocol-v2-task1.yaml` through `task9.yaml` plus `task8-concurrency.yaml` — regression lanes.
+- `.github/workflows/engine-protocol-v2-task1.yaml` through `task11.yaml` plus `task8-concurrency.yaml` — regression lanes.
 
 ---
 
@@ -392,9 +398,9 @@ Task 9 is therefore physically accepted.
 
 ## 8. Task 10 deep handoff: media settlement
 
-Task 10 is implemented at `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`, with a
-corrective action-ownership fix in review. The concrete wire contract is
-`engine/MEDIA_V1.md`; the implementation is `engine/runtime_media_v2.cpp`.
+Task 10 is accepted at `6a590c2985a99d186c8eecd0241acdc824d32168`. The
+concrete wire contract is `engine/MEDIA_V1.md`; the implementation is
+`engine/runtime_media_v2.cpp`.
 
 ### 8.1 Upstream behavior verified
 
@@ -447,8 +453,9 @@ coverage adds pre-existing same-signal actions, timed-out/orphan follow-up
 actions, late set-position completion, blocking callback teardown, removal with
 an outstanding callback, and shutdown with an outstanding callback. The normal
 package audit confirms that the fixture and frontend/WebSocket binaries are
-absent. Local Windows validation is green; hosted execution on the exact final
-corrective SHA remains pending, so Task 10 is not accepted.
+absent. The operator handoff records exact-SHA hosted CI, physical Windows
+acceptance, and independent raw-evidence review as complete; Task 10 is
+accepted.
 
 The handoff audit also removed `obs-websocket` and `obs-browser` from the default
 safe-module list in `08010cdc6` and `2744b3bcb`. They remain explicit opt-in or
@@ -554,9 +561,8 @@ Normal artifact must not contain test fixtures. Assert this in CI before explici
 
 ## 11. What to do next
 
-Task 10 corrective acceptance is still pending. Do not begin Task 11; its
-unauthorized implementation remains quarantined and not accepted. Any future
-operator should first report that it has:
+Task 10 is accepted. The Task-11 candidate is implemented on `task11-codex` and
+is still IN REVIEW / NOT ACCEPTED. The candidate handoff records that it has:
 
 - verified branch/HEAD;
 - read all handoff docs;
@@ -565,12 +571,15 @@ operator should first report that it has:
 - reviewed the `filter.*` section of `engine/PROTOCOL_V2.md`;
 - inspected current libobs filter ownership/reference/reorder APIs;
 - inspected representative filter plugins and the generic properties bridge;
-- read the Task-11 plan if one is added.
+- read and reconciled `engine/FILTER_V1.md`, the Task-11 plan/audit, the
+  deterministic script, and the exact-SHA workflow.
 
-Do not begin Task 11. It remains planned only, and the unauthorized Task-11
-implementation is quarantined on `wip/task11-unauthorized`. Preserve the media
-bridge's separate bounded queue, exact-ticket settlement rules, the internal
-`media_time` signal contract, and the no-WebSocket/no-browser default allowlist.
+The advisor WIP remains preserved on `wip/task11-advisor-handoff-137b2e5` and
+the older unauthorized implementation remains on `wip/task11-unauthorized`.
+Neither is accepted or merged. Preserve the media bridge's separate bounded
+queue, exact-ticket settlement rules, the internal `media_time` signal
+contract, and the no-WebSocket/no-browser default allowlist while reviewing
+Task 11. Do not begin Task 12.
 
 ---
 
@@ -598,8 +607,8 @@ This handoff is successful if a local agent can, using only the repository:
 
 1. explain the process/license/state boundary;
 2. explain revision/event semantics;
-3. identify Tasks 1–9 as accepted, Task 10 as implemented but pending final
-   acceptance, and Task 11 as quarantined/not accepted;
+3. identify Tasks 1–10 as accepted and Task 11 as implemented/in review/not
+   accepted;
 4. explain the Task-8 deferred update bug and why the current settlement exists;
 5. explain Task-9 transient interaction semantics and physical acceptance;
 6. explain Task-10 media action settlement, media-time limitations, and resync behavior;
