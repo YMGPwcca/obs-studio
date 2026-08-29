@@ -16,36 +16,30 @@ const char *safe_string(const char *value)
 
 const char *property_type_name(enum obs_property_type type)
 {
-	switch (type) {
-	case OBS_PROPERTY_BOOL:
-		return "bool";
-	case OBS_PROPERTY_INT:
-		return "int";
-	case OBS_PROPERTY_FLOAT:
-		return "float";
-	case OBS_PROPERTY_TEXT:
-		return "text";
-	case OBS_PROPERTY_PATH:
-		return "path";
-	case OBS_PROPERTY_LIST:
-		return "list";
-	case OBS_PROPERTY_COLOR:
-		return "color";
-	case OBS_PROPERTY_BUTTON:
-		return "button";
-	case OBS_PROPERTY_FONT:
-		return "font";
-	case OBS_PROPERTY_EDITABLE_LIST:
-		return "editableList";
-	case OBS_PROPERTY_FRAME_RATE:
-		return "frameRate";
-	case OBS_PROPERTY_GROUP:
-		return "group";
-	case OBS_PROPERTY_COLOR_ALPHA:
-		return "colorAlpha";
-	default:
-		return "invalid";
+	struct Entry {
+		enum obs_property_type type;
+		const char *name;
+	};
+	constexpr Entry entries[] = {
+		{OBS_PROPERTY_BOOL, "bool"},
+		{OBS_PROPERTY_INT, "int"},
+		{OBS_PROPERTY_FLOAT, "float"},
+		{OBS_PROPERTY_TEXT, "text"},
+		{OBS_PROPERTY_PATH, "path"},
+		{OBS_PROPERTY_LIST, "list"},
+		{OBS_PROPERTY_COLOR, "color"},
+		{OBS_PROPERTY_BUTTON, "button"},
+		{OBS_PROPERTY_FONT, "font"},
+		{OBS_PROPERTY_EDITABLE_LIST, "editableList"},
+		{OBS_PROPERTY_FRAME_RATE, "frameRate"},
+		{OBS_PROPERTY_GROUP, "group"},
+		{OBS_PROPERTY_COLOR_ALPHA, "colorAlpha"},
+	};
+	for (const Entry &entry : entries) {
+		if (entry.type == type)
+			return entry.name;
 	}
+	return "invalid";
 }
 
 const char *number_type_name(enum obs_number_type type)
@@ -172,6 +166,142 @@ void erase_password_settings(obs_properties_t *properties, obs_data_t *settings)
 }
 
 ObsDataPtr serialize_property(obs_property_t *property, obs_data_t *settings, const char *refresh_property);
+ObsArrayPtr serialize_property_array(obs_properties_t *properties, obs_data_t *settings, const char *refresh_property);
+
+using PropertySerializer = void (*)(obs_data_t *, obs_property_t *, obs_data_t *, const char *);
+
+struct PropertySerializerEntry {
+	enum obs_property_type type;
+	PropertySerializer serializer;
+};
+
+void serialize_int_property(obs_data_t *data, obs_property_t *property, obs_data_t *, const char *)
+{
+	obs_data_set_int(data, "min", obs_property_int_min(property));
+	obs_data_set_int(data, "max", obs_property_int_max(property));
+	obs_data_set_int(data, "step", obs_property_int_step(property));
+	obs_data_set_string(data, "numberType", number_type_name(obs_property_int_type(property)));
+	set_nonempty_string(data, "suffix", obs_property_int_suffix(property));
+}
+
+void serialize_float_property(obs_data_t *data, obs_property_t *property, obs_data_t *, const char *)
+{
+	obs_data_set_double(data, "min", obs_property_float_min(property));
+	obs_data_set_double(data, "max", obs_property_float_max(property));
+	obs_data_set_double(data, "step", obs_property_float_step(property));
+	obs_data_set_string(data, "numberType", number_type_name(obs_property_float_type(property)));
+	set_nonempty_string(data, "suffix", obs_property_float_suffix(property));
+}
+
+void serialize_text_property(obs_data_t *data, obs_property_t *property, obs_data_t *settings, const char *)
+{
+	const enum obs_text_type text_type = obs_property_text_type(property);
+	const char *name = safe_string(obs_property_name(property));
+	obs_data_set_string(data, "textType", text_type_name(text_type));
+	obs_data_set_bool(data, "monospace", obs_property_text_monospace(property));
+	if (text_type == OBS_TEXT_INFO) {
+		obs_data_set_string(data, "infoType", text_info_type_name(obs_property_text_info_type(property)));
+		obs_data_set_bool(data, "wordWrap", obs_property_text_info_word_wrap(property));
+	} else if (text_type == OBS_TEXT_PASSWORD) {
+		obs_data_set_bool(data, "sensitive", true);
+		const char *value = settings ? obs_data_get_string(settings, name) : nullptr;
+		obs_data_set_bool(data, "hasValue", value && *value);
+	}
+}
+
+void serialize_path_property(obs_data_t *data, obs_property_t *property, obs_data_t *, const char *)
+{
+	obs_data_set_string(data, "pathType", path_type_name(obs_property_path_type(property)));
+	set_nonempty_string(data, "filter", obs_property_path_filter(property));
+	set_nonempty_string(data, "defaultPath", obs_property_path_default_path(property));
+}
+
+void serialize_list_property(obs_data_t *data, obs_property_t *property, obs_data_t *, const char *)
+{
+	obs_data_set_string(data, "comboType", combo_type_name(obs_property_list_type(property)));
+	obs_data_set_string(data, "valueType", combo_format_name(obs_property_list_format(property)));
+	ObsArrayPtr items = serialize_property_list_items(property);
+	obs_data_set_int(data, "itemCount", static_cast<long long>(obs_data_array_count(items.get())));
+	obs_data_set_array(data, "items", items.get());
+}
+
+void serialize_color_property(obs_data_t *data, obs_property_t *, obs_data_t *, const char *)
+{
+	obs_data_set_string(data, "encoding", "obsColorInteger");
+}
+
+void serialize_button_property(obs_data_t *data, obs_property_t *property, obs_data_t *, const char *)
+{
+	const enum obs_button_type button_type = obs_property_button_type(property);
+	obs_data_set_string(data, "buttonType", button_type_name(button_type));
+	if (button_type == OBS_BUTTON_URL)
+		set_nonempty_string(data, "url", obs_property_button_url(property));
+}
+
+void serialize_editable_list_property(obs_data_t *data, obs_property_t *property, obs_data_t *, const char *)
+{
+	obs_data_set_string(data, "listType", editable_list_type_name(obs_property_editable_list_type(property)));
+	set_nonempty_string(data, "filter", obs_property_editable_list_filter(property));
+	set_nonempty_string(data, "defaultPath", obs_property_editable_list_default_path(property));
+}
+
+void serialize_frame_rate_property(obs_data_t *data, obs_property_t *property, obs_data_t *, const char *)
+{
+	ObsArrayPtr options(obs_data_array_create());
+	const size_t option_count = obs_property_frame_rate_options_count(property);
+	for (size_t index = 0; index < option_count; ++index) {
+		ObsDataPtr option(obs_data_create());
+		obs_data_set_string(option.get(), "name", safe_string(obs_property_frame_rate_option_name(property, index)));
+		obs_data_set_string(option.get(), "description",
+				    safe_string(obs_property_frame_rate_option_description(property, index)));
+		obs_data_array_push_back(options.get(), option.get());
+	}
+	obs_data_set_array(data, "options", options.get());
+
+	ObsArrayPtr ranges(obs_data_array_create());
+	const size_t range_count = obs_property_frame_rate_fps_ranges_count(property);
+	for (size_t index = 0; index < range_count; ++index) {
+		ObsDataPtr range(obs_data_create());
+		set_frame_rate(range.get(), "min", obs_property_frame_rate_fps_range_min(property, index));
+		set_frame_rate(range.get(), "max", obs_property_frame_rate_fps_range_max(property, index));
+		obs_data_array_push_back(ranges.get(), range.get());
+	}
+	obs_data_set_array(data, "ranges", ranges.get());
+}
+
+void serialize_group_property(obs_data_t *data, obs_property_t *property, obs_data_t *settings,
+				      const char *refresh_property)
+{
+	obs_data_set_string(data, "groupType", group_type_name(obs_property_group_type(property)));
+	ObsArrayPtr children = serialize_property_array(obs_property_group_content(property), settings, refresh_property);
+	obs_data_set_array(data, "children", children.get());
+}
+
+constexpr PropertySerializerEntry kPropertySerializers[] = {
+	{OBS_PROPERTY_INT, &serialize_int_property},
+	{OBS_PROPERTY_FLOAT, &serialize_float_property},
+	{OBS_PROPERTY_TEXT, &serialize_text_property},
+	{OBS_PROPERTY_PATH, &serialize_path_property},
+	{OBS_PROPERTY_LIST, &serialize_list_property},
+	{OBS_PROPERTY_COLOR, &serialize_color_property},
+	{OBS_PROPERTY_COLOR_ALPHA, &serialize_color_property},
+	{OBS_PROPERTY_BUTTON, &serialize_button_property},
+	{OBS_PROPERTY_EDITABLE_LIST, &serialize_editable_list_property},
+	{OBS_PROPERTY_FRAME_RATE, &serialize_frame_rate_property},
+	{OBS_PROPERTY_GROUP, &serialize_group_property},
+};
+
+void serialize_property_details(obs_data_t *data, obs_property_t *property, obs_data_t *settings,
+				       const char *refresh_property)
+{
+	const enum obs_property_type type = obs_property_get_type(property);
+	for (const PropertySerializerEntry &entry : kPropertySerializers) {
+		if (entry.type == type) {
+			entry.serializer(data, property, settings, refresh_property);
+			return;
+		}
+	}
+}
 
 ObsArrayPtr serialize_property_array(obs_properties_t *properties, obs_data_t *settings, const char *refresh_property)
 {
@@ -200,96 +330,7 @@ ObsDataPtr serialize_property(obs_property_t *property, obs_data_t *settings, co
 	if (refresh_property && std::strcmp(name, refresh_property) == 0)
 		obs_data_set_bool(data.get(), "requiresRefresh", true);
 
-	switch (type) {
-	case OBS_PROPERTY_INT:
-		obs_data_set_int(data.get(), "min", obs_property_int_min(property));
-		obs_data_set_int(data.get(), "max", obs_property_int_max(property));
-		obs_data_set_int(data.get(), "step", obs_property_int_step(property));
-		obs_data_set_string(data.get(), "numberType", number_type_name(obs_property_int_type(property)));
-		set_nonempty_string(data.get(), "suffix", obs_property_int_suffix(property));
-		break;
-	case OBS_PROPERTY_FLOAT:
-		obs_data_set_double(data.get(), "min", obs_property_float_min(property));
-		obs_data_set_double(data.get(), "max", obs_property_float_max(property));
-		obs_data_set_double(data.get(), "step", obs_property_float_step(property));
-		obs_data_set_string(data.get(), "numberType", number_type_name(obs_property_float_type(property)));
-		set_nonempty_string(data.get(), "suffix", obs_property_float_suffix(property));
-		break;
-	case OBS_PROPERTY_TEXT: {
-		const enum obs_text_type text_type = obs_property_text_type(property);
-		obs_data_set_string(data.get(), "textType", text_type_name(text_type));
-		obs_data_set_bool(data.get(), "monospace", obs_property_text_monospace(property));
-		if (text_type == OBS_TEXT_INFO) {
-			obs_data_set_string(data.get(), "infoType", text_info_type_name(obs_property_text_info_type(property)));
-			obs_data_set_bool(data.get(), "wordWrap", obs_property_text_info_word_wrap(property));
-		} else if (text_type == OBS_TEXT_PASSWORD) {
-			obs_data_set_bool(data.get(), "sensitive", true);
-			const char *value = settings ? obs_data_get_string(settings, name) : nullptr;
-			obs_data_set_bool(data.get(), "hasValue", value && *value);
-		}
-		break;
-	}
-	case OBS_PROPERTY_PATH:
-		obs_data_set_string(data.get(), "pathType", path_type_name(obs_property_path_type(property)));
-		set_nonempty_string(data.get(), "filter", obs_property_path_filter(property));
-		set_nonempty_string(data.get(), "defaultPath", obs_property_path_default_path(property));
-		break;
-	case OBS_PROPERTY_LIST: {
-		obs_data_set_string(data.get(), "comboType", combo_type_name(obs_property_list_type(property)));
-		obs_data_set_string(data.get(), "valueType", combo_format_name(obs_property_list_format(property)));
-		ObsArrayPtr items = serialize_property_list_items(property);
-		obs_data_set_int(data.get(), "itemCount", static_cast<long long>(obs_data_array_count(items.get())));
-		obs_data_set_array(data.get(), "items", items.get());
-		break;
-	}
-	case OBS_PROPERTY_COLOR:
-	case OBS_PROPERTY_COLOR_ALPHA:
-		obs_data_set_string(data.get(), "encoding", "obsColorInteger");
-		break;
-	case OBS_PROPERTY_BUTTON: {
-		const enum obs_button_type button_type = obs_property_button_type(property);
-		obs_data_set_string(data.get(), "buttonType", button_type_name(button_type));
-		if (button_type == OBS_BUTTON_URL)
-			set_nonempty_string(data.get(), "url", obs_property_button_url(property));
-		break;
-	}
-	case OBS_PROPERTY_EDITABLE_LIST:
-		obs_data_set_string(data.get(), "listType", editable_list_type_name(obs_property_editable_list_type(property)));
-		set_nonempty_string(data.get(), "filter", obs_property_editable_list_filter(property));
-		set_nonempty_string(data.get(), "defaultPath", obs_property_editable_list_default_path(property));
-		break;
-	case OBS_PROPERTY_FRAME_RATE: {
-		ObsArrayPtr options(obs_data_array_create());
-		const size_t option_count = obs_property_frame_rate_options_count(property);
-		for (size_t index = 0; index < option_count; ++index) {
-			ObsDataPtr option(obs_data_create());
-			obs_data_set_string(option.get(), "name", safe_string(obs_property_frame_rate_option_name(property, index)));
-			obs_data_set_string(option.get(), "description",
-					    safe_string(obs_property_frame_rate_option_description(property, index)));
-			obs_data_array_push_back(options.get(), option.get());
-		}
-		obs_data_set_array(data.get(), "options", options.get());
-
-		ObsArrayPtr ranges(obs_data_array_create());
-		const size_t range_count = obs_property_frame_rate_fps_ranges_count(property);
-		for (size_t index = 0; index < range_count; ++index) {
-			ObsDataPtr range(obs_data_create());
-			set_frame_rate(range.get(), "min", obs_property_frame_rate_fps_range_min(property, index));
-			set_frame_rate(range.get(), "max", obs_property_frame_rate_fps_range_max(property, index));
-			obs_data_array_push_back(ranges.get(), range.get());
-		}
-		obs_data_set_array(data.get(), "ranges", ranges.get());
-		break;
-	}
-	case OBS_PROPERTY_GROUP: {
-		obs_data_set_string(data.get(), "groupType", group_type_name(obs_property_group_type(property)));
-		ObsArrayPtr children = serialize_property_array(obs_property_group_content(property), settings, refresh_property);
-		obs_data_set_array(data.get(), "children", children.get());
-		break;
-	}
-	default:
-		break;
-	}
+	serialize_property_details(data.get(), property, settings, refresh_property);
 
 	return data;
 }
@@ -313,132 +354,190 @@ bool is_integer(obs_data_item_t *item)
 	return is_number(item) && obs_data_item_numtype(item) == OBS_DATA_NUM_INT;
 }
 
+using ListValueMatcher = bool (*)(obs_property_t *, obs_data_item_t *, size_t);
+
+bool list_string_value_matches(obs_property_t *property, obs_data_item_t *item, size_t index)
+{
+	return obs_data_item_gettype(item) == OBS_DATA_STRING &&
+	       std::strcmp(obs_data_item_get_string(item), safe_string(obs_property_list_item_string(property, index))) == 0;
+}
+
+bool list_int_value_matches(obs_property_t *property, obs_data_item_t *item, size_t index)
+{
+	return is_integer(item) && obs_data_item_get_int(item) == obs_property_list_item_int(property, index);
+}
+
+bool list_float_value_matches(obs_property_t *property, obs_data_item_t *item, size_t index)
+{
+	return is_number(item) && obs_data_item_get_double(item) == obs_property_list_item_float(property, index);
+}
+
+bool list_bool_value_matches(obs_property_t *property, obs_data_item_t *item, size_t index)
+{
+	return obs_data_item_gettype(item) == OBS_DATA_BOOLEAN &&
+	       obs_data_item_get_bool(item) == obs_property_list_item_bool(property, index);
+}
+
+struct ListValueMatcherEntry {
+	enum obs_combo_format format;
+	ListValueMatcher matcher;
+};
+
+constexpr ListValueMatcherEntry kListValueMatchers[] = {
+	{OBS_COMBO_FORMAT_STRING, &list_string_value_matches},
+	{OBS_COMBO_FORMAT_INT, &list_int_value_matches},
+	{OBS_COMBO_FORMAT_FLOAT, &list_float_value_matches},
+	{OBS_COMBO_FORMAT_BOOL, &list_bool_value_matches},
+};
+
+ListValueMatcher find_list_value_matcher(enum obs_combo_format format)
+{
+	for (const ListValueMatcherEntry &entry : kListValueMatchers) {
+		if (entry.format == format)
+			return entry.matcher;
+	}
+	return nullptr;
+}
+
 bool list_value_is_enabled(obs_property_t *property, obs_data_item_t *item)
 {
 	const size_t count = obs_property_list_item_count(property);
 	if (count == 0)
 		return true;
 
-	const enum obs_combo_format format = obs_property_list_format(property);
+	const ListValueMatcher matcher = find_list_value_matcher(obs_property_list_format(property));
+	if (!matcher)
+		return true;
 	for (size_t index = 0; index < count; ++index) {
-		bool matches = false;
-		switch (format) {
-		case OBS_COMBO_FORMAT_STRING:
-			matches = obs_data_item_gettype(item) == OBS_DATA_STRING &&
-				  std::strcmp(obs_data_item_get_string(item),
-					      safe_string(obs_property_list_item_string(property, index))) == 0;
-			break;
-		case OBS_COMBO_FORMAT_INT:
-			matches = is_integer(item) && obs_data_item_get_int(item) == obs_property_list_item_int(property, index);
-			break;
-		case OBS_COMBO_FORMAT_FLOAT:
-			matches = is_number(item) && obs_data_item_get_double(item) == obs_property_list_item_float(property, index);
-			break;
-		case OBS_COMBO_FORMAT_BOOL:
-			matches = obs_data_item_gettype(item) == OBS_DATA_BOOLEAN &&
-				  obs_data_item_get_bool(item) == obs_property_list_item_bool(property, index);
-			break;
-		default:
-			return true;
-		}
-		if (matches)
+		if (matcher(property, item, index))
 			return !obs_property_list_item_disabled(property, index);
 	}
 	return false;
 }
 
-void validate_property_item(obs_property_t *property, obs_data_item_t *item, obs_data_array_t *issues)
+void validate_bool_property(obs_property_t *property, obs_data_item_t *item, obs_data_array_t *issues)
+{
+	if (obs_data_item_gettype(item) != OBS_DATA_BOOLEAN)
+		add_validation_issue(issues, obs_property_name(property), "type", "value must be a boolean");
+}
+
+void validate_int_property(obs_property_t *property, obs_data_item_t *item, obs_data_array_t *issues)
+{
+	if (!is_integer(item)) {
+		add_validation_issue(issues, obs_property_name(property), "type", "value must be an integer");
+		return;
+	}
+	const long long value = obs_data_item_get_int(item);
+	if (value < obs_property_int_min(property) || value > obs_property_int_max(property))
+		add_validation_issue(issues, obs_property_name(property), "range", "integer value is outside the property range");
+}
+
+void validate_float_property(obs_property_t *property, obs_data_item_t *item, obs_data_array_t *issues)
+{
+	if (!is_number(item)) {
+		add_validation_issue(issues, obs_property_name(property), "type", "value must be a number");
+		return;
+	}
+	const double value = obs_data_item_get_double(item);
+	if (!std::isfinite(value) || value < obs_property_float_min(property) ||
+	    value > obs_property_float_max(property))
+		add_validation_issue(issues, obs_property_name(property), "range", "numeric value is outside the property range");
+}
+
+void validate_string_property(obs_property_t *property, obs_data_item_t *item, obs_data_array_t *issues)
+{
+	if (obs_data_item_gettype(item) != OBS_DATA_STRING)
+		add_validation_issue(issues, obs_property_name(property), "type", "value must be a string");
+}
+
+bool list_value_type_matches(enum obs_combo_format format, obs_data_item_t *item)
+{
+	switch (format) {
+	case OBS_COMBO_FORMAT_STRING:
+		return obs_data_item_gettype(item) == OBS_DATA_STRING;
+	case OBS_COMBO_FORMAT_INT:
+		return is_integer(item);
+	case OBS_COMBO_FORMAT_FLOAT:
+		return is_number(item);
+	case OBS_COMBO_FORMAT_BOOL:
+		return obs_data_item_gettype(item) == OBS_DATA_BOOLEAN;
+	default:
+		return true;
+	}
+}
+
+void validate_list_property(obs_property_t *property, obs_data_item_t *item, obs_data_array_t *issues)
 {
 	const char *name = obs_property_name(property);
-	const enum obs_property_type type = obs_property_get_type(property);
-	const enum obs_data_type data_type = obs_data_item_gettype(item);
-
-	switch (type) {
-	case OBS_PROPERTY_BOOL:
-		if (data_type != OBS_DATA_BOOLEAN)
-			add_validation_issue(issues, name, "type", "value must be a boolean");
-		break;
-	case OBS_PROPERTY_INT:
-		if (!is_integer(item)) {
-			add_validation_issue(issues, name, "type", "value must be an integer");
-		} else {
-			const long long value = obs_data_item_get_int(item);
-			if (value < obs_property_int_min(property) || value > obs_property_int_max(property))
-				add_validation_issue(issues, name, "range", "integer value is outside the property range");
-		}
-		break;
-	case OBS_PROPERTY_FLOAT:
-		if (!is_number(item)) {
-			add_validation_issue(issues, name, "type", "value must be a number");
-		} else {
-			const double value = obs_data_item_get_double(item);
-			if (!std::isfinite(value) || value < obs_property_float_min(property) ||
-			    value > obs_property_float_max(property))
-				add_validation_issue(issues, name, "range", "numeric value is outside the property range");
-		}
-		break;
-	case OBS_PROPERTY_TEXT:
-	case OBS_PROPERTY_PATH:
-		if (data_type != OBS_DATA_STRING)
-			add_validation_issue(issues, name, "type", "value must be a string");
-		break;
-	case OBS_PROPERTY_LIST: {
-		bool type_ok = false;
-		switch (obs_property_list_format(property)) {
-		case OBS_COMBO_FORMAT_STRING:
-			type_ok = data_type == OBS_DATA_STRING;
-			break;
-		case OBS_COMBO_FORMAT_INT:
-			type_ok = is_integer(item);
-			break;
-		case OBS_COMBO_FORMAT_FLOAT:
-			type_ok = is_number(item);
-			break;
-		case OBS_COMBO_FORMAT_BOOL:
-			type_ok = data_type == OBS_DATA_BOOLEAN;
-			break;
-		default:
-			type_ok = true;
-			break;
-		}
-		if (!type_ok) {
-			add_validation_issue(issues, name, "type", "value type does not match the list property format");
-		} else if (obs_property_list_type(property) != OBS_COMBO_TYPE_EDITABLE &&
-			   !list_value_is_enabled(property, item)) {
-			add_validation_issue(issues, name, "choice", "value is not an enabled item in the list property");
-		}
-		break;
+	const bool type_ok = list_value_type_matches(obs_property_list_format(property), item);
+	if (!type_ok) {
+		add_validation_issue(issues, name, "type", "value type does not match the list property format");
+	} else if (obs_property_list_type(property) != OBS_COMBO_TYPE_EDITABLE &&
+		   !list_value_is_enabled(property, item)) {
+		add_validation_issue(issues, name, "choice", "value is not an enabled item in the list property");
 	}
-	case OBS_PROPERTY_COLOR:
-	case OBS_PROPERTY_COLOR_ALPHA:
-		if (!is_integer(item)) {
-			add_validation_issue(issues, name, "type", "color value must be an integer");
-		} else {
-			const long long value = obs_data_item_get_int(item);
-			if (value < 0 || static_cast<unsigned long long>(value) > std::numeric_limits<uint32_t>::max())
-				add_validation_issue(issues, name, "range", "color value is outside the 32-bit OBS color range");
+}
+
+void validate_color_property(obs_property_t *property, obs_data_item_t *item, obs_data_array_t *issues)
+{
+	const char *name = obs_property_name(property);
+	if (!is_integer(item)) {
+		add_validation_issue(issues, name, "type", "color value must be an integer");
+		return;
+	}
+	const long long value = obs_data_item_get_int(item);
+	if (value < 0 || static_cast<unsigned long long>(value) > std::numeric_limits<uint32_t>::max())
+		add_validation_issue(issues, name, "range", "color value is outside the 32-bit OBS color range");
+}
+
+void validate_object_property(obs_property_t *property, obs_data_item_t *item, obs_data_array_t *issues)
+{
+	if (obs_data_item_gettype(item) != OBS_DATA_OBJECT)
+		add_validation_issue(issues, obs_property_name(property), "type", "font value must be an object");
+}
+
+void validate_array_property(obs_property_t *property, obs_data_item_t *item, obs_data_array_t *issues)
+{
+	if (obs_data_item_gettype(item) != OBS_DATA_ARRAY)
+		add_validation_issue(issues, obs_property_name(property), "type", "editable-list value must be an array");
+}
+
+void validate_group_property(obs_property_t *property, obs_data_item_t *item, obs_data_array_t *issues)
+{
+	if (obs_property_group_type(property) == OBS_GROUP_CHECKABLE &&
+	    obs_data_item_gettype(item) != OBS_DATA_BOOLEAN)
+		add_validation_issue(issues, obs_property_name(property), "type", "checkable-group value must be a boolean");
+}
+
+using PropertyValidator = void (*)(obs_property_t *, obs_data_item_t *, obs_data_array_t *);
+
+struct PropertyValidatorEntry {
+	enum obs_property_type type;
+	PropertyValidator validator;
+};
+
+constexpr PropertyValidatorEntry kPropertyValidators[] = {
+	{OBS_PROPERTY_BOOL, &validate_bool_property},
+	{OBS_PROPERTY_INT, &validate_int_property},
+	{OBS_PROPERTY_FLOAT, &validate_float_property},
+	{OBS_PROPERTY_TEXT, &validate_string_property},
+	{OBS_PROPERTY_PATH, &validate_string_property},
+	{OBS_PROPERTY_LIST, &validate_list_property},
+	{OBS_PROPERTY_COLOR, &validate_color_property},
+	{OBS_PROPERTY_COLOR_ALPHA, &validate_color_property},
+	{OBS_PROPERTY_FONT, &validate_object_property},
+	{OBS_PROPERTY_EDITABLE_LIST, &validate_array_property},
+	{OBS_PROPERTY_GROUP, &validate_group_property},
+};
+
+void validate_property_item(obs_property_t *property, obs_data_item_t *item, obs_data_array_t *issues)
+{
+	const enum obs_property_type type = obs_property_get_type(property);
+	for (const PropertyValidatorEntry &entry : kPropertyValidators) {
+		if (entry.type == type) {
+			entry.validator(property, item, issues);
+			return;
 		}
-		break;
-	case OBS_PROPERTY_FONT:
-		if (data_type != OBS_DATA_OBJECT)
-			add_validation_issue(issues, name, "type", "font value must be an object");
-		break;
-	case OBS_PROPERTY_EDITABLE_LIST:
-		if (data_type != OBS_DATA_ARRAY)
-			add_validation_issue(issues, name, "type", "editable-list value must be an array");
-		break;
-	case OBS_PROPERTY_GROUP:
-		if (obs_property_group_type(property) == OBS_GROUP_CHECKABLE && data_type != OBS_DATA_BOOLEAN)
-			add_validation_issue(issues, name, "type", "checkable-group value must be a boolean");
-		break;
-	case OBS_PROPERTY_FRAME_RATE:
-		/* libobs accepts multiple frame-rate setting representations. Do not
-		 * over-constrain plugin-defined storage here. */
-		break;
-	case OBS_PROPERTY_BUTTON:
-	case OBS_PROPERTY_INVALID:
-	default:
-		break;
 	}
 }
 

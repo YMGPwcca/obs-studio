@@ -155,353 +155,216 @@ enum class V2Method {
 	Unknown,
 };
 
+struct MethodName {
+	std::string_view name;
+	V2Method method;
+};
+
+constexpr MethodName kMethodNames[] = {
+	{"session.hello", V2Method::SessionHello},
+	{"session.ping", V2Method::SessionPing},
+	{"session.subscribe", V2Method::SessionSubscribe},
+	{"session.unsubscribe", V2Method::SessionUnsubscribe},
+	{"session.getSubscriptions", V2Method::SessionGetSubscriptions},
+	{"session.close", V2Method::SessionClose},
+	{"engine.getCapabilities", V2Method::EngineGetCapabilities},
+	{"properties.get", V2Method::PropertiesGet},
+	{"properties.resolve", V2Method::PropertiesResolve},
+	{"properties.getListItems", V2Method::PropertiesGetListItems},
+	{"properties.invokeButton", V2Method::PropertiesInvokeButton},
+	{"properties.validate", V2Method::PropertiesValidate},
+	{"properties.refresh", V2Method::PropertiesRefresh},
+	{"source.kindList", V2Method::SourceKindList},
+	{"source.kindGet", V2Method::SourceKindGet},
+	{"source.kindDefaults", V2Method::SourceKindDefaults},
+	{"source.kindProperties", V2Method::SourceKindProperties},
+	{"source.list", V2Method::SourceList},
+	{"source.get", V2Method::SourceGet},
+	{"source.create", V2Method::SourceCreate},
+	{"source.duplicate", V2Method::SourceDuplicate},
+	{"source.remove", V2Method::SourceRemove},
+	{"source.rename", V2Method::SourceRename},
+	{"source.getSettings", V2Method::SourceGetSettings},
+	{"source.patchSettings", V2Method::SourcePatchSettings},
+	{"source.replaceSettings", V2Method::SourceReplaceSettings},
+	{"source.resetSettings", V2Method::SourceResetSettings},
+	{"source.getProperties", V2Method::SourceGetProperties},
+	{"source.getFlags", V2Method::SourceGetFlags},
+	{"source.getDimensions", V2Method::SourceGetDimensions},
+	{"source.getState", V2Method::SourceGetState},
+	{"source.getActive", V2Method::SourceGetActive},
+	{"source.getShowing", V2Method::SourceGetShowing},
+	{"source.getMissingFiles", V2Method::SourceGetMissingFiles},
+	{"source.refresh", V2Method::SourceRefresh},
+	{"source.saveState", V2Method::SourceSaveState},
+	{"source.loadState", V2Method::SourceLoadState},
+	{"interaction.focus", V2Method::InteractionFocus},
+	{"interaction.mouseMove", V2Method::InteractionMouseMove},
+	{"interaction.mouseButton", V2Method::InteractionMouseButton},
+	{"interaction.mouseWheel", V2Method::InteractionMouseWheel},
+	{"interaction.key", V2Method::InteractionKey},
+	{"interaction.text", V2Method::InteractionText},
+	{"interaction.reset", V2Method::InteractionReset},
+	{"scene.create", V2Method::SceneCreate},
+	{"scene.remove", V2Method::SceneRemove},
+	{"item.create", V2Method::ItemCreate},
+	{"item.remove", V2Method::ItemRemove},
+	{"item.setTransform", V2Method::ItemSetTransform},
+	{"media.getState", V2Method::MediaGetState},
+	{"media.play", V2Method::MediaPlay},
+	{"media.pause", V2Method::MediaPause},
+	{"media.togglePause", V2Method::MediaTogglePause},
+	{"media.stop", V2Method::MediaStop},
+	{"media.restart", V2Method::MediaRestart},
+	{"media.next", V2Method::MediaNext},
+	{"media.previous", V2Method::MediaPrevious},
+	{"media.getDuration", V2Method::MediaGetDuration},
+	{"media.getPosition", V2Method::MediaGetPosition},
+	{"media.setPosition", V2Method::MediaSetPosition},
+};
+
+constexpr V2Method kMutatingMethods[] = {
+	V2Method::SessionClose,
+	V2Method::PropertiesInvokeButton,
+	V2Method::SourceCreate,
+	V2Method::SourceDuplicate,
+	V2Method::SourceRemove,
+	V2Method::SourceRename,
+	V2Method::SourcePatchSettings,
+	V2Method::SourceReplaceSettings,
+	V2Method::SourceResetSettings,
+	V2Method::SourceLoadState,
+	V2Method::SceneCreate,
+	V2Method::SceneRemove,
+	V2Method::ItemCreate,
+	V2Method::ItemRemove,
+	V2Method::ItemSetTransform,
+	V2Method::MediaPlay,
+	V2Method::MediaPause,
+	V2Method::MediaTogglePause,
+	V2Method::MediaStop,
+	V2Method::MediaRestart,
+	V2Method::MediaNext,
+	V2Method::MediaPrevious,
+	V2Method::MediaSetPosition,
+};
+
+constexpr V2Method kSourceSettlementMethods[] = {
+	V2Method::SourcePatchSettings,
+	V2Method::SourceReplaceSettings,
+	V2Method::SourceResetSettings,
+	V2Method::SourceLoadState,
+};
+
+using RuntimeMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
+
+struct RuntimeMethodDescriptor {
+	V2Method method;
+	RuntimeMethodHandler handler;
+};
+
+constexpr RuntimeMethodDescriptor kRuntimeMethods[] = {
+	{V2Method::PropertiesGet, &Engine::v2_properties_get},
+	{V2Method::PropertiesResolve, &Engine::v2_properties_resolve},
+	{V2Method::PropertiesGetListItems, &Engine::v2_properties_get_list_items},
+	{V2Method::PropertiesInvokeButton, &Engine::v2_properties_invoke_button},
+	{V2Method::PropertiesValidate, &Engine::v2_properties_validate},
+	{V2Method::PropertiesRefresh, &Engine::v2_properties_refresh},
+	{V2Method::SourceKindList, &Engine::v2_source_kind_list},
+	{V2Method::SourceKindGet, &Engine::v2_source_kind_get},
+	{V2Method::SourceKindDefaults, &Engine::v2_source_kind_defaults},
+	{V2Method::SourceKindProperties, &Engine::v2_source_kind_properties},
+	{V2Method::SourceList, &Engine::v2_source_list},
+	{V2Method::SourceGet, &Engine::v2_source_get},
+	{V2Method::SourceCreate, &Engine::v2_source_create},
+	{V2Method::SourceDuplicate, &Engine::v2_source_duplicate},
+	{V2Method::SourceRemove, &Engine::v2_source_remove},
+	{V2Method::SourceRename, &Engine::v2_source_rename},
+	{V2Method::SourceGetSettings, &Engine::v2_source_get_settings},
+	{V2Method::SourcePatchSettings, &Engine::v2_source_patch_settings},
+	{V2Method::SourceReplaceSettings, &Engine::v2_source_replace_settings},
+	{V2Method::SourceResetSettings, &Engine::v2_source_reset_settings},
+	{V2Method::SourceGetProperties, &Engine::v2_source_get_properties},
+	{V2Method::SourceGetFlags, &Engine::v2_source_get_flags},
+	{V2Method::SourceGetDimensions, &Engine::v2_source_get_dimensions},
+	{V2Method::SourceGetState, &Engine::v2_source_get_state},
+	{V2Method::SourceGetActive, &Engine::v2_source_get_active},
+	{V2Method::SourceGetShowing, &Engine::v2_source_get_showing},
+	{V2Method::SourceGetMissingFiles, &Engine::v2_source_get_missing_files},
+	{V2Method::SourceRefresh, &Engine::v2_source_refresh},
+	{V2Method::SourceSaveState, &Engine::v2_source_save_state},
+	{V2Method::SourceLoadState, &Engine::v2_source_load_state},
+	{V2Method::InteractionFocus, &Engine::v2_interaction_focus},
+	{V2Method::InteractionMouseMove, &Engine::v2_interaction_mouse_move},
+	{V2Method::InteractionMouseButton, &Engine::v2_interaction_mouse_button},
+	{V2Method::InteractionMouseWheel, &Engine::v2_interaction_mouse_wheel},
+	{V2Method::InteractionKey, &Engine::v2_interaction_key},
+	{V2Method::InteractionText, &Engine::v2_interaction_text},
+	{V2Method::InteractionReset, &Engine::v2_interaction_reset},
+	{V2Method::SceneCreate, &Engine::v2_scene_create},
+	{V2Method::SceneRemove, &Engine::v2_scene_remove},
+	{V2Method::ItemCreate, &Engine::v2_item_create},
+	{V2Method::ItemRemove, &Engine::v2_item_remove},
+	{V2Method::ItemSetTransform, &Engine::v2_item_set_transform},
+	{V2Method::MediaGetState, &Engine::v2_media_get_state},
+	{V2Method::MediaPlay, &Engine::v2_media_play},
+	{V2Method::MediaPause, &Engine::v2_media_pause},
+	{V2Method::MediaTogglePause, &Engine::v2_media_toggle_pause},
+	{V2Method::MediaStop, &Engine::v2_media_stop},
+	{V2Method::MediaRestart, &Engine::v2_media_restart},
+	{V2Method::MediaNext, &Engine::v2_media_next},
+	{V2Method::MediaPrevious, &Engine::v2_media_previous},
+	{V2Method::MediaGetDuration, &Engine::v2_media_get_duration},
+	{V2Method::MediaGetPosition, &Engine::v2_media_get_position},
+	{V2Method::MediaSetPosition, &Engine::v2_media_set_position},
+};
+
 V2Method classify_method(std::string_view method)
 {
-	if (method == "session.hello")
-		return V2Method::SessionHello;
-	if (method == "session.ping")
-		return V2Method::SessionPing;
-	if (method == "session.subscribe")
-		return V2Method::SessionSubscribe;
-	if (method == "session.unsubscribe")
-		return V2Method::SessionUnsubscribe;
-	if (method == "session.getSubscriptions")
-		return V2Method::SessionGetSubscriptions;
-	if (method == "session.close")
-		return V2Method::SessionClose;
-	if (method == "engine.getCapabilities")
-		return V2Method::EngineGetCapabilities;
-	if (method == "properties.get")
-		return V2Method::PropertiesGet;
-	if (method == "properties.resolve")
-		return V2Method::PropertiesResolve;
-	if (method == "properties.getListItems")
-		return V2Method::PropertiesGetListItems;
-	if (method == "properties.invokeButton")
-		return V2Method::PropertiesInvokeButton;
-	if (method == "properties.validate")
-		return V2Method::PropertiesValidate;
-	if (method == "properties.refresh")
-		return V2Method::PropertiesRefresh;
-	if (method == "source.kindList")
-		return V2Method::SourceKindList;
-	if (method == "source.kindGet")
-		return V2Method::SourceKindGet;
-	if (method == "source.kindDefaults")
-		return V2Method::SourceKindDefaults;
-	if (method == "source.kindProperties")
-		return V2Method::SourceKindProperties;
-	if (method == "source.list")
-		return V2Method::SourceList;
-	if (method == "source.get")
-		return V2Method::SourceGet;
-	if (method == "source.create")
-		return V2Method::SourceCreate;
-	if (method == "source.duplicate")
-		return V2Method::SourceDuplicate;
-	if (method == "source.remove")
-		return V2Method::SourceRemove;
-	if (method == "source.rename")
-		return V2Method::SourceRename;
-	if (method == "source.getSettings")
-		return V2Method::SourceGetSettings;
-	if (method == "source.patchSettings")
-		return V2Method::SourcePatchSettings;
-	if (method == "source.replaceSettings")
-		return V2Method::SourceReplaceSettings;
-	if (method == "source.resetSettings")
-		return V2Method::SourceResetSettings;
-	if (method == "source.getProperties")
-		return V2Method::SourceGetProperties;
-	if (method == "source.getFlags")
-		return V2Method::SourceGetFlags;
-	if (method == "source.getDimensions")
-		return V2Method::SourceGetDimensions;
-	if (method == "source.getState")
-		return V2Method::SourceGetState;
-	if (method == "source.getActive")
-		return V2Method::SourceGetActive;
-	if (method == "source.getShowing")
-		return V2Method::SourceGetShowing;
-	if (method == "source.getMissingFiles")
-		return V2Method::SourceGetMissingFiles;
-	if (method == "source.refresh")
-		return V2Method::SourceRefresh;
-	if (method == "source.saveState")
-		return V2Method::SourceSaveState;
-	if (method == "source.loadState")
-		return V2Method::SourceLoadState;
-	if (method == "interaction.focus")
-		return V2Method::InteractionFocus;
-	if (method == "interaction.mouseMove")
-		return V2Method::InteractionMouseMove;
-	if (method == "interaction.mouseButton")
-		return V2Method::InteractionMouseButton;
-	if (method == "interaction.mouseWheel")
-		return V2Method::InteractionMouseWheel;
-	if (method == "interaction.key")
-		return V2Method::InteractionKey;
-	if (method == "interaction.text")
-		return V2Method::InteractionText;
-	if (method == "interaction.reset")
-		return V2Method::InteractionReset;
-	if (method == "scene.create")
-		return V2Method::SceneCreate;
-	if (method == "scene.remove")
-		return V2Method::SceneRemove;
-	if (method == "item.create")
-		return V2Method::ItemCreate;
-	if (method == "item.remove")
-		return V2Method::ItemRemove;
-	if (method == "item.setTransform")
-		return V2Method::ItemSetTransform;
-	if (method == "media.getState")
-		return V2Method::MediaGetState;
-	if (method == "media.play")
-		return V2Method::MediaPlay;
-	if (method == "media.pause")
-		return V2Method::MediaPause;
-	if (method == "media.togglePause")
-		return V2Method::MediaTogglePause;
-	if (method == "media.stop")
-		return V2Method::MediaStop;
-	if (method == "media.restart")
-		return V2Method::MediaRestart;
-	if (method == "media.next")
-		return V2Method::MediaNext;
-	if (method == "media.previous")
-		return V2Method::MediaPrevious;
-	if (method == "media.getDuration")
-		return V2Method::MediaGetDuration;
-	if (method == "media.getPosition")
-		return V2Method::MediaGetPosition;
-	if (method == "media.setPosition")
-		return V2Method::MediaSetPosition;
+	for (const MethodName &entry : kMethodNames) {
+		if (entry.name == method)
+			return entry.method;
+	}
 	return V2Method::Unknown;
 }
 
 bool method_is_mutating(V2Method method)
 {
-	switch (method) {
-	case V2Method::SessionClose:
-	case V2Method::PropertiesInvokeButton:
-	case V2Method::SourceCreate:
-	case V2Method::SourceDuplicate:
-	case V2Method::SourceRemove:
-	case V2Method::SourceRename:
-	case V2Method::SourcePatchSettings:
-	case V2Method::SourceReplaceSettings:
-	case V2Method::SourceResetSettings:
-	case V2Method::SourceLoadState:
-	case V2Method::SceneCreate:
-	case V2Method::SceneRemove:
-	case V2Method::ItemCreate:
-	case V2Method::ItemRemove:
-	case V2Method::ItemSetTransform:
-	case V2Method::MediaPlay:
-	case V2Method::MediaPause:
-	case V2Method::MediaTogglePause:
-	case V2Method::MediaStop:
-	case V2Method::MediaRestart:
-	case V2Method::MediaNext:
-	case V2Method::MediaPrevious:
-	case V2Method::MediaSetPosition:
-		return true;
-	default:
-		return false;
+	for (const V2Method candidate : kMutatingMethods) {
+		if (candidate == method)
+			return true;
 	}
+	return false;
 }
 
 bool method_is_runtime(V2Method method)
 {
-	switch (method) {
-	case V2Method::PropertiesGet:
-	case V2Method::PropertiesResolve:
-	case V2Method::PropertiesGetListItems:
-	case V2Method::PropertiesInvokeButton:
-	case V2Method::PropertiesValidate:
-	case V2Method::PropertiesRefresh:
-	case V2Method::SourceKindList:
-	case V2Method::SourceKindGet:
-	case V2Method::SourceKindDefaults:
-	case V2Method::SourceKindProperties:
-	case V2Method::SourceList:
-	case V2Method::SourceGet:
-	case V2Method::SourceCreate:
-	case V2Method::SourceDuplicate:
-	case V2Method::SourceRemove:
-	case V2Method::SourceRename:
-	case V2Method::SourceGetSettings:
-	case V2Method::SourcePatchSettings:
-	case V2Method::SourceReplaceSettings:
-	case V2Method::SourceResetSettings:
-	case V2Method::SourceGetProperties:
-	case V2Method::SourceGetFlags:
-	case V2Method::SourceGetDimensions:
-	case V2Method::SourceGetState:
-	case V2Method::SourceGetActive:
-	case V2Method::SourceGetShowing:
-	case V2Method::SourceGetMissingFiles:
-	case V2Method::SourceRefresh:
-	case V2Method::SourceSaveState:
-	case V2Method::SourceLoadState:
-	case V2Method::InteractionFocus:
-	case V2Method::InteractionMouseMove:
-	case V2Method::InteractionMouseButton:
-	case V2Method::InteractionMouseWheel:
-	case V2Method::InteractionKey:
-	case V2Method::InteractionText:
-	case V2Method::InteractionReset:
-	case V2Method::SceneCreate:
-	case V2Method::SceneRemove:
-	case V2Method::ItemCreate:
-	case V2Method::ItemRemove:
-	case V2Method::ItemSetTransform:
-	case V2Method::MediaGetState:
-	case V2Method::MediaPlay:
-	case V2Method::MediaPause:
-	case V2Method::MediaTogglePause:
-	case V2Method::MediaStop:
-	case V2Method::MediaRestart:
-	case V2Method::MediaNext:
-	case V2Method::MediaPrevious:
-	case V2Method::MediaGetDuration:
-	case V2Method::MediaGetPosition:
-	case V2Method::MediaSetPosition:
-		return true;
-	default:
-		return false;
+	for (const RuntimeMethodDescriptor &entry : kRuntimeMethods) {
+		if (entry.method == method)
+			return true;
 	}
+	return false;
 }
 
 bool method_needs_source_settle(V2Method method)
 {
-	switch (method) {
-	case V2Method::SourcePatchSettings:
-	case V2Method::SourceReplaceSettings:
-	case V2Method::SourceResetSettings:
-	case V2Method::SourceLoadState:
-		return true;
-	default:
-		return false;
+	for (const V2Method candidate : kSourceSettlementMethods) {
+		if (candidate == method)
+			return true;
 	}
+	return false;
 }
 
 bool execute_runtime_method(Engine &engine, V2Method method, obs_data_t *params, RuntimeV2Result &result,
 			    RuntimeV2Error &error)
 {
-	switch (method) {
-	case V2Method::PropertiesGet:
-		return engine.v2_properties_get(params, result, error);
-	case V2Method::PropertiesResolve:
-		return engine.v2_properties_resolve(params, result, error);
-	case V2Method::PropertiesGetListItems:
-		return engine.v2_properties_get_list_items(params, result, error);
-	case V2Method::PropertiesInvokeButton:
-		return engine.v2_properties_invoke_button(params, result, error);
-	case V2Method::PropertiesValidate:
-		return engine.v2_properties_validate(params, result, error);
-	case V2Method::PropertiesRefresh:
-		return engine.v2_properties_refresh(params, result, error);
-	case V2Method::SourceKindList:
-		return engine.v2_source_kind_list(params, result, error);
-	case V2Method::SourceKindGet:
-		return engine.v2_source_kind_get(params, result, error);
-	case V2Method::SourceKindDefaults:
-		return engine.v2_source_kind_defaults(params, result, error);
-	case V2Method::SourceKindProperties:
-		return engine.v2_source_kind_properties(params, result, error);
-	case V2Method::SourceList:
-		return engine.v2_source_list(params, result, error);
-	case V2Method::SourceGet:
-		return engine.v2_source_get(params, result, error);
-	case V2Method::SourceCreate:
-		return engine.v2_source_create(params, result, error);
-	case V2Method::SourceDuplicate:
-		return engine.v2_source_duplicate(params, result, error);
-	case V2Method::SourceRemove:
-		return engine.v2_source_remove(params, result, error);
-	case V2Method::SourceRename:
-		return engine.v2_source_rename(params, result, error);
-	case V2Method::SourceGetSettings:
-		return engine.v2_source_get_settings(params, result, error);
-	case V2Method::SourcePatchSettings:
-		return engine.v2_source_patch_settings(params, result, error);
-	case V2Method::SourceReplaceSettings:
-		return engine.v2_source_replace_settings(params, result, error);
-	case V2Method::SourceResetSettings:
-		return engine.v2_source_reset_settings(params, result, error);
-	case V2Method::SourceGetProperties:
-		return engine.v2_source_get_properties(params, result, error);
-	case V2Method::SourceGetFlags:
-		return engine.v2_source_get_flags(params, result, error);
-	case V2Method::SourceGetDimensions:
-		return engine.v2_source_get_dimensions(params, result, error);
-	case V2Method::SourceGetState:
-		return engine.v2_source_get_state(params, result, error);
-	case V2Method::SourceGetActive:
-		return engine.v2_source_get_active(params, result, error);
-	case V2Method::SourceGetShowing:
-		return engine.v2_source_get_showing(params, result, error);
-	case V2Method::SourceGetMissingFiles:
-		return engine.v2_source_get_missing_files(params, result, error);
-	case V2Method::SourceRefresh:
-		return engine.v2_source_refresh(params, result, error);
-	case V2Method::SourceSaveState:
-		return engine.v2_source_save_state(params, result, error);
-	case V2Method::SourceLoadState:
-		return engine.v2_source_load_state(params, result, error);
-	case V2Method::InteractionFocus:
-		return engine.v2_interaction_focus(params, result, error);
-	case V2Method::InteractionMouseMove:
-		return engine.v2_interaction_mouse_move(params, result, error);
-	case V2Method::InteractionMouseButton:
-		return engine.v2_interaction_mouse_button(params, result, error);
-	case V2Method::InteractionMouseWheel:
-		return engine.v2_interaction_mouse_wheel(params, result, error);
-	case V2Method::InteractionKey:
-		return engine.v2_interaction_key(params, result, error);
-	case V2Method::InteractionText:
-		return engine.v2_interaction_text(params, result, error);
-	case V2Method::InteractionReset:
-		return engine.v2_interaction_reset(params, result, error);
-	case V2Method::SceneCreate:
-		return engine.v2_scene_create(params, result, error);
-	case V2Method::SceneRemove:
-		return engine.v2_scene_remove(params, result, error);
-	case V2Method::ItemCreate:
-		return engine.v2_item_create(params, result, error);
-	case V2Method::ItemRemove:
-		return engine.v2_item_remove(params, result, error);
-	case V2Method::ItemSetTransform:
-		return engine.v2_item_set_transform(params, result, error);
-	case V2Method::MediaGetState:
-		return engine.v2_media_get_state(params, result, error);
-	case V2Method::MediaPlay:
-		return engine.v2_media_play(params, result, error);
-	case V2Method::MediaPause:
-		return engine.v2_media_pause(params, result, error);
-	case V2Method::MediaTogglePause:
-		return engine.v2_media_toggle_pause(params, result, error);
-	case V2Method::MediaStop:
-		return engine.v2_media_stop(params, result, error);
-	case V2Method::MediaRestart:
-		return engine.v2_media_restart(params, result, error);
-	case V2Method::MediaNext:
-		return engine.v2_media_next(params, result, error);
-	case V2Method::MediaPrevious:
-		return engine.v2_media_previous(params, result, error);
-	case V2Method::MediaGetDuration:
-		return engine.v2_media_get_duration(params, result, error);
-	case V2Method::MediaGetPosition:
-		return engine.v2_media_get_position(params, result, error);
-	case V2Method::MediaSetPosition:
-		return engine.v2_media_set_position(params, result, error);
-	default:
-		error.code = "internal_error";
-		error.message = "runtime method dispatch failed";
-		return false;
+	for (const RuntimeMethodDescriptor &entry : kRuntimeMethods) {
+		if (entry.method == method)
+			return (engine.*entry.handler)(params, result, error);
 	}
+	error.code = "internal_error";
+	error.message = "runtime method dispatch failed";
+	return false;
 }
 
 bool read_string_field(obs_data_t *data, const char *name, std::string &out, bool &present)
@@ -610,6 +473,23 @@ void set_subscriptions(obs_data_t *data, const std::vector<EventSubscription> &s
 	obs_data_set_array(data, "subscriptions", array.get());
 }
 
+bool read_subscription_entry(obs_data_t *entry, EventSubscription &subscription, std::string &error)
+{
+	bool present = false;
+	if (!read_string_field(entry, "pattern", subscription.pattern, present) || !present ||
+	    !is_valid_event_pattern(subscription.pattern)) {
+		error = "subscription pattern must be an exact event name or a namespace wildcard such as 'source.*'";
+		return false;
+	}
+	bool telemetry = false;
+	if (!read_bool_field(entry, "telemetry", telemetry, present)) {
+		error = "subscription telemetry must be a boolean when present";
+		return false;
+	}
+	subscription.telemetry = present && telemetry;
+	return true;
+}
+
 bool parse_subscription_list(obs_data_t *params, std::vector<EventSubscription> &subscriptions, std::string &error)
 {
 	subscriptions.clear();
@@ -633,17 +513,8 @@ bool parse_subscription_list(obs_data_t *params, std::vector<EventSubscription> 
 			return false;
 		}
 		EventSubscription subscription;
-		if (!read_string_field(entry.get(), "pattern", subscription.pattern, present) || !present ||
-		    !is_valid_event_pattern(subscription.pattern)) {
-			error = "subscription pattern must be an exact event name or a namespace wildcard such as 'source.*'";
+		if (!read_subscription_entry(entry.get(), subscription, error))
 			return false;
-		}
-		bool telemetry = false;
-		if (!read_bool_field(entry.get(), "telemetry", telemetry, present)) {
-			error = "subscription telemetry must be a boolean when present";
-			return false;
-		}
-		subscription.telemetry = present && telemetry;
 		subscriptions.push_back(std::move(subscription));
 	}
 	return true;
@@ -718,6 +589,165 @@ private:
 	Engine &engine_;
 	bool active_ = true;
 };
+
+void send_session_hello(const V2Request &request, RevisionState &revisions)
+{
+	const uint64_t revision = revisions.current();
+	ObsDataPtr data(obs_data_create());
+	ObsDataPtr protocol(obs_data_create());
+	obs_data_set_int(protocol.get(), "major", kProtocolV2Major);
+	obs_data_set_int(protocol.get(), "minor", kProtocolV2Minor);
+	obs_data_set_obj(data.get(), "protocol", protocol.get());
+	obs_data_set_string(data.get(), "engineVersion", obs_get_version_string());
+	obs_data_set_string(data.get(), "libobsVersion", obs_get_version_string());
+	obs_data_set_string(data.get(), "platform", "windows");
+	obs_data_set_int(data.get(), "pid", static_cast<long long>(GetCurrentProcessId()));
+	obs_data_set_string(data.get(), "encoding", "utf-8");
+	obs_data_set_int(data.get(), "maxMessageBytes", static_cast<long long>(kMaxMessageBytes));
+	set_capabilities(data.get());
+	obs_data_set_int(data.get(), "revision", static_cast<long long>(revision));
+	send_v2_ok(request.id, data.get(), revision);
+}
+
+void send_session_ping(const V2Request &request, RevisionState &revisions)
+{
+	ObsDataPtr data(obs_data_create());
+	obs_data_set_bool(data.get(), "pong", true);
+	send_v2_ok(request.id, data.get(), revisions.current());
+}
+
+bool handle_session_subscribe(const V2Request &request, RevisionState &revisions, EventDispatcher &events)
+{
+	std::vector<EventSubscription> requested;
+	std::string error;
+	if (!parse_subscription_list(request.params.get(), requested, error) || !events.subscribe(requested, error)) {
+		send_v2_error(request.id, "bad_request", error.c_str(), nullptr, revisions.current());
+		return true;
+	}
+	send_subscription_state(request, revisions, events);
+	return true;
+}
+
+bool handle_session_unsubscribe(const V2Request &request, RevisionState &revisions, EventDispatcher &events)
+{
+	std::vector<EventSubscription> requested;
+	std::string error;
+	if (!parse_subscription_list(request.params.get(), requested, error)) {
+		send_v2_error(request.id, "bad_request", error.c_str(), nullptr, revisions.current());
+		return true;
+	}
+	std::vector<std::string> patterns;
+	patterns.reserve(requested.size());
+	for (const EventSubscription &subscription : requested)
+		patterns.push_back(subscription.pattern);
+	if (!events.unsubscribe(patterns, error)) {
+		send_v2_error(request.id, "bad_request", error.c_str(), nullptr, revisions.current());
+		return true;
+	}
+	send_subscription_state(request, revisions, events);
+	return true;
+}
+
+bool handle_session_close(const V2Request &request, RevisionState::MutationGuard &mutation_guard,
+				  EventDispatcher &events)
+{
+	const uint64_t revision = mutation_guard.commit_mutation();
+	send_v2_ok(request.id, nullptr, revision);
+	ObsDataPtr event_data(obs_data_create());
+	obs_data_set_string(event_data.get(), "reason", "session.close");
+	events.publish(EngineEventKind::State, "engine.stopping", revision, event_data.get());
+	return false;
+}
+
+std::optional<bool> handle_session_method(const V2Request &request, RevisionState &revisions,
+					  EventDispatcher &events,
+					  std::optional<RevisionState::MutationGuard> &mutation_guard)
+{
+	switch (classify_method(request.method)) {
+	case V2Method::SessionHello:
+		send_session_hello(request, revisions);
+		return true;
+	case V2Method::SessionPing:
+		send_session_ping(request, revisions);
+		return true;
+	case V2Method::SessionSubscribe:
+		return handle_session_subscribe(request, revisions, events);
+	case V2Method::SessionUnsubscribe:
+		return handle_session_unsubscribe(request, revisions, events);
+	case V2Method::SessionGetSubscriptions:
+		send_subscription_state(request, revisions, events);
+		return true;
+	case V2Method::SessionClose:
+		return handle_session_close(request, *mutation_guard, events);
+	default:
+		return std::nullopt;
+	}
+}
+
+bool handle_engine_capabilities(const V2Request &request, RevisionState &revisions)
+{
+	ObsDataPtr data(obs_data_create());
+	set_capabilities(data.get());
+	send_v2_ok(request.id, data.get(), revisions.current());
+	return true;
+}
+
+void prepare_runtime_result(Engine &engine, V2Method method, const V2Request &request, RuntimeV2Result &result,
+				     bool succeeded, const std::optional<RuntimeEventCaptureScope> &capture)
+{
+	if (!succeeded)
+		return;
+	if (method == V2Method::SourceKindList || method == V2Method::SourceKindGet)
+		engine.v2_normalize_source_kind_metadata(result);
+	if (capture && method_needs_source_settle(method))
+		engine.v2_settle_source_mutation(request.params.get(), result);
+}
+
+bool commit_runtime_result(const V2Request &request, RuntimeV2Result &result, RevisionState &revisions,
+				   std::optional<RevisionState::MutationGuard> &mutation_guard, uint64_t &revision)
+{
+	revision = mutation_guard ? mutation_guard->current() : revisions.current();
+	if (!result.mutated)
+		return true;
+	if (mutation_guard) {
+		revision = mutation_guard->commit_mutation();
+		return true;
+	}
+	send_v2_error(request.id, "internal_error", "read-only runtime method unexpectedly mutated engine state", nullptr,
+			      revisions.current());
+	return false;
+}
+
+bool handle_runtime_method(Engine &engine, RevisionState &revisions, EventDispatcher &events,
+				   const V2Request &request, V2Method method, RuntimeV2Result &runtime_result,
+				   std::optional<RevisionState::MutationGuard> &mutation_guard,
+				   std::optional<RuntimeEventCaptureScope> &capture)
+{
+	RuntimeV2Error error;
+	const bool succeeded = execute_runtime_method(engine, method, request.params.get(), runtime_result, error);
+	prepare_runtime_result(engine, method, request, runtime_result, succeeded, capture);
+
+	// Observer connect/disconnect can take libobs signal mutexes. Keep the
+	// capture gate active until synchronization is complete so cross-thread
+	// callbacks defer instead of waiting on the revision mutex.
+	engine.v2_sync_source_observers();
+	if (!succeeded) {
+		send_v2_error(request.id, error.code.c_str(), error.message.c_str(), nullptr,
+			      mutation_guard ? mutation_guard->current() : revisions.current());
+		if (capture)
+			capture->flush(*mutation_guard);
+		return true;
+	}
+
+	uint64_t revision = 0;
+	if (!commit_runtime_result(request, runtime_result, revisions, mutation_guard, revision))
+		return true;
+	send_v2_ok(request.id, runtime_result.data.get(), revision);
+	publish_runtime_events(events, revision, runtime_result);
+	if (capture)
+		capture->flush(*mutation_guard);
+	return true;
+}
 
 } // namespace
 
@@ -845,111 +875,14 @@ bool handle_v2_request(Engine &engine, const Config &, RevisionState &revisions,
 		return true;
 	}
 
-	if (method == V2Method::SessionHello) {
-		const uint64_t revision = revisions.current();
-		ObsDataPtr data(obs_data_create());
-		ObsDataPtr protocol(obs_data_create());
-		obs_data_set_int(protocol.get(), "major", kProtocolV2Major);
-		obs_data_set_int(protocol.get(), "minor", kProtocolV2Minor);
-		obs_data_set_obj(data.get(), "protocol", protocol.get());
-		obs_data_set_string(data.get(), "engineVersion", obs_get_version_string());
-		obs_data_set_string(data.get(), "libobsVersion", obs_get_version_string());
-		obs_data_set_string(data.get(), "platform", "windows");
-		obs_data_set_int(data.get(), "pid", static_cast<long long>(GetCurrentProcessId()));
-		obs_data_set_string(data.get(), "encoding", "utf-8");
-		obs_data_set_int(data.get(), "maxMessageBytes", static_cast<long long>(kMaxMessageBytes));
-		set_capabilities(data.get());
-		obs_data_set_int(data.get(), "revision", static_cast<long long>(revision));
-		send_v2_ok(request.id, data.get(), revision);
-		return true;
-	}
-	if (method == V2Method::SessionPing) {
-		ObsDataPtr data(obs_data_create());
-		obs_data_set_bool(data.get(), "pong", true);
-		send_v2_ok(request.id, data.get(), revisions.current());
-		return true;
-	}
-	if (method == V2Method::SessionSubscribe) {
-		std::vector<EventSubscription> requested;
-		std::string error;
-		if (!parse_subscription_list(request.params.get(), requested, error) || !events.subscribe(requested, error)) {
-			send_v2_error(request.id, "bad_request", error.c_str(), nullptr, revisions.current());
-			return true;
-		}
-		send_subscription_state(request, revisions, events);
-		return true;
-	}
-	if (method == V2Method::SessionUnsubscribe) {
-		std::vector<EventSubscription> requested;
-		std::string error;
-		if (!parse_subscription_list(request.params.get(), requested, error)) {
-			send_v2_error(request.id, "bad_request", error.c_str(), nullptr, revisions.current());
-			return true;
-		}
-		std::vector<std::string> patterns;
-		patterns.reserve(requested.size());
-		for (const EventSubscription &subscription : requested)
-			patterns.push_back(subscription.pattern);
-		if (!events.unsubscribe(patterns, error)) {
-			send_v2_error(request.id, "bad_request", error.c_str(), nullptr, revisions.current());
-			return true;
-		}
-		send_subscription_state(request, revisions, events);
-		return true;
-	}
-	if (method == V2Method::SessionGetSubscriptions) {
-		send_subscription_state(request, revisions, events);
-		return true;
-	}
-	if (method == V2Method::SessionClose) {
-		const uint64_t revision = mutation_guard->commit_mutation();
-		send_v2_ok(request.id, nullptr, revision);
-		ObsDataPtr event_data(obs_data_create());
-		obs_data_set_string(event_data.get(), "reason", "session.close");
-		events.publish(EngineEventKind::State, "engine.stopping", revision, event_data.get());
-		return false;
-	}
-	if (method == V2Method::EngineGetCapabilities) {
-		ObsDataPtr data(obs_data_create());
-		set_capabilities(data.get());
-		send_v2_ok(request.id, data.get(), revisions.current());
-		return true;
-	}
+	if (const std::optional<bool> session_result =
+			handle_session_method(request, revisions, events, mutation_guard))
+		return *session_result;
+	if (method == V2Method::EngineGetCapabilities)
+		return handle_engine_capabilities(request, revisions);
 	if (method_is_runtime(method)) {
-		RuntimeV2Result &result = runtime_result;
-		RuntimeV2Error error;
-		const bool succeeded = execute_runtime_method(engine, method, request.params.get(), result, error);
-		if (succeeded && (method == V2Method::SourceKindList || method == V2Method::SourceKindGet))
-			engine.v2_normalize_source_kind_metadata(result);
-		if (succeeded && capture && method_needs_source_settle(method))
-			engine.v2_settle_source_mutation(request.params.get(), result);
-
-		// Observer connect/disconnect can take libobs signal mutexes. Keep the
-		// capture gate active until synchronization is complete so cross-thread
-		// callbacks defer instead of waiting on the revision mutex.
-		engine.v2_sync_source_observers();
-		if (!succeeded) {
-			send_v2_error(request.id, error.code.c_str(), error.message.c_str(), nullptr,
-				      mutation_guard ? mutation_guard->current() : revisions.current());
-			if (capture)
-				capture->flush(*mutation_guard);
-			return true;
-		}
-		uint64_t revision = mutation_guard ? mutation_guard->current() : revisions.current();
-		if (result.mutated) {
-			if (!mutation_guard) {
-				send_v2_error(request.id, "internal_error",
-					      "read-only runtime method unexpectedly mutated engine state", nullptr,
-					      revisions.current());
-				return true;
-			}
-			revision = mutation_guard->commit_mutation();
-		}
-		send_v2_ok(request.id, result.data.get(), revision);
-		publish_runtime_events(events, revision, result);
-		if (capture)
-			capture->flush(*mutation_guard);
-		return true;
+		return handle_runtime_method(engine, revisions, events, request, method, runtime_result, mutation_guard,
+					    capture);
 	}
 	send_v2_error(request.id, "internal_error", "method dispatch failed internally", nullptr, revisions.current());
 	return true;
