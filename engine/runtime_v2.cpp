@@ -341,7 +341,7 @@ bool Engine::v2_source_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 	std::sort(item_handles.begin(), item_handles.end());
 
 	// Prepare every externally visible artifact before detaching anything.
-	result.events.reserve(item_handles.size() + 1);
+	result.events.reserve(item_handles.size() + filters_.size() + 1);
 	for (uint64_t item_handle : item_handles) {
 		auto item_it = items_.find(item_handle);
 		if (item_it == items_.end())
@@ -349,6 +349,7 @@ bool Engine::v2_source_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 		append_event(result, "item.removed",
 			     make_item_identity(item_handle, item_it->second.scene_id, item_it->second.source_id));
 	}
+	v2_filter_prepare_parent_removal(handle, result);
 	ObsDataPtr source_event(obs_data_create());
 	set_handle(source_event.get(), "source", handle);
 	append_event(result, "source.removed", std::move(source_event));
