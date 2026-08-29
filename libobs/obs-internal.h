@@ -1060,10 +1060,12 @@ static inline void obs_source_dosignal_update(struct obs_source *source, uint64_
 
 	calldata_init_fixed(&data, stack, sizeof(stack));
 	calldata_set_ptr(&data, "source", source);
-	calldata_set_int(&data, "update_serial_begin", (long long)start_serial);
-	calldata_set_int(&data, "update_serial_end", (long long)end_serial);
+	/* Keep the public global source_update signature unchanged; the private
+	 * serial evidence is carried only on the source-local update signal. */
 	if (!source->context.private)
 		signal_handler_signal(obs->signals, "source_update", &data);
+	calldata_set_int(&data, "update_serial_begin", (long long)start_serial);
+	calldata_set_int(&data, "update_serial_end", (long long)end_serial);
 	signal_handler_signal(source->context.signals, "update", &data);
 }
 
