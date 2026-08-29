@@ -198,15 +198,25 @@ synchronously but may defer the plugin `update` callback and `update` signal to
 the video thread. The engine therefore keeps a permanent observer per tracked
 filter. The request never installs or disconnects a per-request update callback.
 The observer normalizes the update batch, advances a private generation, and
-wakes settlement. Ownership is proven by exact filter handle plus canonical
-post-update settings.
+wakes settlement. The engine-only libobs update bridge also assigns a private
+per-source serial to every update submission and includes the contiguous serial
+range covered by the deferred callback in internal signal calldata. Ownership
+is proven by exact filter handle, canonical post-update settings, observer
+generation greater than the request baseline, and the request serial lying in
+the callback's covered range. The serial evidence is private; the public
+`obs_source_update`/`obs_source_reset_settings` API and wire event shape do not
+change.
 
 If ownership cannot be proven within the bounded settlement deadline, the
 bridge does not fabricate success from an unrelated signal. The request
 returns `timeout`, marks incremental state uncertain, and the normal deferred
 flush forces `session.resyncRequired`. A later callback for the timed-out
 generation is quarantined and causes another resync boundary; it cannot settle
-a later request. Unrelated filter batches remain independent.
+a later request. Every timed-out update serial for a filter is retained until
+a later callback's covered range proves that serial has been processed. Rename
+and enable callbacks never retire this settings quarantine. Unresolved or
+unknown serials remain conservative and force resynchronization; unrelated
+filter batches remain independent.
 
 ### `filter.setEnabled` / `filter.getEnabled`
 
@@ -259,10 +269,11 @@ private callback data.
 ## Event / concurrency semantics
 
 The filter bridge observes `update`, `rename`, and `enable` on permanent
-per-filter observers. Each update observation advances a private generation;
-deferred batches retain that generation. A settings command is command-owned
-only when the exact filter handle, canonical post-update settings, and a
-generation greater than the request baseline all match. Callbacks never write
+per-filter observers. Each update observation advances a private generation and
+records the private libobs serial range. Deferred batches retain both pieces
+of evidence. A settings command is command-owned only when the exact filter
+handle, canonical post-update settings, generation greater than the request
+baseline, and request serial coverage all match. Callbacks never write
 protocol output. They enter the same bounded capture/deferred/direct-revision
 model as the existing runtime bridges. A full or uncertain deferred bridge
 forces `session.resyncRequired`; canonical filter changes are not silently

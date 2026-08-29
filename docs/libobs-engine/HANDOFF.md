@@ -570,11 +570,14 @@ is still IN REVIEW / NOT ACCEPTED. The candidate handoff records that it has:
 - reconciled any mismatch;
 - reviewed the `filter.*` section of `engine/PROTOCOL_V2.md`;
 - inspected current libobs filter ownership/reference/reorder APIs;
+- audited libobs deferred-update counter/coalescing behavior and the candidate's
+  private tracked-update serial bridge;
 - inspected representative filter plugins and the generic properties bridge;
 - read and reconciled `engine/FILTER_V1.md`, the Task-11 plan/audit, the
   deterministic script, and the exact-SHA workflow.
 
-The advisor WIP remains preserved on `wip/task11-advisor-handoff-137b2e5` and
+The advisor WIP remains preserved locally on `wip/task11-advisor-handoff-137b2e5`
+(the safety branch was not found on `origin`) and
 the older unauthorized implementation remains on `wip/task11-unauthorized`.
 Neither is accepted or merged. Preserve the media bridge's separate bounded
 queue, exact-ticket settlement rules, the internal `media_time` signal

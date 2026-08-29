@@ -34,6 +34,51 @@ capture semantics.
 libobs documents them for filter callback contexts. The engine retains explicit
 parent-handle relationships instead.
 
+## Deferred-update identity finding
+
+The current libobs implementation does not attach a request identity to its
+public `update` signal. `obs_source_update()` applies into the shared
+`source->context.settings` object and increments `defer_update_count` for video
+sources. On the video thread, `obs_source_deferred_update()` snapshots that
+counter, calls the plugin update callback with the shared current settings,
+clears the counter only if no newer increment raced, and then emits one generic
+`update` signal. An update submitted while the callback is blocked leaves more
+deferred work, but the signal itself carries no way to distinguish the old and
+new submission. A later observer that reads current settings can therefore see
+B while processing A's signal.
+
+The focused pre-fix reproduction on the `14ea89f14` engine proved both variants:
+
+- timeout A with `blockMs=7500`, same-filter rename, then B returned success at
+  A's late completion;
+- the same sequence with same-filter enable also returned success at A's late
+  completion.
+
+Both runs showed A timing out near five seconds, the action callback consuming
+the handle-only quarantine, and B succeeding roughly 2.4 seconds later while
+the old callback was the only completion that could satisfy the generation and
+current-settings predicate.
+
+The correction adds the smallest private additive libobs bridge needed for this
+model. Every update submission receives a per-source serial while the settings
+application and deferred-count increment are synchronized. The video-thread
+boundary snapshots the first/last serial range covered by the callback, keeps
+newer submissions for a later callback, and emits that range only in internal
+signal calldata. The public `obs_source_update()` and
+`obs_source_reset_settings()` signatures remain unchanged; the tracked update
+and reset hooks are declared only in non-installed internal/engine headers.
+
+The engine records the tracked serial for each settings request and accepts a
+settlement only when the exact filter handle, canonical post-update settings,
+observer generation, and request serial coverage all match. It retains every
+outstanding timed-out serial per filter rather than only one handle bit. A
+rename or enable callback cannot retire that state. A late update callback
+retires only serials proven processed by its covered range; its canonical event
+is discarded behind a resynchronization boundary. When an older and newer
+same-filter callback overlap, the newer request remains conservative and
+returns timeout/resync; a later request is allowed to settle only after the
+uncertainty has been accounted for.
+
 ## WIP findings and candidate corrections
 
 The quarantined implementation was based on pre-corrective Task 10 state and

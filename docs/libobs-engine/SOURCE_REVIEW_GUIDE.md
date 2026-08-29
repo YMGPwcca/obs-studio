@@ -231,20 +231,27 @@ If you cannot answer all 14, do not refactor the source bridge or reuse its conc
 Inspect:
 
 - `engine/runtime_filter_v2.cpp`
+- `engine/obs_source_update_private.hpp`
 - `engine/FILTER_V1.md`
 - `engine/task11_filter_source.cpp`
 - `.github/scripts/engine-protocol-v2-task11.ps1`
+- `.github/scripts/engine-protocol-v2-task11-timeout-race.ps1`
 - `.github/workflows/engine-protocol-v2-task11.yaml`
 - libobs `obs_source_filter_*`, `obs_source_enum_filters`, and source
-  duplication implementation.
+  duplication implementation; and the `obs_source_update`/
+  `obs_source_deferred_update` implementation.
 
 Verify that filter ownership is represented by an explicit handle-to-parent
 map with strong engine references; `obs_filter_get_parent` and
 `obs_filter_get_target` are not used as lifetime APIs; settings settlement uses
-one permanent observer plus exact handle/settings/generation evidence; timeout
-and overflow force resynchronization; source removal orders filter removals
-before `source.removed`; and accepted `source.duplicate` does not gain
-synthetic `filter.created` events.
+one permanent observer plus exact handle/settings/generation and private
+tracked-update serial evidence; timeout and overflow force resynchronization;
+every outstanding timed-out serial survives unrelated rename/enable callbacks;
+source removal orders filter removals before `source.removed`; and accepted
+`source.duplicate` does not gain synthetic `filter.created` events. Confirm the
+private tracked-update bridge accounts for coalesced updates and updates
+submitted while an older plugin callback is running without changing the
+public `obs_source_update` ABI/API.
 
 ---
 

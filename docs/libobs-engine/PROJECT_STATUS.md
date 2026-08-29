@@ -141,9 +141,9 @@ Task 11 is implemented on `task11-codex` from accepted documentation
 checkpoint `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea` and remains
 IMPLEMENTED / IN REVIEW / NOT ACCEPTED. The candidate adds the documented
 filter kind/runtime methods, explicit filter-handle-to-parent ownership,
-permanent update observers with generation-based settlement, parent-removal
-ordering, source-duplicate inherited-filter discovery, and a CI-only
-deterministic fixture/workflow. It does not change
+permanent update observers with generation- and private tracked-update serial
+settlement, parent-removal ordering, source-duplicate inherited-filter
+discovery, and a CI-only deterministic fixture/workflow. It does not change
 `engine/protocol_v2.cpp` or the accepted Task-10 media implementation.
 
 The candidate's exact SHA and hosted evidence are recorded in the operator
