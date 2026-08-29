@@ -18,6 +18,7 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <iterator>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -173,26 +174,10 @@ void set_handle(obs_data_t *data, const char *name, uint64_t handle)
 
 const char *media_state_name(obs_media_state state)
 {
-	switch (state) {
-	case OBS_MEDIA_STATE_NONE:
-		return "none";
-	case OBS_MEDIA_STATE_PLAYING:
-		return "playing";
-	case OBS_MEDIA_STATE_OPENING:
-		return "opening";
-	case OBS_MEDIA_STATE_BUFFERING:
-		return "buffering";
-	case OBS_MEDIA_STATE_PAUSED:
-		return "paused";
-	case OBS_MEDIA_STATE_STOPPED:
-		return "stopped";
-	case OBS_MEDIA_STATE_ENDED:
-		return "ended";
-	case OBS_MEDIA_STATE_ERROR:
-		return "error";
-	default:
-		return "unknown";
-	}
+	constexpr const char *names[] = {"none", "playing", "opening", "buffering",
+					 "paused", "stopped", "ended", "error"};
+	const auto index = static_cast<size_t>(state);
+	return index < std::size(names) ? names[index] : "unknown";
 }
 
 ObsDataPtr make_state_data(uint64_t handle, obs_media_state state)
@@ -228,38 +213,16 @@ bool result_has_source_event(const RuntimeV2Result &result, std::string_view nam
 
 bool is_action_signal(MediaV2Signal signal)
 {
-	switch (signal) {
-	case MediaV2Signal::Play:
-	case MediaV2Signal::Pause:
-	case MediaV2Signal::Restart:
-	case MediaV2Signal::Stop:
-	case MediaV2Signal::Next:
-	case MediaV2Signal::Previous:
-	case MediaV2Signal::Time:
-		return true;
-	case MediaV2Signal::Started:
-	case MediaV2Signal::Ended:
-		return false;
-	}
-	return false;
+	constexpr bool action_signals[] = {true, true, true, true, true, true, true, false, false};
+	const auto index = static_cast<size_t>(signal);
+	return index < std::size(action_signals) && action_signals[index];
 }
 
 bool action_requires_resync(MediaV2Signal signal)
 {
-	switch (signal) {
-	case MediaV2Signal::Restart:
-	case MediaV2Signal::Next:
-	case MediaV2Signal::Previous:
-	case MediaV2Signal::Time:
-		return true;
-	case MediaV2Signal::Play:
-	case MediaV2Signal::Pause:
-	case MediaV2Signal::Stop:
-	case MediaV2Signal::Started:
-	case MediaV2Signal::Ended:
-		return false;
-	}
-	return false;
+	constexpr bool resync_signals[] = {false, false, true, false, true, true, true, false, false};
+	const auto index = static_cast<size_t>(signal);
+	return index < std::size(resync_signals) && resync_signals[index];
 }
 
 uint64_t read_action_serial(calldata_t *calldata)
@@ -417,6 +380,59 @@ void publish_deferred_media_snapshot(DeferredMediaEventSnapshot snapshot, Revisi
 	}
 }
 
+bool consume_timed_out_media_action_locked(MediaV2State &state, uint64_t handle, uint64_t action_serial)
+{
+	if (state.timed_out_tracking_uncertain)
+		return true;
+	return action_serial != 0 && state.timed_out.erase(MediaActionKey{handle, action_serial}) != 0;
+}
+
+bool queue_deferred_media_events_locked(MediaV2State &state, uint64_t handle, MediaV2Signal signal,
+					uint64_t action_serial, bool orphaned, std::vector<RuntimeV2Event> generated)
+{
+	if (state.deferred_overflow)
+		return true;
+	if (state.deferred.size() >= kMaxMediaActionBatches ||
+	    generated.size() > kDefaultEventQueueCapacity ||
+	    state.deferred_event_count > kDefaultEventQueueCapacity - generated.size()) {
+		state.deferred.clear();
+		state.deferred_event_count = 0;
+		state.deferred_overflow = true;
+		return true;
+	}
+	if (state.next_batch_order == 0) {
+		state.deferred_overflow = true;
+		return true;
+	}
+	const uint64_t order = state.next_batch_order;
+	if (state.next_batch_order == std::numeric_limits<uint64_t>::max())
+		state.next_batch_order = 0;
+	else
+		++state.next_batch_order;
+	state.deferred_event_count += generated.size();
+	state.deferred.push_back(
+		DeferredMediaEventBatch{order, handle, signal, action_serial, orphaned, std::move(generated)});
+	state.callback_cv.notify_all();
+	return true;
+}
+
+bool commit_direct_media_event_locked(MediaV2State &state, RevisionState *&revisions, EventDispatcher *&events,
+					      uint64_t &revision)
+{
+	revisions = state.revisions;
+	events = state.events;
+	if (!revisions || !events)
+		return false;
+	if (!revisions->can_commit_mutation()) {
+		std::fprintf(stderr, "obs-engine: media event requires resync because revision space is exhausted\n");
+		std::fflush(stderr);
+		events->require_resync_due_to_overflow(revisions->current());
+		return false;
+	}
+	revision = revisions->commit_mutation();
+	return true;
+}
+
 void publish_media_events(MediaV2State &state, uint64_t handle, MediaV2Signal signal,
 				  uint64_t action_serial, std::vector<RuntimeV2Event> generated)
 {
@@ -436,11 +452,8 @@ void publish_media_events(MediaV2State &state, uint64_t handle, MediaV2Signal si
 			return;
 
 		const SourceEventCaptureRoute route = state.capture_gate.route_for_current_thread();
-		if (action_signal && state.timed_out_tracking_uncertain)
-			orphaned = true;
-		else if (action_signal && action_serial != 0 &&
-			 state.timed_out.erase(MediaActionKey{handle, action_serial}) != 0)
-			orphaned = true;
+		if (action_signal)
+			orphaned = consume_timed_out_media_action_locked(state, handle, action_serial);
 		if (orphaned) {
 			resync_after_queued_events = true;
 			if (route == SourceEventCaptureRoute::Direct)
@@ -451,45 +464,14 @@ void publish_media_events(MediaV2State &state, uint64_t handle, MediaV2Signal si
 			if (route == SourceEventCaptureRoute::Capture && state.capture &&
 			    result_has_source_event(*state.capture, "source.removed", handle))
 				return;
-			if (state.deferred_overflow)
-				return;
-			if (state.deferred.size() >= kMaxMediaActionBatches ||
-			    generated.size() > kDefaultEventQueueCapacity ||
-			    state.deferred_event_count > kDefaultEventQueueCapacity - generated.size()) {
-				state.deferred.clear();
-				state.deferred_event_count = 0;
-				state.deferred_overflow = true;
-				return;
-			}
-			if (state.next_batch_order == 0) {
-				state.deferred_overflow = true;
-				return;
-			}
-			const uint64_t order = state.next_batch_order;
-			if (state.next_batch_order == std::numeric_limits<uint64_t>::max())
-				state.next_batch_order = 0;
-			else
-				++state.next_batch_order;
-			state.deferred_event_count += generated.size();
-			state.deferred.push_back(
-				DeferredMediaEventBatch{order, handle, signal, action_serial, orphaned, std::move(generated)});
-			state.callback_cv.notify_all();
+			queue_deferred_media_events_locked(state, handle, signal, action_serial, orphaned, std::move(generated));
 			return;
 		}
 
 		if (!require_resync && generated.empty())
 			return;
-		revisions = state.revisions;
-		events = state.events;
-		if (!revisions || !events)
+		if (!commit_direct_media_event_locked(state, revisions, events, revision))
 			return;
-		if (!revisions->can_commit_mutation()) {
-			std::fprintf(stderr, "obs-engine: media event requires resync because revision space is exhausted\n");
-			std::fflush(stderr);
-			events->require_resync_due_to_overflow(revisions->current());
-			return;
-		}
-		revision = revisions->commit_mutation();
 	}
 
 	if (require_resync) {
@@ -583,6 +565,45 @@ bool settle_media_action(MediaV2State &state, uint64_t handle, obs_source_t *sou
 	return fail(error, "timeout", "media action was not observed before the settlement deadline");
 }
 
+template<typename Submit>
+bool run_media_action(MediaV2State *state, uint64_t handle, obs_source_t *source, MediaV2Signal signal,
+			      const char *action, obs_media_state before, bool always_mutating, Submit &&submit,
+			      RuntimeV2Result &result, RuntimeV2Error &error)
+{
+	if (!state || !settle_media_action(*state, handle, source, signal, std::forward<Submit>(submit), result, error))
+		return false;
+	const obs_media_state after = obs_source_media_get_state(source);
+	result.data = make_action_data(handle, action, after, true);
+	result.mutated = always_mutating || before != after || !result.events.empty();
+	return true;
+}
+
+struct MediaSignalEventDescriptor {
+	MediaV2Signal signal;
+	const char *name;
+	obs_media_state expected_state;
+	bool requires_expected_state;
+};
+
+constexpr MediaSignalEventDescriptor kMediaSignalEvents[] = {
+	{MediaV2Signal::Play, "media.playing", OBS_MEDIA_STATE_PLAYING, true},
+	{MediaV2Signal::Pause, "media.paused", OBS_MEDIA_STATE_PAUSED, true},
+	{MediaV2Signal::Stop, "media.stopped", OBS_MEDIA_STATE_STOPPED, true},
+	{MediaV2Signal::Started, "media.started", OBS_MEDIA_STATE_NONE, false},
+	{MediaV2Signal::Ended, "media.ended", OBS_MEDIA_STATE_NONE, false},
+};
+
+void append_media_signal_event(std::vector<RuntimeV2Event> &events, uint64_t handle, MediaV2Signal signal,
+				       obs_media_state state)
+{
+	for (const MediaSignalEventDescriptor &entry : kMediaSignalEvents) {
+		if (entry.signal != signal || (entry.requires_expected_state && entry.expected_state != state))
+			continue;
+		events.push_back(RuntimeV2Event{entry.name, make_state_data(handle, state)});
+		return;
+	}
+}
+
 void collect_media_signal(MediaV2Observer &observer, MediaV2Signal signal, uint64_t action_serial)
 {
 	MediaV2State *state = observer.state;
@@ -607,31 +628,7 @@ void collect_media_signal(MediaV2Observer &observer, MediaV2Signal signal, uint6
 			generated.push_back(RuntimeV2Event{"media.stateChanged", std::move(data)});
 		}
 
-		switch (signal) {
-		case MediaV2Signal::Play:
-			if (current_state == OBS_MEDIA_STATE_PLAYING)
-				generated.push_back(RuntimeV2Event{"media.playing", make_state_data(observer.handle, current_state)});
-			break;
-		case MediaV2Signal::Pause:
-			if (current_state == OBS_MEDIA_STATE_PAUSED)
-				generated.push_back(RuntimeV2Event{"media.paused", make_state_data(observer.handle, current_state)});
-			break;
-		case MediaV2Signal::Stop:
-			if (current_state == OBS_MEDIA_STATE_STOPPED)
-				generated.push_back(RuntimeV2Event{"media.stopped", make_state_data(observer.handle, current_state)});
-			break;
-		case MediaV2Signal::Started:
-			generated.push_back(RuntimeV2Event{"media.started", make_state_data(observer.handle, current_state)});
-			break;
-		case MediaV2Signal::Ended:
-			generated.push_back(RuntimeV2Event{"media.ended", make_state_data(observer.handle, current_state)});
-			break;
-		case MediaV2Signal::Restart:
-		case MediaV2Signal::Next:
-		case MediaV2Signal::Previous:
-		case MediaV2Signal::Time:
-			break;
-		}
+		append_media_signal_event(generated, observer.handle, signal, current_state);
 
 		if (current_state == OBS_MEDIA_STATE_ERROR &&
 		    (!observer.state_known || observer.state_value != OBS_MEDIA_STATE_ERROR))
@@ -768,6 +765,20 @@ void disconnect_media_observer(MediaV2Observer &observer)
 }
 
 } // namespace
+
+bool Engine::v2_get_media_source(obs_data_t *params, uint64_t &handle, obs_source_t *&source,
+					 RuntimeV2Error &error) const
+{
+	if (!read_handle_field(params, "source", handle))
+		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
+	auto it = sources_.find(handle);
+	if (it == sources_.end())
+		return fail(error, "not_found", "source handle was not found");
+	source = it->second;
+	if ((obs_source_get_output_flags(source) & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
+		return fail(error, "unsupported_capability", "source does not advertise controllable media support");
+	return true;
+}
 
 void Engine::v2_bind_media_events(RevisionState *revisions, EventDispatcher *events)
 {
@@ -946,14 +957,8 @@ bool Engine::v2_media_get_state(obs_data_t *params, RuntimeV2Result &result, Run
 	reset_result(result, error);
 	uint64_t handle = 0;
 	obs_source_t *source = nullptr;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	source = it->second;
-	if ((obs_source_get_output_flags(source) & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return fail(error, "unsupported_capability", "source does not advertise controllable media support");
+	if (!v2_get_media_source(params, handle, source, error))
+		return false;
 	result.data = make_state_data(handle, obs_source_media_get_state(source));
 	return true;
 }
@@ -963,32 +968,19 @@ bool Engine::v2_media_play(obs_data_t *params, RuntimeV2Result &result, RuntimeV
 	reset_result(result, error);
 	uint64_t handle = 0;
 	obs_source_t *source = nullptr;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	source = it->second;
-	if ((obs_source_get_output_flags(source) & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return fail(error, "unsupported_capability", "source does not advertise controllable media support");
+	if (!v2_get_media_source(params, handle, source, error))
+		return false;
 
 	const obs_media_state before = obs_source_media_get_state(source);
 	if (before == OBS_MEDIA_STATE_PLAYING) {
 		result.data = make_action_data(handle, "play", before, false);
 		return true;
 	}
-	if (!media_v2_state_ ||
-	    !settle_media_action(*media_v2_state_, handle, source, MediaV2Signal::Play,
-				  [&](uint64_t &serial) {
-					  return obs_source_media_action_enqueue(
-						  source, OBS_SOURCE_MEDIA_ACTION_PLAY_PAUSE, 0, &serial);
-				  },
-				  result, error))
-		return false;
-	const obs_media_state after = obs_source_media_get_state(source);
-	result.data = make_action_data(handle, "play", after, true);
-	result.mutated = before != after || !result.events.empty();
-	return true;
+	return run_media_action(media_v2_state_.get(), handle, source, MediaV2Signal::Play, "play", before, false,
+				[&](uint64_t &serial) {
+					return obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_PLAY_PAUSE, 0, &serial);
+				},
+				result, error);
 }
 
 bool Engine::v2_media_pause(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
@@ -996,32 +988,19 @@ bool Engine::v2_media_pause(obs_data_t *params, RuntimeV2Result &result, Runtime
 	reset_result(result, error);
 	uint64_t handle = 0;
 	obs_source_t *source = nullptr;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	source = it->second;
-	if ((obs_source_get_output_flags(source) & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return fail(error, "unsupported_capability", "source does not advertise controllable media support");
+	if (!v2_get_media_source(params, handle, source, error))
+		return false;
 
 	const obs_media_state before = obs_source_media_get_state(source);
 	if (before == OBS_MEDIA_STATE_PAUSED) {
 		result.data = make_action_data(handle, "pause", before, false);
 		return true;
 	}
-	if (!media_v2_state_ ||
-	    !settle_media_action(*media_v2_state_, handle, source, MediaV2Signal::Pause,
-				  [&](uint64_t &serial) {
-					  return obs_source_media_action_enqueue(
-						  source, OBS_SOURCE_MEDIA_ACTION_PLAY_PAUSE, 1, &serial);
-				  },
-				  result, error))
-		return false;
-	const obs_media_state after = obs_source_media_get_state(source);
-	result.data = make_action_data(handle, "pause", after, true);
-	result.mutated = before != after || !result.events.empty();
-	return true;
+	return run_media_action(media_v2_state_.get(), handle, source, MediaV2Signal::Pause, "pause", before, false,
+				[&](uint64_t &serial) {
+					return obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_PLAY_PAUSE, 1, &serial);
+				},
+				result, error);
 }
 
 bool Engine::v2_media_toggle_pause(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
@@ -1029,14 +1008,8 @@ bool Engine::v2_media_toggle_pause(obs_data_t *params, RuntimeV2Result &result, 
 	reset_result(result, error);
 	uint64_t handle = 0;
 	obs_source_t *source = nullptr;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	source = it->second;
-	if ((obs_source_get_output_flags(source) & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return fail(error, "unsupported_capability", "source does not advertise controllable media support");
+	if (!v2_get_media_source(params, handle, source, error))
+		return false;
 
 	const obs_media_state before = obs_source_media_get_state(source);
 	const bool pause = before == OBS_MEDIA_STATE_PLAYING || before == OBS_MEDIA_STATE_OPENING ||
@@ -1045,18 +1018,12 @@ bool Engine::v2_media_toggle_pause(obs_data_t *params, RuntimeV2Result &result, 
 		return fail(error, "invalid_state", "media.togglePause requires playing, opening, buffering, or paused state");
 	const char *action = pause ? "pause" : "play";
 	const MediaV2Signal signal = pause ? MediaV2Signal::Pause : MediaV2Signal::Play;
-	if (!media_v2_state_ ||
-	    !settle_media_action(*media_v2_state_, handle, source, signal,
-				  [&](uint64_t &serial) {
-					  return obs_source_media_action_enqueue(
-						  source, OBS_SOURCE_MEDIA_ACTION_PLAY_PAUSE, pause ? 1 : 0, &serial);
-				  },
-				  result, error))
-		return false;
-	const obs_media_state after = obs_source_media_get_state(source);
-	result.data = make_action_data(handle, action, after, true);
-	result.mutated = before != after || !result.events.empty();
-	return true;
+	return run_media_action(media_v2_state_.get(), handle, source, signal, action, before, false,
+				[&](uint64_t &serial) {
+					return obs_source_media_action_enqueue(
+						source, OBS_SOURCE_MEDIA_ACTION_PLAY_PAUSE, pause ? 1 : 0, &serial);
+				},
+				result, error);
 }
 
 bool Engine::v2_media_stop(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
@@ -1064,31 +1031,19 @@ bool Engine::v2_media_stop(obs_data_t *params, RuntimeV2Result &result, RuntimeV
 	reset_result(result, error);
 	uint64_t handle = 0;
 	obs_source_t *source = nullptr;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	source = it->second;
-	if ((obs_source_get_output_flags(source) & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return fail(error, "unsupported_capability", "source does not advertise controllable media support");
+	if (!v2_get_media_source(params, handle, source, error))
+		return false;
 
 	const obs_media_state before = obs_source_media_get_state(source);
 	if (before == OBS_MEDIA_STATE_STOPPED) {
 		result.data = make_action_data(handle, "stop", before, false);
 		return true;
 	}
-	if (!media_v2_state_ ||
-	    !settle_media_action(*media_v2_state_, handle, source, MediaV2Signal::Stop,
-				  [&](uint64_t &serial) {
-					  return obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_STOP, 0, &serial);
-				  },
-				  result, error))
-		return false;
-	const obs_media_state after = obs_source_media_get_state(source);
-	result.data = make_action_data(handle, "stop", after, true);
-	result.mutated = before != after || !result.events.empty();
-	return true;
+	return run_media_action(media_v2_state_.get(), handle, source, MediaV2Signal::Stop, "stop", before, false,
+				[&](uint64_t &serial) {
+					return obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_STOP, 0, &serial);
+				},
+				result, error);
 }
 
 bool Engine::v2_media_restart(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
@@ -1096,24 +1051,14 @@ bool Engine::v2_media_restart(obs_data_t *params, RuntimeV2Result &result, Runti
 	reset_result(result, error);
 	uint64_t handle = 0;
 	obs_source_t *source = nullptr;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	source = it->second;
-	if ((obs_source_get_output_flags(source) & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return fail(error, "unsupported_capability", "source does not advertise controllable media support");
-	if (!media_v2_state_ ||
-	    !settle_media_action(*media_v2_state_, handle, source, MediaV2Signal::Restart,
-				  [&](uint64_t &serial) {
-					  return obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_RESTART, 0, &serial);
-				  },
-				  result, error))
+	if (!v2_get_media_source(params, handle, source, error))
 		return false;
-	result.data = make_action_data(handle, "restart", obs_source_media_get_state(source), true);
-	result.mutated = true;
-	return true;
+	return run_media_action(media_v2_state_.get(), handle, source, MediaV2Signal::Restart, "restart",
+				obs_source_media_get_state(source), true,
+				[&](uint64_t &serial) {
+					return obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_RESTART, 0, &serial);
+				},
+				result, error);
 }
 
 bool Engine::v2_media_next(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
@@ -1121,24 +1066,14 @@ bool Engine::v2_media_next(obs_data_t *params, RuntimeV2Result &result, RuntimeV
 	reset_result(result, error);
 	uint64_t handle = 0;
 	obs_source_t *source = nullptr;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	source = it->second;
-	if ((obs_source_get_output_flags(source) & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return fail(error, "unsupported_capability", "source does not advertise controllable media support");
-	if (!media_v2_state_ ||
-	    !settle_media_action(*media_v2_state_, handle, source, MediaV2Signal::Next,
-				  [&](uint64_t &serial) {
-					  return obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_NEXT, 0, &serial);
-				  },
-				  result, error))
+	if (!v2_get_media_source(params, handle, source, error))
 		return false;
-	result.data = make_action_data(handle, "next", obs_source_media_get_state(source), true);
-	result.mutated = true;
-	return true;
+	return run_media_action(media_v2_state_.get(), handle, source, MediaV2Signal::Next, "next",
+				obs_source_media_get_state(source), true,
+				[&](uint64_t &serial) {
+					return obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_NEXT, 0, &serial);
+				},
+				result, error);
 }
 
 bool Engine::v2_media_previous(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
@@ -1146,40 +1081,26 @@ bool Engine::v2_media_previous(obs_data_t *params, RuntimeV2Result &result, Runt
 	reset_result(result, error);
 	uint64_t handle = 0;
 	obs_source_t *source = nullptr;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	source = it->second;
-	if ((obs_source_get_output_flags(source) & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return fail(error, "unsupported_capability", "source does not advertise controllable media support");
-	if (!media_v2_state_ ||
-	    !settle_media_action(*media_v2_state_, handle, source, MediaV2Signal::Previous,
-				  [&](uint64_t &serial) {
-					  return obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_PREVIOUS, 0, &serial);
-				  },
-				  result, error))
+	if (!v2_get_media_source(params, handle, source, error))
 		return false;
-	result.data = make_action_data(handle, "previous", obs_source_media_get_state(source), true);
-	result.mutated = true;
-	return true;
+	return run_media_action(media_v2_state_.get(), handle, source, MediaV2Signal::Previous, "previous",
+				obs_source_media_get_state(source), true,
+				[&](uint64_t &serial) {
+					return obs_source_media_action_enqueue(source, OBS_SOURCE_MEDIA_ACTION_PREVIOUS, 0, &serial);
+				},
+				result, error);
 }
 
 bool Engine::v2_media_get_duration(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	if ((obs_source_get_output_flags(it->second) & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return fail(error, "unsupported_capability", "source does not advertise controllable media support");
+	obs_source_t *source = nullptr;
+	if (!v2_get_media_source(params, handle, source, error))
+		return false;
 	ObsDataPtr data(obs_data_create());
 	set_handle(data.get(), "source", handle);
-	obs_data_set_int(data.get(), "durationMs", static_cast<long long>(obs_source_media_get_duration(it->second)));
+	obs_data_set_int(data.get(), "durationMs", static_cast<long long>(obs_source_media_get_duration(source)));
 	result.data = std::move(data);
 	return true;
 }
@@ -1188,16 +1109,12 @@ bool Engine::v2_media_get_position(obs_data_t *params, RuntimeV2Result &result, 
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	if ((obs_source_get_output_flags(it->second) & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return fail(error, "unsupported_capability", "source does not advertise controllable media support");
+	obs_source_t *source = nullptr;
+	if (!v2_get_media_source(params, handle, source, error))
+		return false;
 	ObsDataPtr data(obs_data_create());
 	set_handle(data.get(), "source", handle);
-	obs_data_set_int(data.get(), "positionMs", static_cast<long long>(obs_source_media_get_time(it->second)));
+	obs_data_set_int(data.get(), "positionMs", static_cast<long long>(obs_source_media_get_time(source)));
 	result.data = std::move(data);
 	return true;
 }
@@ -1206,14 +1123,9 @@ bool Engine::v2_media_set_position(obs_data_t *params, RuntimeV2Result &result, 
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	obs_source_t *source = it->second;
-	if ((obs_source_get_output_flags(source) & OBS_SOURCE_CONTROLLABLE_MEDIA) == 0)
-		return fail(error, "unsupported_capability", "source does not advertise controllable media support");
+	obs_source_t *source = nullptr;
+	if (!v2_get_media_source(params, handle, source, error))
+		return false;
 
 	long long position = 0;
 	bool present = false;
@@ -1228,15 +1140,14 @@ bool Engine::v2_media_set_position(obs_data_t *params, RuntimeV2Result &result, 
 		obs_data_set_int(result.data.get(), "positionMs", position);
 		return true;
 	}
-	if (!media_v2_state_ ||
-	    !settle_media_action(*media_v2_state_, handle, source, MediaV2Signal::Time,
-				  [&](uint64_t &serial) {
-					  return obs_source_media_action_enqueue(
-						  source, OBS_SOURCE_MEDIA_ACTION_SET_TIME, position, &serial);
-				  },
-				  result, error))
+	if (!run_media_action(media_v2_state_.get(), handle, source, MediaV2Signal::Time, "setPosition",
+				      obs_source_media_get_state(source), false,
+				      [&](uint64_t &serial) {
+					      return obs_source_media_action_enqueue(
+						      source, OBS_SOURCE_MEDIA_ACTION_SET_TIME, position, &serial);
+				      },
+				      result, error))
 		return false;
-	result.data = make_action_data(handle, "setPosition", obs_source_media_get_state(source), true);
 	const int64_t settled_position = obs_source_media_get_time(source);
 	obs_data_set_int(result.data.get(), "positionMs", static_cast<long long>(settled_position));
 	result.mutated = settled_position != current_position || !result.events.empty();

@@ -11,6 +11,12 @@
 namespace obs_engine {
 namespace {
 
+bool is_event_name_character(unsigned char ch)
+{
+	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' ||
+	       ch == '-';
+}
+
 bool is_event_name(std::string_view value)
 {
 	if (value.empty() || value.size() > kMaxEventPatternBytes)
@@ -22,14 +28,11 @@ bool is_event_name(std::string_view value)
 			if (!segment_has_character)
 				return false;
 			segment_has_character = false;
-			continue;
-		}
-
-		const bool alpha_num = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-				       (ch >= '0' && ch <= '9');
-		if (!alpha_num && ch != '_' && ch != '-')
+		} else if (!is_event_name_character(ch)) {
 			return false;
-		segment_has_character = true;
+		} else {
+			segment_has_character = true;
+		}
 	}
 	return segment_has_character;
 }
@@ -168,6 +171,65 @@ bool EventDispatcher::matches_locked(EngineEventKind kind, std::string_view even
 	return false;
 }
 
+void EventDispatcher::invalidate_queued_events_locked(uint64_t revision)
+{
+	uint64_t highest_lost_revision = revision;
+	for (const PendingEvent &queued : queue_)
+		highest_lost_revision = std::max(highest_lost_revision, queued.revision);
+	queue_.clear();
+	resync_pending_ = true;
+	resync_revision_ = std::max(resync_revision_, highest_lost_revision);
+}
+
+EventPublishResult EventDispatcher::enqueue_telemetry_locked(PendingEvent pending)
+{
+	for (auto it = queue_.begin(); it != queue_.end(); ++it) {
+		if (it->kind == EngineEventKind::Telemetry && it->name == pending.name) {
+			queue_.erase(it);
+			queue_.push_back(std::move(pending));
+			return EventPublishResult::Coalesced;
+		}
+	}
+	if (queue_.size() >= capacity_) {
+		++dropped_telemetry_;
+		return EventPublishResult::DroppedTelemetry;
+	}
+	queue_.push_back(std::move(pending));
+	cv_.notify_one();
+	return EventPublishResult::Enqueued;
+}
+
+EventPublishResult EventDispatcher::enqueue_state_locked(PendingEvent pending)
+{
+	if (queue_.size() < capacity_) {
+		queue_.push_back(std::move(pending));
+		cv_.notify_one();
+		return EventPublishResult::Enqueued;
+	}
+
+	auto telemetry = std::find_if(queue_.begin(), queue_.end(), [](const PendingEvent &queued) {
+		return queued.kind == EngineEventKind::Telemetry;
+	});
+	if (telemetry != queue_.end()) {
+		queue_.erase(telemetry);
+		++dropped_telemetry_;
+		queue_.push_back(std::move(pending));
+		cv_.notify_one();
+		return EventPublishResult::Enqueued;
+	}
+
+	invalidate_queued_events_locked(pending.revision);
+	cv_.notify_one();
+	return EventPublishResult::ResyncRequired;
+}
+
+EventPublishResult EventDispatcher::enqueue_event_locked(PendingEvent pending)
+{
+	if (pending.kind == EngineEventKind::Telemetry)
+		return enqueue_telemetry_locked(std::move(pending));
+	return enqueue_state_locked(std::move(pending));
+}
+
 EventPublishResult EventDispatcher::publish(EngineEventKind kind, std::string_view event_name, uint64_t revision,
 					    obs_data_t *data)
 {
@@ -186,46 +248,7 @@ EventPublishResult EventDispatcher::publish(EngineEventKind kind, std::string_vi
 	if (!matches_locked(kind, event_name))
 		return EventPublishResult::NotSubscribed;
 
-	if (kind == EngineEventKind::Telemetry) {
-		for (auto it = queue_.begin(); it != queue_.end(); ++it) {
-			if (it->kind == EngineEventKind::Telemetry && it->name == pending.name) {
-				queue_.erase(it);
-				queue_.push_back(std::move(pending));
-				return EventPublishResult::Coalesced;
-			}
-		}
-	}
-
-	if (queue_.size() >= capacity_) {
-		if (kind == EngineEventKind::Telemetry) {
-			++dropped_telemetry_;
-			return EventPublishResult::DroppedTelemetry;
-		}
-
-		auto telemetry = std::find_if(queue_.begin(), queue_.end(), [](const PendingEvent &queued) {
-			return queued.kind == EngineEventKind::Telemetry;
-		});
-		if (telemetry != queue_.end()) {
-			queue_.erase(telemetry);
-			++dropped_telemetry_;
-			queue_.push_back(std::move(pending));
-			cv_.notify_one();
-			return EventPublishResult::Enqueued;
-		}
-
-		uint64_t highest_lost_revision = revision;
-		for (const PendingEvent &queued : queue_)
-			highest_lost_revision = std::max(highest_lost_revision, queued.revision);
-		queue_.clear();
-		resync_pending_ = true;
-		resync_revision_ = std::max(resync_revision_, highest_lost_revision);
-		cv_.notify_one();
-		return EventPublishResult::ResyncRequired;
-	}
-
-	queue_.push_back(std::move(pending));
-	cv_.notify_one();
-	return EventPublishResult::Enqueued;
+	return enqueue_event_locked(std::move(pending));
 }
 
 void EventDispatcher::require_resync_due_to_overflow(uint64_t revision) noexcept
@@ -235,12 +258,7 @@ void EventDispatcher::require_resync_due_to_overflow(uint64_t revision) noexcept
 		if (stopping_)
 			return;
 
-		uint64_t highest_lost_revision = revision;
-		for (const PendingEvent &queued : queue_)
-			highest_lost_revision = std::max(highest_lost_revision, queued.revision);
-		queue_.clear();
-		resync_pending_ = true;
-		resync_revision_ = std::max(resync_revision_, highest_lost_revision);
+		invalidate_queued_events_locked(revision);
 		cv_.notify_one();
 	} catch (...) {
 		std::fprintf(stderr, "obs-engine: failed to schedule mandatory resync after event overflow\n");
@@ -261,12 +279,7 @@ void EventDispatcher::require_resync_after_queued_events(uint64_t revision) noex
 		if (stopping_)
 			return;
 		if (queue_.size() >= capacity_) {
-			uint64_t highest_lost_revision = revision;
-			for (const PendingEvent &queued : queue_)
-				highest_lost_revision = std::max(highest_lost_revision, queued.revision);
-			queue_.clear();
-			resync_pending_ = true;
-			resync_revision_ = std::max(resync_revision_, highest_lost_revision);
+			invalidate_queued_events_locked(revision);
 		} else {
 			queue_.push_back(std::move(event));
 		}

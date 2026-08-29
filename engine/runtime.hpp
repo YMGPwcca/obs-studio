@@ -189,6 +189,8 @@ private:
 	bool v2_build_property_target(obs_data_t *params, ObsDataPtr &target, ObsDataPtr &settings,
 				      obs_properties_t *&properties, obs_source_t *&source, RuntimeV2Error &error);
 	ObsDataPtr v2_filter_order_data(uint64_t source_id, uint64_t changed, obs_source_t *parent) const;
+	bool v2_get_media_source(obs_data_t *params, uint64_t &handle, obs_source_t *&source,
+				 RuntimeV2Error &error) const;
 	bool v2_get_interaction_source(obs_data_t *params, uint64_t &handle, obs_source_t *&source,
 				       RuntimeV2Error &error);
 
