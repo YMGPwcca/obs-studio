@@ -87,6 +87,9 @@ public:
 	void v2_settle_filter_mutation(obs_data_t *params, RuntimeV2Result &result);
 	void v2_filter_prepare_parent_removal(uint64_t source_id, RuntimeV2Result &result);
 	void v2_filter_register_source_filters(uint64_t source_id, obs_source_t *source, RuntimeV2Result *result = nullptr);
+	void v2_filter_register_source_filters(uint64_t source_id, obs_source_t *source, RuntimeV2Result *result,
+					       uint64_t duplicate_of);
+	void v2_filter_emit_source_created_filters(RuntimeV2Result &result);
 
 	bool v2_source_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_source_kind_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
