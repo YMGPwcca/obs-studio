@@ -405,7 +405,7 @@ bool handle_filter_request(Engine &engine, RevisionState &revisions, EventDispat
 	}
 
 	bool succeeded = execute_filter_method(engine, method, request.params.get(), result, error);
-	if (succeeded && capture && needs_settings_settle(method))
+	if (succeeded && capture && needs_settings_settle(method) && result.mutated)
 		succeeded = engine.v2_settle_filter_mutation(request.params.get(), result, error);
 
 	// This cascades source -> media -> filter observer synchronization while the

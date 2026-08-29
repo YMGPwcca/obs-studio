@@ -928,9 +928,12 @@ void Engine::v2_filter_register_source_filters(uint64_t source_id, obs_source_t 
 	for (obs_source_t *filter : collection.values) {
 		if (!filter)
 			continue;
-		if (filter_handles_.contains(filter)) {
-			obs_source_release(filter);
-			continue;
+		if (auto known = filter_handles_.find(filter); known != filter_handles_.end()) {
+			if (filters_.contains(known->second)) {
+				obs_source_release(filter);
+				continue;
+			}
+			filter_handles_.erase(known);
 		}
 
 		const uint64_t handle = allocate_handle();
@@ -1018,10 +1021,14 @@ void Engine::v2_sync_filter_observers()
 			auto known = filter_handles_.find(filter);
 			if (known != filter_handles_.end()) {
 				auto entry = filters_.find(known->second);
-				if (entry != filters_.end() && entry->second.source_id != source_id)
-					entry->second.source_id = source_id;
-				obs_source_release(filter);
-				continue;
+				if (entry == filters_.end()) {
+					filter_handles_.erase(known);
+				} else {
+					if (entry->second.source_id != source_id)
+						entry->second.source_id = source_id;
+					obs_source_release(filter);
+					continue;
+				}
 			}
 			const uint64_t handle = allocate_handle();
 			bool inserted_filter = false;
@@ -1358,8 +1365,8 @@ bool Engine::v2_filter_create(obs_data_t *params, RuntimeV2Result &result, Runti
 	if (!read_object_field(params, "settings", settings, present))
 		return fail(error, "bad_request", "params.settings must be an object when present");
 
-	const uint64_t handle = next_handle_;
-	const std::string generated_name = "engine-filter-" + std::to_string(handle);
+	const uint64_t allocated = allocate_handle();
+	const std::string generated_name = "engine-filter-" + std::to_string(allocated);
 	const char *actual_name = name.empty() ? generated_name.c_str() : name.c_str();
 	obs_source_t *filter = obs_source_create_private(kind.c_str(), actual_name, settings.get());
 	if (!filter)
@@ -1374,7 +1381,6 @@ bool Engine::v2_filter_create(obs_data_t *params, RuntimeV2Result &result, Runti
 		return fail(error, "incompatible_filter", "libobs did not attach the filter to the source");
 	}
 
-	const uint64_t allocated = allocate_handle();
 	bool inserted_filter = false;
 	bool inserted_handle = false;
 	try {
@@ -1480,6 +1486,7 @@ bool Engine::v2_filter_duplicate(obs_data_t *params, RuntimeV2Result &result, Ru
 		return fail(error, "bad_request", "params.name must be a string when present");
 	if (present && (name.empty() || !is_bounded_string(name.c_str(), kMaxFilterNameBytes)))
 		return fail(error, "bad_request", "filter duplicate name must be a 1-256 byte string");
+	const uint64_t duplicate_handle = allocate_handle();
 	const std::string generated_name = std::string(obs_source_get_name(it->second.filter)) + " copy";
 	const char *requested_name = name.empty() ? generated_name.c_str() : name.c_str();
 	obs_source_t *duplicate = obs_source_duplicate(it->second.filter, requested_name, true);
@@ -1494,7 +1501,6 @@ bool Engine::v2_filter_duplicate(obs_data_t *params, RuntimeV2Result &result, Ru
 		obs_source_release(duplicate);
 		return fail(error, "incompatible_filter", "libobs did not attach the duplicated filter");
 	}
-	const uint64_t duplicate_handle = allocate_handle();
 	bool inserted_filter = false;
 	bool inserted_handle = false;
 	try {

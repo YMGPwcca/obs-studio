@@ -415,6 +415,13 @@ try {
         Fail 'filter.patchSettings event did not contain value 20.'
     }
 
+    $PatchNoop = Send-V2Request @{
+        op = 'request'; id = 'task11.patch-noop'; method = 'filter.patchSettings'; ifRevision = $Revision
+        params = @{ filter = $FilterA.Handle; settings = @{ value = 20 } }
+    }
+    Assert-Ok $PatchNoop $Revision 'idempotent filter.patchSettings'
+    Assert-NoQueuedEvents 'idempotent filter.patchSettings'
+
     $Replace = Send-V2Request @{
         op = 'request'; id = 'task11.replace'; method = 'filter.replaceSettings'; ifRevision = $Revision
         params = @{ filter = $FilterA.Handle; settings = @{ value = 30 } }
