@@ -69,10 +69,11 @@ void *filter_create(obs_data_t *settings, obs_source_t *source)
 {
 	auto *filter = new Task11Filter;
 	filter->source = source;
-	// This deliberately uses the normal video-filter update path. libobs
-	// applies the settings object immediately but settles the plugin callback
-	// on the video thread, which is the behavior Task 11 must handle.
-	obs_source_update(source, settings);
+	// Creation receives the initial settings directly. Only later protocol
+	// updates go through obs_source_update(), which is the deferred video-filter
+	// path Task 11 needs to settle. Calling obs_source_update() recursively from
+	// create would run before libobs has installed context.data for this source.
+	filter->value = obs_data_get_int(settings, "value");
 	return filter;
 }
 
