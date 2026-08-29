@@ -10,7 +10,9 @@ This repository contains upstream OBS Studio plus a project-specific, headless `
 4. `engine/PROTOCOL_V2.md` — canonical semantic protocol contract. For already-implemented namespaces, also read their concrete schema docs such as `engine/SOURCE_V1.md`, `engine/INTERACTION_V1.md`, `engine/PROPERTIES_V1.md`, and `engine/RUNTIME_OBJECTS_V1.md`.
 5. `docs/libobs-engine/SOURCE_REVIEW_GUIDE.md` — source map and mandatory source-audit checklist.
 6. `docs/libobs-engine/ROADMAP.md` — complete Task 1–50 roadmap and acceptance policy.
-7. `docs/libobs-engine/TASK10_MEDIA_PLAN.md` — next-task design/research/implementation/test plan. **Task 10 is next but has not been started.** Do not implement it unless the operator has explicitly authorized starting Task 10.
+7. `docs/libobs-engine/TASK10_MEDIA_PLAN.md` — accepted Task-10 design/research record.
+8. `docs/libobs-engine/TASK11_ACCEPTANCE.md` — exact Task-11 acceptance evidence.
+9. `docs/libobs-engine/TASK11_FILTER_PLAN.md` and `TASK11_IMPLEMENTATION_AUDIT.md` — accepted filter contract and source audit.
 
 ## Source-of-truth precedence
 
@@ -27,16 +29,20 @@ When documents disagree, use this order and reconcile the mismatch before contin
 
 ## Current accepted baseline
 
-At handoff creation, the accepted implementation baseline is:
+The current accepted implementation baseline is:
 
 - Branch: `engine-protocol-v2`
 - Task-9 implementation commit: `f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc`
 - Commit subject: `feat(engine): complete protocol v2 interaction namespace`
 - Parent / accepted Task-8 baseline: `e88ceb0a1e1103c3297cd1bd589e56e28ae638e4`
-- Tasks 1 through 9: complete and accepted.
-- Task 10 (`media.*`): next; not started.
+- Task-10 (`media.*`) implementation: `6a590c2985a99d186c8eecd0241acdc824d32168`
+- Task-11 (`filter.*`) implementation: `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
+- Tasks 1 through 11: complete and accepted.
+- Task 12: planned and not authorized.
 
-The handoff-doc commit itself will necessarily advance branch HEAD beyond `f59d6b6c...`. That does **not** change the accepted engine/runtime baseline unless the handoff commit contains production-code changes. Verify with `git diff f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc..HEAD`.
+The acceptance-doc commit necessarily advances branch HEAD beyond the accepted
+Task-11 implementation SHA. That does **not** change the accepted engine/runtime
+implementation. Verify with `git diff e7b34828cb9fbd55bae01f97148f1ec93a4ae015..HEAD`.
 
 ## Non-negotiable architecture rules
 

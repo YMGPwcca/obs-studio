@@ -1,6 +1,6 @@
 # Engine Protocol v2 — Filter API v1
 
-Status: IMPLEMENTED / IN REVIEW / NOT ACCEPTED
+Status: COMPLETE / ACCEPTED
 
 This document freezes the Task 11 `filter.*` contract. Filters are libobs
 source objects attached to an engine-managed source. Their handles are

@@ -4,7 +4,7 @@
 **Prerequisite:** Tasks 1–9 accepted
 **Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168`
 **Accepted documentation checkpoint:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
-**Record:** this plan serves as the source-research and corrective-review record for the accepted namespace. Task 11 (`filter.*`) is implemented on an isolated candidate and remains in review/not accepted.
+**Record:** this plan serves as the source-research and corrective-review record for the accepted namespace. Task 11 (`filter.*`) was subsequently accepted at `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`; see `TASK11_ACCEPTANCE.md`.
 
 This plan is deliberately more detailed than a normal task ticket. A local coding agent should use it as an investigation checklist, then amend it if current source/libobs behavior differs.
 
@@ -962,10 +962,11 @@ change Task 11 acceptance.
 - [x] Task 10 hosted exact-SHA and physical acceptance evidence recorded by the
       operator handoff.
 - [x] Human approval promoted Task 10 to final acceptance.
-- [ ] Task 11 independent review and explicit acceptance.
+- [x] Task 11 independent review and explicit human acceptance recorded in
+      `TASK11_ACCEPTANCE.md`.
 
-Task 11 is intentionally the active review scope; no Task 12 work is included
-in this plan.
+Task 11 is complete; no Task 12 work is included in this plan. Task 12 remains
+planned and not authorized.
 
 ---
 

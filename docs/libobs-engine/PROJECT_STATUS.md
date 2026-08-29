@@ -1,11 +1,13 @@
 # LibOBS Engine Protocol v2 — Project Status
 
-**Status snapshot date:** 2026-08-29  
+**Status snapshot date:** 2026-08-30
 **Production branch:** `engine-protocol-v2`  
 **Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168`
 **Accepted Task-10 documentation checkpoint:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
+**Accepted Task-11 implementation:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
+**Task-11 acceptance record:** `TASK11_ACCEPTANCE.md`
 **Candidate branch:** `task11-codex`
-**Task-11 candidate status:** IMPLEMENTED / IN REVIEW / NOT ACCEPTED
+**Task-11 status:** COMPLETE / ACCEPTED
 
 This file is the current status ledger for the LibOBS split-engine project. If an older roadmap says Task 8 is active or Task 9 is only proposed, that older status is stale. Verify this ledger against Git/source/CI whenever resuming work.
 
@@ -26,7 +28,7 @@ This file is the current status ledger for the LibOBS split-engine project. If a
 | 8 | Complete `source.*` | COMPLETE | full namespace + deferred callback settlement + deterministic A–F + physical Windows |
 | 9 | `interaction.*` | COMPLETE | seven methods + deterministic callback fixture + same-SHA matrix + physical Windows |
 | 10 | `media.*` | COMPLETE / ACCEPTED | 11 methods, exact queued-action settlement, exact-SHA hosted and physical evidence |
-| 11 | `filter.*` | IMPLEMENTED / IN REVIEW / NOT ACCEPTED | candidate runtime, permanent observer settlement, deterministic fixture and exact-SHA lane |
+| 11 | `filter.*` | COMPLETE / ACCEPTED | `e7b34828...`, exact-SHA matrix, physical Windows, artifact and independent review PASS |
 | 12–50 | Later roadmap | NOT STARTED | Task 12 remains planned and unauthorized |
 
 ---
@@ -72,7 +74,7 @@ Task-9 diff against Task 8 contained exactly these 11 paths:
 - subject: `fix(engine): correlate media actions by source ticket`
 - accepted documentation checkpoint: `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
 - exact queued-action ownership, callback/mutation ordering correction, and
-  media action settlement are accepted; this Task-11 candidate does not alter
+  media action settlement are accepted; the accepted Task-11 implementation does not alter
   the Task-10 media implementation.
 
 Implemented methods:
@@ -135,19 +137,19 @@ Verification on the local Task-10 corrective candidate:
 
 ---
 
-## 2.1 Task 11 candidate — `filter.*`
+## 2.1 Task 11 accepted implementation — `filter.*`
 
-Task 11 is implemented on `task11-codex` from accepted documentation
-checkpoint `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea` and remains
-IMPLEMENTED / IN REVIEW / NOT ACCEPTED. The candidate adds the documented
-filter kind/runtime methods, explicit filter-handle-to-parent ownership,
-permanent update observers with generation- and private tracked-update serial
-settlement, parent-removal ordering, source-duplicate inherited-filter
+Task 11 is accepted on `task11-codex` at implementation SHA
+`e7b34828cb9fbd55bae01f97148f1ec93a4ae015`, based on accepted documentation
+checkpoint `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`. The accepted implementation
+adds the documented filter kind/runtime methods, explicit filter-handle-to-parent
+ownership, permanent update observers with generation- and private tracked-update
+serial settlement, parent-removal ordering, source-duplicate inherited-filter
 discovery, and a CI-only deterministic fixture/workflow. It does not change
 `engine/protocol_v2.cpp` or the accepted Task-10 media implementation.
 
-The candidate's exact SHA and hosted evidence are recorded in the operator
-handoff; human/advisor review and explicit acceptance remain outstanding.
+The exact-SHA matrix, package/artifact provenance, physical Windows validation,
+independent review, and human approval are recorded in `TASK11_ACCEPTANCE.md`.
 
 ---
 
@@ -432,9 +434,9 @@ Record exact final SHA and acceptance evidence in this file after each completed
 
 The next project state transition is:
 
-`Task 11 candidate in review` -> `Task 11 independent review/physical gate` ->
-explicit Task 11 acceptance.
+`Task 11 accepted` -> `Task 12 planned/not authorized`.
 
 Task 12 has not started and is not authorized. The advisor WIP is preserved on
-`wip/task11-advisor-handoff-137b2e5`; the older unauthorized implementation is
-preserved on `wip/task11-unauthorized`. Neither is accepted or merged.
+`wip/task11-advisor-handoff-137b2e5` locally and remotely; the older unauthorized
+implementation is preserved on `wip/task11-unauthorized`. Neither is accepted or
+merged.

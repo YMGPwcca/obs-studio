@@ -1,14 +1,16 @@
 # LibOBS Engine Protocol v2 — Local AI Agent Handoff
 
-**Handoff date:** 2026-08-29  
+**Handoff date:** 2026-08-30
 **Repository:** `YMGPwcca/obs-studio`  
 **Production branch:** `engine-protocol-v2`
 **Candidate branch:** `task11-codex`
 **Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168` (`fix(engine): correlate media actions by source ticket`)
 **Accepted Task-10 documentation checkpoint:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
-**Next roadmap task:** Task 11 — `filter.*` candidate on `task11-codex`
+**Accepted Task-11 implementation:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
+**Task-11 acceptance record:** `TASK11_ACCEPTANCE.md`
+**Next roadmap task:** Task 12 — planned, not authorized
 **Task 10 implementation status:** COMPLETE / ACCEPTED
-**Task 11 candidate status:** IMPLEMENTED / IN REVIEW / NOT ACCEPTED
+**Task 11 implementation status:** COMPLETE / ACCEPTED
 
 This file exists so a local AI coding agent can continue the project without access to the previous ChatGPT conversation. It records project decisions, accepted behavior, verification evidence, known traps, and the required working process. **Verify everything against the checked-out source before changing it.**
 
@@ -151,9 +153,10 @@ Do not leak raw pointers, C++ exception internals, Win32 object pointers, or plu
 
 ## 4. Current implementation status
 
-Tasks 1–10 are accepted. Task 11 is implemented on the isolated candidate
-branch and remains in review; no acceptance is claimed here. See
-`PROJECT_STATUS.md` and the Task-11 audit for the evidence boundary.
+Tasks 1–11 are accepted. Task 11 was implemented on the isolated
+`task11-codex` branch and is accepted at
+`e7b34828cb9fbd55bae01f97148f1ec93a4ae015`. See `TASK11_ACCEPTANCE.md` for
+the exact human approval, CI, artifact, physical, and review evidence.
 
 ### Task 1 / 1.1 — headless host and package cleanup
 
@@ -561,8 +564,8 @@ Normal artifact must not contain test fixtures. Assert this in CI before explici
 
 ## 11. What to do next
 
-Task 10 is accepted. The Task-11 candidate is implemented on `task11-codex` and
-is still IN REVIEW / NOT ACCEPTED. The candidate handoff records that it has:
+Task 10 and Task 11 are accepted. Task 11's acceptance record documents that
+the candidate:
 
 - verified branch/HEAD;
 - read all handoff docs;
@@ -576,13 +579,14 @@ is still IN REVIEW / NOT ACCEPTED. The candidate handoff records that it has:
 - read and reconciled `engine/FILTER_V1.md`, the Task-11 plan/audit, the
   deterministic script, and the exact-SHA workflow.
 
-The advisor WIP remains preserved locally on `wip/task11-advisor-handoff-137b2e5`
-(the safety branch was not found on `origin`) and
-the older unauthorized implementation remains on `wip/task11-unauthorized`.
-Neither is accepted or merged. Preserve the media bridge's separate bounded
-queue, exact-ticket settlement rules, the internal `media_time` signal
-contract, and the no-WebSocket/no-browser default allowlist while reviewing
-Task 11. Do not begin Task 12.
+The advisor WIP is preserved locally and remotely on
+`wip/task11-advisor-handoff-137b2e5` at
+`137b2e5bd341caa1c3bc128bccd7b81376f27c32`; the older unauthorized
+implementation remains on `wip/task11-unauthorized`. Neither WIP branch is
+accepted or merged. Preserve the media bridge's separate bounded queue,
+exact-ticket settlement rules, the internal `media_time` signal contract, and
+the no-WebSocket/no-browser default allowlist. Task 12 remains planned and
+unauthorized; do not begin it without explicit approval.
 
 ---
 
@@ -610,8 +614,7 @@ This handoff is successful if a local agent can, using only the repository:
 
 1. explain the process/license/state boundary;
 2. explain revision/event semantics;
-3. identify Tasks 1–10 as accepted and Task 11 as implemented/in review/not
-   accepted;
+3. identify Tasks 1–11 as accepted and Task 12 as planned/not authorized;
 4. explain the Task-8 deferred update bug and why the current settlement exists;
 5. explain Task-9 transient interaction semantics and physical acceptance;
 6. explain Task-10 media action settlement, media-time limitations, and resync behavior;

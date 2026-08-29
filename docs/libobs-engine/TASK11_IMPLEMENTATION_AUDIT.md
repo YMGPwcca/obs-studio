@@ -1,7 +1,9 @@
 # Task 11 implementation audit
 
-**Status:** IMPLEMENTED / IN REVIEW / NOT ACCEPTED
+**Status:** COMPLETE / ACCEPTED
 **Accepted base:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
+**Accepted implementation:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
+**Acceptance record:** `TASK11_ACCEPTANCE.md`
 **Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168`
 **Quarantined unauthorized reference:** `4c8b616ca2115970af3e1e4000b162416be32dac`
 
@@ -93,8 +95,8 @@ has four confirmed blockers:
 2. Deferred filter settings settlement creates a temporary `update` signal
    waiter and later disconnects it. libobs signal dispatch holds the signal mutex
    while invoking callbacks, so disconnect can block behind an unrelated or
-   deliberately blocking callback. Task 11 will use the permanent filter
-   observer plus a generation/condition-variable wakeup instead.
+   deliberately blocking callback. The accepted implementation uses the
+   permanent filter observer plus a generation/condition-variable wakeup.
 3. The commit did not add a dedicated Task-11 hosted workflow, so there was no
    exact-SHA package/integration lane for the namespace.
 4. The current contract intentionally keeps copied filters nested under the
@@ -160,3 +162,7 @@ types, and the router settles only actual settings mutations.
   `source.removed`, all with the parent-removal revision.
 - CI-only Task-11 fixtures must be absent from normal artifacts.
 - Task 12 remains unauthorized.
+
+Independent source review and explicit human approval completed the Task-11
+acceptance. The exact CI, artifact, physical Windows, review-bundle, and
+non-blocking-debt record is maintained in `TASK11_ACCEPTANCE.md`.

@@ -15,6 +15,7 @@ For Codex/Claude Code/Aider or a human engineer, read:
 7. `ROADMAP.md`
 8. `TASK10_MEDIA_PLAN.md`
 9. `LOCAL_AGENT_START_PROMPT.md`
+10. `TASK11_ACCEPTANCE.md`
 
 ## What is authoritative?
 
@@ -26,13 +27,15 @@ For Codex/Claude Code/Aider or a human engineer, read:
 
 ## Current handoff point
 
-Tasks **1–10 are accepted**. Accepted Task-10 production engine/runtime SHA is:
+Tasks **1–11 are accepted**. Accepted Task-10 production engine/runtime SHA is:
 
-`e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`
+`6a590c2985a99d186c8eecd0241acdc824d32168`
 
 Task 10 `media.*` includes a source-correlated asynchronous settlement bridge and
-the concrete contract in `engine/MEDIA_V1.md`. Task 11 `filter.*` is next and
-has not started.
+the concrete contract in `engine/MEDIA_V1.md`. Task 11 `filter.*` is accepted at
+`e7b34828cb9fbd55bae01f97148f1ec93a4ae015`; the acceptance evidence is in
+`TASK11_ACCEPTANCE.md`. Task 12 is the next planned roadmap task but is not
+authorized.
 
 ## Why multiple documents?
 
@@ -45,5 +48,6 @@ The project has several kinds of knowledge that should not be collapsed into one
 - `ROADMAP.md`: planned work and acceptance gates through protocol freeze.
 - `TASK10_MEDIA_PLAN.md`: Task-10 implementation/research and acceptance record.
 - `LOCAL_AGENT_START_PROMPT.md`: ready-to-paste initial instruction for a fresh local AI session.
+- `TASK11_ACCEPTANCE.md`: final Task-11 approval and evidence record.
 
 Update these after each accepted task so future agents do not have to reconstruct project intent from chat history.

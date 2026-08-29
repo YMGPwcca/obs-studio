@@ -1,6 +1,6 @@
 # LibOBS Engine Protocol v2 — Detailed Roadmap (Tasks 1–50)
 
-This is the current repo-native roadmap. It preserves the original staged plan while updating completion state through the Task-11 candidate. Future-task details are **plans**, not claims that APIs already exist. Before each task, re-read `engine/PROTOCOL_V2.md` and inspect source/libobs; source reality may require refining the plan.
+This is the current repo-native roadmap. It preserves the original staged plan while updating completion state through accepted Task 11. Future-task details are **plans**, not claims that APIs already exist. Before each task, re-read `engine/PROTOCOL_V2.md` and inspect source/libobs; source reality may require refining the plan.
 
 ## Roadmap operating rules
 
@@ -139,11 +139,11 @@ Every task follows the same gate:
 
 Local validation passed with the Task 1–9 regression lanes, full Windows x64 build/install, package audit, deterministic M1–M15-equivalent coverage, and Windows fixture execution. The operator handoff records exact-SHA hosted CI, physical Windows acceptance, and independent raw-evidence audit as complete.
 
-## Task 11 — `filter.*` — IMPLEMENTED / IN REVIEW / NOT ACCEPTED
+## Task 11 — `filter.*` — COMPLETE / ACCEPTED
 
 **Goal:** manage filters attached to source-like objects using generic source/filter semantics rather than plugin-specific UI logic.
 
-**Planned scope:**
+**Accepted scope:**
 
 - enumerate filters on a parent;
 - discover filter kinds;
@@ -157,11 +157,11 @@ Local validation passed with the Task 1–9 regression lanes, full Windows x64 b
 
 **Acceptance:** deterministic parent + filter fixture, ordering/lifetime tests, plugin-property reuse, stale parent/filter handle cases.
 
-The isolated candidate on `task11-codex` implements this scope from accepted
-Task-10 checkpoint `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`. Its exact-SHA
-Task-11 lane, full Task 1–11 regression matrix, package audit, and physical
-Windows gate remain review evidence; they do not by themselves mark Task 11
-accepted.
+The accepted implementation is `e7b34828cb9fbd55bae01f97148f1ec93a4ae015` on
+`task11-codex`, based on accepted Task-10 checkpoint
+`e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`. Its exact-SHA Task-11 lane, full
+Task 1–11 regression matrix, package audit, physical Windows gate, independent
+review, and explicit human approval are recorded in `TASK11_ACCEPTANCE.md`.
 
 ---
 
@@ -484,7 +484,6 @@ After each accepted task:
 4. add any newly discovered architectural invariant/known debt to `HANDOFF.md`/`ARCHITECTURE.md`;
 5. do not mark a later task active until operator explicitly authorizes it.
 
-The current transition point is **Task 11 candidate in review -> independent
-review/physical gate -> explicit Task 11 acceptance**. Task 12 remains planned
-and unauthorized. The advisor WIP and older unauthorized implementation remain
+The current transition point is **Task 11 accepted -> Task 12 planned/not
+authorized**. The advisor WIP and older unauthorized implementation remain
 quarantined reference branches only.

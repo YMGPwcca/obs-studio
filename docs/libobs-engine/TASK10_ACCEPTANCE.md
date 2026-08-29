@@ -5,11 +5,15 @@
 **Accepted implementation tree:** `117534fcd99b96a64d7205c702e1abeeb4316835`  
 **Implementation parent:** `19dc985323332230999ffa1a25a3375629a20c42`  
 **Status:** ACCEPTED  
-**Next roadmap task:** Task 11 `filter.*` — PLANNED / QUARANTINED / NOT AUTHORIZED
+**Subsequent roadmap task:** Task 11 `filter.*` — later accepted at
+`e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
+**Current next roadmap task:** Task 12 — PLANNED / NOT AUTHORIZED
 
 This is the authoritative final-acceptance record for Task 10. It closes the
-corrective review of the Engine Protocol v2 `media.*` namespace. It does not
-authorize Task 11 or any later roadmap task.
+corrective review of the Engine Protocol v2 `media.*` namespace. At the time of
+this record it did not authorize Task 11 or any later roadmap task; Task 11 was
+subsequently authorized, independently reviewed, and accepted in
+`TASK11_ACCEPTANCE.md`.
 
 ## Accepted scope
 
@@ -177,8 +181,9 @@ closing Task 10 on 2026-08-29.
 
 **Task 10 is accepted at `6a590c2985a99d186c8eecd0241acdc824d32168`.**
 
-This acceptance does **not** authorize Task 11. The unauthorized Task-11 work
-remains quarantined at `wip/task11-unauthorized` ->
+This historical Task-10 acceptance did **not** authorize Task 11. The old
+unauthorized Task-11 work remains quarantined at `wip/task11-unauthorized` ->
 `4c8b616ca2115970af3e1e4000b162416be32dac`. No Task-11 implementation may be
-started, salvaged, merged, cherry-picked or otherwise continued until the
-operator separately authorizes Task 11.
+started, salvaged, merged, cherry-picked or otherwise continued from that old
+branch. The separately authorized clean implementation is accepted at
+`e7b34828cb9fbd55bae01f97148f1ec93a4ae015`; Task 12 remains unauthorized.

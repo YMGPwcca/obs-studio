@@ -1,7 +1,9 @@
 # Task 11 — `filter.*` plan and acceptance record
 
-**Status:** IMPLEMENTED / IN REVIEW / NOT ACCEPTED
+**Status:** COMPLETE / ACCEPTED
 **Accepted base:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
+**Accepted implementation:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
+**Acceptance record:** `TASK11_ACCEPTANCE.md`
 **Quarantined reference only:** `4c8b616ca2115970af3e1e4000b162416be32dac`
 
 ## Goal
@@ -123,6 +125,7 @@ thread/runtime.
 
 ## Gate
 
-Task 11 remains **NOT ACCEPTED** until source review, deterministic hosted CI,
-package audit, physical Windows acceptance where required, independent final
-review and explicit human approval are complete. Task 12 is not authorized.
+Task 11 is **ACCEPTED** at implementation SHA
+`e7b34828cb9fbd55bae01f97148f1ec93a4ae015` after deterministic hosted CI,
+package audit, physical Windows acceptance, independent final review, and
+explicit human approval. Task 12 remains planned and not authorized.

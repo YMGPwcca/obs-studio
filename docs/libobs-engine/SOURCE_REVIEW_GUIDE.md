@@ -23,16 +23,17 @@ The current accepted Task-10 engine implementation baseline is:
 fix(engine): correlate media actions by source ticket
 ```
 
-Task 11 is being developed only on the isolated `task11-codex` candidate and
-remains IMPLEMENTED / IN REVIEW / NOT ACCEPTED.
+Task 11 is accepted on `task11-codex` at
+`e7b34828cb9fbd55bae01f97148f1ec93a4ae015`. See `TASK11_ACCEPTANCE.md` for
+the complete evidence record. Task 12 remains planned and unauthorized.
 
 The handoff documentation commit will be newer. Determine whether anything newer than the handoff changed production engine code. Never assume a SHA written in documentation is still HEAD.
 
 Useful diff:
 
 ```bash
-git diff --stat e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff..HEAD
-git diff e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff..HEAD -- engine .github
+git diff --stat e8a0cb36cb2baacb8368ff5236a7a84bec9584ea..HEAD
+git diff e8a0cb36cb2baacb8368ff5236a7a84bec9584ea..HEAD -- engine .github
 ```
 
 If that diff includes runtime/protocol behavior beyond documentation, stop and audit those changes before using the status file.

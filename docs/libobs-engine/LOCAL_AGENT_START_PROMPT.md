@@ -1,6 +1,6 @@
 # Local AI Agent Start Prompt
 
-Paste the following into a fresh local Codex-style agent opened at the repository root. It is intentionally strict: the agent must verify source before editing and must not silently begin Task 11.
+Paste the following into a fresh local Codex-style agent opened at the repository root. It is intentionally strict: the agent must verify source before editing and must not silently begin Task 12.
 
 ---
 
@@ -23,6 +23,7 @@ Read, in order:
 11. `docs/libobs-engine/SOURCE_REVIEW_GUIDE.md`
 12. `docs/libobs-engine/ROADMAP.md`
 13. `docs/libobs-engine/TASK10_MEDIA_PLAN.md`
+14. `docs/libobs-engine/TASK11_ACCEPTANCE.md`
 
 Then inspect Git and source. At minimum run/check:
 
@@ -31,10 +32,10 @@ git status --short --branch
 git branch --show-current
 git rev-parse HEAD
 git log --oneline --decorate --graph -30
-git diff --stat e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff..HEAD
+git diff --stat e7b34828cb9fbd55bae01f97148f1ec93a4ae015..HEAD
 ```
 
-The accepted Task-10 engine/runtime implementation is `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`. Determine whether commits after it changed engine behavior. Do not trust the SHA blindly if current history differs.
+The accepted Task-10 engine/runtime implementation is `6a590c2985a99d186c8eecd0241acdc824d32168`, and the accepted Task-11 implementation is `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`. Determine whether commits after the accepted Task-11 SHA changed engine behavior. Do not trust the SHA blindly if current history differs.
 
 Inspect at least these current engine sources before proposing work:
 
@@ -54,7 +55,7 @@ Inspect at least these current engine sources before proposing work:
 
 Specifically understand Task 8’s deferred source event ownership and Task 9’s transient interaction semantics. Do not refactor either area until you can explain their concurrency/lifetime contracts.
 
-For the next planned Task 11, inspect upstream/current libobs source before designing anything:
+For any future roadmap task, inspect upstream/current libobs source before designing anything. The accepted Task-11 filter implementation and its private tracked-update bridge are documented in `TASK11_ACCEPTANCE.md` and `TASK11_IMPLEMENTATION_AUDIT.md`:
 
 ```bash
 rg -n "obs_source_filter_|obs_source_get_filters|obs_source_add_filter|obs_source_remove_filter|obs_source_set_filter_index|filter_add|filter_remove|reorder_filters" libobs plugins engine
@@ -81,14 +82,14 @@ Architecture requirements you must preserve:
 
 Current status to verify:
 
-- Tasks 1–9 complete; Task 10 is implemented but remains in corrective review
-  with final acceptance pending.
+- Tasks 1–11 are complete and accepted. Task 11 is accepted at
+  `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`.
 - Task 8 deterministic A–F source concurrency + physical Windows acceptance complete.
 - Task 9 all seven `interaction.*` methods complete; same-SHA regression matrix green; physical Windows acceptance complete.
-- Task 10 `media.*` is implemented at `e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff`; `engine/MEDIA_V1.md` and the media settlement limits are authoritative, but exact-final-SHA acceptance is pending.
-- Task 11 `filter.*` remains planned, quarantined, and NOT ACCEPTED.
+- Task 10 `media.*` is accepted at `6a590c2985a99d186c8eecd0241acdc824d32168`; `engine/MEDIA_V1.md` and the media settlement limits are authoritative.
+- Task 12 remains planned and NOT AUTHORIZED.
 
-**Do not begin Task 11.** Its unauthorized implementation remains quarantined, and no later task is authorized.
+**Do not begin Task 12.** Wait for explicit human authorization before any later roadmap implementation.
 
 After the audit, report back with:
 
@@ -99,10 +100,10 @@ After the audit, report back with:
 5. your source-level explanation of Task-8 deferred update settlement;
 6. your source-level explanation of Task-9 interaction lifetime/transient semantics;
 7. your findings about the Task-10 media settlement contract and its known limitations;
-8. your source-verified Task-11 filter implementation strategy;
+8. the accepted Task-11 filter implementation and its evidence record;
 9. confirmation that you have not changed production code before the audit report.
 
-After the audit, implement only Task 11. Follow the full task gate: freeze the filter schema, inspect libobs/plugin behavior, add deterministic coverage and package assertions, run Task 1–11 regressions on one final SHA, review the diff twice, update the handoff/status/roadmap, and stop before Task 12.
+After the audit, do not implement Task 12 or any later task unless the operator separately authorizes it. For an explicitly authorized future task, follow its full task gate and stop before the next unauthorized task.
 
 For manual acceptance commands, make fresh-engine handles deterministic and use literal `"source":"1"` whenever possible. Do not give the operator commands containing `YOUR_HANDLE` placeholders that require manual editing.
 
@@ -112,6 +113,6 @@ For manual acceptance commands, make fresh-engine handles deterministic and use 
 
 A good first response is not “I’ll start coding filters.” It should be an audit report similar to:
 
-> I verified the branch/HEAD, read the protocol/namespace/handoff files, and audited the current v2 dispatch/source/interaction/media code. Tasks 1–10 match the recorded accepted state, including the media-specific asynchronous settlement and its seek/error limitations. I inspected libobs filter APIs and representative filter plugins and will freeze a source-correlated filter schema before coding. I found the following source/doc mismatches or none: [...]. I have not changed production code before this report.
+> I verified the branch/HEAD, read the protocol/namespace/handoff files, and audited the current v2 dispatch/source/interaction/media/filter code. Tasks 1–11 match the recorded accepted state, including media-specific asynchronous settlement and the filter tracked-update serial bridge. Task 12 remains planned and unauthorized. I found the following source/doc mismatches or none: [...]. I have not changed production code before this report.
 
 That response demonstrates the handoff was actually read and source-checked.
