@@ -180,16 +180,19 @@ function Get-OperatorBlameLines {
             }
         }
     }
-    return $lineSet
+    return ,$lineSet
 }
 
 function Test-LineIntersection {
     param(
-        [Parameter(Mandatory = $true)] [System.Collections.Generic.HashSet[int]] $Lines,
+        [object] $Lines,
         [Parameter(Mandatory = $true)] [int] $StartLine,
         [Parameter(Mandatory = $true)] [int] $EndLine
     )
 
+    if ($null -eq $Lines) {
+        return $false
+    }
     for ($line = $StartLine; $line -le $EndLine; $line++) {
         if ($Lines.Contains($line)) {
             return $true
@@ -215,7 +218,7 @@ function Get-CandidateChangedLines {
             }
         }
     }
-    return $lineSet
+    return ,$lineSet
 }
 
 function Get-PythonExecutable {
@@ -807,9 +810,10 @@ function New-ComparisonMarkdown {
         [Parameter(Mandatory = $true)] [object] $Before,
         [Parameter(Mandatory = $true)] [object] $After,
         [Parameter(Mandatory = $true)] [object] $Inventory,
-        [Parameter(Mandatory = $true)] [object[]] $Allowlist
+        [object[]] $Allowlist
     )
 
+    $exceptions = @($Allowlist | Where-Object { $null -ne $_ })
     $beforeExact = @{}
     $beforeByName = @{}
     foreach ($metric in $Before.functions) {
@@ -880,12 +884,12 @@ function New-ComparisonMarkdown {
     $lines.Add('')
     $lines.Add('## Intentional exceptions')
     $lines.Add('')
-    if ($Allowlist.Count -eq 0) {
+    if ($exceptions.Count -eq 0) {
         $lines.Add('_Empty._')
     } else {
         $lines.Add('| File | Function | Measured CC | Reason | Date/task | Reviewer note |')
         $lines.Add('|---|---|---:|---|---|---|')
-        foreach ($exception in $Allowlist) {
+        foreach ($exception in $exceptions) {
             $lines.Add("| ``$($exception.file)`` | ``$($exception.function)`` | $($exception.measuredCC) | $($exception.reason) | $($exception.dateTask) | $($exception.reviewerNote) |")
         }
     }
@@ -1103,7 +1107,7 @@ if ($Mode -eq 'Baseline') {
 if ($Mode -eq 'After') {
     $before = if (Test-Path -LiteralPath (Join-Path $repoRoot $BeforePath)) { Read-JsonFile $BeforePath } else { throw "Before report '$BeforePath' was not found." }
     $allowlist = if (Test-Path -LiteralPath (Join-Path $repoRoot $AllowlistPath)) {
-        @((Read-JsonFile $AllowlistPath))
+        @((Read-JsonFile $AllowlistPath) | Where-Object { $null -ne $_ })
     } else { @() }
     $jsonText = $report | ConvertTo-Json -Depth 30
     $afterOutput = if ($JsonPath) { $JsonPath } else { 'complexity-after.json' }
@@ -1121,8 +1125,8 @@ $baseline = if (Test-Path -LiteralPath (Join-Path $repoRoot $BaselinePath)) {
 } else {
     throw "Accepted complexity baseline '$BaselinePath' was not found. Run After first or pass -BaselinePath."
 }
-$allowlist = if (Test-Path -LiteralPath (Join-Path $repoRoot $AllowlistPath)) {
-    @((Read-JsonFile $AllowlistPath))
+    $allowlist = if (Test-Path -LiteralPath (Join-Path $repoRoot $AllowlistPath)) {
+        @((Read-JsonFile $AllowlistPath) | Where-Object { $null -ne $_ })
 } else { @() }
 $baselineByKey = @{}
 foreach ($metric in $baseline.functions) {
