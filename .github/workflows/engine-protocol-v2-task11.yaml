@@ -65,6 +65,13 @@ jobs:
             }
           }
 
+          $PublicObs = Get-Content -Raw 'libobs/obs.h'
+          foreach ($PrivateApi in @('obs_source_update_tracked', 'obs_source_reset_settings_tracked')) {
+            if ($PublicObs.Contains($PrivateApi)) {
+              throw "Task 11 private update API leaked into the public obs.h header: $PrivateApi"
+            }
+          }
+
       - name: Build Windows minimal runtime
         uses: ./.github/actions/build-obs
         with:

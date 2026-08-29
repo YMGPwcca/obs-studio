@@ -220,6 +220,9 @@ function Run-RaceScenario([string] $Label, [ValidateSet('rename', 'enable')] [st
         $newerWatch = [System.Diagnostics.Stopwatch]::StartNew()
         $newerB = Send-V2Request @{
             op = 'request'; id = "$Label.newer-b"; method = 'filter.patchSettings'; ifRevision = $revision
+            # B has no deliberate callback delay. Its five-second settlement
+            # window therefore contains A's late completion; any success at
+            # that point would be an A/B ownership misclaim.
             params = @{ filter = '2'; settings = @{ value = 702; blockMs = 0 } }
         }
         $newerWatch.Stop()

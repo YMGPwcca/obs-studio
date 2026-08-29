@@ -189,6 +189,39 @@ function Assert-NoLateSettingsEvent([string] $Filter, [string] $Label) {
     }
 }
 
+function Read-SafeSettingsEvent([string] $Filter, [int64] $Value, [int64] $ExpectedRevision) {
+    while ($true) {
+        if ($script:Events.Count -gt 0) {
+            $Event = $script:Events[0]
+            $script:Events.RemoveAt(0)
+        } else {
+            $Event = Read-EngineMessage
+        }
+        if ($Event.op -ne 'event') {
+            Fail 'safe-after-late received a response while waiting for its settings event.'
+        }
+        if ([uint64]$Event.seq -ne $script:NextSeq) {
+            Fail "safe-after-late saw seq=$($Event.seq), expected $script:NextSeq."
+        }
+        $WireEvent = @($script:WireLog | Where-Object { $_.Seq -eq [uint64]$Event.seq }) | Select-Object -First 1
+        if ($null -ne $WireEvent -and $WireEvent.Index -le $script:LastResponseWireIndex -and
+            [string]$Event.event -ne 'session.resyncRequired') {
+            Fail "safe-after-late observed a normal event before its response: $($Event.event)."
+        }
+        $script:NextSeq++
+        if ([string]$Event.event -eq 'session.resyncRequired') {
+            continue
+        }
+        if ([string]$Event.event -ne 'filter.settingsChanged' -or
+            [string]$Event.data.filter -ne $Filter -or
+            [int64]$Event.data.settings.value -ne $Value -or
+            [int64]$Event.revision -ne $ExpectedRevision) {
+            Fail 'safe-after-late did not receive its exact command-owned settings event.'
+        }
+        return $Event
+    }
+}
+
 function Assert-CanonicalHandle([string] $Value, [string] $Label) {
     if ($Value -notmatch '^[1-9][0-9]*$') {
         Fail "$Label returned a non-canonical handle '$Value'."
@@ -734,24 +767,41 @@ try {
     $SecondResync = Read-Until-Resync ($Revision + 1)
     $Revision = [int64]$SecondResync.revision
 
-    # The old callback is deliberately held past both bounded request waits.
-    # Its eventual completion must produce a resync and no normal settings
-    # event, before a later request is allowed to settle normally.
+    # A and the newer timed-out request each have an independent private
+    # deferred-update identity. Their eventual completions must produce
+    # resynchronization boundaries and no normal settings event before a later
+    # request is allowed to settle normally.
     $LateResync = Read-Until-Resync ($Revision + 1)
     Assert-NoLateSettingsEvent $FilterA.Handle 'late completion'
     $Revision = [int64]$LateResync.revision
 
-    $SafeWatch = [System.Diagnostics.Stopwatch]::StartNew()
-    $SafeAfterLate = Send-V2Request @{
-        op = 'request'; id = 'task11.safe-after-late'; method = 'filter.patchSettings'
-        ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; settings = @{ value = 101; blockMs = 0 } }
+    # A timed-out newer request may still have its own late callback after A's
+    # boundary. The safe follow-up deliberately omits ifRevision and retries
+    # only across an observed resync, so an asynchronous boundary cannot turn
+    # into a false revision conflict.
+    $SafeAfterLate = $null
+    for ($Attempt = 1; $Attempt -le 3 -and $null -eq $SafeAfterLate; $Attempt++) {
+        $SafeWatch = [System.Diagnostics.Stopwatch]::StartNew()
+        $SafeCandidate = Send-V2Request @{
+            op = 'request'; id = "task11.safe-after-late.$Attempt"; method = 'filter.patchSettings'
+            params = @{ filter = $FilterA.Handle; settings = @{ value = 101; blockMs = 0 } }
+        }
+        $SafeWatch.Stop()
+        Write-Host "safe update attempt=$Attempt elapsed=$($SafeWatch.Elapsed.TotalSeconds) seconds"
+        if ($SafeCandidate.status.ok) {
+            $SafeAfterLate = $SafeCandidate
+            break
+        }
+        Assert-Error $SafeCandidate 'timeout' $Revision "filter update after late uncertainty attempt $Attempt"
+        $SafeRetryBatch = [System.Collections.Generic.List[object]]::new()
+        $SafeRetryResync = Read-Until-Resync ($Revision + 1) $SafeRetryBatch
+        $Revision = [int64]$SafeRetryResync.revision
     }
-    $SafeWatch.Stop()
-    Write-Host "safe update elapsed=$($SafeWatch.Elapsed.TotalSeconds) seconds"
-    Assert-Ok $SafeAfterLate ($Revision + 1) 'filter update after late uncertainty'
-    $Revision++
-    $null = Read-Event 'filter.settingsChanged' $Revision $FilterA.Handle $Parent.Handle
+    if ($null -eq $SafeAfterLate) {
+        Fail 'filter update after late uncertainty did not recover within three bounded attempts.'
+    }
+    $Revision = [int64]$SafeAfterLate.revision
+    $null = Read-SafeSettingsEvent $FilterA.Handle 101 $Revision
 
     # The fixture emits 1100 peer update observations during D's update,
     # exceeding the bounded deferred bridge and forcing a resync.
