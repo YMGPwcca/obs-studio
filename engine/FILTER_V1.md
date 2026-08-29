@@ -36,10 +36,10 @@ integer. Leading zeroes, JSON numbers, negative values, and native pointers
 are rejected. A filter handle is valid only while the filter remains attached
 to its parent in the current engine process.
 
-The `source` parameter identifies an engine-managed source handle. Task 11
-does not yet expose scene-source handles as filter parents; that relationship
-belongs to the later scene namespace. The parent must exist and the requested
-kind must be registered as `OBS_SOURCE_TYPE_FILTER`.
+The `source` parameter identifies an engine-managed source handle. Task 11 does
+not add a second persistent parent identity and does not expose raw libobs
+filter/parent pointers. The parent must exist and a requested filter kind must
+be registered as `OBS_SOURCE_TYPE_FILTER`.
 
 Filter summaries have this shape:
 
@@ -56,47 +56,42 @@ Filter summaries have this shape:
 }
 ```
 
-`index` is the current libobs filter-array index. It is zero-based, with the
-same ordering used by `obs_source_filter_get_index` and `filter.list`.
+`index` is zero-based and uses the same current filter-array ordering as
+`obs_source_filter_get_index` and `filter.list`.
 
 Successful operations that alter canonical filter state consume exactly one
-revision. The command response is written before command-owned events. Read
-methods, idempotent `rename`/`setEnabled` operations, and order operations that
-already have the requested result do not consume a revision.
-
-The only Controller-facing way to mutate the filter graph is the semantic
-Engine Protocol. The bridge does not attempt to expose arbitrary native plugin
-code as a second graph-control API. Indirect engine operations that create or
-destroy filter objects, notably `source.duplicate` and parent `source.remove`,
-must still surface the resulting filter lifecycle in the same command revision.
+revision. The response is written before command-owned events. Read methods,
+idempotent rename/enable operations, and order requests that produce no actual
+order change do not consume a revision.
 
 ## Kind methods
 
 ### `filter.kindList`
 
-No parameters. Returns `{ "kinds": [ ... ] }`. Each kind entry includes
-`id`, `displayName`, `outputFlags`, `module` when known, and
-`moduleLoadState`. The list comes from `obs_enum_filter_types`; input and
-transition kinds are not included.
+No parameters. Returns `{ "kinds": [ ... ] }`. Each entry contains the
+registered filter id, display name, output flags, module when known, and module
+load state. The list comes from `obs_enum_filter_types`.
 
 ### `filter.kindDefaults`
 
 Parameters: `{ "kind": "registered_filter_id" }`.
 
 Returns `{ "kind": "registered_filter_id", "settings": { ... } }` using
-`obs_get_source_defaults`. A kind without defaults returns `obs_error`.
+`obs_get_source_defaults`. An unknown kind is `not_found`; a registered kind
+without a defaults object is `obs_error`.
 
 ### `filter.kindProperties`
 
 Parameters: `{ "kind": "registered_filter_id" }`.
 
-Returns the same property document as `properties.get` with a target of:
+Returns the normal generic property document for target:
 
 ```json
 { "type": "filterKind", "kind": "registered_filter_id" }
 ```
 
-The generic `properties.*` methods also accept `filterKind` targets.
+The generic `properties.*` bridge also accepts `filterKind` and live `filter`
+targets.
 
 ## Runtime methods
 
@@ -104,12 +99,14 @@ The generic `properties.*` methods also accept `filterKind` targets.
 
 Parameters: `{ "source": "1" }`.
 
-Returns `{ "source": "1", "filters": [summary, ...], "count": N }`, ordered
-by ascending `index`.
+Returns `{ "source": "1", "filters": [summary, ...], "count": N }` ordered by
+ascending current filter index. Enumeration also registers handles for attached
+filters that came into existence as nested libobs state, for example filters
+copied by the already-accepted `source.duplicate` behavior.
 
 ### `filter.get`
 
-Parameters: `{ "filter": "2" }`. Returns one filter summary.
+Parameters: `{ "filter": "2" }`. Returns one current filter summary.
 
 ### `filter.create`
 
@@ -124,26 +121,27 @@ Parameters:
 }
 ```
 
-The default name is `engine-filter-<handle>`. The new filter is inserted at
-libobs index zero. The result is its summary. The command emits
-`filter.created` with that summary.
+The default name is `engine-filter-<handle>`. The filter is attached with the
+normal libobs filter graph API. Success returns its summary and emits
+`filter.created` at the command revision.
 
 ### `filter.remove`
 
-Parameters: `{ "filter": "2" }`. Returns `{ "filter": "2", "source": "1" }`
-and emits the same data as `filter.removed`. Removal detaches the filter,
-releases the parent-owned reference, releases the engine reference, and
-invalidates the handle permanently. Removing a source also removes all of its
-known filters and emits their `filter.removed` events in index order before
-`source.removed`.
+Parameters: `{ "filter": "2" }`.
+
+Returns `{ "filter": "2", "source": "1" }` and emits `filter.removed` with
+the same identity. Removal detaches the filter, releases the parent-owned and
+engine-owned references as appropriate, and invalidates the handle permanently.
+
+Removing a parent source also invalidates its tracked filter handles. For
+tracked children, `filter.removed` is emitted in current filter-index order
+before `source.removed`; all belong to the parent-removal command revision.
 
 ### `filter.rename`
 
 Parameters: `{ "filter": "2", "name": "new non-empty name" }`.
 
-Returns the resulting summary. A name equal to the current name is an
-idempotent success. Otherwise the libobs rename signal owns the event and
-emits `filter.renamed`:
+Equal names are idempotent. An actual change returns the new summary and emits:
 
 ```json
 {
@@ -154,73 +152,81 @@ emits `filter.renamed`:
 }
 ```
 
+as `filter.renamed`.
+
 ### `filter.duplicate`
 
 Parameters: `{ "filter": "2", "name": "optional name" }`.
 
-Creates an independent private duplicate, attaches it to the same parent at
-libobs index zero, and preserves the enabled state. The result and
-`filter.created` event are the new summary plus `duplicateOf: "2"`.
+Creates an independent private duplicate attached to the same parent and
+preserves enabled state. The result and `filter.created` event contain the new
+summary plus `duplicateOf: "2"`.
 
-`source.duplicate` is also allowed to copy attached filters as part of libobs'
-source-duplication semantics. Those copied filters receive fresh filter handles
-before the source-duplicate request returns. Its command-owned event order is
-`source.created` first, followed by one `filter.created` event for each copied
-filter in ascending copied-filter index. They share the `source.duplicate`
-response revision. No raw libobs filter pointer crosses the protocol.
+`source.duplicate` remains the Task-8 source operation and is deliberately not
+redefined by Task 11. libobs may copy attached filters as nested state of the new
+source. Task 11 does **not** synthesize separate `filter.created` events into the
+existing `source.duplicate` command. The Controller discovers inherited filters
+through `filter.list` on the new source and then uses their newly registered,
+ephemeral filter handles. This avoids retroactively changing the already
+accepted Task-8 source event contract.
 
 ### Settings methods
 
-`filter.getSettings` takes `{ "filter": "2" }` and returns
-`{ "filter": "2", "source": "1", "settings": { ... } }`.
-
-`filter.patchSettings` and `filter.replaceSettings` take a filter handle and a
-required object-valued `settings` member. `patchSettings` applies a libobs
-settings patch. `replaceSettings` clears the current settings and applies the
-replacement. Each returns the resulting settings object and emits
-`filter.settingsChanged`:
+`filter.getSettings` takes `{ "filter": "2" }` and returns:
 
 ```json
 { "filter": "2", "source": "1", "settings": { ... } }
 ```
 
-For video filters, `obs_source_update` applies the libobs settings object
-immediately but may defer the plugin `update` callback and `update` signal to
-the video thread. The engine keeps one permanent observer per tracked filter.
-Settlement never creates or disconnects a per-request signal callback. Instead,
-the observer advances a private update generation after it has normalized the
-signal; the request waits on that observer condition and claims a deferred batch
-only when both the filter handle and canonical post-update settings match.
+`filter.patchSettings` and `filter.replaceSettings` require an object-valued
+`settings` member. Patch applies a settings patch; replace resets the current
+settings to the supplied object. A real canonical change returns the resulting
+settings and emits:
 
-If that callback cannot be correlated within the bounded settlement window,
-the request is not silently treated as fully observed; the engine forces
-`session.resyncRequired` through the normal overflow/resynchronization path.
-Unrelated filter batches remain independent and cannot be folded into the
-request solely because they use the same signal name.
+```json
+{ "filter": "2", "source": "1", "settings": { ... } }
+```
 
-### `filter.setEnabled` and `filter.getEnabled`
+as `filter.settingsChanged`.
 
-`filter.setEnabled` takes `{ "filter": "2", "enabled": true }` and returns
-the resulting summary. Equal values are idempotent. A change emits
-`filter.enabledChanged`:
+For video filters, `obs_source_update` updates libobs's settings object
+synchronously but may defer the plugin `update` callback and `update` signal to
+the video thread. The engine therefore keeps a permanent observer per tracked
+filter. The request never installs or disconnects a per-request update callback.
+The observer normalizes the update batch, advances a private generation, and
+wakes settlement. Ownership is proven by exact filter handle plus canonical
+post-update settings.
+
+If ownership cannot be proven within the bounded settlement deadline, the
+bridge does not fabricate success from an unrelated signal. It marks incremental
+state uncertain and the normal deferred flush forces `session.resyncRequired`.
+Unrelated filter batches remain independent.
+
+### `filter.setEnabled` / `filter.getEnabled`
+
+`filter.setEnabled` takes `{ "filter": "2", "enabled": true }`. Equal values
+are idempotent. A change returns the resulting summary and emits:
 
 ```json
 { "filter": "2", "source": "1", "enabled": true }
 ```
 
-`filter.getEnabled` takes `{ "filter": "2" }` and returns
-`{ "filter": "2", "source": "1", "enabled": true }`.
+as `filter.enabledChanged`.
 
-### Order methods
+`filter.getEnabled` returns the current boolean without changing revision.
 
-`filter.setOrder` takes `{ "filter": "2", "index": 1 }`. The index must be
-an integer in `[0, filter.list.count)`, and is applied with
-`obs_source_filter_set_index`. `filter.moveUp`, `filter.moveDown`,
-`filter.moveTop`, and `filter.moveBottom` take `{ "filter": "2" }` and use
-the corresponding libobs movement. Async and non-async filters retain libobs'
-rule that relative movement skips filters of a different async class.
+### Ordering
 
-Each successful order change returns the changed parent order as:
+`filter.setOrder` takes `{ "filter": "2", "index": 1 }`. `index` must be an
+integer in `[0, filter.list.count)`. The engine validates the bound before
+calling `obs_source_filter_set_index`, because libobs's setter does not provide
+public bounds validation.
+
+`filter.moveUp`, `filter.moveDown`, `filter.moveTop`, and `filter.moveBottom`
+take `{ "filter": "2" }` and use libobs's relative movement rules. In
+particular, relative movement preserves libobs's async/non-async class behavior.
+
+An actual order change returns and emits `filter.orderChanged` with:
 
 ```json
 {
@@ -230,43 +236,35 @@ Each successful order change returns the changed parent order as:
 }
 ```
 
-and emits `filter.orderChanged` with the same data. A request that leaves the
-order unchanged is an idempotent success with no revision/event. `index` is
-never passed to libobs until the engine has checked the bounds because the
-libobs setter has no public bounds validation.
+A no-op order request is a successful non-mutation.
 
 ## Errors
 
-- `bad_request`: malformed handles, names, kinds, settings, booleans, or
-  order indexes;
-- `not_found`: unknown source/filter handle or unregistered kind;
-- `incompatible_filter`: libobs rejected attachment to the parent;
-- `obs_error`: libobs failed to create/duplicate/read the object;
-- `internal_error`: an engine invariant or handle allocation failed.
+- `bad_request` — malformed handles, names, kinds, settings, booleans, or order
+  indexes;
+- `not_found` — unknown source/filter handle or unregistered filter kind;
+- `incompatible_filter` — libobs rejected attachment to the parent;
+- `obs_error` — libobs failed to create/duplicate/read required state;
+- `internal_error` — an engine invariant or handle/revision operation failed.
 
-A deferred settings observation that cannot be correlated does not fabricate
-ownership. The command uses the normal resynchronization boundary so the
-Controller rebuilds canonical state.
+Errors never expose raw pointers, native handles, plugin exception text, or
+private callback data.
 
-Error messages are fixed semantic text and never contain pointers, native
-handles, plugin exception text, or private callback data.
+## Event / concurrency semantics
 
-## Event and overflow semantics
+The filter bridge observes `update`, `rename`, and `enable` on permanent
+per-filter observers. Callbacks never write protocol output. They enter the same
+bounded capture/deferred/direct-revision model as the existing runtime bridges.
+A full or uncertain deferred bridge forces `session.resyncRequired`; canonical
+filter changes are not silently dropped.
 
-The filter bridge observes filter `update`, `rename`, and `enable` signals.
-Callbacks never write protocol output. They enter the same bounded capture /
-deferred / direct-revision pattern as the other runtime bridges, correlated by
-filter handle and parent handle. Deferred filter events are never silently
-dropped. A full bridge queue clears its incremental batches, schedules
-`session.resyncRequired`, and advances revision state deterministically.
+Before a Task-11 mutating request acquires the global mutation/revision mutex,
+the capture path waits for already-direct source/media/filter callbacks to
+retire. This preserves the accepted Task-10 lock order: a callback executing
+under a libobs signal mutex is not forced to wait behind a protocol request that
+already holds the global mutation mutex.
 
-Before a mutating request acquires the global revision mutex, the common runtime
-capture path waits for already-direct source/media/filter callbacks to retire.
-This preserves the accepted Task-10 lock order: callback-held libobs signal
-mutexes are never forced to wait behind a request that already holds the global
-revision mutex.
-
-The bridge does not expose filter parent/target raw pointers and does not use
-`obs_filter_get_parent` or `obs_filter_get_target` outside plugin callback
-contexts; the engine retains the parent relationship explicitly when it
-attaches the filter.
+The accepted Task-10 `engine/protocol_v2.cpp` implementation remains isolated as
+the non-filter protocol core. Task 11 adds a thin router for capability discovery
+and `filter.*`; all existing non-filter requests continue through the accepted
+core.
