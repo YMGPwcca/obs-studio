@@ -1,0 +1,1760 @@
+{
+  "schemaVersion": 1,
+  "githubAccount": "YMGPwcca",
+  "baseRef": "bcd53e2914c68a62b2a9387a7e8ee3b59d1fd1df",
+  "acceptedRef": "3fc2e678d10809a4dca8b28107710534160803ab",
+  "discoveryMethod": "git log BASE..accepted author metadata plus accepted-HEAD git blame; no filename ownership inference; archived WIP branches excluded",
+  "operatorIdentityAliases": [
+    {
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com"
+    },
+    {
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me"
+    }
+  ],
+  "operatorAuthoredCommitCountInLineage": 64,
+  "operatorAuthoredCodeCommitCountInScope": 29,
+  "operatorAuthoredCommits": [
+    {
+      "hash": "ffffcfd1a65677a16d9ec596103d99bde080deb8",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "build: make windows-minimal a headless libobs runtime"
+    },
+    {
+      "hash": "b0bc05cee09e0726816b81bd1acba422687312ea",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "build: restrict plugins to Windows-capable runtime modules"
+    },
+    {
+      "hash": "812e05aefe3ee788c92cd99ec0a5971c525d4e06",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "docs: describe windows-minimal runtime scope"
+    },
+    {
+      "hash": "fb519fafcdac6182effc24d65e1f24edb740747e",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "engine: add minimal host target"
+    },
+    {
+      "hash": "fcffc875d77a153b050137fe876627c1d20ae8ab",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "engine: implement minimal libobs host"
+    },
+    {
+      "hash": "223c38663939719cf889b5dcc0ccb8b6859b9801",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "engine: wire minimal host into Windows build"
+    },
+    {
+      "hash": "e20471397818b2861fdd2c008919461a8f797cd7",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "engine: harden minimal libobs host"
+    },
+    {
+      "hash": "2d586ec042ee2b51e3fc9c3459777cc9c68b144d",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "engine: build hardened host implementation"
+    },
+    {
+      "hash": "d82cedda18ad0db6e7682b7a31841ebae2f8f2d7",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "engine: remove superseded host implementation"
+    },
+    {
+      "hash": "2b2febe47e14f8c12b9434820e6f7c50bac672ce",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "win-capture: add capture-only host mode"
+    },
+    {
+      "hash": "d101b7e0a8ac6eb742b7fc3d860c7be70fb3d109",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "docs: document minimal host protocol and boundary"
+    },
+    {
+      "hash": "e3e55e80ebab33d62d485fb93a6e6081b6016b4a",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "ci: build windows-minimal host on x64"
+    },
+    {
+      "hash": "156e4bc94e95511d4248b43a7066f63712cc9ef6",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "docs: align branch overview with hardened host"
+    },
+    {
+      "hash": "9c2521a6ea5117ac1f2326bfb5164a6e4039c532",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "build: handle tagless GitHub forks"
+    },
+    {
+      "hash": "830ac32e9c7b38efbfd54c534e15c94d2b5aabdc",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "engine: use current OBS graphics module definition pattern"
+    },
+    {
+      "hash": "eb73770b2ac7c0e6d561bf4bb355386488997447",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "build: provide headless frontend API for Windows modules"
+    },
+    {
+      "hash": "ef26c48b8c96ee7a96145bf02942d2a17bb927e7",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "docs: note headless frontend API dependency"
+    },
+    {
+      "hash": "0d80e5378788fdb6069c1b40126ca6a34acc6959",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "engine: harden pre-main dependent DLL loading"
+    },
+    {
+      "hash": "06377a4c3400a8cd3b5601cd559d4ce3ed513680",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "docs: document pre-main DLL load hardening"
+    },
+    {
+      "hash": "604c45f0885ddaeaeeafe084742ad8bb03fa3f15",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "feat(engine): allowlist all Windows runtime modules by default"
+    },
+    {
+      "hash": "fb33a60d7e9c8501327e586927211f8a270f26a1",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "docs(engine): document default full runtime allowlist"
+    },
+    {
+      "hash": "16506a76c8fb465d82cf129b6b3f86c694a4c774",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "docs: document default full plugin allowlist"
+    },
+    {
+      "hash": "61841779fe5d88069d3ef54dfbf68bf5acc2cb8c",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "docs(engine): define protocol v2 contract"
+    },
+    {
+      "hash": "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "refactor(engine): split host responsibilities"
+    },
+    {
+      "hash": "d47733b98421332ac54e26a671824230e49169c8",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "refactor(engine): address review feedback"
+    },
+    {
+      "hash": "a3ffc28ca5b2d6c4899c9dda548e904a51fd3eb3",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "ci(engine): verify and package task 1"
+    },
+    {
+      "hash": "de816826fc9f4bcaf009a149a7826336e9b28e41",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "ci(engine): preserve smoke diagnostics and runtime artifact"
+    },
+    {
+      "hash": "47b3eef5164104016996ccee39a7fb6b0ed447c9",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "fix(engine): bundle Windows runtime dependencies"
+    },
+    {
+      "hash": "b7b905ee67b3c73c5366e398327378e0f35a0b7c",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "chore(engine): tighten headless Task 1 runtime"
+    },
+    {
+      "hash": "2ffd9550962d067190418e87b8b28c1290370ef7",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "fix(engine): omit unused frontend API from headless build"
+    },
+    {
+      "hash": "911fad2e5fe7f1abe438c441957a4e11be4ce685",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "feat(engine): add protocol v2 framing"
+    },
+    {
+      "hash": "66d871bffdc10105ba4096f13edc2631a6379f7f",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "feat(engine): add capability negotiation"
+    },
+    {
+      "hash": "1766c42eb907e9413f215c0cb4f0fdff6c0f0e7f",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "feat(engine): add protocol v2 revisions"
+    },
+    {
+      "hash": "435e176a49aa13348fd810dff5c0040732d5a9c3",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "feat(engine): add protocol v2 event delivery"
+    },
+    {
+      "hash": "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "feat(engine): port basic runtime objects to protocol v2"
+    },
+    {
+      "hash": "472141d30bc4dad0d5654146dd715a5fa03d1c66",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "feat(engine): add protocol v2 properties API"
+    },
+    {
+      "hash": "f13431c2dd72109b9ec8dbebb3c0174f7d119a15",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "feat(engine): complete protocol v2 source namespace"
+    },
+    {
+      "hash": "862184529c0f1def6ec32ceafb90e708d1a187e3",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "Fix deferred source mutation settlement"
+    },
+    {
+      "hash": "6d1a02771dcc765579016d5f89b08743b8efeca9",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "Settle every deferred video source update"
+    },
+    {
+      "hash": "dd38b2ff306724546a9e8df0955bd1ecc99eb7f4",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "Match deferred source updates to request state"
+    },
+    {
+      "hash": "22c4b526f63cfa7193b80c0be05e964fb34e3c8a",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "Add deterministic Task 8 concurrency regression"
+    },
+    {
+      "hash": "daf74a5465147b2567d10dc6fb6349a639ade5e7",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "test(engine): preserve Task 8 concurrency diagnostics"
+    },
+    {
+      "hash": "e88ceb0a1e1103c3297cd1bd589e56e28ae638e4",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "test(engine): fix Task 8 concurrency workflow result handling"
+    },
+    {
+      "hash": "f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "feat(engine): complete protocol v2 interaction namespace"
+    },
+    {
+      "hash": "73fb6230237d5456971aeed4124bae7426039f83",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "docs(engine): add local agent handoff and roadmap"
+    },
+    {
+      "hash": "08010cdc6e58a0ff2760fd58bc813227487876cd",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "fix(engine): keep websocket outside engine allowlist"
+    },
+    {
+      "hash": "2744b3bcbbdef6e24f108c6c70cc213282e95607",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "fix(engine): keep browser outside engine allowlist"
+    },
+    {
+      "hash": "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "feat(engine): complete protocol v2 media namespace"
+    },
+    {
+      "hash": "19dc985323332230999ffa1a25a3375629a20c42",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "docs(engine): record Task 10 acceptance and handoff"
+    },
+    {
+      "hash": "6a590c2985a99d186c8eecd0241acdc824d32168",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "fix(engine): correlate media actions by source ticket"
+    },
+    {
+      "hash": "e8a0cb36cb2baacb8368ff5236a7a84bec9584ea",
+      "name": "Nguyễn Tuấn Nghĩa",
+      "email": "37042810+YMGPwcca@users.noreply.github.com",
+      "subject": "docs(engine): record Task 10 final acceptance"
+    },
+    {
+      "hash": "a016c0c4077aff8863425c71ac09692525b36e74",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "docs(engine): freeze Task 11 filter contract"
+    },
+    {
+      "hash": "bb227ad223b21d42c6381f6765213a36d2fa2665",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "feat(engine): add protocol v2 filter runtime"
+    },
+    {
+      "hash": "1370346aef34d7d4c6aa0c03e446b73a69d20a92",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "test(engine): add Task 11 deterministic verification"
+    },
+    {
+      "hash": "fbab77143a84bc101e9444f0dd2a516aab8d008a",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "fix(engine): harden Task 11 filter settlement"
+    },
+    {
+      "hash": "55aee5cb9893dfbf289c49d2bb4ae63ad0e82f79",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "docs(engine): align Task 11 handoff status"
+    },
+    {
+      "hash": "14ea89f14f967bea9f3552632f57649b8070c41f",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "docs(engine): record Task 11 WIP audit findings"
+    },
+    {
+      "hash": "fd8d56dbdaff0a7e23f9900864c83dd3fd2ebab2",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "test(engine): reproduce Task 11 timeout ownership race"
+    },
+    {
+      "hash": "c47cc67c87b4cc8f31cd2bc19d883c4d2ac6c4c2",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "fix(engine): correlate filter updates by libobs serial"
+    },
+    {
+      "hash": "be4a7aeddfb8221140e5df45dc4ae4f1ec7f63ca",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "test(engine): harden Task 11 timeout race coverage"
+    },
+    {
+      "hash": "c6d97d8e450743d41d87f1f59e9d67fbb2d028a3",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "docs(engine): document Task 11 update identity"
+    },
+    {
+      "hash": "9d0f70ce8e91686ab6590cde258df41a12f5d22b",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "fix(engine): preserve global update signal ABI"
+    },
+    {
+      "hash": "e7b34828cb9fbd55bae01f97148f1ec93a4ae015",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "docs(engine): record update signal compatibility"
+    },
+    {
+      "hash": "3fc2e678d10809a4dca8b28107710534160803ab",
+      "name": "YMGPwcca",
+      "email": "ymgpwcca@proton.me",
+      "subject": "docs(engine): record Task 11 final acceptance"
+    }
+  ],
+  "cyclomaticTargetFiles": [
+    {
+      "path": ".github/scripts/engine-protocol-v2-task10.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
+        "6a590c2985a99d186c8eecd0241acdc824d32168"
+      ],
+      "operatorBlameLineCount": 610,
+      "scopedFunctionCount": 8,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task10.ps1|Fail|Fail",
+        "powershell|function|.github/scripts/engine-protocol-v2-task10.ps1|Read-EngineMessage|Read-EngineMessage",
+        "powershell|function|.github/scripts/engine-protocol-v2-task10.ps1|Send-V2Request|Send-V2Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task10.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task10.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task10.ps1|Read-Event|Read-Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task10.ps1|Read-Until-Resync|Read-Until-Resync",
+        "powershell|function|.github/scripts/engine-protocol-v2-task10.ps1|Create-Source|Create-Source"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task11-timeout-race.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "fd8d56dbdaff0a7e23f9900864c83dd3fd2ebab2",
+        "be4a7aeddfb8221140e5df45dc4ae4f1ec7f63ca"
+      ],
+      "operatorBlameLineCount": 266,
+      "scopedFunctionCount": 10,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task11-timeout-race.ps1|Fail|Fail",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11-timeout-race.ps1|Start-RaceEngine|Start-RaceEngine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11-timeout-race.ps1|Stop-RaceEngine|Stop-RaceEngine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11-timeout-race.ps1|Read-EngineMessage|Read-EngineMessage",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11-timeout-race.ps1|Send-V2Request|Send-V2Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11-timeout-race.ps1|Read-NextEvent|Read-NextEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11-timeout-race.ps1|Read-Until-Resync|Read-Until-Resync",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11-timeout-race.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11-timeout-race.ps1|Assert-Timeout|Assert-Timeout",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11-timeout-race.ps1|Run-RaceScenario|Run-RaceScenario"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task11.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "1370346aef34d7d4c6aa0c03e446b73a69d20a92",
+        "fbab77143a84bc101e9444f0dd2a516aab8d008a",
+        "be4a7aeddfb8221140e5df45dc4ae4f1ec7f63ca"
+      ],
+      "operatorBlameLineCount": 907,
+      "scopedFunctionCount": 14,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task11.ps1|Fail|Fail",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11.ps1|Read-EngineMessage|Read-EngineMessage",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11.ps1|Send-V2Request|Send-V2Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11.ps1|Read-Event|Read-Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11.ps1|Assert-Order|Assert-Order",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11.ps1|Assert-NoQueuedEvents|Assert-NoQueuedEvents",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11.ps1|Read-Until-Resync|Read-Until-Resync",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11.ps1|Assert-NoLateSettingsEvent|Assert-NoLateSettingsEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11.ps1|Read-SafeSettingsEvent|Read-SafeSettingsEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11.ps1|Assert-CanonicalHandle|Assert-CanonicalHandle",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11.ps1|New-TestSource|New-TestSource",
+        "powershell|function|.github/scripts/engine-protocol-v2-task11.ps1|New-TestFilter|New-TestFilter"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task8-concurrency.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "22c4b526f63cfa7193b80c0be05e964fb34e3c8a"
+      ],
+      "operatorBlameLineCount": 318,
+      "scopedFunctionCount": 16,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Fail|Fail",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Read-EngineMessage|Read-EngineMessage",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Send-V2Request|Send-V2Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Read-StateEvent|Read-StateEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Start-EngineCase|Start-EngineCase",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|New-TestSource|New-TestSource",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Assert-AEvents|Assert-AEvents",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Assert-Ping|Assert-Ping",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Finish-EngineCase|Finish-EngineCase",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Run-CaseA|Run-CaseA",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Run-CaseB|Run-CaseB",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Run-CaseC|Run-CaseC",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Run-CaseD|Run-CaseD",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Run-CaseE|Run-CaseE",
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-concurrency.ps1|Run-CaseF|Run-CaseF"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task9.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc"
+      ],
+      "operatorBlameLineCount": 346,
+      "scopedFunctionCount": 4,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task9.ps1|Read-EngineMessage|Read-EngineMessage",
+        "powershell|function|.github/scripts/engine-protocol-v2-task9.ps1|Send-V2Request|Send-V2Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task9.ps1|Assert-OkAtRevision|Assert-OkAtRevision",
+        "powershell|function|.github/scripts/engine-protocol-v2-task9.ps1|Assert-ErrorAtRevision|Assert-ErrorAtRevision"
+      ]
+    },
+    {
+      "path": "engine/config.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
+        "d47733b98421332ac54e26a671824230e49169c8"
+      ],
+      "operatorBlameLineCount": 102,
+      "scopedFunctionCount": 3,
+      "currentFunctionKeys": [
+        "cpp|function|engine/config.cpp|obs_engine::parse_u32|obs_engine::parse_u32( const char * text , uint32_t min_value , uint32_t max_value , uint32_t & out)",
+        "cpp|function|engine/config.cpp|obs_engine::parse_args|obs_engine::parse_args( int argc , char ** argv , Config & config)",
+        "cpp|function|engine/config.cpp|obs_engine::print_help|obs_engine::print_help()"
+      ]
+    },
+    {
+      "path": "engine/config.hpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 4,
+      "operatorCommits": [
+        "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
+        "b7b905ee67b3c73c5366e398327378e0f35a0b7c",
+        "08010cdc6e58a0ff2760fd58bc813227487876cd",
+        "2744b3bcbbdef6e24f108c6c70cc213282e95607"
+      ],
+      "operatorBlameLineCount": 46,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": "engine/events_test.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "435e176a49aa13348fd810dff5c0040732d5a9c3",
+        "6a590c2985a99d186c8eecd0241acdc824d32168"
+      ],
+      "operatorBlameLineCount": 216,
+      "scopedFunctionCount": 11,
+      "currentFunctionKeys": [
+        "cpp|function|engine/events_test.cpp|reset_output|reset_output()",
+        "cpp|function|engine/events_test.cpp|output_lines|output_lines()",
+        "cpp|function|engine/events_test.cpp|require|require( bool condition , const char * message)",
+        "cpp|function|engine/events_test.cpp|contains|contains( const std :: string & line , const char * needle)",
+        "cpp|function|engine/events_test.cpp|test_patterns_and_overlap|test_patterns_and_overlap()",
+        "cpp|function|engine/events_test.cpp|test_state_overflow_requires_resync|test_state_overflow_requires_resync()",
+        "cpp|function|engine/events_test.cpp|test_state_prefers_telemetry_eviction|test_state_prefers_telemetry_eviction()",
+        "cpp|function|engine/events_test.cpp|test_ordered_resync_preserves_queued_event|test_ordered_resync_preserves_queued_event()",
+        "cpp|function|engine/events_test.cpp|test_telemetry_policy|test_telemetry_policy()",
+        "cpp|function|engine/events_test.cpp|obs_engine::write_json_line|obs_engine::write_json_line( std :: string json)",
+        "cpp|function|engine/events_test.cpp|main|main()"
+      ]
+    },
+    {
+      "path": "engine/events.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "435e176a49aa13348fd810dff5c0040732d5a9c3",
+        "f13431c2dd72109b9ec8dbebb3c0174f7d119a15",
+        "6a590c2985a99d186c8eecd0241acdc824d32168"
+      ],
+      "operatorBlameLineCount": 363,
+      "scopedFunctionCount": 18,
+      "currentFunctionKeys": [
+        "cpp|function|engine/events.cpp|obs_engine::is_event_name|obs_engine::is_event_name( std :: string_view value)",
+        "cpp|function|engine/events.cpp|obs_engine::pattern_matches|obs_engine::pattern_matches( std :: string_view pattern , std :: string_view event_name)",
+        "cpp|function|engine/events.cpp|obs_engine::data_to_json|obs_engine::data_to_json( obs_data_t * data)",
+        "cpp|function|engine/events.cpp|obs_engine::is_valid_event_pattern|obs_engine::is_valid_event_pattern( std :: string_view pattern)",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::EventDispatcher|obs_engine::EventDispatcher::EventDispatcher( size_t capacity)",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::~EventDispatcher|obs_engine::EventDispatcher::~EventDispatcher()",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::start|obs_engine::EventDispatcher::start()",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::stop_and_drain|obs_engine::EventDispatcher::stop_and_drain()",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::subscribe|obs_engine::EventDispatcher::subscribe( const std :: vector<EventSubscription> & requested , std :: string & error)",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::unsubscribe|obs_engine::EventDispatcher::unsubscribe( const std :: vector<std::string> & patterns , std :: string & error)",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::subscriptions|obs_engine::EventDispatcher::subscriptions() const",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::matches_locked|obs_engine::EventDispatcher::matches_locked( EngineEventKind kind , std :: string_view event_name) const",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::publish|obs_engine::EventDispatcher::publish( EngineEventKind kind , std :: string_view event_name , uint64_t revision , obs_data_t * data)",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::require_resync_due_to_overflow|obs_engine::EventDispatcher::require_resync_due_to_overflow( uint64_t revision)",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::require_resync_after_queued_events|obs_engine::EventDispatcher::require_resync_after_queued_events( uint64_t revision)",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::run|obs_engine::EventDispatcher::run()",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::emit|obs_engine::EventDispatcher::emit( PendingEvent event)",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::emit_resync_required|obs_engine::EventDispatcher::emit_resync_required( uint64_t revision)"
+      ]
+    },
+    {
+      "path": "engine/events.hpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "435e176a49aa13348fd810dff5c0040732d5a9c3",
+        "f13431c2dd72109b9ec8dbebb3c0174f7d119a15",
+        "6a590c2985a99d186c8eecd0241acdc824d32168"
+      ],
+      "operatorBlameLineCount": 87,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": "engine/host.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 9,
+      "operatorCommits": [
+        "e20471397818b2861fdd2c008919461a8f797cd7",
+        "604c45f0885ddaeaeeafe084742ad8bb03fa3f15",
+        "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
+        "d47733b98421332ac54e26a671824230e49169c8",
+        "911fad2e5fe7f1abe438c441957a4e11be4ce685",
+        "1766c42eb907e9413f215c0cb4f0fdff6c0f0e7f",
+        "435e176a49aa13348fd810dff5c0040732d5a9c3",
+        "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc",
+        "f13431c2dd72109b9ec8dbebb3c0174f7d119a15"
+      ],
+      "operatorBlameLineCount": 273,
+      "scopedFunctionCount": 14,
+      "currentFunctionKeys": [
+        "cpp|function|engine/host.cpp|ProtocolWriterScope::start|ProtocolWriterScope::start()",
+        "cpp|function|engine/host.cpp|ProtocolWriterScope::~ProtocolWriterScope|ProtocolWriterScope::~ProtocolWriterScope()",
+        "cpp|function|engine/host.cpp|SourceEventBridgeScope::SourceEventBridgeScope|SourceEventBridgeScope::SourceEventBridgeScope( obs_engine :: Engine & engine , obs_engine :: RevisionState & revisions , obs_engine :: EventDispatcher & events)",
+        "cpp|function|engine/host.cpp|SourceEventBridgeScope::~SourceEventBridgeScope|SourceEventBridgeScope::~SourceEventBridgeScope()",
+        "cpp|function|engine/host.cpp|log_level_name|log_level_name( int level)",
+        "cpp|function|engine/host.cpp|obs_log_handler|obs_log_handler( int level , const char * format , va_list args , *)",
+        "cpp|function|engine/host.cpp|pin_working_directory_to_executable|pin_working_directory_to_executable()",
+        "cpp|function|engine/host.cpp|harden_dll_search_path|harden_dll_search_path()",
+        "cpp|function|engine/host.cpp|send_ready_event|send_ready_event( const obs_engine :: Config & config)",
+        "cpp|function|engine/host.cpp|has_field|has_field( obs_data_t * request , const char * name)",
+        "cpp|function|engine/host.cpp|field_is_string|field_is_string( obs_data_t * request , const char * name)",
+        "cpp|function|engine/host.cpp|looks_like_v2_request|looks_like_v2_request( obs_data_t * request)",
+        "cpp|function|engine/host.cpp|dispatch_request|dispatch_request( obs_engine :: Engine & engine , const obs_engine :: Config & config , obs_engine :: RevisionState & revisions , obs_engine :: EventDispatcher & events , obs_data_t * request)",
+        "cpp|function|engine/host.cpp|main|main( int argc , char ** argv)"
+      ]
+    },
+    {
+      "path": "engine/obs_source_update_private.hpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "c47cc67c87b4cc8f31cd2bc19d883c4d2ac6c4c2"
+      ],
+      "operatorBlameLineCount": 13,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": "engine/properties_sensitive.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "472141d30bc4dad0d5654146dd715a5fa03d1c66"
+      ],
+      "operatorBlameLineCount": 41,
+      "scopedFunctionCount": 3,
+      "currentFunctionKeys": [
+        "cpp|function|engine/properties_sensitive.cpp|obs_engine::collect_sensitive_recursive|obs_engine::collect_sensitive_recursive( obs_properties_t * properties , SensitivePropertyNames & names)",
+        "cpp|function|engine/properties_sensitive.cpp|obs_engine::collect_sensitive_property_names|obs_engine::collect_sensitive_property_names( obs_properties_t * properties)",
+        "cpp|function|engine/properties_sensitive.cpp|obs_engine::redact_sensitive_property_names|obs_engine::redact_sensitive_property_names( obs_data_t * settings , const SensitivePropertyNames & names)"
+      ]
+    },
+    {
+      "path": "engine/properties_test.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "472141d30bc4dad0d5654146dd715a5fa03d1c66"
+      ],
+      "operatorBlameLineCount": 224,
+      "scopedFunctionCount": 5,
+      "currentFunctionKeys": [
+        "cpp|function|engine/properties_test.cpp|fail|fail( const char * message)",
+        "cpp|function|engine/properties_test.cpp|find_schema_entry|find_schema_entry( obs_data_array_t * schema , const char * name)",
+        "cpp|function|engine/properties_test.cpp|toggle_modified|toggle_modified( * , obs_properties_t * props , obs_property_t * , obs_data_t * settings)",
+        "cpp|function|engine/properties_test.cpp|button_clicked|button_clicked( obs_properties_t * , obs_property_t * , * data)",
+        "cpp|function|engine/properties_test.cpp|main|main()"
+      ]
+    },
+    {
+      "path": "engine/properties.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "472141d30bc4dad0d5654146dd715a5fa03d1c66"
+      ],
+      "operatorBlameLineCount": 574,
+      "scopedFunctionCount": 29,
+      "currentFunctionKeys": [
+        "cpp|function|engine/properties.cpp|obs_engine::safe_string|obs_engine::safe_string( const char * value)",
+        "cpp|function|engine/properties.cpp|obs_engine::property_type_name|obs_engine::property_type_name( enum obs_property_type type)",
+        "cpp|function|engine/properties.cpp|obs_engine::number_type_name|obs_engine::number_type_name( enum obs_number_type type)",
+        "cpp|function|engine/properties.cpp|obs_engine::text_type_name|obs_engine::text_type_name( enum obs_text_type type)",
+        "cpp|function|engine/properties.cpp|obs_engine::text_info_type_name|obs_engine::text_info_type_name( enum obs_text_info_type type)",
+        "cpp|function|engine/properties.cpp|obs_engine::path_type_name|obs_engine::path_type_name( enum obs_path_type type)",
+        "cpp|function|engine/properties.cpp|obs_engine::combo_type_name|obs_engine::combo_type_name( enum obs_combo_type type)",
+        "cpp|function|engine/properties.cpp|obs_engine::combo_format_name|obs_engine::combo_format_name( enum obs_combo_format format)",
+        "cpp|function|engine/properties.cpp|obs_engine::editable_list_type_name|obs_engine::editable_list_type_name( enum obs_editable_list_type type)",
+        "cpp|function|engine/properties.cpp|obs_engine::group_type_name|obs_engine::group_type_name( enum obs_group_type type)",
+        "cpp|function|engine/properties.cpp|obs_engine::button_type_name|obs_engine::button_type_name( enum obs_button_type type)",
+        "cpp|function|engine/properties.cpp|obs_engine::set_nonempty_string|obs_engine::set_nonempty_string( obs_data_t * data , const char * name , const char * value)",
+        "cpp|function|engine/properties.cpp|obs_engine::set_frame_rate|obs_engine::set_frame_rate( obs_data_t * data , const char * name , struct media_frames_per_second fps)",
+        "cpp|function|engine/properties.cpp|obs_engine::erase_password_settings|obs_engine::erase_password_settings( obs_properties_t * properties , obs_data_t * settings)",
+        "cpp|function|engine/properties.cpp|obs_engine::serialize_property_array|obs_engine::serialize_property_array( obs_properties_t * properties , obs_data_t * settings , const char * refresh_property)",
+        "cpp|function|engine/properties.cpp|obs_engine::serialize_property|obs_engine::serialize_property( obs_property_t * property , obs_data_t * settings , const char * refresh_property)",
+        "cpp|function|engine/properties.cpp|obs_engine::add_validation_issue|obs_engine::add_validation_issue( obs_data_array_t * issues , const char * property , const char * code , const char * message)",
+        "cpp|function|engine/properties.cpp|obs_engine::is_number|obs_engine::is_number( obs_data_item_t * item)",
+        "cpp|function|engine/properties.cpp|obs_engine::is_integer|obs_engine::is_integer( obs_data_item_t * item)",
+        "cpp|function|engine/properties.cpp|obs_engine::list_value_is_enabled|obs_engine::list_value_is_enabled( obs_property_t * property , obs_data_item_t * item)",
+        "cpp|function|engine/properties.cpp|obs_engine::validate_property_item|obs_engine::validate_property_item( obs_property_t * property , obs_data_item_t * item , obs_data_array_t * issues)",
+        "cpp|function|engine/properties.cpp|obs_engine::schema_fingerprint|obs_engine::schema_fingerprint( obs_properties_t * properties , obs_data_t * settings)",
+        "cpp|function|engine/properties.cpp|obs_engine::clone_property_settings|obs_engine::clone_property_settings( obs_data_t * settings)",
+        "cpp|function|engine/properties.cpp|obs_engine::sanitize_property_settings|obs_engine::sanitize_property_settings( obs_properties_t * properties , obs_data_t * settings)",
+        "cpp|function|engine/properties.cpp|obs_engine::serialize_properties|obs_engine::serialize_properties( obs_properties_t * properties , obs_data_t * settings , const char * refresh_property)",
+        "cpp|function|engine/properties.cpp|obs_engine::serialize_property_list_items|obs_engine::serialize_property_list_items( obs_property_t * property)",
+        "cpp|function|engine/properties.cpp|obs_engine::validate_property_patch|obs_engine::validate_property_patch( obs_properties_t * properties , obs_data_t * candidate)",
+        "cpp|function|engine/properties.cpp|obs_engine::resolve_property_schema|obs_engine::resolve_property_schema( obs_properties_t * properties , obs_data_t * settings , const char * changed_property , bool & requires_refresh)",
+        "cpp|function|engine/properties.cpp|obs_engine::invoke_property_button|obs_engine::invoke_property_button( obs_property_t * property , * object , PropertyButtonResult & result)"
+      ]
+    },
+    {
+      "path": "engine/properties.hpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "472141d30bc4dad0d5654146dd715a5fa03d1c66"
+      ],
+      "operatorBlameLineCount": 34,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": "engine/protocol_filter_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "bb227ad223b21d42c6381f6765213a36d2fa2665",
+        "fbab77143a84bc101e9444f0dd2a516aab8d008a"
+      ],
+      "operatorBlameLineCount": 455,
+      "scopedFunctionCount": 15,
+      "currentFunctionKeys": [
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::classify_filter_method|obs_engine::classify_filter_method( std :: string_view method)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( FilterMethod method)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::needs_settings_settle|obs_engine::needs_settings_settle( FilterMethod method)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::execute_filter_method|obs_engine::execute_filter_method( Engine & engine , FilterMethod method , obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::make_capabilities_array|obs_engine::make_capabilities_array()",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::set_capabilities|obs_engine::set_capabilities( obs_data_t * data)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::reject_guard_on_read|obs_engine::reject_guard_on_read( const V2Request & request , uint64_t revision)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::validate_mutation_guard|obs_engine::validate_mutation_guard( const V2Request & request , RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::publish_runtime_events|obs_engine::publish_runtime_events( EventDispatcher & events , uint64_t revision , RuntimeV2Result & result)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::FilterCaptureScope::FilterCaptureScope|obs_engine::FilterCaptureScope::FilterCaptureScope( Engine & engine , RuntimeV2Result & result)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::FilterCaptureScope::~FilterCaptureScope|obs_engine::FilterCaptureScope::~FilterCaptureScope()",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::FilterCaptureScope::flush|obs_engine::FilterCaptureScope::flush( RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::handle_capability_request|obs_engine::handle_capability_request( RevisionState & revisions , const V2Request & request)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::handle_filter_request|obs_engine::handle_filter_request( Engine & engine , RevisionState & revisions , EventDispatcher & events , const V2Request & request , FilterMethod method)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::handle_v2_request|obs_engine::handle_v2_request( Engine & engine , const Config & config , RevisionState & revisions , EventDispatcher & events , const V2Request & request)"
+      ]
+    },
+    {
+      "path": "engine/protocol_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 10,
+      "operatorCommits": [
+        "911fad2e5fe7f1abe438c441957a4e11be4ce685",
+        "66d871bffdc10105ba4096f13edc2631a6379f7f",
+        "1766c42eb907e9413f215c0cb4f0fdff6c0f0e7f",
+        "435e176a49aa13348fd810dff5c0040732d5a9c3",
+        "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc",
+        "472141d30bc4dad0d5654146dd715a5fa03d1c66",
+        "f13431c2dd72109b9ec8dbebb3c0174f7d119a15",
+        "f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc",
+        "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
+        "6a590c2985a99d186c8eecd0241acdc824d32168"
+      ],
+      "operatorBlameLineCount": 958,
+      "scopedFunctionCount": 24,
+      "currentFunctionKeys": [
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::classify_method|obs_engine::classify_method( std :: string_view method)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::method_is_mutating|obs_engine::method_is_mutating( V2Method method)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::method_is_runtime|obs_engine::method_is_runtime( V2Method method)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::method_needs_source_settle|obs_engine::method_needs_source_settle( V2Method method)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::execute_runtime_method|obs_engine::execute_runtime_method( Engine & engine , V2Method method , obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::read_string_field|obs_engine::read_string_field( obs_data_t * data , const char * name , std :: string & out , bool & present)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::read_bool_field|obs_engine::read_bool_field( obs_data_t * data , const char * name , bool & out , bool & present)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::read_object_field|obs_engine::read_object_field( obs_data_t * data , const char * name , ObsDataPtr & out , bool & present)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::read_array_field|obs_engine::read_array_field( obs_data_t * data , const char * name , ObsArrayPtr & out , bool & present)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::set_parse_error|obs_engine::set_parse_error( V2ParseError & error , const std :: string & id , const char * code , const char * message)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::make_capabilities_array|obs_engine::make_capabilities_array()",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::set_capabilities|obs_engine::set_capabilities( obs_data_t * data)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::set_subscriptions|obs_engine::set_subscriptions( obs_data_t * data , const std :: vector<EventSubscription> & subscriptions)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::parse_subscription_list|obs_engine::parse_subscription_list( obs_data_t * params , std :: vector<EventSubscription> & subscriptions , std :: string & error)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::send_subscription_state|obs_engine::send_subscription_state( const V2Request & request , RevisionState & revisions , EventDispatcher & events)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::validate_revision_guard|obs_engine::validate_revision_guard( const V2Request & request , V2Method method , uint64_t current_revision)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::publish_runtime_events|obs_engine::publish_runtime_events( EventDispatcher & events , uint64_t revision , RuntimeV2Result & result)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::RuntimeEventCaptureScope::RuntimeEventCaptureScope|obs_engine::RuntimeEventCaptureScope::RuntimeEventCaptureScope( Engine & engine , RuntimeV2Result & result)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::RuntimeEventCaptureScope::~RuntimeEventCaptureScope|obs_engine::RuntimeEventCaptureScope::~RuntimeEventCaptureScope()",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::RuntimeEventCaptureScope::flush|obs_engine::RuntimeEventCaptureScope::flush( RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::parse_v2_request|obs_engine::parse_v2_request( obs_data_t * request , V2Request & out , V2ParseError & error)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::send_v2_error|obs_engine::send_v2_error( const std :: string & request_id , const char * code , const char * message , obs_data_t * details , uint64_t revision)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::send_v2_ok|obs_engine::send_v2_ok( const std :: string & request_id , obs_data_t * data , uint64_t revision)",
+        "cpp|function|engine/protocol_v2.cpp|obs_engine::handle_v2_request|obs_engine::handle_v2_request( Engine & engine , const Config & , RevisionState & revisions , EventDispatcher & events , const V2Request & request)"
+      ]
+    },
+    {
+      "path": "engine/protocol_v2.hpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 4,
+      "operatorCommits": [
+        "911fad2e5fe7f1abe438c441957a4e11be4ce685",
+        "1766c42eb907e9413f215c0cb4f0fdff6c0f0e7f",
+        "435e176a49aa13348fd810dff5c0040732d5a9c3",
+        "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc"
+      ],
+      "operatorBlameLineCount": 44,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": "engine/protocol.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
+        "d47733b98421332ac54e26a671824230e49169c8",
+        "435e176a49aa13348fd810dff5c0040732d5a9c3"
+      ],
+      "operatorBlameLineCount": 237,
+      "scopedFunctionCount": 16,
+      "currentFunctionKeys": [
+        "cpp|function|engine/protocol.cpp|obs_engine::ProtocolWriter::start|obs_engine::ProtocolWriter::start()",
+        "cpp|function|engine/protocol.cpp|obs_engine::ProtocolWriter::stop|obs_engine::ProtocolWriter::stop()",
+        "cpp|function|engine/protocol.cpp|obs_engine::ProtocolWriter::enqueue|obs_engine::ProtocolWriter::enqueue( std :: string line)",
+        "cpp|function|engine/protocol.cpp|obs_engine::ProtocolWriter::write_direct|obs_engine::ProtocolWriter::write_direct( const std :: string & line)",
+        "cpp|function|engine/protocol.cpp|obs_engine::ProtocolWriter::run|obs_engine::ProtocolWriter::run()",
+        "cpp|function|engine/protocol.cpp|obs_engine::protocol_writer|obs_engine::protocol_writer()",
+        "cpp|function|engine/protocol.cpp|obs_engine::read_line_limited|obs_engine::read_line_limited( std :: string & line)",
+        "cpp|function|engine/protocol.cpp|obs_engine::start_protocol_writer|obs_engine::start_protocol_writer()",
+        "cpp|function|engine/protocol.cpp|obs_engine::stop_protocol_writer|obs_engine::stop_protocol_writer()",
+        "cpp|function|engine/protocol.cpp|obs_engine::write_json_line|obs_engine::write_json_line( std :: string json)",
+        "cpp|function|engine/protocol.cpp|obs_engine::write_json|obs_engine::write_json( obs_data_t * data)",
+        "cpp|function|engine/protocol.cpp|obs_engine::send_error|obs_engine::send_error( long long request_id , const char * code , const char * message)",
+        "cpp|function|engine/protocol.cpp|obs_engine::send_ok|obs_engine::send_ok( long long request_id , obs_data_t * result)",
+        "cpp|function|engine/protocol.cpp|obs_engine::read_integer|obs_engine::read_integer( obs_data_t * data , const char * name , long long & out , bool & present)",
+        "cpp|function|engine/protocol.cpp|obs_engine::request_handle|obs_engine::request_handle( obs_data_t * request , const char * field , uint64_t & out , bool allow_zero)",
+        "cpp|function|engine/protocol.cpp|obs_engine::read_finite_double|obs_engine::read_finite_double( obs_data_t * data , const char * name , double min_value , double max_value , double & out , bool & present)"
+      ]
+    },
+    {
+      "path": "engine/protocol.hpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
+        "d47733b98421332ac54e26a671824230e49169c8",
+        "435e176a49aa13348fd810dff5c0040732d5a9c3"
+      ],
+      "operatorBlameLineCount": 47,
+      "scopedFunctionCount": 2,
+      "currentFunctionKeys": [
+        "cpp|function|engine/protocol.hpp|obs_engine::ObsDataDeleter::operator ( )|obs_engine::ObsDataDeleter::operator ( )( obs_data_t * value) const",
+        "cpp|function|engine/protocol.hpp|obs_engine::ObsArrayDeleter::operator ( )|obs_engine::ObsArrayDeleter::operator ( )( obs_data_array_t * value) const"
+      ]
+    },
+    {
+      "path": "engine/revision.hpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "1766c42eb907e9413f215c0cb4f0fdff6c0f0e7f",
+        "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc",
+        "f13431c2dd72109b9ec8dbebb3c0174f7d119a15"
+      ],
+      "operatorBlameLineCount": 96,
+      "scopedFunctionCount": 12,
+      "currentFunctionKeys": [
+        "cpp|function|engine/revision.hpp|obs_engine::RevisionState::MutationGuard::current|obs_engine::RevisionState::MutationGuard::current() const",
+        "cpp|function|engine/revision.hpp|obs_engine::RevisionState::MutationGuard::matches|obs_engine::RevisionState::MutationGuard::matches( uint64_t expected) const",
+        "cpp|function|engine/revision.hpp|obs_engine::RevisionState::MutationGuard::can_commit_mutation|obs_engine::RevisionState::MutationGuard::can_commit_mutation() const",
+        "cpp|function|engine/revision.hpp|obs_engine::RevisionState::MutationGuard::commit_mutation|obs_engine::RevisionState::MutationGuard::commit_mutation()",
+        "cpp|function|engine/revision.hpp|obs_engine::RevisionState::MutationGuard::MutationGuard|obs_engine::RevisionState::MutationGuard::MutationGuard( RevisionState & owner)",
+        "cpp|function|engine/revision.hpp|obs_engine::RevisionState::current|obs_engine::RevisionState::current() const",
+        "cpp|function|engine/revision.hpp|obs_engine::RevisionState::matches|obs_engine::RevisionState::matches( uint64_t expected) const",
+        "cpp|function|engine/revision.hpp|obs_engine::RevisionState::can_commit_mutation|obs_engine::RevisionState::can_commit_mutation() const",
+        "cpp|function|engine/revision.hpp|obs_engine::RevisionState::lock_mutation|obs_engine::RevisionState::lock_mutation()",
+        "cpp|function|engine/revision.hpp|obs_engine::RevisionState::commit_mutation|obs_engine::RevisionState::commit_mutation()",
+        "cpp|function|engine/revision.hpp|obs_engine::RevisionState::max_revision|obs_engine::RevisionState::max_revision()",
+        "cpp|function|engine/revision.hpp|obs_engine::RevisionState::commit_mutation_unlocked|obs_engine::RevisionState::commit_mutation_unlocked()"
+      ]
+    },
+    {
+      "path": "engine/runtime_filter_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "bb227ad223b21d42c6381f6765213a36d2fa2665",
+        "fbab77143a84bc101e9444f0dd2a516aab8d008a",
+        "c47cc67c87b4cc8f31cd2bc19d883c4d2ac6c4c2"
+      ],
+      "operatorBlameLineCount": 1949,
+      "scopedFunctionCount": 77,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::fail|obs_engine::fail( RuntimeV2Error & error , const char * code , const char * message)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::reset_result|obs_engine::reset_result( RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::is_bounded_string|obs_engine::is_bounded_string( const char * value , size_t max_bytes)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::read_string_field|obs_engine::read_string_field( obs_data_t * data , const char * name , std :: string & out , bool & present)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::read_bool_field|obs_engine::read_bool_field( obs_data_t * data , const char * name , bool & out , bool & present)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::read_integer_field|obs_engine::read_integer_field( obs_data_t * data , const char * name , long long & out , bool & present)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::read_object_field|obs_engine::read_object_field( obs_data_t * data , const char * name , ObsDataPtr & out , bool & present)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::parse_handle_text|obs_engine::parse_handle_text( std :: string_view text , uint64_t & out)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::read_handle_field|obs_engine::read_handle_field( obs_data_t * data , const char * name , uint64_t & out)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::set_handle|obs_engine::set_handle( obs_data_t * data , const char * name , uint64_t handle)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::clone_data|obs_engine::clone_data( obs_data_t * data)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::filter_type_exists|obs_engine::filter_type_exists( const char * kind)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::append_event|obs_engine::append_event( RuntimeV2Result & result , const char * name , ObsDataPtr data)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::result_has_filter_event|obs_engine::result_has_filter_event( const RuntimeV2Result & result , std :: string_view name , uint64_t handle)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::settings_json|obs_engine::settings_json( obs_source_t * filter , std :: string & json)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::read_update_serial_range|obs_engine::read_update_serial_range( calldata_t * params , uint64_t & begin , uint64_t & end)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::FilterCallbackScope::FilterCallbackScope|obs_engine::FilterCallbackScope::FilterCallbackScope( FilterV2State & state , uint64_t handle)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::FilterCallbackScope::~FilterCallbackScope|obs_engine::FilterCallbackScope::~FilterCallbackScope()",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::FilterCallbackScope::accepted|obs_engine::FilterCallbackScope::accepted() const",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::FilterCallbackScope::suppressed|obs_engine::FilterCallbackScope::suppressed() const",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::clear_deferred_filter_events|obs_engine::clear_deferred_filter_events( FilterV2State & state)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::clear_uncertain_filter_updates|obs_engine::clear_uncertain_filter_updates( FilterV2State & state)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::resolve_uncertain_filter_updates_locked|obs_engine::resolve_uncertain_filter_updates_locked( FilterV2State & state , uint64_t handle , uint64_t serial_end)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::forget_uncertain_filter_updates_locked|obs_engine::forget_uncertain_filter_updates_locked( FilterV2State & state , uint64_t handle)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::remember_uncertain_filter_update_locked|obs_engine::remember_uncertain_filter_update_locked( FilterV2State & state , uint64_t handle , uint64_t serial)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::take_deferred_filter_events|obs_engine::take_deferred_filter_events( FilterV2State & state , bool wait_for_pre_capture , bool end_capture)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::publish_deferred_filter_snapshot|obs_engine::publish_deferred_filter_snapshot( DeferredFilterEventSnapshot snapshot , RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::publish_filter_events|obs_engine::publish_filter_events( FilterV2State & state , uint64_t handle , uint64_t update_generation , uint64_t update_serial_begin , uint64_t update_serial_end , bool is_update_signal , std :: vector<RuntimeV2Event> generated)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::make_filter_summary|obs_engine::make_filter_summary( uint64_t handle , const FilterEntry & entry , obs_source_t * parent)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_order_data|obs_engine::Engine::v2_filter_order_data( uint64_t source_id , uint64_t changed , obs_source_t * parent) const",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::collect_filter_ref|obs_engine::collect_filter_ref( obs_source_t * , obs_source_t * child , * param)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::collect_filter_signal|obs_engine::collect_filter_signal( FilterV2Observer & observer , FilterSignal signal , calldata_t * params)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::filter_update_cb|obs_engine::filter_update_cb( * data , calldata_t * params)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::filter_rename_cb|obs_engine::filter_rename_cb( * data , calldata_t * params)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::filter_enabled_cb|obs_engine::filter_enabled_cb( * data , calldata_t * params)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::connect_filter_observer|obs_engine::connect_filter_observer( FilterV2Observer & observer , obs_source_t * filter)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::disconnect_filter_observer|obs_engine::disconnect_filter_observer( FilterV2Observer & observer)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::remove_filter_observer|obs_engine::remove_filter_observer( FilterV2State * state , uint64_t handle)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::filter_update_event_covers_serial|obs_engine::filter_update_event_covers_serial( const RuntimeV2Event & event , uint64_t serial)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::filter_settings_event_matches|obs_engine::filter_settings_event_matches( const RuntimeV2Event & event , uint64_t handle , uint64_t serial , const std :: string & expected_settings)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::result_matches_filter_update|obs_engine::result_matches_filter_update( const RuntimeV2Result & result , uint64_t handle , uint64_t serial , const std :: string & expected_settings)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::batch_matches_filter_update|obs_engine::batch_matches_filter_update( const DeferredFilterEventBatch & batch , uint64_t handle , uint64_t baseline_generation , uint64_t serial , const std :: string & expected_settings)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::promote_deferred_filter_update|obs_engine::promote_deferred_filter_update( FilterV2State & state , uint64_t handle , uint64_t baseline_generation , uint64_t serial , const std :: string & expected_settings , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::settle_deferred_filter_update|obs_engine::settle_deferred_filter_update( FilterV2State & state , uint64_t handle , uint64_t baseline_generation , uint64_t serial , const std :: string & expected_settings , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::mark_filter_settlement_lost|obs_engine::mark_filter_settlement_lost( FilterV2State & state , uint64_t handle , uint64_t baseline_generation , uint64_t update_serial)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_bind_filter_events|obs_engine::Engine::v2_bind_filter_events( RevisionState * revisions , EventDispatcher * events)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_begin_filter_event_capture|obs_engine::Engine::v2_begin_filter_event_capture( RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_wait_for_filter_event_callbacks|obs_engine::Engine::v2_wait_for_filter_event_callbacks()",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_end_filter_event_capture|obs_engine::Engine::v2_end_filter_event_capture()",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_drain_deferred_filter_events|obs_engine::Engine::v2_drain_deferred_filter_events( RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_flush_deferred_filter_events|obs_engine::Engine::v2_flush_deferred_filter_events( RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_register_source_filters|obs_engine::Engine::v2_filter_register_source_filters( uint64_t source_id , obs_source_t * source)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_record_update_baseline|obs_engine::Engine::v2_filter_record_update_baseline( uint64_t handle , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_forget_source|obs_engine::Engine::v2_filter_forget_source( uint64_t source_id)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_sync_filter_observers|obs_engine::Engine::v2_sync_filter_observers()",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_prepare_filter_shutdown|obs_engine::Engine::v2_prepare_filter_shutdown()",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_prepare_parent_removal|obs_engine::Engine::v2_filter_prepare_parent_removal( uint64_t source_id , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_settle_filter_mutation|obs_engine::Engine::v2_settle_filter_mutation( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_kind_list|obs_engine::Engine::v2_filter_kind_list( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_kind_defaults|obs_engine::Engine::v2_filter_kind_defaults( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_kind_properties|obs_engine::Engine::v2_filter_kind_properties( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_list|obs_engine::Engine::v2_filter_list( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_get|obs_engine::Engine::v2_filter_get( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_create|obs_engine::Engine::v2_filter_create( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_remove|obs_engine::Engine::v2_filter_remove( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_rename|obs_engine::Engine::v2_filter_rename( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_duplicate|obs_engine::Engine::v2_filter_duplicate( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_get_settings|obs_engine::Engine::v2_filter_get_settings( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_patch_settings|obs_engine::Engine::v2_filter_patch_settings( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_replace_settings|obs_engine::Engine::v2_filter_replace_settings( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_set_enabled|obs_engine::Engine::v2_filter_set_enabled( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_get_enabled|obs_engine::Engine::v2_filter_get_enabled( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_set_order|obs_engine::Engine::v2_filter_set_order( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_move_up|obs_engine::Engine::v2_filter_move_up( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_move_down|obs_engine::Engine::v2_filter_move_down( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_move_top|obs_engine::Engine::v2_filter_move_top( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_filter_v2.cpp|obs_engine::Engine::v2_filter_move_bottom|obs_engine::Engine::v2_filter_move_bottom( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)"
+      ]
+    },
+    {
+      "path": "engine/runtime_interaction_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc"
+      ],
+      "operatorBlameLineCount": 707,
+      "scopedFunctionCount": 28,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::reset_result|obs_engine::reset_result( RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::fail|obs_engine::fail( RuntimeV2Error & error , const char * code , const char * message)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::read_string_field|obs_engine::read_string_field( obs_data_t * data , const char * name , std :: string & out , bool & present)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::read_bool_field|obs_engine::read_bool_field( obs_data_t * data , const char * name , bool & out , bool & present)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::read_integer_field|obs_engine::read_integer_field( obs_data_t * data , const char * name , long long & out , bool & present)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::read_object_field|obs_engine::read_object_field( obs_data_t * data , const char * name , ObsDataPtr & out , bool & present)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::parse_handle_text|obs_engine::parse_handle_text( std :: string_view text , uint64_t & out)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::read_handle_field|obs_engine::read_handle_field( obs_data_t * data , const char * name , uint64_t & out)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::read_int32_required|obs_engine::read_int32_required( obs_data_t * data , const char * name , int32_t & out)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::read_u32_optional|obs_engine::read_u32_optional( obs_data_t * data , const char * name , uint32_t & out)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::set_handle|obs_engine::set_handle( obs_data_t * data , const char * name , uint64_t handle)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::make_source_result|obs_engine::make_source_result( uint64_t handle)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::parse_modifiers|obs_engine::parse_modifiers( obs_data_t * params , uint32_t & modifiers , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::decode_utf8_scalars|obs_engine::decode_utf8_scalars( std :: string_view text , std :: vector<std::string> & scalars , size_t max_scalars)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::key_matches|obs_engine::key_matches( const TrackedKey & key , uint32_t native_scancode , uint32_t native_vkey , std :: string_view text)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::mouse_button_flag|obs_engine::mouse_button_flag( int32_t button)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::point_inside_source|obs_engine::point_inside_source( obs_source_t * source , int32_t x , int32_t y)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::prune_stale_interaction_sources_locked|obs_engine::prune_stale_interaction_sources_locked( InteractionV2State & state , const LiveSourceMap & live_sources)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::ensure_interaction_state|obs_engine::ensure_interaction_state( std :: shared_ptr<InteractionV2State> & slot , const LiveSourceMap & live_sources , uint64_t handle)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::prune_existing_interaction_state|obs_engine::prune_existing_interaction_state( const std :: shared_ptr<InteractionV2State> & state , const LiveSourceMap & live_sources)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::Engine::v2_get_interaction_source|obs_engine::Engine::v2_get_interaction_source( obs_data_t * params , uint64_t & handle , obs_source_t * & source , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::Engine::v2_interaction_focus|obs_engine::Engine::v2_interaction_focus( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::Engine::v2_interaction_mouse_move|obs_engine::Engine::v2_interaction_mouse_move( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::Engine::v2_interaction_mouse_button|obs_engine::Engine::v2_interaction_mouse_button( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::Engine::v2_interaction_mouse_wheel|obs_engine::Engine::v2_interaction_mouse_wheel( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::Engine::v2_interaction_key|obs_engine::Engine::v2_interaction_key( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::Engine::v2_interaction_text|obs_engine::Engine::v2_interaction_text( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_interaction_v2.cpp|obs_engine::Engine::v2_interaction_reset|obs_engine::Engine::v2_interaction_reset( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)"
+      ]
+    },
+    {
+      "path": "engine/runtime_media_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
+        "6a590c2985a99d186c8eecd0241acdc824d32168"
+      ],
+      "operatorBlameLineCount": 1246,
+      "scopedFunctionCount": 58,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::MediaActionKey::operator ==|obs_engine::MediaActionKey::operator ==( const MediaActionKey & other) const",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::MediaActionKeyHash::operator ( )|obs_engine::MediaActionKeyHash::operator ( )( const MediaActionKey & key) const",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::fail|obs_engine::fail( RuntimeV2Error & error , const char * code , const char * message)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::reset_result|obs_engine::reset_result( RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::read_string_field|obs_engine::read_string_field( obs_data_t * data , const char * name , std :: string & out , bool & present)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::read_integer_field|obs_engine::read_integer_field( obs_data_t * data , const char * name , long long & out , bool & present)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::parse_handle_text|obs_engine::parse_handle_text( std :: string_view text , uint64_t & out)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::read_handle_field|obs_engine::read_handle_field( obs_data_t * data , const char * name , uint64_t & out)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::set_handle|obs_engine::set_handle( obs_data_t * data , const char * name , uint64_t handle)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::media_state_name|obs_engine::media_state_name( obs_media_state state)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::make_state_data|obs_engine::make_state_data( uint64_t handle , obs_media_state state)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::make_action_data|obs_engine::make_action_data( uint64_t handle , const char * action , obs_media_state state , bool processed)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::append_event|obs_engine::append_event( RuntimeV2Result & result , const char * name , ObsDataPtr data)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::result_has_source_event|obs_engine::result_has_source_event( const RuntimeV2Result & result , std :: string_view name , uint64_t handle)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::is_action_signal|obs_engine::is_action_signal( MediaV2Signal signal)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::action_requires_resync|obs_engine::action_requires_resync( MediaV2Signal signal)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::read_action_serial|obs_engine::read_action_serial( calldata_t * calldata)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::MediaCallbackScope::MediaCallbackScope|obs_engine::MediaCallbackScope::MediaCallbackScope( MediaV2State & state , uint64_t handle)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::MediaCallbackScope::~MediaCallbackScope|obs_engine::MediaCallbackScope::~MediaCallbackScope()",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::MediaCallbackScope::accepted|obs_engine::MediaCallbackScope::accepted() const",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::MediaCallbackScope::suppressed|obs_engine::MediaCallbackScope::suppressed() const",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::clear_deferred_media_events|obs_engine::clear_deferred_media_events( MediaV2State & state)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::take_deferred_media_events|obs_engine::take_deferred_media_events( MediaV2State & state , bool wait_for_pre_capture , bool end_capture)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::publish_deferred_media_snapshot|obs_engine::publish_deferred_media_snapshot( DeferredMediaEventSnapshot snapshot , RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::publish_media_events|obs_engine::publish_media_events( MediaV2State & state , uint64_t handle , MediaV2Signal signal , uint64_t action_serial , std :: vector<RuntimeV2Event> generated)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::promote_deferred_media_action_locked|obs_engine::promote_deferred_media_action_locked( MediaV2State & state , uint64_t handle , MediaV2Signal signal , uint64_t action_serial , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::settle_media_action|obs_engine::settle_media_action( MediaV2State & state , uint64_t handle , obs_source_t * source , MediaV2Signal signal , Submit && submit , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::collect_media_signal|obs_engine::collect_media_signal( MediaV2Observer & observer , MediaV2Signal signal , uint64_t action_serial)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::media_play_cb|obs_engine::media_play_cb( * data , calldata_t * calldata)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::media_pause_cb|obs_engine::media_pause_cb( * data , calldata_t * calldata)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::media_restart_cb|obs_engine::media_restart_cb( * data , calldata_t * calldata)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::media_stop_cb|obs_engine::media_stop_cb( * data , calldata_t * calldata)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::media_next_cb|obs_engine::media_next_cb( * data , calldata_t * calldata)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::media_previous_cb|obs_engine::media_previous_cb( * data , calldata_t * calldata)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::media_time_cb|obs_engine::media_time_cb( * data , calldata_t * calldata)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::media_started_cb|obs_engine::media_started_cb( * data , calldata_t *)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::media_ended_cb|obs_engine::media_ended_cb( * data , calldata_t *)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::connect_media_observer|obs_engine::connect_media_observer( MediaV2Observer & observer , obs_source_t * source)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::disconnect_media_observer|obs_engine::disconnect_media_observer( MediaV2Observer & observer)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_bind_media_events|obs_engine::Engine::v2_bind_media_events( RevisionState * revisions , EventDispatcher * events)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_begin_media_event_capture|obs_engine::Engine::v2_begin_media_event_capture( RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_wait_for_media_event_callbacks|obs_engine::Engine::v2_wait_for_media_event_callbacks()",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_end_media_event_capture|obs_engine::Engine::v2_end_media_event_capture()",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_drain_deferred_media_events|obs_engine::Engine::v2_drain_deferred_media_events( RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_flush_deferred_media_events|obs_engine::Engine::v2_flush_deferred_media_events( RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_sync_media_observers|obs_engine::Engine::v2_sync_media_observers()",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_prepare_media_shutdown|obs_engine::Engine::v2_prepare_media_shutdown()",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_media_get_state|obs_engine::Engine::v2_media_get_state( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_media_play|obs_engine::Engine::v2_media_play( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_media_pause|obs_engine::Engine::v2_media_pause( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_media_toggle_pause|obs_engine::Engine::v2_media_toggle_pause( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_media_stop|obs_engine::Engine::v2_media_stop( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_media_restart|obs_engine::Engine::v2_media_restart( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_media_next|obs_engine::Engine::v2_media_next( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_media_previous|obs_engine::Engine::v2_media_previous( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_media_get_duration|obs_engine::Engine::v2_media_get_duration( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_media_get_position|obs_engine::Engine::v2_media_get_position( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_media_v2.cpp|obs_engine::Engine::v2_media_set_position|obs_engine::Engine::v2_media_set_position( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)"
+      ]
+    },
+    {
+      "path": "engine/runtime_properties_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "472141d30bc4dad0d5654146dd715a5fa03d1c66",
+        "bb227ad223b21d42c6381f6765213a36d2fa2665"
+      ],
+      "operatorBlameLineCount": 515,
+      "scopedFunctionCount": 22,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::ObsPropertiesDeleter::operator ( )|obs_engine::ObsPropertiesDeleter::operator ( )( obs_properties_t * value) const",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::reset_result|obs_engine::reset_result( RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::fail|obs_engine::fail( RuntimeV2Error & error , const char * code , const char * message)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::is_bounded_string|obs_engine::is_bounded_string( const std :: string & value , size_t max_bytes)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::filter_type_exists|obs_engine::filter_type_exists( const char * kind)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::read_string_field|obs_engine::read_string_field( obs_data_t * data , const char * name , std :: string & out , bool & present)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::read_object_field|obs_engine::read_object_field( obs_data_t * data , const char * name , ObsDataPtr & out , bool & present)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::parse_handle_text|obs_engine::parse_handle_text( std :: string_view text , uint64_t & out)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::read_handle_field|obs_engine::read_handle_field( obs_data_t * data , const char * name , uint64_t & out)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::set_handle|obs_engine::set_handle( obs_data_t * data , const char * name , uint64_t handle)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::strip_inline_list_items|obs_engine::strip_inline_list_items( obs_data_array_t * schema)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::make_properties_document|obs_engine::make_properties_document( obs_data_t * target , obs_properties_t * properties , obs_data_t * settings , bool requires_refresh , const char * refresh_property = nullptr , const SensitivePropertyNames * previous_sensitive = nullptr)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::read_candidate_params|obs_engine::read_candidate_params( obs_data_t * params , bool required , ObsDataPtr & candidate , bool & present , std :: string & changed_property , bool & changed_present , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::apply_candidate|obs_engine::apply_candidate( obs_properties_t * properties , obs_data_t * working_settings , obs_data_t * candidate , bool present , const std :: string & changed_property , bool changed_present , bool & requires_refresh , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::read_property_name|obs_engine::read_property_name( obs_data_t * params , std :: string & property , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_build_property_target|obs_engine::Engine::v2_build_property_target( obs_data_t * params , ObsDataPtr & target , ObsDataPtr & settings , obs_properties_t * & properties , obs_source_t * & source , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_properties_get|obs_engine::Engine::v2_properties_get( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_properties_resolve|obs_engine::Engine::v2_properties_resolve( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_properties_get_list_items|obs_engine::Engine::v2_properties_get_list_items( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_properties_validate|obs_engine::Engine::v2_properties_validate( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_properties_refresh|obs_engine::Engine::v2_properties_refresh( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_properties_invoke_button|obs_engine::Engine::v2_properties_invoke_button( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)"
+      ]
+    },
+    {
+      "path": "engine/runtime_source_settle_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 4,
+      "operatorCommits": [
+        "f13431c2dd72109b9ec8dbebb3c0174f7d119a15",
+        "862184529c0f1def6ec32ceafb90e708d1a187e3",
+        "6d1a02771dcc765579016d5f89b08743b8efeca9",
+        "dd38b2ff306724546a9e8df0955bd1ecc99eb7f4"
+      ],
+      "operatorBlameLineCount": 366,
+      "scopedFunctionCount": 15,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::parse_handle_text|obs_engine::parse_handle_text( std :: string_view text , uint64_t & out)",
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::read_source_handle|obs_engine::read_source_handle( obs_data_t * params , uint64_t & handle)",
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::read_settings_json|obs_engine::read_settings_json( obs_data_t * data , std :: string & json)",
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::result_has_source_event|obs_engine::result_has_source_event( const RuntimeV2Result & result , std :: string_view name , uint64_t handle)",
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::batch_matches_source_update|obs_engine::batch_matches_source_update( const DeferredSourceEventBatch & batch , uint64_t handle , const std :: string & expected_settings_json)",
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::promote_deferred_source_update|obs_engine::promote_deferred_source_update( SourceV2State & state , uint64_t handle , const std :: string & expected_settings_json , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::mark_source_settlement_lost|obs_engine::mark_source_settlement_lost( SourceV2State & state)",
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::source_update_settle_cb|obs_engine::source_update_settle_cb( * data , calldata_t *)",
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::settle_deferred_source_update|obs_engine::settle_deferred_source_update( SourceV2State & state , uint64_t handle , obs_source_t * source , const std :: string & expected_settings_json , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::canonicalize_source_result|obs_engine::canonicalize_source_result( RuntimeV2Result & result , obs_source_t * source)",
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::set_semantic_source_flags|obs_engine::set_semantic_source_flags( obs_data_t * data , uint32_t flags)",
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::find_unversioned_input_id|obs_engine::find_unversioned_input_id( const char * kind)",
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::normalize_kind_entry|obs_engine::normalize_kind_entry( obs_data_t * entry)",
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::Engine::v2_settle_source_mutation|obs_engine::Engine::v2_settle_source_mutation( obs_data_t * params , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_source_settle_v2.cpp|obs_engine::Engine::v2_normalize_source_kind_metadata|obs_engine::Engine::v2_normalize_source_kind_metadata( RuntimeV2Result & result)"
+      ]
+    },
+    {
+      "path": "engine/runtime_source_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 4,
+      "operatorCommits": [
+        "f13431c2dd72109b9ec8dbebb3c0174f7d119a15",
+        "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
+        "6a590c2985a99d186c8eecd0241acdc824d32168",
+        "bb227ad223b21d42c6381f6765213a36d2fa2665"
+      ],
+      "operatorBlameLineCount": 1276,
+      "scopedFunctionCount": 60,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::fail|obs_engine::fail( RuntimeV2Error & error , const char * code , const char * message)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::reset_result|obs_engine::reset_result( RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::is_bounded_string|obs_engine::is_bounded_string( const char * value , size_t max_bytes)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::read_string_field|obs_engine::read_string_field( obs_data_t * data , const char * name , std :: string & out , bool & present)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::read_object_field|obs_engine::read_object_field( obs_data_t * data , const char * name , ObsDataPtr & out , bool & present)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::read_integer_field|obs_engine::read_integer_field( obs_data_t * data , const char * name , long long & out , bool & present)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::parse_handle_text|obs_engine::parse_handle_text( std :: string_view text , uint64_t & out)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::read_handle_field|obs_engine::read_handle_field( obs_data_t * data , const char * name , uint64_t & out)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::set_handle|obs_engine::set_handle( obs_data_t * data , const char * name , uint64_t handle)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::clone_data|obs_engine::clone_data( obs_data_t * data)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::append_event|obs_engine::append_event( RuntimeV2Result & result , const char * name , ObsDataPtr data)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::result_has_source_event|obs_engine::result_has_source_event( const RuntimeV2Result & result , std :: string_view name , uint64_t handle)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::set_semantic_source_flags|obs_engine::set_semantic_source_flags( obs_data_t * data , uint32_t flags)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::make_flags_data|obs_engine::make_flags_data( uint64_t handle , obs_source_t * source)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::make_dimensions_data|obs_engine::make_dimensions_data( uint64_t handle , obs_source_t * source)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::make_source_summary|obs_engine::make_source_summary( uint64_t handle , obs_source_t * source)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::make_kind_metadata|obs_engine::make_kind_metadata( const char * kind)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::make_state_snapshot|obs_engine::make_state_snapshot( uint64_t handle , obs_source_t * source , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::SourceCallbackScope::SourceCallbackScope|obs_engine::SourceCallbackScope::SourceCallbackScope( SourceV2State & state , uint64_t handle)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::SourceCallbackScope::~SourceCallbackScope|obs_engine::SourceCallbackScope::~SourceCallbackScope()",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::SourceCallbackScope::accepted|obs_engine::SourceCallbackScope::accepted() const",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::SourceCallbackScope::suppressed|obs_engine::SourceCallbackScope::suppressed() const",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::clear_deferred_source_events|obs_engine::clear_deferred_source_events( SourceV2State & state)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::take_deferred_source_events|obs_engine::take_deferred_source_events( SourceV2State & state , bool wait_for_pre_capture , bool end_capture)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::publish_deferred_source_snapshot|obs_engine::publish_deferred_source_snapshot( DeferredSourceEventSnapshot snapshot , RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::publish_source_events|obs_engine::publish_source_events( SourceV2State & state , uint64_t handle , std :: vector<RuntimeV2Event> generated)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::collect_source_signal|obs_engine::collect_source_signal( SourceV2Observer & observer , SourceSignal signal)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::source_update_cb|obs_engine::source_update_cb( * data , calldata_t *)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::source_rename_cb|obs_engine::source_rename_cb( * data , calldata_t *)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::source_active_cb|obs_engine::source_active_cb( * data , calldata_t *)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::source_showing_cb|obs_engine::source_showing_cb( * data , calldata_t *)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::source_flags_cb|obs_engine::source_flags_cb( * data , calldata_t *)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::connect_observer|obs_engine::connect_observer( SourceV2Observer & observer , obs_source_t * source)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::disconnect_observer|obs_engine::disconnect_observer( SourceV2Observer & observer)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_bind_source_events|obs_engine::Engine::v2_bind_source_events( RevisionState * revisions , EventDispatcher * events)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_begin_event_capture|obs_engine::Engine::v2_begin_event_capture( RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_wait_for_event_capture_callbacks|obs_engine::Engine::v2_wait_for_event_capture_callbacks()",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_end_event_capture|obs_engine::Engine::v2_end_event_capture()",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_drain_deferred_source_events|obs_engine::Engine::v2_drain_deferred_source_events( RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_flush_deferred_source_events|obs_engine::Engine::v2_flush_deferred_source_events( RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_sync_source_observers|obs_engine::Engine::v2_sync_source_observers()",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_prepare_shutdown|obs_engine::Engine::v2_prepare_shutdown()",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_kind_get|obs_engine::Engine::v2_source_kind_get( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_kind_properties|obs_engine::Engine::v2_source_kind_properties( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_list|obs_engine::Engine::v2_source_list( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_get|obs_engine::Engine::v2_source_get( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_duplicate|obs_engine::Engine::v2_source_duplicate( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_rename|obs_engine::Engine::v2_source_rename( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_replace_settings|obs_engine::Engine::v2_source_replace_settings( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_reset_settings|obs_engine::Engine::v2_source_reset_settings( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_get_properties|obs_engine::Engine::v2_source_get_properties( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_get_flags|obs_engine::Engine::v2_source_get_flags( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_get_dimensions|obs_engine::Engine::v2_source_get_dimensions( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_get_active|obs_engine::Engine::v2_source_get_active( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_get_showing|obs_engine::Engine::v2_source_get_showing( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_get_state|obs_engine::Engine::v2_source_get_state( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_get_missing_files|obs_engine::Engine::v2_source_get_missing_files( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_refresh|obs_engine::Engine::v2_source_refresh( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_save_state|obs_engine::Engine::v2_source_save_state( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_load_state|obs_engine::Engine::v2_source_load_state( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)"
+      ]
+    },
+    {
+      "path": "engine/runtime_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc",
+        "bb227ad223b21d42c6381f6765213a36d2fa2665"
+      ],
+      "operatorBlameLineCount": 619,
+      "scopedFunctionCount": 22,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::reset_result|obs_engine::reset_result( RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::fail|obs_engine::fail( RuntimeV2Error & error , const char * code , const char * message)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::is_bounded_string|obs_engine::is_bounded_string( const char * value , size_t max_bytes)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::read_string_field|obs_engine::read_string_field( obs_data_t * data , const char * name , std :: string & out , bool & present)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::read_object_field|obs_engine::read_object_field( obs_data_t * data , const char * name , ObsDataPtr & out , bool & present)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::parse_handle_text|obs_engine::parse_handle_text( std :: string_view text , uint64_t & out)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::read_handle_field|obs_engine::read_handle_field( obs_data_t * data , const char * name , uint64_t & out)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::set_handle|obs_engine::set_handle( obs_data_t * data , const char * name , uint64_t handle)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::make_item_identity|obs_engine::make_item_identity( uint64_t item , uint64_t scene , uint64_t source)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::append_event|obs_engine::append_event( RuntimeV2Result & result , const char * name , ObsDataPtr data)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::make_transform_data|obs_engine::make_transform_data( uint64_t item_handle , const obs_transform_info & info)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::Engine::v2_source_kind_list|obs_engine::Engine::v2_source_kind_list( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::Engine::v2_source_kind_defaults|obs_engine::Engine::v2_source_kind_defaults( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::Engine::v2_source_create|obs_engine::Engine::v2_source_create( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::Engine::v2_source_get_settings|obs_engine::Engine::v2_source_get_settings( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::Engine::v2_source_patch_settings|obs_engine::Engine::v2_source_patch_settings( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::Engine::v2_source_remove|obs_engine::Engine::v2_source_remove( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::Engine::v2_scene_create|obs_engine::Engine::v2_scene_create( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::Engine::v2_scene_remove|obs_engine::Engine::v2_scene_remove( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::Engine::v2_item_create|obs_engine::Engine::v2_item_create( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::Engine::v2_item_remove|obs_engine::Engine::v2_item_remove( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_v2.cpp|obs_engine::Engine::v2_item_set_transform|obs_engine::Engine::v2_item_set_transform( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)"
+      ]
+    },
+    {
+      "path": "engine/runtime.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
+        "d47733b98421332ac54e26a671824230e49169c8"
+      ],
+      "operatorBlameLineCount": 621,
+      "scopedFunctionCount": 25,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime.cpp|obs_engine::is_bounded_string|obs_engine::is_bounded_string( const char * value , size_t max_bytes)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::Engine|obs_engine::Engine::Engine( Config config)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::~Engine|obs_engine::Engine::~Engine()",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::start|obs_engine::Engine::start()",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::handle|obs_engine::Engine::handle( obs_data_t * request)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::allocate_handle|obs_engine::Engine::allocate_handle()",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::input_type_exists|obs_engine::Engine::input_type_exists( const char * type) const",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::validate_source_type|obs_engine::Engine::validate_source_type( long long request_id , obs_data_t * request , const char * & type) const",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::command_hello|obs_engine::Engine::command_hello( long long request_id)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::command_source_types|obs_engine::Engine::command_source_types( long long request_id)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::command_source_defaults|obs_engine::Engine::command_source_defaults( long long request_id , obs_data_t * request)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::command_source_create|obs_engine::Engine::command_source_create( long long request_id , obs_data_t * request)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::command_source_update|obs_engine::Engine::command_source_update( long long request_id , obs_data_t * request)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::command_source_settings|obs_engine::Engine::command_source_settings( long long request_id , obs_data_t * request)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::release_item|obs_engine::Engine::release_item( ItemMap :: iterator & it)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::remove_items_for_source|obs_engine::Engine::remove_items_for_source( uint64_t source_id)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::remove_items_for_scene|obs_engine::Engine::remove_items_for_scene( uint64_t scene_id)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::command_source_destroy|obs_engine::Engine::command_source_destroy( long long request_id , obs_data_t * request)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::command_scene_create|obs_engine::Engine::command_scene_create( long long request_id , obs_data_t * request)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::command_scene_destroy|obs_engine::Engine::command_scene_destroy( long long request_id , obs_data_t * request)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::command_scene_add|obs_engine::Engine::command_scene_add( long long request_id , obs_data_t * request)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::command_item_remove|obs_engine::Engine::command_item_remove( long long request_id , obs_data_t * request)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::command_item_transform|obs_engine::Engine::command_item_transform( long long request_id , obs_data_t * request)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::command_program_set|obs_engine::Engine::command_program_set( long long request_id , obs_data_t * request)",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::shutdown|obs_engine::Engine::shutdown()"
+      ]
+    },
+    {
+      "path": "engine/runtime.hpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 9,
+      "operatorCommits": [
+        "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
+        "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc",
+        "472141d30bc4dad0d5654146dd715a5fa03d1c66",
+        "f13431c2dd72109b9ec8dbebb3c0174f7d119a15",
+        "f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc",
+        "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
+        "6a590c2985a99d186c8eecd0241acdc824d32168",
+        "bb227ad223b21d42c6381f6765213a36d2fa2665",
+        "c47cc67c87b4cc8f31cd2bc19d883c4d2ac6c4c2"
+      ],
+      "operatorBlameLineCount": 228,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": "engine/source_event_capture.hpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "f13431c2dd72109b9ec8dbebb3c0174f7d119a15"
+      ],
+      "operatorBlameLineCount": 43,
+      "scopedFunctionCount": 4,
+      "currentFunctionKeys": [
+        "cpp|function|engine/source_event_capture.hpp|obs_engine::SourceEventCaptureGate::begin|obs_engine::SourceEventCaptureGate::begin()",
+        "cpp|function|engine/source_event_capture.hpp|obs_engine::SourceEventCaptureGate::end|obs_engine::SourceEventCaptureGate::end()",
+        "cpp|function|engine/source_event_capture.hpp|obs_engine::SourceEventCaptureGate::active|obs_engine::SourceEventCaptureGate::active() const",
+        "cpp|function|engine/source_event_capture.hpp|obs_engine::SourceEventCaptureGate::route_for_current_thread|obs_engine::SourceEventCaptureGate::route_for_current_thread() const"
+      ]
+    },
+    {
+      "path": "engine/task10_media_source.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
+        "6a590c2985a99d186c8eecd0241acdc824d32168"
+      ],
+      "operatorBlameLineCount": 395,
+      "scopedFunctionCount": 1,
+      "currentFunctionKeys": [
+        "cpp|function|engine/task10_media_source.cpp|obs_module_load|obs_module_load()"
+      ]
+    },
+    {
+      "path": "engine/task11_filter_source.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "1370346aef34d7d4c6aa0c03e446b73a69d20a92"
+      ],
+      "operatorBlameLineCount": 214,
+      "scopedFunctionCount": 1,
+      "currentFunctionKeys": [
+        "cpp|function|engine/task11_filter_source.cpp|obs_module_load|obs_module_load()"
+      ]
+    },
+    {
+      "path": "engine/task8_concurrency_source.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "22c4b526f63cfa7193b80c0be05e964fb34e3c8a"
+      ],
+      "operatorBlameLineCount": 301,
+      "scopedFunctionCount": 2,
+      "currentFunctionKeys": [
+        "cpp|function|engine/task8_concurrency_source.cpp|obs_module_description|obs_module_description()",
+        "cpp|function|engine/task8_concurrency_source.cpp|obs_module_load|obs_module_load()"
+      ]
+    },
+    {
+      "path": "engine/task9_interaction_source.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc"
+      ],
+      "operatorBlameLineCount": 99,
+      "scopedFunctionCount": 1,
+      "currentFunctionKeys": [
+        "cpp|function|engine/task9_interaction_source.cpp|obs_module_load|obs_module_load()"
+      ]
+    },
+    {
+      "path": "engine/validation.hpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "d47733b98421332ac54e26a671824230e49169c8"
+      ],
+      "operatorBlameLineCount": 24,
+      "scopedFunctionCount": 1,
+      "currentFunctionKeys": [
+        "cpp|function|engine/validation.hpp|obs_engine::is_safe_identifier|obs_engine::is_safe_identifier( const char * value , size_t max_bytes)"
+      ]
+    },
+    {
+      "path": "libobs/obs-internal.h",
+      "language": "C/C++",
+      "status": "M",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "6a590c2985a99d186c8eecd0241acdc824d32168",
+        "c47cc67c87b4cc8f31cd2bc19d883c4d2ac6c4c2",
+        "9d0f70ce8e91686ab6590cde258df41a12f5d22b"
+      ],
+      "operatorBlameLineCount": 36,
+      "scopedFunctionCount": 3,
+      "currentFunctionKeys": [
+        "cpp|function|libobs/obs-internal.h|obs_source_dosignal|obs_source_dosignal( struct obs_source * source , const char * signal_obs , const char * signal_source)",
+        "cpp|function|libobs/obs-internal.h|obs_source_dosignal_update|obs_source_dosignal_update( struct obs_source * source , uint64_t start_serial , uint64_t end_serial)",
+        "cpp|function|libobs/obs-internal.h|obs_source_dosignal_media_action|obs_source_dosignal_media_action( struct obs_source * source , const char * signal_source , uint64_t action_serial)"
+      ]
+    },
+    {
+      "path": "libobs/obs-source-media-internal.h",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "6a590c2985a99d186c8eecd0241acdc824d32168"
+      ],
+      "operatorBlameLineCount": 34,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": "libobs/obs-source.c",
+      "language": "C/C++",
+      "status": "M",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
+        "6a590c2985a99d186c8eecd0241acdc824d32168",
+        "c47cc67c87b4cc8f31cd2bc19d883c4d2ac6c4c2"
+      ],
+      "operatorBlameLineCount": 164,
+      "scopedFunctionCount": 16,
+      "currentFunctionKeys": [
+        "cpp|function|libobs/obs-source.c|obs_source_init|obs_source_init( struct obs_source * source)",
+        "cpp|function|libobs/obs-source.c|obs_source_destroy_defer|obs_source_destroy_defer( struct obs_source * source)",
+        "cpp|function|libobs/obs-source.c|obs_source_update_internal|obs_source_update_internal( obs_source_t * source , obs_data_t * settings , uint64_t * serial , bool require_serial , bool reset_settings)",
+        "cpp|function|libobs/obs-source.c|obs_source_deferred_update|obs_source_deferred_update( obs_source_t * source)",
+        "cpp|function|libobs/obs-source.c|obs_source_update|obs_source_update( obs_source_t * source , obs_data_t * settings)",
+        "cpp|function|libobs/obs-source.c|obs_source_update_tracked|obs_source_update_tracked( obs_source_t * source , obs_data_t * settings , uint64_t * serial)",
+        "cpp|function|libobs/obs-source.c|obs_source_reset_settings|obs_source_reset_settings( obs_source_t * source , obs_data_t * settings)",
+        "cpp|function|libobs/obs-source.c|obs_source_reset_settings_tracked|obs_source_reset_settings_tracked( obs_source_t * source , obs_data_t * settings , uint64_t * serial)",
+        "cpp|function|libobs/obs-source.c|process_media_actions|process_media_actions( obs_source_t * source)",
+        "cpp|function|libobs/obs-source.c|obs_source_media_action_enqueue|obs_source_media_action_enqueue( obs_source_t * source , enum obs_source_media_action_type type , int64_t value , uint64_t * serial)",
+        "cpp|function|libobs/obs-source.c|obs_source_media_play_pause|obs_source_media_play_pause( obs_source_t * source , bool pause)",
+        "cpp|function|libobs/obs-source.c|obs_source_media_restart|obs_source_media_restart( obs_source_t * source)",
+        "cpp|function|libobs/obs-source.c|obs_source_media_stop|obs_source_media_stop( obs_source_t * source)",
+        "cpp|function|libobs/obs-source.c|obs_source_media_next|obs_source_media_next( obs_source_t * source)",
+        "cpp|function|libobs/obs-source.c|obs_source_media_previous|obs_source_media_previous( obs_source_t * source)",
+        "cpp|function|libobs/obs-source.c|obs_source_media_set_time|obs_source_media_set_time( obs_source_t * source , int64_t ms)"
+      ]
+    },
+    {
+      "path": "plugins/win-capture/plugin-main.c",
+      "language": "C/C++",
+      "status": "M",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "2b2febe47e14f8c12b9434820e6f7c50bac672ce"
+      ],
+      "operatorBlameLineCount": 42,
+      "scopedFunctionCount": 3,
+      "currentFunctionKeys": [
+        "cpp|function|plugins/win-capture/plugin-main.c|capture_only_mode|capture_only_mode()",
+        "cpp|function|plugins/win-capture/plugin-main.c|obs_module_load|obs_module_load()",
+        "cpp|function|plugins/win-capture/plugin-main.c|obs_module_unload|obs_module_unload()"
+      ]
+    }
+  ],
+  "nonCyclomaticChangedFiles": [
+    {
+      "path": ".github/workflows/engine-protocol-v2-task1.yaml",
+      "status": "A",
+      "category": "YAML workflow/declaration; excluded from cyclomatic targets."
+    },
+    {
+      "path": ".github/workflows/engine-protocol-v2-task10.yaml",
+      "status": "A",
+      "category": "YAML workflow/declaration; excluded from cyclomatic targets."
+    },
+    {
+      "path": ".github/workflows/engine-protocol-v2-task11.yaml",
+      "status": "A",
+      "category": "YAML workflow/declaration; excluded from cyclomatic targets."
+    },
+    {
+      "path": ".github/workflows/engine-protocol-v2-task2.yaml",
+      "status": "A",
+      "category": "YAML workflow/declaration; excluded from cyclomatic targets."
+    },
+    {
+      "path": ".github/workflows/engine-protocol-v2-task3.yaml",
+      "status": "A",
+      "category": "YAML workflow/declaration; excluded from cyclomatic targets."
+    },
+    {
+      "path": ".github/workflows/engine-protocol-v2-task4.yaml",
+      "status": "A",
+      "category": "YAML workflow/declaration; excluded from cyclomatic targets."
+    },
+    {
+      "path": ".github/workflows/engine-protocol-v2-task5.yaml",
+      "status": "A",
+      "category": "YAML workflow/declaration; excluded from cyclomatic targets."
+    },
+    {
+      "path": ".github/workflows/engine-protocol-v2-task6.yaml",
+      "status": "A",
+      "category": "YAML workflow/declaration; excluded from cyclomatic targets."
+    },
+    {
+      "path": ".github/workflows/engine-protocol-v2-task7.yaml",
+      "status": "A",
+      "category": "YAML workflow/declaration; excluded from cyclomatic targets."
+    },
+    {
+      "path": ".github/workflows/engine-protocol-v2-task8-concurrency.yaml",
+      "status": "A",
+      "category": "YAML workflow/declaration; excluded from cyclomatic targets."
+    },
+    {
+      "path": ".github/workflows/engine-protocol-v2-task8.yaml",
+      "status": "A",
+      "category": "YAML workflow/declaration; excluded from cyclomatic targets."
+    },
+    {
+      "path": ".github/workflows/engine-protocol-v2-task9.yaml",
+      "status": "A",
+      "category": "YAML workflow/declaration; excluded from cyclomatic targets."
+    },
+    {
+      "path": ".github/workflows/windows-minimal.yaml",
+      "status": "A",
+      "category": "YAML workflow/declaration; excluded from cyclomatic targets."
+    },
+    {
+      "path": "AGENTS.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "cmake/common/versionconfig.cmake",
+      "status": "M",
+      "category": "CMake/control script; reviewed separately because lizard is not the chosen analyzer."
+    },
+    {
+      "path": "CMakeLists.txt",
+      "status": "M",
+      "category": "CMake/control script; reviewed separately because lizard is not the chosen analyzer."
+    },
+    {
+      "path": "CMakePresets.json",
+      "status": "M",
+      "category": "Static JSON/configuration; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/ARCHITECTURE.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/HANDOFF.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/LOCAL_AGENT_START_PROMPT.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/PROJECT_STATUS.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/README.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/ROADMAP.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/SOURCE_REVIEW_GUIDE.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/TASK10_ACCEPTANCE.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/TASK10_MEDIA_PLAN.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/TASK11_ACCEPTANCE.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/TASK11_FILTER_PLAN.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/TASK11_IMPLEMENTATION_AUDIT.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/CMakeLists.txt",
+      "status": "A",
+      "category": "CMake/control script; reviewed separately because lizard is not the chosen analyzer."
+    },
+    {
+      "path": "engine/EVENTS_V1.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/FILTER_V1.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/INTERACTION_V1.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/MEDIA_V1.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/PROPERTIES_V1.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/PROTOCOL_V2.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/README.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/RUNTIME_OBJECTS_V1.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/SOURCE_V1.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    },
+    {
+      "path": "libobs/CMakeLists.txt",
+      "status": "M",
+      "category": "CMake/control script; reviewed separately because lizard is not the chosen analyzer."
+    },
+    {
+      "path": "plugins/CMakeLists.txt",
+      "status": "M",
+      "category": "CMake/control script; reviewed separately because lizard is not the chosen analyzer."
+    },
+    {
+      "path": "WINDOWS_MINIMAL.md",
+      "status": "A",
+      "category": "Markdown/project documentation; excluded from cyclomatic targets."
+    }
+  ],
+  "scopeRules": [
+    "C/C++ scope is the complete current function when accepted-HEAD blame attributes at least one line in the function to an operator commit; newly added files are fully scoped.",
+    "PowerShell scope includes all current functions in the five operator-authored integration scripts; top-level script bodies are measured separately with the AST parser.",
+    "CMake/control files are included in the ownership inventory and reviewed separately, not treated as function-level CC targets.",
+    "Markdown, YAML, static JSON, license text, and other declarations are recorded but excluded from CC metrics.",
+    "Current source is measured at the accepted checkpoint for Baseline and at the candidate working tree/HEAD for After and Check."
+  ]
+}

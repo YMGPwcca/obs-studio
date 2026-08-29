@@ -7,6 +7,8 @@
 !/cmake
 !/deps
 !/docs
+!/tools
+!/tools/**
 !/frontend
 !/libobs*
 !/plugins
@@ -25,6 +27,12 @@
 !buildspec.json
 !CMakeLists.txt
 !CMakePresets.json
+!complexity-baseline.json
+!complexity-baseline.md
+!complexity-before.json
+!complexity-exceptions.json
+!complexity-ownership-inventory.json
+!complexity-ownership-inventory.md
 !COC.rst
 !COMMITMENT
 !CONTRIBUTING.md
