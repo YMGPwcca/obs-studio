@@ -1,0 +1,322 @@
+name: Task 11 one-shot integrator
+
+on:
+  push:
+    branches:
+      - engine-protocol-v2
+    paths:
+      - .github/workflows/task11-one-shot-integrator.yaml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.event.head_commit.message == 'chore(engine): run Task 11 one-shot integrator'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Apply reviewed Task 11 integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          Q=4c8b616ca2115970af3e1e4000b162416be32dac
+          git cat-file -e "$Q^{commit}"
+          git show "$Q:engine/protocol_v2.cpp" > engine/protocol_v2.cpp
+          git show "$Q:.github/scripts/engine-protocol-v2-task11.ps1" > .github/scripts/engine-protocol-v2-task11.ps1
+
+          python3 <<'PY'
+          from pathlib import Path
+
+          protocol = Path('engine/protocol_v2.cpp')
+          text = protocol.read_text(encoding='utf-8')
+          old = '''\tif (method_is_runtime(method) && method_is_mutating(method))
+          \t\tcapture.emplace(engine, runtime_result);
+          \tif (method_is_mutating(method))
+          \t\tmutation_guard.emplace(revisions.lock_mutation());
+          '''
+          new = '''\tif (method_is_runtime(method) && method_is_mutating(method))
+          \t\tcapture.emplace(engine, runtime_result);
+          \tif (capture)
+          \t\tengine.v2_wait_for_event_capture_callbacks();
+          \tif (method_is_mutating(method))
+          \t\tmutation_guard.emplace(revisions.lock_mutation());
+          '''
+          if text.count(old) != 1:
+              raise SystemExit('protocol capture/lock anchor was not unique')
+          protocol.write_text(text.replace(old, new), encoding='utf-8', newline='\n')
+
+          source = Path('engine/runtime_source_v2.cpp')
+          text = source.read_text(encoding='utf-8')
+          old = 'v2_filter_register_source_filters(duplicate_handle, duplicate, nullptr, handle);'
+          new = 'v2_filter_register_source_filters(duplicate_handle, duplicate, &result);'
+          if text.count(old) != 1:
+              raise SystemExit('source duplicate filter-registration anchor was not unique')
+          source.write_text(text.replace(old, new), encoding='utf-8', newline='\n')
+
+          runtime_filter = Path('engine/runtime_filter_v2.cpp')
+          text = runtime_filter.read_text(encoding='utf-8')
+          old = '''\t\t\tif (!observer->update_cv.wait_until(lock, deadline, [&] {
+          \t\t\t\t    return observer->update_generation != observed_generation || !observer->weak;
+          \t\t\t    }))
+          \t\t\t\tbreak;
+          \t\t\tif (!observer->weak)
+          \t\t\t\tbreak;
+          \t\t\tobserved_generation = observer->update_generation;
+          '''
+          new = '''\t\t\tif (!observer->update_cv.wait_until(
+          \t\t\t\t    lock, deadline, [&] { return observer->update_generation != observed_generation; }))
+          \t\t\t\tbreak;
+          \t\t\tobserved_generation = observer->update_generation;
+          '''
+          if text.count(old) != 1:
+              raise SystemExit('permanent filter observer wait anchor was not unique')
+          runtime_filter.write_text(text.replace(old, new), encoding='utf-8', newline='\n')
+
+          header = Path('engine/runtime.hpp')
+          text = header.read_text(encoding='utf-8')
+          old = '''\tvoid v2_filter_register_source_filters(uint64_t source_id, obs_source_t *source, RuntimeV2Result *result = nullptr);
+          \tvoid v2_filter_register_source_filters(uint64_t source_id, obs_source_t *source, RuntimeV2Result *result,
+          \t\t\t\t\t       uint64_t duplicate_of);
+          \tvoid v2_filter_emit_source_created_filters(RuntimeV2Result &result);
+          '''
+          new = '''\tvoid v2_filter_register_source_filters(uint64_t source_id, obs_source_t *source, RuntimeV2Result *result = nullptr);
+          '''
+          if text.count(old) != 1:
+              raise SystemExit('runtime.hpp copied-filter helper anchor was not unique')
+          header.write_text(text.replace(old, new), encoding='utf-8', newline='\n')
+
+          cmake = Path('engine/CMakeLists.txt')
+          text = cmake.read_text(encoding='utf-8')
+          old = '    runtime_filter_source_duplicate_v2.cpp\n'
+          if text.count(old) != 1:
+              raise SystemExit('CMake copied-filter helper anchor was not unique')
+          cmake.write_text(text.replace(old, ''), encoding='utf-8', newline='\n')
+
+          script = Path('.github/scripts/engine-protocol-v2-task11.ps1')
+          text = script.read_text(encoding='utf-8')
+          old = '''    $SourceRemove = Send-V2Request @{ op = 'request'; id = 'task11.sourceRemove'; method = 'source.remove'; ifRevision = 14; params = @{ source = '1' } }
+              Assert-Ok $SourceRemove 15 'source.remove with filters'
+              Read-Event 'filter.removed' 15 '5' '1' | Out-Null
+              Read-Event 'filter.removed' 15 '2' '1' | Out-Null
+              Read-Event 'filter.removed' 15 '4' '1' | Out-Null
+              Read-Event 'source.removed' 15 '' '1' | Out-Null
+
+              $StaleFilter = Send-V2Request @{ op = 'request'; id = 'task11.staleFilter'; method = 'filter.get'; params = @{ filter = '2' } }
+              Assert-Error $StaleFilter 'not_found' 15 'removed filter handle'
+
+              $Close = Send-V2Request @{ op = 'request'; id = 'task11.close'; method = 'session.close'; ifRevision = 15; params = @{} }
+              Assert-Ok $Close 16 'session.close'
+          '''
+          new = '''    $SourceDuplicate = Send-V2Request @{
+                  op = 'request'; id = 'task11.sourceDuplicate'; method = 'source.duplicate'; ifRevision = 14
+                  params = @{ source = '1'; name = 'task11-parent-copy' }
+              }
+              Assert-Ok $SourceDuplicate 15 'source.duplicate with filters'
+              $DuplicateSource = [string]$SourceDuplicate.data.source
+              if (-not $DuplicateSource -or $DuplicateSource -eq '1') {
+                  Fail 'source.duplicate did not return a new source handle.'
+              }
+              Read-Event 'source.created' 15 '' $DuplicateSource | Out-Null
+              $CopiedFilterHandles = [System.Collections.Generic.List[string]]::new()
+              for ($Index = 0; $Index -lt 3; $Index++) {
+                  $Copied = Read-Event 'filter.created' 15 '' $DuplicateSource
+                  $CopiedFilterHandles.Add([string]$Copied.data.filter)
+              }
+              if (($CopiedFilterHandles | Select-Object -Unique).Count -ne 3) {
+                  Fail 'source.duplicate did not expose three unique copied filter handles.'
+              }
+              $DuplicateList = Send-V2Request @{ op = 'request'; id = 'task11.duplicateList'; method = 'filter.list'; params = @{ source = $DuplicateSource } }
+              Assert-Ok $DuplicateList 15 'filter.list on duplicated source'
+              if ([int]$DuplicateList.data.count -ne 3) {
+                  Fail 'duplicated source did not retain exactly three filters.'
+              }
+              foreach ($CopiedHandle in $CopiedFilterHandles) {
+                  if (@($DuplicateList.data.filters | Where-Object { [string]$_.filter -eq $CopiedHandle }).Count -ne 1) {
+                      Fail "copied filter handle $CopiedHandle was not stable in filter.list."
+                  }
+              }
+
+              $SourceRemove = Send-V2Request @{ op = 'request'; id = 'task11.sourceRemove'; method = 'source.remove'; ifRevision = 15; params = @{ source = '1' } }
+              Assert-Ok $SourceRemove 16 'source.remove with filters'
+              Read-Event 'filter.removed' 16 '5' '1' | Out-Null
+              Read-Event 'filter.removed' 16 '2' '1' | Out-Null
+              Read-Event 'filter.removed' 16 '4' '1' | Out-Null
+              Read-Event 'source.removed' 16 '' '1' | Out-Null
+
+              $StaleFilter = Send-V2Request @{ op = 'request'; id = 'task11.staleFilter'; method = 'filter.get'; params = @{ filter = '2' } }
+              Assert-Error $StaleFilter 'not_found' 16 'removed filter handle'
+
+              $DuplicateSourceRemove = Send-V2Request @{
+                  op = 'request'; id = 'task11.duplicateSourceRemove'; method = 'source.remove'; ifRevision = 16
+                  params = @{ source = $DuplicateSource }
+              }
+              Assert-Ok $DuplicateSourceRemove 17 'remove duplicated source with copied filters'
+              foreach ($CopiedHandle in $CopiedFilterHandles) {
+                  Read-Event 'filter.removed' 17 $CopiedHandle $DuplicateSource | Out-Null
+              }
+              Read-Event 'source.removed' 17 '' $DuplicateSource | Out-Null
+
+              $Close = Send-V2Request @{ op = 'request'; id = 'task11.close'; method = 'session.close'; ifRevision = 17; params = @{} }
+              Assert-Ok $Close 18 'session.close'
+          '''
+          if text.count(old) != 1:
+              raise SystemExit('Task 11 source-removal tail anchor was not unique')
+          script.write_text(text.replace(old, new), encoding='utf-8', newline='\n')
+          PY
+
+          rm -f engine/runtime_filter_source_duplicate_v2.cpp
+          rm -f engine/TASK11_INTEGRATION_NOTE.tmp
+          rm -f .github/TASK11_STAGING_DO_NOT_USE.tmp
+
+          cat > .github/workflows/engine-protocol-v2-task11.yaml <<'YAML'
+          name: Engine Protocol v2 Task 11 Verification
+
+          on:
+            push:
+              branches:
+                - engine-protocol-v2
+            workflow_dispatch:
+
+          permissions:
+            contents: read
+
+          jobs:
+            filter-v1:
+              name: Build and verify filter namespace
+              runs-on: windows-2025-vs2026
+              timeout-minutes: 30
+              steps:
+                - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+                  with:
+                    submodules: recursive
+                    fetch-depth: 0
+
+                - name: Verify Task 10 callback ordering and permanent filter settlement
+                  shell: pwsh
+                  run: |
+                    $ErrorActionPreference = 'Stop'
+                    $Protocol = Get-Content -Raw 'engine/protocol_v2.cpp'
+                    $Capture = $Protocol.IndexOf('capture.emplace(engine, runtime_result);')
+                    $Wait = $Protocol.IndexOf('engine.v2_wait_for_event_capture_callbacks();')
+                    $Lock = $Protocol.IndexOf('mutation_guard.emplace(revisions.lock_mutation());')
+                    $Drain = $Protocol.IndexOf('engine.v2_drain_deferred_source_events(*mutation_guard);')
+                    if ($Capture -lt 0 -or $Wait -lt 0 -or $Lock -lt 0 -or $Drain -lt 0 -or
+                        -not ($Capture -lt $Wait -and $Wait -lt $Lock -and $Lock -lt $Drain)) {
+                      throw 'Task 10 capture/wait/mutation-lock/deferred-drain ordering regressed.'
+                    }
+                    $Filter = Get-Content -Raw 'engine/runtime_filter_v2.cpp'
+                    foreach ($Forbidden in @('FilterUpdateWaiter', 'filter_update_settle_cb')) {
+                      if ($Filter.Contains($Forbidden)) {
+                        throw "Per-request filter waiter leaked into Task 11: $Forbidden"
+                      }
+                    }
+                    $PermanentConnect = ([regex]::Matches($Filter, 'signal_handler_connect\(handler, "update", filter_update_cb, &observer\)')).Count
+                    if ($PermanentConnect -ne 1) {
+                      throw "Expected exactly one permanent filter update observer connection in source; found $PermanentConnect."
+                    }
+
+                - name: Build Windows minimal runtime
+                  uses: ./.github/actions/build-obs
+                  with:
+                    target: x64
+                    config: RelWithDebInfo
+
+                - name: Verify normal package excludes fixtures and second APIs
+                  shell: pwsh
+                  run: |
+                    $ErrorActionPreference = 'Stop'
+                    $InstallRoot = Resolve-Path 'build_x64/install'
+                    $ForbiddenNames = @(
+                      'task8-concurrency-source.dll',
+                      'task9-interaction-source.dll',
+                      'task10-media-source.dll',
+                      'task11-filter-source.dll',
+                      'obs64.exe',
+                      'obs32.exe',
+                      'obs-websocket.dll',
+                      'obs-browser.dll'
+                    )
+                    $Forbidden = Get-ChildItem -Path $InstallRoot -File -Recurse | Where-Object { $_.Name -in $ForbiddenNames }
+                    if (@($Forbidden).Count -ne 0) {
+                      throw "Forbidden or CI-only files leaked into the normal engine package:`n$($Forbidden.FullName -join "`n")"
+                    }
+
+                - name: Build CI-only deterministic filter source
+                  shell: pwsh
+                  run: |
+                    $ErrorActionPreference = 'Stop'
+                    cmake --build build_x64 --config RelWithDebInfo --target obs-engine-task11-filter-plugin --parallel
+                    if ($LASTEXITCODE -ne 0) {
+                      throw "Task 11 filter source build failed (exit=$LASTEXITCODE)."
+                    }
+
+                - name: Stage CI-only filter source
+                  shell: pwsh
+                  run: |
+                    $ErrorActionPreference = 'Stop'
+                    $InstallRoot = Resolve-Path 'build_x64/install'
+                    $Plugin = Get-ChildItem -Path 'build_x64' -Filter 'task11-filter-source.dll' -File -Recurse |
+                      Where-Object { $_.FullName -notlike "$InstallRoot*" } |
+                      Select-Object -First 1
+                    if ($null -eq $Plugin) {
+                      throw 'Built Task 11 filter source was not found.'
+                    }
+                    $RuntimeModule = Get-ChildItem -Path $InstallRoot -Filter 'image-source.dll' -File -Recurse | Select-Object -First 1
+                    if ($null -eq $RuntimeModule) {
+                      throw 'Could not locate the installed OBS module directory.'
+                    }
+                    Copy-Item -LiteralPath $Plugin.FullName -Destination (Join-Path $RuntimeModule.Directory.FullName $Plugin.Name) -Force
+
+                - name: Run Task 11 filter integration regression
+                  shell: pwsh
+                  run: |
+                    $ErrorActionPreference = 'Stop'
+                    & '.github/scripts/engine-protocol-v2-task11.ps1' -InstallRoot (Resolve-Path 'build_x64/install')
+
+                - name: Remove explicitly staged Task 11 test source
+                  shell: pwsh
+                  run: |
+                    $ErrorActionPreference = 'Stop'
+                    $InstallRoot = Resolve-Path 'build_x64/install'
+                    $Installed = Get-ChildItem -Path $InstallRoot -Filter 'task11-filter-source.dll' -File -Recurse
+                    if (@($Installed).Count -ne 1) {
+                      throw 'Expected exactly one explicitly staged Task 11 filter module.'
+                    }
+                    Remove-Item -LiteralPath $Installed[0].FullName -Force
+                    if (@(Get-ChildItem -Path $InstallRoot -Filter 'task11-filter-source.dll' -File -Recurse).Count -ne 0) {
+                      throw 'Task 11 CI-only filter module remained after cleanup.'
+                    }
+
+                - name: Upload Task 11 Windows runtime
+                  uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+                  with:
+                    name: obs-engine-windows-x64-task11
+                    path: build_x64/install/
+                    if-no-files-found: error
+                    compression-level: 6
+                    retention-days: 7
+          YAML
+
+          rm -f .github/workflows/task11-one-shot-integrator.yaml
+
+          git diff --check
+          git diff --exit-code -- . ':!engine/protocol_v2.cpp' ':!engine/runtime_source_v2.cpp' ':!engine/runtime_filter_v2.cpp' ':!engine/runtime.hpp' ':!engine/CMakeLists.txt' ':!.github/scripts/engine-protocol-v2-task11.ps1' ':!.github/workflows/engine-protocol-v2-task11.yaml' ':!engine/runtime_filter_source_duplicate_v2.cpp' ':!engine/TASK11_INTEGRATION_NOTE.tmp' ':!.github/TASK11_STAGING_DO_NOT_USE.tmp' ':!.github/workflows/task11-one-shot-integrator.yaml' || {
+            echo 'Unexpected one-shot integration path changed.' >&2
+            exit 1
+          }
+
+      - name: Commit reviewed integration result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Task 11 integration bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'feat(engine): integrate protocol v2 filter namespace'
+          git push origin HEAD:engine-protocol-v2
