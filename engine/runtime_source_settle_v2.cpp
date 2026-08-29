@@ -311,6 +311,18 @@ void normalize_kind_entry(obs_data_t *entry)
 
 } // namespace
 
+void Engine::v2_wait_for_event_capture_callbacks()
+{
+	if (source_v2_state_) {
+		std::unique_lock lock(source_v2_state_->mutex);
+		source_v2_state_->callback_cv.wait(lock, [&] {
+			return !source_v2_state_->accepting || source_v2_state_->direct_callbacks_inflight == 0;
+		});
+	}
+	v2_wait_for_media_event_callbacks();
+	v2_wait_for_filter_event_callbacks();
+}
+
 void Engine::v2_settle_source_mutation(obs_data_t *params, RuntimeV2Result &result)
 {
 	uint64_t handle = 0;
