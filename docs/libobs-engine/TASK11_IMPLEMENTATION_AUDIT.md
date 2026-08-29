@@ -73,12 +73,25 @@ candidate-level defects, independently verified before porting:
    completion, or deferred-queue overflow; its original 6-second blocker was
    also too close to the 5-second engine deadline for deterministic follow-up
    testing.
+6. Its deterministic fixture recursively attempted update work from the create
+   path before libobs had attached the fixture context data, so the test could
+   depend on an uninitialized callback context instead of exercising a later
+   real video-thread update.
+7. Its observer cache only refreshed settings on update callbacks. A rename or
+   enable callback could therefore cache a stale settings snapshot and suppress
+   a subsequent legitimate `filter.settingsChanged` event.
+8. Its router attempted asynchronous settings settlement even when the runtime
+   operation had correctly identified an idempotent no-op, turning a successful
+   no-revision request into an internal error.
 
 The candidate records an observer generation on every update observation,
 requires exact `(handle, post-update settings, generation > baseline)` proof,
 returns `timeout` on uncertain settlement, quarantines the affected handle,
 uses rollback-safe registry updates, removes the unused adapter, and exercises
-the missing cases in the exact-SHA Task-11 lane.
+the missing cases in the exact-SHA Task-11 lane. The fixture initializes its
+settings directly during creation and reserves deferred callback behavior for
+later patch/replace requests; the observer normalizes all relevant signal
+types, and the router settles only actual settings mutations.
 
 ## Implementation rules for the authorized candidate
 
