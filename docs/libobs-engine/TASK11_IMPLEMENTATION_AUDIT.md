@@ -67,6 +67,9 @@ newer submissions for a later callback, and emits that range only in internal
 signal calldata. The public `obs_source_update()` and
 `obs_source_reset_settings()` signatures remain unchanged; the tracked update
 and reset hooks are declared only in non-installed internal/engine headers.
+The existing global `source_update` signal is also sent before the private
+serial fields are added, so its public payload declaration remains unchanged;
+only the source-local observer signal carries the new internal evidence.
 
 The engine records the tracked serial for each settings request and accepts a
 settlement only when the exact filter handle, canonical post-update settings,
