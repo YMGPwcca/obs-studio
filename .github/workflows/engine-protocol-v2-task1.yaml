@@ -4,40 +4,285 @@ on:
   push:
     branches:
       - engine-protocol-v2
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  task11-integrate:
-    name: Integrate reviewed Task 11 delta
-    if: github.event.head_commit.message == 'chore(engine): execute Task 11 integration'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+  build-smoke-package-x64:
+    name: Build, smoke test, and package x64
+    runs-on: windows-2025-vs2026
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          submodules: recursive
           fetch-depth: 0
 
-      - name: Apply reviewed Task 11 integration
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 .github/scripts/task11-integrate.py
-          git diff --check
-          test ! -e engine/runtime_filter_source_duplicate_v2.cpp
-          test ! -e engine/TASK11_INTEGRATION_NOTE.tmp
-          test ! -e .github/TASK11_STAGING_DO_NOT_USE.tmp
-          test ! -e .github/workflows/task11-one-shot-integrator.yaml
-          test ! -e .github/scripts/task11-integrate.py
+      - name: Build Windows minimal runtime
+        uses: ./.github/actions/build-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
 
-      - name: Commit integrated Task 11 candidate
-        shell: bash
+      - name: Verify headless runtime footprint
+        shell: pwsh
         run: |
-          set -euo pipefail
-          git config user.name 'Task 11 integration bot'
-          git config user.email 'actions@users.noreply.github.com'
-          git add -A
-          git diff --cached --check
-          git commit -m 'feat(engine): integrate protocol v2 filter namespace'
-          git push origin HEAD:engine-protocol-v2
+          $ErrorActionPreference = 'Stop'
+
+          $InstallRoot = Resolve-Path 'build_x64/install'
+          $Files = Get-ChildItem -Path $InstallRoot -File -Recurse
+          $Forbidden = $Files | Where-Object {
+            $_.Name -like 'decklink-captions.*' -or
+            $_.Name -like 'obs-frontend-api.*'
+          }
+
+          if ( $Forbidden ) {
+            $Names = ($Forbidden | ForEach-Object { $_.FullName }) -join "`n"
+            throw "Stock OBS frontend-only files leaked into the headless runtime:`n$Names"
+          }
+
+          $DeckLink = $Files | Where-Object { $_.Name -eq 'decklink.dll' } | Select-Object -First 1
+          if ( $null -eq $DeckLink ) {
+            throw 'decklink.dll is missing; Task 1.1 should remove only decklink-captions, not DeckLink runtime support.'
+          }
+
+          $Vst = $Files | Where-Object { $_.Name -eq 'obs-vst.dll' } | Select-Object -First 1
+          if ( $null -eq $Vst ) {
+            throw 'obs-vst.dll is missing; Qt is intentionally retained because VST support still depends on it.'
+          }
+
+          Write-Host 'Headless runtime footprint verified: DeckLink and VST kept; DeckLink captions and frontend API absent.'
+
+      - name: Smoke test obs-engine protocol v1
+        id: smoke
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $DiagnosticDir = Join-Path (Resolve-Path 'build_x64/install') '_task1-diagnostics'
+          New-Item -ItemType Directory -Force -Path $DiagnosticDir | Out-Null
+          $DiagnosticFile = Join-Path $DiagnosticDir 'smoke.txt'
+          $RuntimeListingFile = Join-Path $DiagnosticDir 'runtime-files.txt'
+          Get-ChildItem -Path 'build_x64/install' -File -Recurse |
+            ForEach-Object { $_.FullName } |
+            Set-Content -Path $RuntimeListingFile -Encoding utf8
+
+          $Process = $null
+          $ErrorTask = $null
+          $Engine = $null
+          $FailureText = $null
+
+          try {
+            $Engine = Get-ChildItem -Path 'build_x64/install' -Filter 'obs-engine.exe' -File -Recurse |
+              Select-Object -First 1
+            if ( $null -eq $Engine ) {
+              throw 'obs-engine.exe was not found in the installed runtime.'
+            }
+
+            Write-Host "obs-engine path: $($Engine.FullName)"
+            Write-Host "obs-engine cwd:  $($Engine.Directory.FullName)"
+
+            $StartInfo = [System.Diagnostics.ProcessStartInfo]::new()
+            $StartInfo.FileName = $Engine.FullName
+            $StartInfo.WorkingDirectory = $Engine.Directory.FullName
+            $StartInfo.UseShellExecute = $false
+            $StartInfo.RedirectStandardInput = $true
+            $StartInfo.RedirectStandardOutput = $true
+            $StartInfo.RedirectStandardError = $true
+            $StartInfo.CreateNoWindow = $true
+
+            $Process = [System.Diagnostics.Process]::new()
+            $Process.StartInfo = $StartInfo
+            if ( -not $Process.Start() ) {
+              throw 'Failed to start obs-engine.exe.'
+            }
+            $ErrorTask = $Process.StandardError.ReadToEndAsync()
+
+            function Read-EngineMessage {
+              $ReadTask = $Process.StandardOutput.ReadLineAsync()
+              if ( -not $ReadTask.Wait(30000) ) {
+                throw 'Timed out waiting 30 seconds for obs-engine stdout.'
+              }
+              $Line = $ReadTask.Result
+              if ( $null -eq $Line ) {
+                $ExitText = if ( $Process.HasExited ) { "exit=$($Process.ExitCode)" } else { 'process still running' }
+                throw "obs-engine closed stdout unexpectedly ($ExitText)."
+              }
+              Write-Host "obs-engine stdout: $Line"
+              return ($Line | ConvertFrom-Json)
+            }
+
+            function Send-EngineRequest([int] $Id, [hashtable] $Request) {
+              $Request['id'] = $Id
+              $Json = $Request | ConvertTo-Json -Compress -Depth 20
+              Write-Host "obs-engine stdin:  $Json"
+              $Process.StandardInput.WriteLine($Json)
+              $Process.StandardInput.Flush()
+
+              while ( $true ) {
+                $Message = Read-EngineMessage
+                if ( $null -ne $Message.id -and [int64]$Message.id -eq $Id ) {
+                  if ( -not $Message.ok ) {
+                    throw "Request $Id failed: $($Message.error): $($Message.message)"
+                  }
+                  return $Message
+                }
+              }
+            }
+
+            $Ready = Read-EngineMessage
+            if ( $Ready.event -ne 'ready' -or [int]$Ready.protocol -ne 1 ) {
+              throw 'obs-engine did not emit the expected protocol-v1 ready event.'
+            }
+
+            $Hello = Send-EngineRequest 1 @{ cmd = 'hello' }
+            if ( [int]$Hello.result.protocol -ne 1 ) {
+              throw 'hello returned an unexpected protocol version.'
+            }
+
+            $Types = Send-EngineRequest 2 @{ cmd = 'source.types' }
+            $ColorType = $Types.result.types | Where-Object { $_.id -eq 'color_source_v3' } | Select-Object -First 1
+            if ( $null -eq $ColorType ) {
+              $ColorType = $Types.result.types | Where-Object { $_.id -eq 'color_source' } | Select-Object -First 1
+            }
+            if ( $null -eq $ColorType ) {
+              throw 'No Color Source input type was registered; image-source may have failed to load.'
+            }
+
+            $Scene = Send-EngineRequest 3 @{
+              cmd = 'scene.create'
+              name = 'task1-smoke-scene'
+            }
+            $SceneHandle = [int64]$Scene.result.scene
+
+            $Source = Send-EngineRequest 4 @{
+              cmd = 'source.create'
+              type = [string]$ColorType.id
+              name = 'task1-smoke-color'
+              settings = @{
+                width = 320
+                height = 180
+                color = 4294901760
+              }
+            }
+            $SourceHandle = [int64]$Source.result.source
+
+            $Item = Send-EngineRequest 5 @{
+              cmd = 'scene.add'
+              scene = $SceneHandle
+              source = $SourceHandle
+            }
+            $ItemHandle = [int64]$Item.result.item
+
+            $null = Send-EngineRequest 6 @{
+              cmd = 'item.transform'
+              item = $ItemHandle
+              x = 32.0
+              y = 24.0
+              scale_x = 1.25
+              scale_y = 1.25
+              rotation = 5.0
+            }
+
+            $null = Send-EngineRequest 7 @{
+              cmd = 'program.set'
+              scene = $SceneHandle
+            }
+
+            $Settings = Send-EngineRequest 8 @{
+              cmd = 'source.settings'
+              source = $SourceHandle
+            }
+            if ( [int]$Settings.result.settings.width -ne 320 -or [int]$Settings.result.settings.height -ne 180 ) {
+              throw 'Source settings did not round-trip through libobs.'
+            }
+
+            $null = Send-EngineRequest 9 @{
+              cmd = 'program.set'
+              scene = 0
+            }
+
+            $null = Send-EngineRequest 10 @{ cmd = 'shutdown' }
+            $Process.StandardInput.Close()
+
+            if ( -not $Process.WaitForExit(15000) ) {
+              $Process.Kill($true)
+              throw 'obs-engine did not exit after shutdown.'
+            }
+            if ( $Process.ExitCode -ne 0 ) {
+              throw "obs-engine exited with code $($Process.ExitCode)."
+            }
+
+            Write-Host 'Protocol-v1 smoke test passed.'
+          }
+          catch {
+            $FailureText = ($_ | Out-String)
+            Write-Error $FailureText
+            if ( $null -ne $Process -and -not $Process.HasExited ) {
+              try {
+                $Process.Kill($true)
+                $Process.WaitForExit(5000) | Out-Null
+              }
+              catch {
+                Write-Warning "Failed to terminate obs-engine after smoke failure: $_"
+              }
+            }
+          }
+          finally {
+            $StderrText = ''
+            if ( $null -ne $ErrorTask ) {
+              try {
+                $StderrText = $ErrorTask.GetAwaiter().GetResult()
+              }
+              catch {
+                $StderrText = "Failed to collect redirected stderr: $_"
+              }
+            }
+
+            $ExitState = 'not-started'
+            if ( $null -ne $Process ) {
+              if ( $Process.HasExited ) {
+                $ExitState = "exited:$($Process.ExitCode)"
+              } else {
+                $ExitState = 'still-running'
+              }
+            }
+
+            @(
+              "engine=$($Engine.FullName)"
+              "exit_state=$ExitState"
+              ''
+              '=== smoke failure ==='
+              $FailureText
+              ''
+              '=== obs-engine stderr ==='
+              $StderrText
+            ) | Set-Content -Path $DiagnosticFile -Encoding utf8
+
+            if ( -not [string]::IsNullOrWhiteSpace($StderrText) ) {
+              Write-Host '=== obs-engine stderr ==='
+              Write-Host $StderrText
+            }
+          }
+
+          if ( $null -ne $FailureText ) {
+            throw 'Protocol-v1 smoke test failed. See _task1-diagnostics/smoke.txt in the runtime artifact.'
+          }
+
+      - name: Upload installed Windows runtime
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: obs-engine-windows-x64-task1-1
+          path: build_x64/install/
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 7
+
+      - name: Enforce smoke result
+        if: steps.smoke.outcome != 'success'
+        shell: pwsh
+        run: |
+          throw 'Protocol-v1 smoke test failed; runtime artifact was preserved for diagnostics.'
