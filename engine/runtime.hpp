@@ -39,6 +39,10 @@ struct RuntimeV2Error {
 struct RuntimeV2Event {
 	std::string name;
 	ObsDataPtr data;
+	// Private evidence for filter.settingsChanged events. The values come from
+	// the libobs deferred-update signal and are never serialized on the wire.
+	uint64_t filter_update_serial_begin = 0;
+	uint64_t filter_update_serial_end = 0;
 };
 
 struct RuntimeV2Result {
@@ -50,6 +54,7 @@ struct RuntimeV2Result {
 	// and must advance before a deferred update can be command-owned.
 	uint64_t filter_update_handle = 0;
 	uint64_t filter_update_generation = 0;
+	uint64_t filter_update_serial = 0;
 	bool has_filter_update_baseline = false;
 };
 

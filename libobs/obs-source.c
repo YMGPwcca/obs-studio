@@ -76,7 +76,7 @@ struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ve
 static const char *source_signals[] = {
 	"void destroy(ptr source)",
 	"void remove(ptr source)",
-	"void update(ptr source)",
+	"void update(ptr source, int update_serial_begin, int update_serial_end)",
 	"void save(ptr source)",
 	"void load(ptr source)",
 	"void activate(ptr source)",
@@ -223,6 +223,7 @@ static bool obs_source_init(struct obs_source *source)
 	source->balance = 0.5f;
 	source->audio_active = true;
 	pthread_mutex_init_value(&source->filter_mutex);
+	pthread_mutex_init_value(&source->deferred_update_mutex);
 	pthread_mutex_init_value(&source->async_mutex);
 	pthread_mutex_init_value(&source->audio_mutex);
 	pthread_mutex_init_value(&source->audio_buf_mutex);
@@ -231,6 +232,8 @@ static bool obs_source_init(struct obs_source *source)
 	pthread_mutex_init_value(&source->media_actions_mutex);
 
 	if (pthread_mutex_init_recursive(&source->filter_mutex) != 0)
+		return false;
+	if (pthread_mutex_init(&source->deferred_update_mutex, NULL) != 0)
 		return false;
 	if (pthread_mutex_init(&source->audio_buf_mutex, NULL) != 0)
 		return false;
@@ -863,6 +866,7 @@ static void obs_source_destroy_defer(struct obs_source *source)
 	da_free(source->filters);
 	da_free(source->media_actions);
 	pthread_mutex_destroy(&source->filter_mutex);
+	pthread_mutex_destroy(&source->deferred_update_mutex);
 	pthread_mutex_destroy(&source->audio_actions_mutex);
 	pthread_mutex_destroy(&source->audio_buf_mutex);
 	pthread_mutex_destroy(&source->audio_cb_mutex);
@@ -1092,40 +1096,98 @@ uint32_t obs_get_source_output_flags(const char *id)
 	return info ? info->output_flags : 0;
 }
 
+static bool obs_source_update_internal(obs_source_t *source, obs_data_t *settings, uint64_t *serial,
+					       bool require_serial, bool reset_settings)
+{
+	if (serial)
+		*serial = 0;
+	if (!obs_source_valid(source, "obs_source_update"))
+		return false;
+
+	const bool is_video = (source->info.output_flags & OBS_SOURCE_VIDEO) != 0;
+	uint64_t update_serial = 0;
+	pthread_mutex_lock(&source->deferred_update_mutex);
+	if (require_serial && source->update_serial >= INT64_MAX) {
+		pthread_mutex_unlock(&source->deferred_update_mutex);
+		return false;
+	}
+
+	if (reset_settings)
+		obs_data_clear(source->context.settings);
+	if (settings)
+		obs_data_apply(source->context.settings, settings);
+
+	if (source->update_serial < INT64_MAX)
+		update_serial = ++source->update_serial;
+	if (is_video) {
+		if (update_serial == 0) {
+			/* A public untracked caller may continue after serial exhaustion, but
+			 * its deferred completion can no longer be correlated safely. */
+			source->deferred_update_start_serial = 0;
+			source->deferred_update_end_serial = 0;
+		} else {
+			if (os_atomic_load_long(&source->defer_update_count) == 0)
+				source->deferred_update_start_serial = update_serial;
+			source->deferred_update_end_serial = update_serial;
+		}
+		os_atomic_inc_long(&source->defer_update_count);
+	}
+	pthread_mutex_unlock(&source->deferred_update_mutex);
+
+	if (serial)
+		*serial = update_serial;
+	if (is_video)
+		return true;
+	if (source->context.data && source->info.update) {
+		source->info.update(source->context.data, source->context.settings);
+		obs_source_dosignal_update(source, update_serial, update_serial);
+	}
+	return true;
+}
+
 static void obs_source_deferred_update(obs_source_t *source)
 {
 	if (source->context.data && source->info.update) {
-		long count = os_atomic_load_long(&source->defer_update_count);
+		uint64_t start_serial;
+		uint64_t end_serial;
+		pthread_mutex_lock(&source->deferred_update_mutex);
+		start_serial = source->deferred_update_start_serial;
+		end_serial = source->deferred_update_end_serial;
+		pthread_mutex_unlock(&source->deferred_update_mutex);
+
 		source->info.update(source->context.data, source->context.settings);
-		os_atomic_compare_swap_long(&source->defer_update_count, count, 0);
-		obs_source_dosignal(source, "source_update", "update");
+
+		pthread_mutex_lock(&source->deferred_update_mutex);
+		if (source->deferred_update_end_serial == end_serial) {
+			source->deferred_update_start_serial = 0;
+			source->deferred_update_end_serial = 0;
+			os_atomic_set_long(&source->defer_update_count, 0);
+		} else if (end_serial != 0 && end_serial < INT64_MAX) {
+			source->deferred_update_start_serial = end_serial + 1;
+		}
+		pthread_mutex_unlock(&source->deferred_update_mutex);
+		obs_source_dosignal_update(source, start_serial, end_serial);
 	}
 }
 
 void obs_source_update(obs_source_t *source, obs_data_t *settings)
 {
-	if (!obs_source_valid(source, "obs_source_update"))
-		return;
+	(void)obs_source_update_internal(source, settings, NULL, false, false);
+}
 
-	if (settings) {
-		obs_data_apply(source->context.settings, settings);
-	}
-
-	if (source->info.output_flags & OBS_SOURCE_VIDEO) {
-		os_atomic_inc_long(&source->defer_update_count);
-	} else if (source->context.data && source->info.update) {
-		source->info.update(source->context.data, source->context.settings);
-		obs_source_dosignal(source, "source_update", "update");
-	}
+EXPORT bool obs_source_update_tracked(obs_source_t *source, obs_data_t *settings, uint64_t *serial)
+{
+	return obs_source_update_internal(source, settings, serial, true, false);
 }
 
 void obs_source_reset_settings(obs_source_t *source, obs_data_t *settings)
 {
-	if (!obs_source_valid(source, "obs_source_reset_settings"))
-		return;
+	(void)obs_source_update_internal(source, settings, NULL, false, true);
+}
 
-	obs_data_clear(source->context.settings);
-	obs_source_update(source, settings);
+EXPORT bool obs_source_reset_settings_tracked(obs_source_t *source, obs_data_t *settings, uint64_t *serial)
+{
+	return obs_source_update_internal(source, settings, serial, true, true);
 }
 
 void obs_source_update_properties(obs_source_t *source)

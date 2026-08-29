@@ -8,6 +8,7 @@ target_sources(
     events.cpp
     events.hpp
     host.cpp
+    obs_source_update_private.hpp
     properties.cpp
     properties.hpp
     properties_sensitive.cpp

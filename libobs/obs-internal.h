@@ -821,6 +821,10 @@ struct obs_source {
 
 	/* signals to call the source update in the video thread */
 	long defer_update_count;
+	pthread_mutex_t deferred_update_mutex;
+	uint64_t update_serial;
+	uint64_t deferred_update_start_serial;
+	uint64_t deferred_update_end_serial;
 
 	/* ensures show/hide are only called once */
 	volatile long show_refs;
@@ -1033,6 +1037,8 @@ extern obs_source_t *obs_source_create_set_last_ver(obs_canvas_t *canvas, const 
 
 extern void obs_source_destroy(struct obs_source *source);
 extern void obs_source_addref(obs_source_t *source);
+EXPORT bool obs_source_update_tracked(obs_source_t *source, obs_data_t *settings, uint64_t *serial);
+EXPORT bool obs_source_reset_settings_tracked(obs_source_t *source, obs_data_t *settings, uint64_t *serial);
 
 static inline void obs_source_dosignal(struct obs_source *source, const char *signal_obs, const char *signal_source)
 {
@@ -1045,6 +1051,20 @@ static inline void obs_source_dosignal(struct obs_source *source, const char *si
 		signal_handler_signal(obs->signals, signal_obs, &data);
 	if (signal_source)
 		signal_handler_signal(source->context.signals, signal_source, &data);
+}
+
+static inline void obs_source_dosignal_update(struct obs_source *source, uint64_t start_serial, uint64_t end_serial)
+{
+	struct calldata data;
+	uint8_t stack[128];
+
+	calldata_init_fixed(&data, stack, sizeof(stack));
+	calldata_set_ptr(&data, "source", source);
+	calldata_set_int(&data, "update_serial_begin", (long long)start_serial);
+	calldata_set_int(&data, "update_serial_end", (long long)end_serial);
+	if (!source->context.private)
+		signal_handler_signal(obs->signals, "source_update", &data);
+	signal_handler_signal(source->context.signals, "update", &data);
 }
 
 static inline void obs_source_dosignal_media_action(struct obs_source *source, const char *signal_source,

@@ -1,6 +1,7 @@
 #include "runtime.hpp"
 
 #include "events.hpp"
+#include "obs_source_update_private.hpp"
 #include "source_event_capture.hpp"
 #include "validation.hpp"
 
@@ -17,6 +18,7 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <string_view>
 #include <stdexcept>
@@ -33,6 +35,8 @@ struct FilterV2Observer;
 struct DeferredFilterEventBatch {
 	uint64_t handle = 0;
 	uint64_t update_generation = 0;
+	uint64_t update_serial_begin = 0;
+	uint64_t update_serial_end = 0;
 	bool uncertain = false;
 	std::vector<RuntimeV2Event> events;
 };
@@ -51,7 +55,8 @@ struct FilterV2State {
 	bool accepting = false;
 	std::unordered_map<uint64_t, std::shared_ptr<FilterV2Observer>> observers;
 	std::vector<std::shared_ptr<FilterV2Observer>> retired;
-	std::unordered_set<uint64_t> uncertain_handles;
+	std::unordered_map<uint64_t, std::set<uint64_t>> uncertain_update_serials;
+	size_t uncertain_update_count = 0;
 	bool uncertain_tracking = false;
 };
 
@@ -67,6 +72,8 @@ struct FilterV2Observer {
 	std::mutex update_mutex;
 	std::condition_variable update_cv;
 	uint64_t update_generation = 0;
+	uint64_t last_update_serial_begin = 0;
+	uint64_t last_update_serial_end = 0;
 	bool attached = true;
 };
 
@@ -245,6 +252,21 @@ bool settings_json(obs_source_t *filter, std::string &json)
 
 enum class FilterSignal { Update, Rename, Enabled };
 
+void read_update_serial_range(calldata_t *params, uint64_t &begin, uint64_t &end)
+{
+	begin = 0;
+	end = 0;
+	if (!params)
+		return;
+
+	const long long begin_value = calldata_int(params, "update_serial_begin");
+	const long long end_value = calldata_int(params, "update_serial_end");
+	if (begin_value <= 0 || end_value < begin_value)
+		return;
+	begin = static_cast<uint64_t>(begin_value);
+	end = static_cast<uint64_t>(end_value);
+}
+
 class FilterCallbackScope {
 public:
 	FilterCallbackScope(FilterV2State &state, uint64_t handle) : state_(state)
@@ -303,6 +325,59 @@ void clear_deferred_filter_events(FilterV2State &state)
 	state.deferred_overflow = false;
 }
 
+void clear_uncertain_filter_updates(FilterV2State &state)
+{
+	state.uncertain_update_serials.clear();
+	state.uncertain_update_count = 0;
+}
+
+bool resolve_uncertain_filter_updates_locked(FilterV2State &state, uint64_t handle, uint64_t serial_end)
+{
+	if (serial_end == 0)
+		return false;
+	const auto it = state.uncertain_update_serials.find(handle);
+	if (it == state.uncertain_update_serials.end())
+		return false;
+
+	bool resolved = false;
+	for (auto pending = it->second.begin(); pending != it->second.end() && *pending <= serial_end;) {
+		pending = it->second.erase(pending);
+		if (state.uncertain_update_count > 0)
+			--state.uncertain_update_count;
+		resolved = true;
+	}
+	if (it->second.empty())
+		state.uncertain_update_serials.erase(it);
+	return resolved;
+}
+
+void forget_uncertain_filter_updates_locked(FilterV2State &state, uint64_t handle)
+{
+	const auto it = state.uncertain_update_serials.find(handle);
+	if (it == state.uncertain_update_serials.end())
+		return;
+	if (state.uncertain_update_count >= it->second.size())
+		state.uncertain_update_count -= it->second.size();
+	else
+		state.uncertain_update_count = 0;
+	state.uncertain_update_serials.erase(it);
+}
+
+void remember_uncertain_filter_update_locked(FilterV2State &state, uint64_t handle, uint64_t serial)
+{
+	if (state.uncertain_tracking)
+		return;
+	if (serial == 0 || state.uncertain_update_count >= kMaxFilterUncertainHandles) {
+		clear_uncertain_filter_updates(state);
+		state.uncertain_tracking = true;
+		return;
+	}
+
+	auto &pending = state.uncertain_update_serials[handle];
+	if (pending.insert(serial).second)
+		++state.uncertain_update_count;
+}
+
 DeferredFilterEventSnapshot take_deferred_filter_events(FilterV2State &state, bool wait_for_pre_capture,
 							bool end_capture)
 {
@@ -327,9 +402,13 @@ DeferredFilterEventSnapshot take_deferred_filter_events(FilterV2State &state, bo
 		DeferredFilterEventBatch batch = std::move(state.deferred.front());
 		state.deferred.pop_front();
 		state.deferred_event_count -= batch.events.size();
-		if (state.uncertain_tracking || state.uncertain_handles.contains(batch.handle)) {
+		if (state.uncertain_tracking) {
 			batch.uncertain = true;
-			state.uncertain_handles.erase(batch.handle);
+		} else if (auto uncertain = state.uncertain_update_serials.find(batch.handle);
+			   uncertain != state.uncertain_update_serials.end()) {
+			batch.uncertain = true;
+			if (resolve_uncertain_filter_updates_locked(state, batch.handle, batch.update_serial_end))
+				snapshot.overflow = true;
 		}
 		if (end_capture && state.capture &&
 		    result_has_filter_event(*state.capture, "filter.removed", batch.handle))
@@ -385,6 +464,7 @@ void publish_deferred_filter_snapshot(DeferredFilterEventSnapshot snapshot, Revi
 }
 
 void publish_filter_events(FilterV2State &state, uint64_t handle, uint64_t update_generation,
+			   uint64_t update_serial_begin, uint64_t update_serial_end, bool is_update_signal,
 			   std::vector<RuntimeV2Event> generated)
 {
 	EventDispatcher *events = nullptr;
@@ -397,9 +477,23 @@ void publish_filter_events(FilterV2State &state, uint64_t handle, uint64_t updat
 			return;
 
 		const SourceEventCaptureRoute route = state.capture_gate.route_for_current_thread();
-		const bool uncertain = state.uncertain_tracking || state.uncertain_handles.contains(handle);
-		if (uncertain) {
-			state.uncertain_handles.erase(handle);
+		bool uncertain = false;
+		bool uncertainty_resolved = false;
+		if (is_update_signal) {
+			if (state.uncertain_tracking) {
+				uncertain = true;
+			} else if (state.uncertain_update_serials.contains(handle)) {
+				if (resolve_uncertain_filter_updates_locked(state, handle, update_serial_end)) {
+					if (route != SourceEventCaptureRoute::Direct)
+						state.deferred_overflow = true;
+					uncertainty_resolved = true;
+				} else {
+					uncertain = true;
+				}
+			}
+		}
+
+		if (uncertain || (uncertainty_resolved && route == SourceEventCaptureRoute::Direct)) {
 			if (route == SourceEventCaptureRoute::Capture && state.capture) {
 				state.deferred_overflow = true;
 				state.callback_cv.notify_all();
@@ -420,9 +514,13 @@ void publish_filter_events(FilterV2State &state, uint64_t handle, uint64_t updat
 			else
 				revision = revisions->current();
 			require_resync = true;
+		} else if (generated.empty()) {
+			if (uncertainty_resolved && route != SourceEventCaptureRoute::Direct) {
+				state.deferred_overflow = true;
+				state.callback_cv.notify_all();
+			}
+			return;
 		} else {
-			if (generated.empty())
-				return;
 
 			if (route == SourceEventCaptureRoute::Capture && state.capture) {
 				if (result_has_filter_event(*state.capture, "filter.removed", handle))
@@ -449,7 +547,8 @@ void publish_filter_events(FilterV2State &state, uint64_t handle, uint64_t updat
 				}
 				state.deferred_event_count += generated.size();
 				state.deferred.push_back(
-					DeferredFilterEventBatch{handle, update_generation, false, std::move(generated)});
+					DeferredFilterEventBatch{handle, update_generation, update_serial_begin, update_serial_end, false,
+							std::move(generated)});
 				state.callback_cv.notify_all();
 				return;
 			}
@@ -546,7 +645,7 @@ void collect_filter_ref(obs_source_t *, obs_source_t *child, void *param)
 	}
 }
 
-void collect_filter_signal(FilterV2Observer &observer, FilterSignal signal)
+void collect_filter_signal(FilterV2Observer &observer, FilterSignal signal, calldata_t *params)
 {
 	FilterV2State *state = observer.state;
 	if (!state)
@@ -560,14 +659,20 @@ void collect_filter_signal(FilterV2Observer &observer, FilterSignal signal)
 		return;
 
 	uint64_t update_generation = 0;
+	uint64_t update_serial_begin = 0;
+	uint64_t update_serial_end = 0;
 	if (signal == FilterSignal::Update) {
+		read_update_serial_range(params, update_serial_begin, update_serial_end);
 		bool generation_exhausted = false;
 		{
 			std::lock_guard update_lock(observer.update_mutex);
 			if (observer.update_generation == std::numeric_limits<uint64_t>::max())
 				generation_exhausted = true;
-			else
+			else {
 				update_generation = ++observer.update_generation;
+				observer.last_update_serial_begin = update_serial_begin;
+				observer.last_update_serial_end = update_serial_end;
+			}
 		}
 		if (generation_exhausted) {
 			std::lock_guard state_lock(state->mutex);
@@ -585,7 +690,7 @@ void collect_filter_signal(FilterV2Observer &observer, FilterSignal signal)
 		const bool have_settings = current_settings_json != nullptr;
 		const std::string current_settings = current_settings_json ? current_settings_json : "";
 
-		if (have_settings && current_settings != observer.settings) {
+		if (signal == FilterSignal::Update && have_settings && current_settings != observer.settings) {
 			ObsDataPtr data(obs_data_create());
 			set_handle(data.get(), "filter", observer.handle);
 			set_handle(data.get(), "source", observer.source_id);
@@ -612,7 +717,7 @@ void collect_filter_signal(FilterV2Observer &observer, FilterSignal signal)
 
 		observer.name = current_name;
 		observer.enabled = current_enabled;
-		if (have_settings)
+		if (signal == FilterSignal::Update && have_settings)
 			observer.settings = current_settings;
 	} catch (...) {
 		obs_source_release(filter);
@@ -620,33 +725,38 @@ void collect_filter_signal(FilterV2Observer &observer, FilterSignal signal)
 	}
 
 	obs_source_release(filter);
-	publish_filter_events(*state, observer.handle, update_generation, std::move(generated));
+	for (RuntimeV2Event &event : generated) {
+		event.filter_update_serial_begin = update_serial_begin;
+		event.filter_update_serial_end = update_serial_end;
+	}
+	publish_filter_events(*state, observer.handle, update_generation, update_serial_begin, update_serial_end,
+			      signal == FilterSignal::Update, std::move(generated));
 	if (signal == FilterSignal::Update)
 		observer.update_cv.notify_all();
 }
 
-void filter_update_cb(void *data, calldata_t *)
+void filter_update_cb(void *data, calldata_t *params)
 {
 	try {
-		collect_filter_signal(*static_cast<FilterV2Observer *>(data), FilterSignal::Update);
+		collect_filter_signal(*static_cast<FilterV2Observer *>(data), FilterSignal::Update, params);
 	} catch (...) {
 		std::fprintf(stderr, "obs-engine: filter update event normalization failed\n");
 	}
 }
 
-void filter_rename_cb(void *data, calldata_t *)
+void filter_rename_cb(void *data, calldata_t *params)
 {
 	try {
-		collect_filter_signal(*static_cast<FilterV2Observer *>(data), FilterSignal::Rename);
+		collect_filter_signal(*static_cast<FilterV2Observer *>(data), FilterSignal::Rename, params);
 	} catch (...) {
 		std::fprintf(stderr, "obs-engine: filter rename event normalization failed\n");
 	}
 }
 
-void filter_enabled_cb(void *data, calldata_t *)
+void filter_enabled_cb(void *data, calldata_t *params)
 {
 	try {
-		collect_filter_signal(*static_cast<FilterV2Observer *>(data), FilterSignal::Enabled);
+		collect_filter_signal(*static_cast<FilterV2Observer *>(data), FilterSignal::Enabled, params);
 	} catch (...) {
 		std::fprintf(stderr, "obs-engine: filter enable event normalization failed\n");
 	}
@@ -697,7 +807,7 @@ void remove_filter_observer(FilterV2State *state, uint64_t handle)
 			return;
 		observer = std::move(it->second);
 		state->observers.erase(it);
-		state->uncertain_handles.erase(handle);
+		forget_uncertain_filter_updates_locked(*state, handle);
 	}
 	disconnect_filter_observer(*observer);
 	{
@@ -706,9 +816,18 @@ void remove_filter_observer(FilterV2State *state, uint64_t handle)
 	}
 }
 
-bool filter_settings_event_matches(const RuntimeV2Event &event, uint64_t handle, const std::string &expected_settings)
+bool filter_update_event_covers_serial(const RuntimeV2Event &event, uint64_t serial)
+{
+	return serial != 0 && event.filter_update_serial_begin != 0 &&
+	       event.filter_update_serial_begin <= serial && event.filter_update_serial_end >= serial;
+}
+
+bool filter_settings_event_matches(const RuntimeV2Event &event, uint64_t handle, uint64_t serial,
+				   const std::string &expected_settings)
 {
 	if (event.name != "filter.settingsChanged" || !event.data)
+		return false;
+	if (!filter_update_event_covers_serial(event, serial))
 		return false;
 	uint64_t event_handle = 0;
 	if (!read_handle_field(event.data.get(), "filter", event_handle) || event_handle != handle)
@@ -721,31 +840,34 @@ bool filter_settings_event_matches(const RuntimeV2Event &event, uint64_t handle,
 	return json && expected_settings == json;
 }
 
-bool result_matches_filter_update(const RuntimeV2Result &result, uint64_t handle,
+bool result_matches_filter_update(const RuntimeV2Result &result, uint64_t handle, uint64_t serial,
 					 const std::string &expected_settings)
 {
 	return std::any_of(result.events.begin(), result.events.end(), [&](const RuntimeV2Event &event) {
-		return filter_settings_event_matches(event, handle, expected_settings);
+		return filter_settings_event_matches(event, handle, serial, expected_settings);
 	});
 }
 
 bool batch_matches_filter_update(const DeferredFilterEventBatch &batch, uint64_t handle, uint64_t baseline_generation,
-					 const std::string &expected_settings)
+					 uint64_t serial, const std::string &expected_settings)
 {
-	if (batch.handle != handle || batch.uncertain || batch.update_generation <= baseline_generation)
+	if (batch.handle != handle || batch.uncertain || batch.update_generation <= baseline_generation || serial == 0 ||
+	    batch.update_serial_begin == 0 || batch.update_serial_begin > serial || batch.update_serial_end < serial)
 		return false;
 	return std::any_of(batch.events.begin(), batch.events.end(), [&](const RuntimeV2Event &event) {
-		return filter_settings_event_matches(event, handle, expected_settings);
+		return filter_settings_event_matches(event, handle, serial, expected_settings);
 	});
 }
 
 bool promote_deferred_filter_update(FilterV2State &state, uint64_t handle, uint64_t baseline_generation,
-					    const std::string &expected_settings, RuntimeV2Result &result)
+					    uint64_t serial, const std::string &expected_settings, RuntimeV2Result &result)
 {
 	std::lock_guard lock(state.mutex);
 	for (auto it = state.deferred.begin(); it != state.deferred.end(); ++it) {
-		if (!batch_matches_filter_update(*it, handle, baseline_generation, expected_settings))
+		if (!batch_matches_filter_update(*it, handle, baseline_generation, serial, expected_settings))
 			continue;
+		if (state.uncertain_tracking || state.uncertain_update_serials.contains(handle))
+			return false;
 		const size_t event_count = it->events.size();
 		for (RuntimeV2Event &event : it->events) {
 			if (!result_has_filter_event(result, event.name, handle))
@@ -759,7 +881,7 @@ bool promote_deferred_filter_update(FilterV2State &state, uint64_t handle, uint6
 }
 
 bool settle_deferred_filter_update(FilterV2State &state, uint64_t handle, uint64_t baseline_generation,
-					   const std::string &expected_settings, RuntimeV2Result &result)
+					   uint64_t serial, const std::string &expected_settings, RuntimeV2Result &result)
 {
 	std::shared_ptr<FilterV2Observer> observer;
 	{
@@ -778,12 +900,12 @@ bool settle_deferred_filter_update(FilterV2State &state, uint64_t handle, uint64
 		observed_generation = observer->update_generation;
 	}
 
-	if (result_matches_filter_update(result, handle, expected_settings)) {
+	if (result_matches_filter_update(result, handle, serial, expected_settings)) {
 		std::lock_guard lock(observer->update_mutex);
 		if (observer->attached && observer->update_generation > baseline_generation)
 			return true;
 	}
-	if (promote_deferred_filter_update(state, handle, baseline_generation, expected_settings, result))
+	if (promote_deferred_filter_update(state, handle, baseline_generation, serial, expected_settings, result))
 		return true;
 
 	const auto deadline = std::chrono::steady_clock::now() + kFilterUpdateSettleTimeout;
@@ -798,22 +920,23 @@ bool settle_deferred_filter_update(FilterV2State &state, uint64_t handle, uint64
 				break;
 			observed_generation = observer->update_generation;
 		}
-		if (result_matches_filter_update(result, handle, expected_settings)) {
+		if (result_matches_filter_update(result, handle, serial, expected_settings)) {
 			std::lock_guard lock(observer->update_mutex);
 			if (observer->attached && observer->update_generation > baseline_generation)
 				return true;
 		}
-		if (promote_deferred_filter_update(state, handle, baseline_generation, expected_settings, result))
+		if (promote_deferred_filter_update(state, handle, baseline_generation, serial, expected_settings, result))
 			return true;
 	}
 
-	return result_matches_filter_update(result, handle, expected_settings) && [&] {
+	return result_matches_filter_update(result, handle, serial, expected_settings) && [&] {
 		std::lock_guard lock(observer->update_mutex);
 		return observer->attached && observer->update_generation > baseline_generation;
 	}();
 }
 
-void mark_filter_settlement_lost(FilterV2State &state, uint64_t handle, uint64_t baseline_generation)
+void mark_filter_settlement_lost(FilterV2State &state, uint64_t handle, uint64_t baseline_generation,
+					 uint64_t update_serial)
 {
 	std::shared_ptr<FilterV2Observer> observer;
 	{
@@ -825,7 +948,8 @@ void mark_filter_settlement_lost(FilterV2State &state, uint64_t handle, uint64_t
 	bool callback_seen = false;
 	if (observer) {
 		std::lock_guard update_lock(observer->update_mutex);
-		callback_seen = observer->update_generation > baseline_generation;
+		callback_seen = observer->update_generation > baseline_generation && update_serial != 0 &&
+				observer->last_update_serial_end >= update_serial;
 	}
 
 	std::lock_guard lock(state.mutex);
@@ -833,14 +957,9 @@ void mark_filter_settlement_lost(FilterV2State &state, uint64_t handle, uint64_t
 		// The callback ran but its canonical event was lost to the overflow
 		// boundary. The resync marker below is sufficient; do not quarantine a
 		// future request after the observed completion.
-		state.uncertain_handles.erase(handle);
+		resolve_uncertain_filter_updates_locked(state, handle, update_serial);
 	} else if (!state.uncertain_tracking) {
-		if (state.uncertain_handles.size() >= kMaxFilterUncertainHandles) {
-			state.uncertain_handles.clear();
-			state.uncertain_tracking = true;
-		} else {
-			state.uncertain_handles.insert(handle);
-		}
+		remember_uncertain_filter_update_locked(state, handle, update_serial);
 	}
 	state.deferred_overflow = true;
 	state.callback_cv.notify_all();
@@ -1115,7 +1234,7 @@ void Engine::v2_prepare_filter_shutdown() noexcept
 			filter_v2_state_->capture = nullptr;
 			filter_v2_state_->capture_gate.end();
 			clear_deferred_filter_events(*filter_v2_state_);
-			filter_v2_state_->uncertain_handles.clear();
+			clear_uncertain_filter_updates(*filter_v2_state_);
 			filter_v2_state_->uncertain_tracking = false;
 			filter_v2_state_->callback_cv.notify_all();
 			filter_v2_state_->revisions = nullptr;
@@ -1184,7 +1303,7 @@ void Engine::v2_filter_prepare_parent_removal(uint64_t source_id, RuntimeV2Resul
 
 bool Engine::v2_settle_filter_mutation(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
-	if (!result.mutated || !filter_v2_state_ || !result.has_filter_update_baseline)
+	if (!result.mutated || !filter_v2_state_ || !result.has_filter_update_baseline || result.filter_update_serial == 0)
 		return fail(error, "internal_error", "filter settings update has no observer baseline");
 	uint64_t handle = 0;
 	if (!read_handle_field(params, "filter", handle))
@@ -1199,12 +1318,14 @@ bool Engine::v2_settle_filter_mutation(obs_data_t *params, RuntimeV2Result &resu
 	const char *json = current ? obs_data_get_json(current.get()) : nullptr;
 	const std::string expected = json ? json : "";
 	if (expected.empty() ||
-	    !settle_deferred_filter_update(*filter_v2_state_, handle, result.filter_update_generation, expected, result)) {
+	    !settle_deferred_filter_update(*filter_v2_state_, handle, result.filter_update_generation,
+					     result.filter_update_serial, expected, result)) {
 		std::fprintf(stderr,
 			     "obs-engine: timed out settling deferred update for filter %llu; controller resync required\n",
 			     static_cast<unsigned long long>(handle));
 		std::fflush(stderr);
-		mark_filter_settlement_lost(*filter_v2_state_, handle, result.filter_update_generation);
+		mark_filter_settlement_lost(*filter_v2_state_, handle, result.filter_update_generation,
+					     result.filter_update_serial);
 		return fail(error, "timeout", "filter update was not observed before the settlement deadline");
 	}
 
@@ -1578,7 +1699,10 @@ bool Engine::v2_filter_patch_settings(obs_data_t *params, RuntimeV2Result &resul
 	v2_sync_filter_observers();
 	if (!v2_filter_record_update_baseline(handle, result))
 		return fail(error, "internal_error", "filter update observer is not available");
-	obs_source_update(it->second.filter, patch.get());
+	uint64_t update_serial = 0;
+	if (!obs_source_update_tracked(it->second.filter, patch.get(), &update_serial) || update_serial == 0)
+		return fail(error, "internal_error", "filter update could not obtain a deferred-update identity");
+	result.filter_update_serial = update_serial;
 	ObsDataPtr settings(obs_source_get_settings(it->second.filter));
 	if (!settings)
 		return fail(error, "obs_error", "could not read filter settings after update");
@@ -1618,7 +1742,10 @@ bool Engine::v2_filter_replace_settings(obs_data_t *params, RuntimeV2Result &res
 	v2_sync_filter_observers();
 	if (!v2_filter_record_update_baseline(handle, result))
 		return fail(error, "internal_error", "filter update observer is not available");
-	obs_source_reset_settings(it->second.filter, replacement.get());
+	uint64_t update_serial = 0;
+	if (!obs_source_reset_settings_tracked(it->second.filter, replacement.get(), &update_serial) || update_serial == 0)
+		return fail(error, "internal_error", "filter replacement could not obtain a deferred-update identity");
+	result.filter_update_serial = update_serial;
 	ObsDataPtr settings(obs_source_get_settings(it->second.filter));
 	if (!settings)
 		return fail(error, "obs_error", "could not read filter settings after replacement");
