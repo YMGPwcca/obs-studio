@@ -141,68 +141,93 @@ enum class FilterMethod {
 	Unknown,
 };
 
+struct FilterMethodName {
+	std::string_view name;
+	FilterMethod method;
+};
+
+constexpr FilterMethodName kFilterMethodNames[] = {
+	{"filter.kindList", FilterMethod::KindList},
+	{"filter.kindDefaults", FilterMethod::KindDefaults},
+	{"filter.kindProperties", FilterMethod::KindProperties},
+	{"filter.list", FilterMethod::List},
+	{"filter.get", FilterMethod::Get},
+	{"filter.create", FilterMethod::Create},
+	{"filter.remove", FilterMethod::Remove},
+	{"filter.rename", FilterMethod::Rename},
+	{"filter.duplicate", FilterMethod::Duplicate},
+	{"filter.getSettings", FilterMethod::GetSettings},
+	{"filter.patchSettings", FilterMethod::PatchSettings},
+	{"filter.replaceSettings", FilterMethod::ReplaceSettings},
+	{"filter.setEnabled", FilterMethod::SetEnabled},
+	{"filter.getEnabled", FilterMethod::GetEnabled},
+	{"filter.setOrder", FilterMethod::SetOrder},
+	{"filter.moveUp", FilterMethod::MoveUp},
+	{"filter.moveDown", FilterMethod::MoveDown},
+	{"filter.moveTop", FilterMethod::MoveTop},
+	{"filter.moveBottom", FilterMethod::MoveBottom},
+};
+
+constexpr FilterMethod kMutatingFilterMethods[] = {
+	FilterMethod::Create,
+	FilterMethod::Remove,
+	FilterMethod::Rename,
+	FilterMethod::Duplicate,
+	FilterMethod::PatchSettings,
+	FilterMethod::ReplaceSettings,
+	FilterMethod::SetEnabled,
+	FilterMethod::SetOrder,
+	FilterMethod::MoveUp,
+	FilterMethod::MoveDown,
+	FilterMethod::MoveTop,
+	FilterMethod::MoveBottom,
+};
+
+using FilterMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
+
+struct FilterMethodDescriptor {
+	FilterMethod method;
+	FilterMethodHandler handler;
+};
+
+constexpr FilterMethodDescriptor kFilterMethods[] = {
+	{FilterMethod::KindList, &Engine::v2_filter_kind_list},
+	{FilterMethod::KindDefaults, &Engine::v2_filter_kind_defaults},
+	{FilterMethod::KindProperties, &Engine::v2_filter_kind_properties},
+	{FilterMethod::List, &Engine::v2_filter_list},
+	{FilterMethod::Get, &Engine::v2_filter_get},
+	{FilterMethod::Create, &Engine::v2_filter_create},
+	{FilterMethod::Remove, &Engine::v2_filter_remove},
+	{FilterMethod::Rename, &Engine::v2_filter_rename},
+	{FilterMethod::Duplicate, &Engine::v2_filter_duplicate},
+	{FilterMethod::GetSettings, &Engine::v2_filter_get_settings},
+	{FilterMethod::PatchSettings, &Engine::v2_filter_patch_settings},
+	{FilterMethod::ReplaceSettings, &Engine::v2_filter_replace_settings},
+	{FilterMethod::SetEnabled, &Engine::v2_filter_set_enabled},
+	{FilterMethod::GetEnabled, &Engine::v2_filter_get_enabled},
+	{FilterMethod::SetOrder, &Engine::v2_filter_set_order},
+	{FilterMethod::MoveUp, &Engine::v2_filter_move_up},
+	{FilterMethod::MoveDown, &Engine::v2_filter_move_down},
+	{FilterMethod::MoveTop, &Engine::v2_filter_move_top},
+	{FilterMethod::MoveBottom, &Engine::v2_filter_move_bottom},
+};
+
 FilterMethod classify_filter_method(std::string_view method)
 {
-	if (method == "filter.kindList")
-		return FilterMethod::KindList;
-	if (method == "filter.kindDefaults")
-		return FilterMethod::KindDefaults;
-	if (method == "filter.kindProperties")
-		return FilterMethod::KindProperties;
-	if (method == "filter.list")
-		return FilterMethod::List;
-	if (method == "filter.get")
-		return FilterMethod::Get;
-	if (method == "filter.create")
-		return FilterMethod::Create;
-	if (method == "filter.remove")
-		return FilterMethod::Remove;
-	if (method == "filter.rename")
-		return FilterMethod::Rename;
-	if (method == "filter.duplicate")
-		return FilterMethod::Duplicate;
-	if (method == "filter.getSettings")
-		return FilterMethod::GetSettings;
-	if (method == "filter.patchSettings")
-		return FilterMethod::PatchSettings;
-	if (method == "filter.replaceSettings")
-		return FilterMethod::ReplaceSettings;
-	if (method == "filter.setEnabled")
-		return FilterMethod::SetEnabled;
-	if (method == "filter.getEnabled")
-		return FilterMethod::GetEnabled;
-	if (method == "filter.setOrder")
-		return FilterMethod::SetOrder;
-	if (method == "filter.moveUp")
-		return FilterMethod::MoveUp;
-	if (method == "filter.moveDown")
-		return FilterMethod::MoveDown;
-	if (method == "filter.moveTop")
-		return FilterMethod::MoveTop;
-	if (method == "filter.moveBottom")
-		return FilterMethod::MoveBottom;
+	for (const FilterMethodName &entry : kFilterMethodNames) {
+		if (entry.name == method)
+			return entry.method;
+	}
 	return FilterMethod::Unknown;
 }
 
 bool is_mutating(FilterMethod method)
 {
-	switch (method) {
-	case FilterMethod::Create:
-	case FilterMethod::Remove:
-	case FilterMethod::Rename:
-	case FilterMethod::Duplicate:
-	case FilterMethod::PatchSettings:
-	case FilterMethod::ReplaceSettings:
-	case FilterMethod::SetEnabled:
-	case FilterMethod::SetOrder:
-	case FilterMethod::MoveUp:
-	case FilterMethod::MoveDown:
-	case FilterMethod::MoveTop:
-	case FilterMethod::MoveBottom:
-		return true;
-	default:
-		return false;
+	for (const FilterMethod candidate : kMutatingFilterMethods) {
+		if (candidate == method)
+			return true;
 	}
+	return false;
 }
 
 bool needs_settings_settle(FilterMethod method)
@@ -213,50 +238,13 @@ bool needs_settings_settle(FilterMethod method)
 bool execute_filter_method(Engine &engine, FilterMethod method, obs_data_t *params, RuntimeV2Result &result,
 			   RuntimeV2Error &error)
 {
-	switch (method) {
-	case FilterMethod::KindList:
-		return engine.v2_filter_kind_list(params, result, error);
-	case FilterMethod::KindDefaults:
-		return engine.v2_filter_kind_defaults(params, result, error);
-	case FilterMethod::KindProperties:
-		return engine.v2_filter_kind_properties(params, result, error);
-	case FilterMethod::List:
-		return engine.v2_filter_list(params, result, error);
-	case FilterMethod::Get:
-		return engine.v2_filter_get(params, result, error);
-	case FilterMethod::Create:
-		return engine.v2_filter_create(params, result, error);
-	case FilterMethod::Remove:
-		return engine.v2_filter_remove(params, result, error);
-	case FilterMethod::Rename:
-		return engine.v2_filter_rename(params, result, error);
-	case FilterMethod::Duplicate:
-		return engine.v2_filter_duplicate(params, result, error);
-	case FilterMethod::GetSettings:
-		return engine.v2_filter_get_settings(params, result, error);
-	case FilterMethod::PatchSettings:
-		return engine.v2_filter_patch_settings(params, result, error);
-	case FilterMethod::ReplaceSettings:
-		return engine.v2_filter_replace_settings(params, result, error);
-	case FilterMethod::SetEnabled:
-		return engine.v2_filter_set_enabled(params, result, error);
-	case FilterMethod::GetEnabled:
-		return engine.v2_filter_get_enabled(params, result, error);
-	case FilterMethod::SetOrder:
-		return engine.v2_filter_set_order(params, result, error);
-	case FilterMethod::MoveUp:
-		return engine.v2_filter_move_up(params, result, error);
-	case FilterMethod::MoveDown:
-		return engine.v2_filter_move_down(params, result, error);
-	case FilterMethod::MoveTop:
-		return engine.v2_filter_move_top(params, result, error);
-	case FilterMethod::MoveBottom:
-		return engine.v2_filter_move_bottom(params, result, error);
-	default:
-		error.code = "internal_error";
-		error.message = "filter method dispatch failed";
-		return false;
+	for (const FilterMethodDescriptor &entry : kFilterMethods) {
+		if (entry.method == method)
+			return (engine.*entry.handler)(params, result, error);
 	}
+	error.code = "internal_error";
+	error.message = "filter method dispatch failed";
+	return false;
 }
 
 ObsArrayPtr make_capabilities_array()
@@ -345,6 +333,43 @@ private:
 	bool active_ = true;
 };
 
+bool prepare_filter_mutation(const V2Request &request, bool mutating, Engine &engine, RevisionState &revisions,
+				     RuntimeV2Result &result,
+				     std::optional<FilterCaptureScope> &capture,
+				     std::optional<RevisionState::MutationGuard> &guard)
+{
+	if (!mutating)
+		return true;
+	capture.emplace(engine, result);
+	guard.emplace(revisions.lock_mutation());
+	engine.v2_drain_deferred_source_events(*guard);
+
+	if (!validate_mutation_guard(request, *guard)) {
+		capture->flush(*guard);
+		return false;
+	}
+	if (guard->can_commit_mutation())
+		return true;
+	send_v2_error(request.id, "internal_error", "engine revision space is exhausted", nullptr, guard->current());
+	capture->flush(*guard);
+	return false;
+}
+
+bool commit_filter_result(const V2Request &request, RuntimeV2Result &result, RevisionState &revisions,
+				  std::optional<RevisionState::MutationGuard> &guard, uint64_t &revision)
+{
+	revision = guard ? guard->current() : revisions.current();
+	if (!result.mutated)
+		return true;
+	if (guard) {
+		revision = guard->commit_mutation();
+		return true;
+	}
+	send_v2_error(request.id, "internal_error", "read-only filter method unexpectedly mutated engine state", nullptr,
+			      revisions.current());
+	return false;
+}
+
 bool handle_capability_request(RevisionState &revisions, const V2Request &request)
 {
 	if (reject_guard_on_read(request, revisions.current()))
@@ -387,22 +412,8 @@ bool handle_filter_request(Engine &engine, RevisionState &revisions, EventDispat
 	std::optional<FilterCaptureScope> capture;
 	std::optional<RevisionState::MutationGuard> guard;
 
-	if (mutating) {
-		capture.emplace(engine, result);
-		guard.emplace(revisions.lock_mutation());
-		engine.v2_drain_deferred_source_events(*guard);
-
-		if (!validate_mutation_guard(request, *guard)) {
-			capture->flush(*guard);
-			return true;
-		}
-		if (!guard->can_commit_mutation()) {
-			send_v2_error(request.id, "internal_error", "engine revision space is exhausted", nullptr,
-				      guard->current());
-			capture->flush(*guard);
-			return true;
-		}
-	}
+	if (!prepare_filter_mutation(request, mutating, engine, revisions, result, capture, guard))
+		return true;
 
 	bool succeeded = execute_filter_method(engine, method, request.params.get(), result, error);
 	if (succeeded && capture && needs_settings_settle(method) && result.mutated)
@@ -420,15 +431,9 @@ bool handle_filter_request(Engine &engine, RevisionState &revisions, EventDispat
 		return true;
 	}
 
-	uint64_t revision = guard ? guard->current() : revisions.current();
-	if (result.mutated) {
-		if (!guard) {
-			send_v2_error(request.id, "internal_error", "read-only filter method unexpectedly mutated engine state",
-			      nullptr, revisions.current());
-			return true;
-		}
-		revision = guard->commit_mutation();
-	}
+	uint64_t revision = 0;
+	if (!commit_filter_result(request, result, revisions, guard, revision))
+		return true;
 
 	send_v2_ok(request.id, result.data.get(), revision);
 	publish_runtime_events(events, revision, result);

@@ -463,6 +463,85 @@ void publish_deferred_filter_snapshot(DeferredFilterEventSnapshot snapshot, Revi
 	}
 }
 
+bool update_filter_uncertainty_locked(FilterV2State &state, uint64_t handle, uint64_t serial_end,
+					     SourceEventCaptureRoute route, bool &resolved)
+{
+	resolved = false;
+	if (state.uncertain_tracking)
+		return true;
+	if (!state.uncertain_update_serials.contains(handle))
+		return false;
+	if (!resolve_uncertain_filter_updates_locked(state, handle, serial_end))
+		return true;
+	resolved = true;
+	if (route != SourceEventCaptureRoute::Direct)
+		state.deferred_overflow = true;
+	return false;
+}
+
+bool capture_filter_events_locked(FilterV2State &state, uint64_t handle, std::vector<RuntimeV2Event> generated)
+{
+	if (!state.capture)
+		return false;
+	if (result_has_filter_event(*state.capture, "filter.removed", handle))
+		return true;
+	for (RuntimeV2Event &event : generated) {
+		if (!result_has_filter_event(*state.capture, event.name, handle))
+			state.capture->events.push_back(std::move(event));
+	}
+	state.capture->mutated = true;
+	return true;
+}
+
+bool queue_deferred_filter_events_locked(FilterV2State &state, uint64_t handle, uint64_t update_generation,
+					 uint64_t update_serial_begin, uint64_t update_serial_end,
+					 std::vector<RuntimeV2Event> generated)
+{
+	if (state.deferred_overflow)
+		return true;
+	if (state.deferred.size() >= kDefaultEventQueueCapacity ||
+	    generated.size() > kDefaultEventQueueCapacity ||
+	    state.deferred_event_count > kDefaultEventQueueCapacity - generated.size()) {
+		state.deferred.clear();
+		state.deferred_event_count = 0;
+		state.deferred_overflow = true;
+		state.callback_cv.notify_all();
+		return true;
+	}
+	state.deferred_event_count += generated.size();
+	state.deferred.push_back(DeferredFilterEventBatch{handle, update_generation, update_serial_begin,
+								 update_serial_end, false, std::move(generated)});
+	state.callback_cv.notify_all();
+	return true;
+}
+
+bool commit_direct_filter_event_locked(FilterV2State &state, RevisionState *&revisions, EventDispatcher *&events,
+					       uint64_t &revision)
+{
+	revisions = state.revisions;
+	events = state.events;
+	if (!revisions || !events)
+		return false;
+	if (!revisions->can_commit_mutation()) {
+		std::fprintf(stderr, "obs-engine: filter event requires resync because revision space is exhausted\n");
+		std::fflush(stderr);
+		events->require_resync_due_to_overflow(revisions->current());
+		return false;
+	}
+	revision = revisions->commit_mutation();
+	return true;
+}
+
+bool quarantine_uncertain_filter_event_locked(FilterV2State &state, SourceEventCaptureRoute route)
+{
+	if ((route == SourceEventCaptureRoute::Capture && state.capture) || route == SourceEventCaptureRoute::Defer) {
+		state.deferred_overflow = true;
+		state.callback_cv.notify_all();
+		return true;
+	}
+	return false;
+}
+
 void publish_filter_events(FilterV2State &state, uint64_t handle, uint64_t update_generation,
 			   uint64_t update_serial_begin, uint64_t update_serial_end, bool is_update_signal,
 			   std::vector<RuntimeV2Event> generated)
@@ -477,42 +556,16 @@ void publish_filter_events(FilterV2State &state, uint64_t handle, uint64_t updat
 			return;
 
 		const SourceEventCaptureRoute route = state.capture_gate.route_for_current_thread();
-		bool uncertain = false;
 		bool uncertainty_resolved = false;
-		if (is_update_signal) {
-			if (state.uncertain_tracking) {
-				uncertain = true;
-			} else if (state.uncertain_update_serials.contains(handle)) {
-				if (resolve_uncertain_filter_updates_locked(state, handle, update_serial_end)) {
-					if (route != SourceEventCaptureRoute::Direct)
-						state.deferred_overflow = true;
-					uncertainty_resolved = true;
-				} else {
-					uncertain = true;
-				}
-			}
-		}
+		const bool uncertain = is_update_signal &&
+			update_filter_uncertainty_locked(state, handle, update_serial_end, route, uncertainty_resolved);
 
 		if (uncertain || (uncertainty_resolved && route == SourceEventCaptureRoute::Direct)) {
-			if (route == SourceEventCaptureRoute::Capture && state.capture) {
-				state.deferred_overflow = true;
-				state.callback_cv.notify_all();
+			if (quarantine_uncertain_filter_event_locked(state, route))
 				return;
-			}
-			if (route == SourceEventCaptureRoute::Defer) {
-				state.deferred_overflow = true;
-				state.callback_cv.notify_all();
-				return;
-			}
 
-			revisions = state.revisions;
-			events = state.events;
-			if (!revisions || !events)
+			if (!commit_direct_filter_event_locked(state, revisions, events, revision))
 				return;
-			if (revisions->can_commit_mutation())
-				revision = revisions->commit_mutation();
-			else
-				revision = revisions->current();
 			require_resync = true;
 		} else if (generated.empty()) {
 			if (uncertainty_resolved && route != SourceEventCaptureRoute::Direct) {
@@ -522,48 +575,18 @@ void publish_filter_events(FilterV2State &state, uint64_t handle, uint64_t updat
 			return;
 		} else {
 
-			if (route == SourceEventCaptureRoute::Capture && state.capture) {
-				if (result_has_filter_event(*state.capture, "filter.removed", handle))
-					return;
-				for (RuntimeV2Event &event : generated) {
-					if (!result_has_filter_event(*state.capture, event.name, handle))
-						state.capture->events.push_back(std::move(event));
-				}
-				state.capture->mutated = true;
+			if (route == SourceEventCaptureRoute::Capture && capture_filter_events_locked(state, handle,
+										  std::move(generated)))
 				return;
-			}
 
 			if (route == SourceEventCaptureRoute::Defer) {
-				if (state.deferred_overflow)
-					return;
-				if (state.deferred.size() >= kDefaultEventQueueCapacity ||
-				    generated.size() > kDefaultEventQueueCapacity ||
-				    state.deferred_event_count > kDefaultEventQueueCapacity - generated.size()) {
-					state.deferred.clear();
-					state.deferred_event_count = 0;
-					state.deferred_overflow = true;
-					state.callback_cv.notify_all();
-					return;
-				}
-				state.deferred_event_count += generated.size();
-				state.deferred.push_back(
-					DeferredFilterEventBatch{handle, update_generation, update_serial_begin, update_serial_end, false,
-							std::move(generated)});
-				state.callback_cv.notify_all();
+				queue_deferred_filter_events_locked(state, handle, update_generation, update_serial_begin,
+								    update_serial_end, std::move(generated));
 				return;
 			}
 
-			revisions = state.revisions;
-			events = state.events;
-			if (!revisions || !events)
+			if (!commit_direct_filter_event_locked(state, revisions, events, revision))
 				return;
-			if (!revisions->can_commit_mutation()) {
-				std::fprintf(stderr, "obs-engine: filter event requires resync because revision space is exhausted\n");
-				std::fflush(stderr);
-				events->require_resync_due_to_overflow(revisions->current());
-				return;
-			}
-			revision = revisions->commit_mutation();
 		}
 	}
 
@@ -593,6 +616,27 @@ ObsDataPtr make_filter_summary(uint64_t handle, const FilterEntry &entry, obs_so
 }
 
 } // namespace
+
+void Engine::v2_register_filter(uint64_t handle, uint64_t source_id, obs_source_t *filter)
+{
+	bool inserted_filter = false;
+	bool inserted_handle = false;
+	try {
+		if (!filters_.emplace(handle, FilterEntry{source_id, filter}).second)
+			throw std::runtime_error("filter handle collision");
+		inserted_filter = true;
+		inserted_handle = filter_handles_.emplace(filter, handle).second;
+		if (!inserted_handle)
+			throw std::runtime_error("filter object was already registered");
+	} catch (...) {
+		if (inserted_handle)
+			filter_handles_.erase(filter);
+		if (inserted_filter)
+			filters_.erase(handle);
+		obs_source_release(filter);
+		throw;
+	}
+}
 
 ObsDataPtr Engine::v2_filter_order_data(uint64_t source_id, uint64_t changed, obs_source_t *parent) const
 {
@@ -645,6 +689,69 @@ void collect_filter_ref(obs_source_t *, obs_source_t *child, void *param)
 	}
 }
 
+bool advance_filter_update_generation(FilterV2State &state, FilterV2Observer &observer, calldata_t *params,
+					      uint64_t &generation, uint64_t &serial_begin, uint64_t &serial_end)
+{
+	read_update_serial_range(params, serial_begin, serial_end);
+	{
+		std::lock_guard update_lock(observer.update_mutex);
+		if (observer.update_generation == std::numeric_limits<uint64_t>::max()) {
+			generation = 0;
+		} else {
+			generation = ++observer.update_generation;
+			observer.last_update_serial_begin = serial_begin;
+			observer.last_update_serial_end = serial_end;
+			return true;
+		}
+	}
+	std::lock_guard state_lock(state.mutex);
+	state.uncertain_tracking = true;
+	return false;
+}
+
+ObsDataPtr make_filter_event_data(const FilterV2Observer &observer)
+{
+	ObsDataPtr data(obs_data_create());
+	set_handle(data.get(), "filter", observer.handle);
+	set_handle(data.get(), "source", observer.source_id);
+	return data;
+}
+
+void collect_filter_state_events(FilterV2Observer &observer, FilterSignal signal, obs_source_t *filter,
+					 std::vector<RuntimeV2Event> &generated)
+{
+	std::lock_guard cache_lock(observer.cache_mutex);
+	const char *name = obs_source_get_name(filter);
+	const std::string current_name = name ? name : "";
+	const bool current_enabled = obs_source_enabled(filter);
+	ObsDataPtr current_settings_data(obs_source_get_settings(filter));
+	const char *current_settings_json = current_settings_data ? obs_data_get_json(current_settings_data.get()) : nullptr;
+	const bool have_settings = current_settings_json != nullptr;
+	const std::string current_settings = current_settings_json ? current_settings_json : "";
+
+	if (signal == FilterSignal::Update && have_settings && current_settings != observer.settings) {
+		ObsDataPtr data = make_filter_event_data(observer);
+		obs_data_set_obj(data.get(), "settings", current_settings_data.get());
+		generated.push_back(RuntimeV2Event{"filter.settingsChanged", std::move(data)});
+	}
+	if (current_name != observer.name) {
+		ObsDataPtr data = make_filter_event_data(observer);
+		obs_data_set_string(data.get(), "name", current_name.c_str());
+		obs_data_set_string(data.get(), "previousName", observer.name.c_str());
+		generated.push_back(RuntimeV2Event{"filter.renamed", std::move(data)});
+	}
+	if (current_enabled != observer.enabled) {
+		ObsDataPtr data = make_filter_event_data(observer);
+		obs_data_set_bool(data.get(), "enabled", current_enabled);
+		generated.push_back(RuntimeV2Event{"filter.enabledChanged", std::move(data)});
+	}
+
+	observer.name = current_name;
+	observer.enabled = current_enabled;
+	if (signal == FilterSignal::Update && have_settings)
+		observer.settings = current_settings;
+}
+
 void collect_filter_signal(FilterV2Observer &observer, FilterSignal signal, calldata_t *params)
 {
 	FilterV2State *state = observer.state;
@@ -661,64 +768,13 @@ void collect_filter_signal(FilterV2Observer &observer, FilterSignal signal, call
 	uint64_t update_generation = 0;
 	uint64_t update_serial_begin = 0;
 	uint64_t update_serial_end = 0;
-	if (signal == FilterSignal::Update) {
-		read_update_serial_range(params, update_serial_begin, update_serial_end);
-		bool generation_exhausted = false;
-		{
-			std::lock_guard update_lock(observer.update_mutex);
-			if (observer.update_generation == std::numeric_limits<uint64_t>::max())
-				generation_exhausted = true;
-			else {
-				update_generation = ++observer.update_generation;
-				observer.last_update_serial_begin = update_serial_begin;
-				observer.last_update_serial_end = update_serial_end;
-			}
-		}
-		if (generation_exhausted) {
-			std::lock_guard state_lock(state->mutex);
-			state->uncertain_tracking = true;
-		}
-	}
+	if (signal == FilterSignal::Update)
+		advance_filter_update_generation(*state, observer, params, update_generation, update_serial_begin,
+						 update_serial_end);
 
 	std::vector<RuntimeV2Event> generated;
 	try {
-		std::lock_guard cache_lock(observer.cache_mutex);
-		const std::string current_name = obs_source_get_name(filter) ? obs_source_get_name(filter) : "";
-		const bool current_enabled = obs_source_enabled(filter);
-		ObsDataPtr current_settings_data(obs_source_get_settings(filter));
-		const char *current_settings_json = current_settings_data ? obs_data_get_json(current_settings_data.get()) : nullptr;
-		const bool have_settings = current_settings_json != nullptr;
-		const std::string current_settings = current_settings_json ? current_settings_json : "";
-
-		if (signal == FilterSignal::Update && have_settings && current_settings != observer.settings) {
-			ObsDataPtr data(obs_data_create());
-			set_handle(data.get(), "filter", observer.handle);
-			set_handle(data.get(), "source", observer.source_id);
-			obs_data_set_obj(data.get(), "settings", current_settings_data.get());
-			generated.push_back(RuntimeV2Event{"filter.settingsChanged", std::move(data)});
-		}
-
-		if (current_name != observer.name) {
-			ObsDataPtr data(obs_data_create());
-			set_handle(data.get(), "filter", observer.handle);
-			set_handle(data.get(), "source", observer.source_id);
-			obs_data_set_string(data.get(), "name", current_name.c_str());
-			obs_data_set_string(data.get(), "previousName", observer.name.c_str());
-			generated.push_back(RuntimeV2Event{"filter.renamed", std::move(data)});
-		}
-
-		if (current_enabled != observer.enabled) {
-			ObsDataPtr data(obs_data_create());
-			set_handle(data.get(), "filter", observer.handle);
-			set_handle(data.get(), "source", observer.source_id);
-			obs_data_set_bool(data.get(), "enabled", current_enabled);
-			generated.push_back(RuntimeV2Event{"filter.enabledChanged", std::move(data)});
-		}
-
-		observer.name = current_name;
-		observer.enabled = current_enabled;
-		if (signal == FilterSignal::Update && have_settings)
-			observer.settings = current_settings;
+		collect_filter_state_events(observer, signal, filter, generated);
 	} catch (...) {
 		obs_source_release(filter);
 		throw;
@@ -1055,26 +1111,39 @@ void Engine::v2_filter_register_source_filters(uint64_t source_id, obs_source_t 
 			filter_handles_.erase(known);
 		}
 
-		const uint64_t handle = allocate_handle();
-		bool inserted_filter = false;
-		bool inserted_handle = false;
-		try {
-			if (!filters_.emplace(handle, FilterEntry{source_id, filter}).second)
-				throw std::runtime_error("filter handle collision");
-			inserted_filter = true;
-			inserted_handle = filter_handles_.emplace(filter, handle).second;
-			if (!inserted_handle)
-				throw std::runtime_error("filter object was already registered");
-		} catch (...) {
-			if (inserted_handle)
-				filter_handles_.erase(filter);
-			if (inserted_filter)
-				filters_.erase(handle);
-			obs_source_release(filter);
-			throw;
-		}
-
+		v2_register_filter(allocate_handle(), source_id, filter);
 	}
+}
+
+void Engine::v2_add_filter_observer(uint64_t handle)
+{
+	if (!filter_v2_state_)
+		return;
+	auto it = filters_.find(handle);
+	if (it == filters_.end())
+		return;
+
+	auto observer = std::make_shared<FilterV2Observer>();
+	observer->state = filter_v2_state_.get();
+	observer->handle = handle;
+	observer->source_id = it->second.source_id;
+	observer->weak = obs_source_get_weak_source(it->second.filter);
+	observer->name = obs_source_get_name(it->second.filter) ? obs_source_get_name(it->second.filter) : "";
+	observer->enabled = obs_source_enabled(it->second.filter);
+	settings_json(it->second.filter, observer->settings);
+	connect_filter_observer(*observer, it->second.filter);
+
+	bool keep = false;
+	{
+		std::lock_guard lock(filter_v2_state_->mutex);
+		if (filter_v2_state_->accepting && filters_.contains(handle) &&
+		    !filter_v2_state_->observers.contains(handle)) {
+			filter_v2_state_->observers.emplace(handle, observer);
+			keep = true;
+		}
+	}
+	if (!keep)
+		disconnect_filter_observer(*observer);
 }
 
 bool Engine::v2_filter_record_update_baseline(uint64_t handle, RuntimeV2Result &result)
@@ -1122,9 +1191,11 @@ void Engine::v2_filter_forget_source(uint64_t source_id) noexcept
 	}
 }
 
-void Engine::v2_sync_filter_observers()
+bool Engine::v2_sync_filter_registry(std::unordered_set<obs_source_t *> &attached)
 {
-	std::unordered_set<obs_source_t *> attached;
+	std::lock_guard lock(filter_v2_state_->mutex);
+	if (!filter_v2_state_->accepting)
+		return false;
 	for (const auto &[source_id, source] : sources_) {
 		FilterReferenceCollection collection;
 		obs_source_enum_filters(source, collect_filter_ref, &collection);
@@ -1149,27 +1220,14 @@ void Engine::v2_sync_filter_observers()
 					continue;
 				}
 			}
-			const uint64_t handle = allocate_handle();
-			bool inserted_filter = false;
-			bool inserted_handle = false;
-			try {
-				if (!filters_.emplace(handle, FilterEntry{source_id, filter}).second)
-					throw std::runtime_error("filter handle collision");
-				inserted_filter = true;
-				inserted_handle = filter_handles_.emplace(filter, handle).second;
-				if (!inserted_handle)
-					throw std::runtime_error("filter object was already registered");
-			} catch (...) {
-				if (inserted_handle)
-					filter_handles_.erase(filter);
-				if (inserted_filter)
-					filters_.erase(handle);
-				obs_source_release(filter);
-				throw;
-			}
+			v2_register_filter(allocate_handle(), source_id, filter);
 		}
 	}
+	return true;
+}
 
+void Engine::v2_remove_unattached_filters(const std::unordered_set<obs_source_t *> &attached)
+{
 	std::vector<uint64_t> remove;
 	for (const auto &[handle, entry] : filters_) {
 		if (!attached.contains(entry.filter))
@@ -1184,44 +1242,31 @@ void Engine::v2_sync_filter_observers()
 		obs_source_release(it->second.filter);
 		filters_.erase(it);
 	}
+}
 
+std::vector<uint64_t> Engine::v2_filter_observers_to_add() const
+{
+	std::vector<uint64_t> add;
+	if (!filter_v2_state_)
+		return add;
+	std::lock_guard lock(filter_v2_state_->mutex);
+	for (const auto &[handle, _] : filters_) {
+		if (!filter_v2_state_->observers.contains(handle))
+			add.push_back(handle);
+	}
+	return add;
+}
+
+void Engine::v2_sync_filter_observers()
+{
 	if (!filter_v2_state_)
 		return;
-
-	std::vector<uint64_t> add;
-	{
-		std::lock_guard lock(filter_v2_state_->mutex);
-		for (const auto &[handle, _] : filters_) {
-			if (!filter_v2_state_->observers.contains(handle))
-				add.push_back(handle);
-		}
-	}
-	for (uint64_t handle : add) {
-		auto it = filters_.find(handle);
-		if (it == filters_.end())
-			continue;
-		auto observer = std::make_shared<FilterV2Observer>();
-		observer->state = filter_v2_state_.get();
-		observer->handle = handle;
-		observer->source_id = it->second.source_id;
-		observer->weak = obs_source_get_weak_source(it->second.filter);
-		observer->name = obs_source_get_name(it->second.filter) ? obs_source_get_name(it->second.filter) : "";
-		observer->enabled = obs_source_enabled(it->second.filter);
-		settings_json(it->second.filter, observer->settings);
-		connect_filter_observer(*observer, it->second.filter);
-
-		bool keep = false;
-		{
-			std::lock_guard lock(filter_v2_state_->mutex);
-			if (filter_v2_state_->accepting && filters_.contains(handle) &&
-			    !filter_v2_state_->observers.contains(handle)) {
-				filter_v2_state_->observers.emplace(handle, observer);
-				keep = true;
-			}
-		}
-		if (!keep)
-			disconnect_filter_observer(*observer);
-	}
+	std::unordered_set<obs_source_t *> attached;
+	if (!v2_sync_filter_registry(attached))
+		return;
+	v2_remove_unattached_filters(attached);
+	for (uint64_t handle : v2_filter_observers_to_add())
+		v2_add_filter_observer(handle);
 }
 
 void Engine::v2_prepare_filter_shutdown() noexcept

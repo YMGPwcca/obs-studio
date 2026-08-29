@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace obs_engine {
@@ -189,6 +190,11 @@ private:
 	bool v2_build_property_target(obs_data_t *params, ObsDataPtr &target, ObsDataPtr &settings,
 				      obs_properties_t *&properties, obs_source_t *&source, RuntimeV2Error &error);
 	ObsDataPtr v2_filter_order_data(uint64_t source_id, uint64_t changed, obs_source_t *parent) const;
+	void v2_register_filter(uint64_t handle, uint64_t source_id, obs_source_t *filter);
+	void v2_add_filter_observer(uint64_t handle);
+	bool v2_sync_filter_registry(std::unordered_set<obs_source_t *> &attached);
+	void v2_remove_unattached_filters(const std::unordered_set<obs_source_t *> &attached);
+	std::vector<uint64_t> v2_filter_observers_to_add() const;
 	bool v2_get_media_source(obs_data_t *params, uint64_t &handle, obs_source_t *&source,
 				 RuntimeV2Error &error) const;
 	bool v2_get_interaction_source(obs_data_t *params, uint64_t &handle, obs_source_t *&source,
