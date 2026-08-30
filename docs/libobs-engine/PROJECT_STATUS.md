@@ -6,8 +6,10 @@
 **Accepted Task-10 documentation checkpoint:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
 **Accepted Task-11 implementation:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
 **Task-11 acceptance record:** `TASK11_ACCEPTANCE.md`
-**Candidate branch:** `task11-codex`
+**Candidate branch:** `phase1-complexity-hardening`
 **Task-11 status:** COMPLETE / ACCEPTED
+**Tasks 1-11:** ACCEPTED
+**Phase-1 complexity hardening:** IN REVIEW
 
 This file is the current status ledger for the LibOBS split-engine project. If an older roadmap says Task 8 is active or Task 9 is only proposed, that older status is stale. Verify this ledger against Git/source/CI whenever resuming work.
 

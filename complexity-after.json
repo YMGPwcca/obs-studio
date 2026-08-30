@@ -4,7 +4,7 @@
   "scope": {
     "baseRef": "bcd53e2914c68a62b2a9387a7e8ee3b59d1fd1df",
     "acceptedRef": "3fc2e678d10809a4dca8b28107710534160803ab",
-    "measurementHead": "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
+    "measurementHead": "44243a5013007a449c1d0b9903233929bd44a141",
     "currentScopeRule": "C/C++ functions in current files introduced or materially modified by operator commits; PowerShell functions in current operator-authored test scripts; complete functions selected by Git blame/diff attribution."
   },
   "analyzer": {
