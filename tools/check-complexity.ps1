@@ -44,6 +44,7 @@ $knownOperatorEmails = @(
     'ymgpwcca@proton.me'
 )
 $knownOperatorName = 'YMGPwcca'
+$acceptedBaselineSha256 = 'D5B9860F699DDFF1B1FF3E4397A7E401AFC967D2C7E463493D58CD0F833CEE66'
 $limitations = [System.Collections.Generic.List[object]]::new()
 
 function Get-RepoFilePath {
@@ -92,6 +93,99 @@ function Read-JsonFile {
 
     $fullPath = Get-RepoFilePath $Path
     return (Get-Content -LiteralPath $fullPath -Raw | ConvertFrom-Json)
+}
+
+function Assert-TrustedBaselineHash {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Path,
+        [Parameter(Mandatory = $true)] [string] $FullPath
+    )
+
+    $actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $FullPath).Hash.ToUpperInvariant()
+    if ($actualHash -cne $acceptedBaselineSha256) {
+        throw "Accepted complexity baseline '$Path' failed integrity validation: SHA-256 $actualHash does not match the pinned accepted artifact."
+    }
+}
+
+function Read-TrustedBaselineDocument {
+    param([Parameter(Mandatory = $true)] [string] $Path)
+
+    try {
+        $document = Read-JsonFile $Path
+    } catch {
+        throw "Accepted complexity baseline '$Path' is not valid JSON: $($_.Exception.Message)"
+    }
+    if ($null -eq $document -or $document -is [Array]) {
+        throw "Accepted complexity baseline '$Path' must be a JSON object."
+    }
+    return $document
+}
+
+function Assert-TrustedBaselineReportShape {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Document,
+        [Parameter(Mandatory = $true)] [string] $Path
+    )
+
+    $schema = $document.PSObject.Properties['schemaVersion']
+    $kind = $document.PSObject.Properties['reportKind']
+    $scopeProperty = $document.PSObject.Properties['scope']
+    $functions = $document.PSObject.Properties['functions']
+    if ($null -eq $schema -or $null -eq $kind -or $null -eq $scopeProperty -or $null -eq $functions) {
+        throw "Accepted complexity baseline '$Path' is missing required report fields."
+    }
+    if ([int] $schema.Value -ne 1 -or [string] $kind.Value -cne 'after') {
+        throw "Accepted complexity baseline '$Path' has an unsupported schema or report kind."
+    }
+    if ($functions.Value -isnot [Array] -or @($functions.Value).Count -eq 0) {
+        throw "Accepted complexity baseline '$Path' must contain a non-empty functions array."
+    }
+}
+
+function Assert-TrustedBaselineScope {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Scope,
+        [Parameter(Mandatory = $true)] [string] $Path,
+        [Parameter(Mandatory = $true)] [string] $BaseRef,
+        [Parameter(Mandatory = $true)] [string] $AcceptedRef
+    )
+
+    if ($null -eq $scope -or $scope -is [Array]) {
+        throw "Accepted complexity baseline '$Path' has an invalid scope object."
+    }
+    $scopeBase = $scope.PSObject.Properties['baseRef']
+    $scopeAccepted = $scope.PSObject.Properties['acceptedRef']
+    $scopeMeasurement = $scope.PSObject.Properties['measurementHead']
+    if ($null -eq $scopeBase -or $null -eq $scopeAccepted -or $null -eq $scopeMeasurement) {
+        throw "Accepted complexity baseline '$Path' has incomplete scope provenance."
+    }
+    if ([string] $scopeBase.Value -cne $BaseRef -or [string] $scopeAccepted.Value -cne $AcceptedRef) {
+        throw "Accepted complexity baseline '$Path' is anchored to a different ownership or accepted reference."
+    }
+    try {
+        $null = Resolve-Commit ([string] $scopeMeasurement.Value)
+    } catch {
+        throw "Accepted complexity baseline '$Path' has an invalid measurement provenance: $($_.Exception.Message)"
+    }
+}
+
+function Read-TrustedAcceptedBaseline {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Path,
+        [Parameter(Mandatory = $true)] [string] $BaseRef,
+        [Parameter(Mandatory = $true)] [string] $AcceptedRef
+    )
+
+    $fullPath = Get-RepoFilePath $Path
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        throw "Accepted complexity baseline '$Path' was not found."
+    }
+    Assert-TrustedBaselineHash $Path $fullPath
+    $document = Read-TrustedBaselineDocument $Path
+    Assert-TrustedBaselineReportShape $document $Path
+    $scope = $document.PSObject.Properties['scope'].Value
+    Assert-TrustedBaselineScope $scope $Path $BaseRef $AcceptedRef
+    return $document
 }
 
 function Invoke-GitLines {
@@ -199,6 +293,19 @@ function Get-ChangedPathRecords {
             continue
         }
         $records.Add((New-PathRecord $parts))
+    }
+    return @($records)
+}
+
+function Get-StagedPathRecords {
+    param([Parameter(Mandatory = $true)] [string] $Head)
+
+    $records = [System.Collections.Generic.List[object]]::new()
+    foreach ($line in (Invoke-GitLines @('diff', '--cached', '--name-status', '--find-renames', $Head))) {
+        $parts = $line -split "`t"
+        if ($parts.Count -ge 2) {
+            $records.Add((New-PathRecord $parts))
+        }
     }
     return @($records)
 }
@@ -330,6 +437,29 @@ function Test-CurrentPath {
     param([Parameter(Mandatory = $true)] [string] $Path)
 
     return Test-Path -LiteralPath (Join-Path $repoRoot $Path) -PathType Leaf
+}
+
+function Get-WorkingTreeRecreatedPaths {
+    param([Parameter(Mandatory = $true)] [string] $Head)
+
+    $deletedPaths = New-ExactMap
+    foreach ($record in (Get-StagedPathRecords $Head)) {
+        if ($record.Status -eq 'D') {
+            $deletedPaths[[string] $record.Path] = $true
+        }
+    }
+    foreach ($record in (Get-ChangedPathRecords $Head)) {
+        if ($record.Status -eq 'D') {
+            $deletedPaths[[string] $record.Path] = $true
+        }
+    }
+    $recreatedPaths = New-ExactMap
+    foreach ($path in $deletedPaths.Keys) {
+        if (Test-CurrentPath ([string] $path)) {
+            $recreatedPaths[[string] $path] = $true
+        }
+    }
+    return $recreatedPaths
 }
 
 function Get-AllFileLines {
@@ -2001,13 +2131,19 @@ foreach ($record in $postRecords) {
         $currentPathSet[[string] $record.Path] = $true
     }
 }
+$workingTreeRecreatedPathSet = Get-WorkingTreeRecreatedPaths $measurementHead
+foreach ($path in $workingTreeRecreatedPathSet.Keys) {
+    $recreatedPathSet[[string] $path] = $true
+}
 
 $beforePathResolved = if (Test-Path -LiteralPath (Get-RepoFilePath $BeforePath)) {
     try { Read-JsonFile $BeforePath } catch { $null }
 } else { $null }
-$acceptedBaselineResolved = if (Test-Path -LiteralPath (Get-RepoFilePath $BaselinePath)) {
-    try { Read-JsonFile $BaselinePath } catch { $null }
-} else { $null }
+$acceptedBaselineResolved = if ($Mode -eq 'Check' -and (Test-Path -LiteralPath (Get-RepoFilePath $BaselinePath))) {
+    Read-TrustedAcceptedBaseline $BaselinePath $baseResolved $acceptedResolved
+} else {
+    $null
+}
 $acceptedBaselineByKey = if ($null -ne $acceptedBaselineResolved) {
     New-MetricKeyMap @($acceptedBaselineResolved.functions) 'accepted complexity baseline'
 } else {
@@ -2281,8 +2417,8 @@ if ($Mode -eq 'After') {
     exit 0
 }
 
-$baseline = if (Test-Path -LiteralPath (Get-RepoFilePath $BaselinePath)) {
-    Read-JsonFile $BaselinePath
+$baseline = if ($null -ne $acceptedBaselineResolved) {
+    $acceptedBaselineResolved
 } else {
     throw "Accepted complexity baseline '$BaselinePath' was not found. Run After first or pass -BaselinePath."
 }

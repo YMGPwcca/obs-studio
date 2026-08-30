@@ -13,7 +13,7 @@
 
 The current Phase-1 review checkpoint hardens the complexity gate's moving
 post-Task-11 scope, adds exact function-identity continuity migrations, and
-extends deterministic checker self-tests through A–R. It does not change
+extends deterministic checker self-tests through A–T. It does not change
 production engine/libobs behavior, does not accept Phase 1, and does not start
 Task 12.
 

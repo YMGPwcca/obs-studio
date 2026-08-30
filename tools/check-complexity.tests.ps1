@@ -23,6 +23,22 @@ function Write-FixtureText {
     [IO.File]::WriteAllText($Path, $Contents, [Text.UTF8Encoding]::new($false))
 }
 
+function Trust-FixtureBaseline {
+    param([Parameter(Mandatory = $true)] [object] $Scenario)
+
+    $baselinePath = Join-Path $Scenario.Directory 'complexity-after.json'
+    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $baselinePath).Hash.ToUpperInvariant()
+    $checkerPath = Join-Path $Scenario.Directory 'tools/check-complexity.ps1'
+    $checker = Get-Content -LiteralPath $checkerPath -Raw
+    $match = [regex]::Match($checker, '\$acceptedBaselineSha256 = ''[0-9A-Fa-f]{64}''')
+    if (-not $match.Success) {
+        throw 'Fixture checker did not contain the accepted-baseline integrity declaration.'
+    }
+    $replacement = "`$acceptedBaselineSha256 = '$hash'"
+    $updatedChecker = $checker.Replace($match.Value, $replacement)
+    Write-FixtureText $checkerPath $updatedChecker
+}
+
 function Invoke-FixtureGit {
     param(
         [Parameter(Mandatory = $true)] [string] $Directory,
@@ -200,7 +216,9 @@ function Prepare-FixtureBaseline {
     param([Parameter(Mandatory = $true)] [object] $Scenario)
 
     Assert-CheckerPass (Invoke-ComplexityChecker $Scenario 'Baseline') "$($Scenario.Name) baseline"
-    Assert-CheckerPass (Invoke-ComplexityChecker $Scenario 'After') "$($Scenario.Name) accepted after"
+    $afterResult = Invoke-ComplexityChecker $Scenario 'After'
+    Assert-CheckerPass $afterResult "$($Scenario.Name) accepted after"
+    Trust-FixtureBaseline $Scenario
 }
 
 function Commit-FixtureFile {
@@ -557,7 +575,22 @@ try {
     Assert-FunctionMeasured $caseRResult 'src/nonoperator_renamed.cpp' 'operator_owned_bad' 'CASE R operator provenance after nonoperator rename'
     Assert-CheckerFailure $caseRResult 'CASE R renamed operator source remains measured' '(?s)operator_owned_bad'
 
-    Write-Output 'Complexity checker self-test: PASS (cases A-R)'
+    $caseS = New-Fixture 'case-s-baseline-integrity'
+    Prepare-FixtureBaseline $caseS
+    $trustedBaseline = Get-Content -LiteralPath (Join-Path $caseS.Directory 'complexity-after.json') -Raw
+    Write-FixtureText (Join-Path $caseS.Directory 'complexity-after.json') "{} `n"
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseS 'Check') 'CASE S baseline integrity validation' 'integrity'
+    Write-FixtureText (Join-Path $caseS.Directory 'complexity-after.json') $trustedBaseline
+
+    $caseT = New-Fixture 'case-t-working-tree-recreated' 'src/recreated.cpp' (New-IfChain 'calculate' 'int' 1)
+    Prepare-FixtureBaseline $caseT
+    Invoke-FixtureGit $caseT.Directory @('rm', '--', 'src/recreated.cpp') | Out-Null
+    Write-FixtureText (Join-Path $caseT.Directory 'src/recreated.cpp') (New-IfChain 'calculate' 'int' 1)
+    $caseTResult = Invoke-ComplexityChecker $caseT 'Check'
+    Assert-FunctionMeasured $caseTResult 'src/recreated.cpp' 'calculate' 'CASE T staged working-tree recreation'
+    Assert-CheckerFailure $caseTResult 'CASE T staged recreation requires continuity migration' 'calculate\( int value\)'
+
+    Write-Output 'Complexity checker self-test: PASS (cases A-T)'
 } finally {
     if (Test-Path -LiteralPath $testRoot) {
         Remove-Item -LiteralPath $testRoot -Recurse -Force

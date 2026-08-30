@@ -105,6 +105,11 @@ the operator. `After` and `Check` then form a moving measurement universe:
    work; and
 4. carry exact historical file aliases across renames for baseline comparison.
 
+`Check` accepts `complexity-after.json` only after validating its pinned
+SHA-256, report schema, accepted/ownership references, and resolvable
+measurement provenance. A replacement or malformed baseline therefore fails
+closed before any comparison can be skipped.
+
 Deleted-and-recreated paths are treated as new identities. Baseline matching is
 exact on language, scope, normalized path, function name, and signature; the
 old same-file/name fallback is gone. The sole allowlist entry for
@@ -171,7 +176,8 @@ Additional O and P fixtures prove deleted-and-recreated files cannot use
 automatic same-name continuity, including a rename into a previously deleted
 destination; Q proves a migration cannot override an existing file-lineage
 baseline binding; R proves operator provenance follows a later non-operator
-file rename.
+file rename; S validates the pinned accepted-baseline artifact; T covers a
+staged working-tree delete/recreate.
 
 ## Refactoring and semantic review
 
