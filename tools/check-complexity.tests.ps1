@@ -453,9 +453,9 @@ try {
     Write-MigrationDocument $caseM @($wrongPath)
     Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M wrong path' 'src/wrong\.cpp'
     Write-FixtureText (Join-Path $caseM.Directory 'complexity-identity-migrations.json') "null`n"
-    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M non-array migration document' 'must be a JSON array'
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M non-array migration document' 'Identity migration document'
     Write-FixtureText (Join-Path $caseM.Directory 'complexity-identity-migrations.json') ($migrationNew | ConvertTo-Json -Depth 5)
-    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M object migration document' 'must be a JSON array'
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M object migration document' 'Identity migration document'
     $wildcardPath = New-MigrationRecordValues $oldMetricM.key 'cpp' 'function' 'src/*.cpp' 'new_name' $newMetricM.signature
     Write-MigrationDocument $caseM @($wildcardPath)
     Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M wildcard path' 'src/\*\.cpp'
