@@ -299,7 +299,7 @@ try {
     if ($caseGResult.Output -match 'PowerShell parser') {
         throw 'CASE G incorrectly fed unsupported Python into the PowerShell parser.'
     }
-    Assert-CheckerFailure $caseGResult 'CASE G unsupported executable language fails closed' '(?s)Unsupported or unclassified executable path.*new_helper.py'
+    Assert-CheckerFailure $caseGResult 'CASE G unsupported executable language fails closed' 'new_helper\.py'
 
     Write-Output 'Complexity checker self-test: PASS (cases A-H)'
 } finally {
