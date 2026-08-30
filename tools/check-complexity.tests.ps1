@@ -103,6 +103,28 @@ function Assert-CheckerFailure {
     Write-Output "${Label}: expected FAIL (exit $($Result.ExitCode)): $detail"
 }
 
+function Get-ReportFunctionMetric {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Directory,
+        [Parameter(Mandatory = $true)] [string] $ReportName,
+        [Parameter(Mandatory = $true)] [string] $Path,
+        [Parameter(Mandatory = $true)] [string] $Function
+    )
+
+    $reportPath = Join-Path $Directory $ReportName
+    if (-not (Test-Path -LiteralPath $reportPath)) {
+        throw "Report '$ReportName' was not produced in '$Directory'."
+    }
+    $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
+    $metric = @($report.functions | Where-Object {
+            $_.scopeKind -eq 'function' -and $_.file -eq $Path -and $_.function -eq $Function
+        }) | Select-Object -First 1
+    if ($null -eq $metric) {
+        throw "Function '$Path::$Function' was not present in '$ReportName'."
+    }
+    return $metric
+}
+
 function Assert-FunctionMeasured {
     param(
         [Parameter(Mandatory = $true)] [object] $Result,
@@ -111,17 +133,7 @@ function Assert-FunctionMeasured {
         [Parameter(Mandatory = $true)] [string] $Label
     )
 
-    $reportPath = Join-Path ([string] $Result.ReportDirectory) 'complexity-check.json'
-    if (-not (Test-Path -LiteralPath $reportPath)) {
-        throw "$Label did not produce a diagnostic check report."
-    }
-    $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
-    $metric = @($report.functions | Where-Object {
-            $_.scopeKind -eq 'function' -and $_.file -eq $Path -and $_.function -eq $Function
-        }) | Select-Object -First 1
-    if ($null -eq $metric) {
-        throw "$Label was not present in the measured function universe."
-    }
+    $metric = Get-ReportFunctionMetric ([string] $Result.ReportDirectory) 'complexity-check.json' $Path $Function
     Write-Output "${Label}: measured $Path::$Function CC $($metric.cyclomaticComplexity)"
 }
 
@@ -156,6 +168,7 @@ function New-Fixture {
     Copy-Item -LiteralPath $checkerPath -Destination (Join-Path $directory 'tools/check-complexity.ps1')
     Write-FixtureText (Join-Path $directory 'README.md') "fixture $Name`n"
     Write-FixtureText (Join-Path $directory 'complexity-exceptions.json') "[]`n"
+    Write-FixtureText (Join-Path $directory 'complexity-identity-migrations.json') "[]`n"
     Invoke-FixtureGit $directory @('init', '-b', 'master') | Out-Null
     Invoke-FixtureGit $directory @('config', 'user.name', 'Fixture Upstream') | Out-Null
     Invoke-FixtureGit $directory @('config', 'user.email', 'fixture-upstream@example.invalid') | Out-Null
@@ -210,6 +223,60 @@ function Commit-FixtureRename {
     Write-FixtureText (Join-Path $Scenario.Directory $NewPath) $Contents
     Invoke-FixtureGit $Scenario.Directory @('add', '--all') | Out-Null
     Invoke-FixtureGit $Scenario.Directory @('commit', '-m', $Message) | Out-Null
+}
+
+function New-MigrationRecord {
+    param(
+        [Parameter(Mandatory = $true)] [object] $BaselineMetric,
+        [Parameter(Mandatory = $true)] [object] $CurrentMetric
+    )
+
+    return [pscustomobject]@{
+        baselineKey = [string] $BaselineMetric.key
+        current     = [pscustomobject]@{
+            language  = [string] $CurrentMetric.language
+            scopeKind = [string] $CurrentMetric.scopeKind
+            file      = [string] $CurrentMetric.file
+            function  = [string] $CurrentMetric.function
+            signature = [string] $CurrentMetric.signature
+        }
+    }
+}
+
+function New-MigrationRecordValues {
+    param(
+        [Parameter(Mandatory = $true)] [string] $BaselineKey,
+        [Parameter(Mandatory = $true)] [string] $Language,
+        [Parameter(Mandatory = $true)] [string] $ScopeKind,
+        [Parameter(Mandatory = $true)] [string] $File,
+        [Parameter(Mandatory = $true)] [string] $Function,
+        [Parameter(Mandatory = $true)] [string] $Signature
+    )
+
+    return [pscustomobject]@{
+        baselineKey = $BaselineKey
+        current     = [pscustomobject]@{
+            language  = $Language
+            scopeKind = $ScopeKind
+            file      = $File
+            function  = $Function
+            signature = $Signature
+        }
+    }
+}
+
+function Write-MigrationDocument {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Scenario,
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $Entries
+    )
+
+    $items = [System.Collections.Generic.List[string]]::new()
+    foreach ($entry in $Entries) {
+        $items.Add(($entry | ConvertTo-Json -Depth 5))
+    }
+    $json = "[`n" + ($items -join ",`n") + "`n]`n"
+    Write-FixtureText (Join-Path $Scenario.Directory 'complexity-identity-migrations.json') $json
 }
 
 try {
@@ -301,7 +368,99 @@ try {
     }
     Assert-CheckerFailure $caseGResult 'CASE G unsupported executable language fails closed' 'new_helper\.py'
 
-    Write-Output 'Complexity checker self-test: PASS (cases A-H)'
+    $caseI = New-Fixture 'case-i-function-rename' 'src/identity.cpp' (New-IfChain 'old_name' 'int' 1)
+    Prepare-FixtureBaseline $caseI
+    Commit-FixtureFile $caseI 'src/identity.cpp' (New-IfChain 'new_name' 'int' 2) 'fixture rename function without migration'
+    $caseINoMigration = Invoke-ComplexityChecker $caseI 'Check'
+    Assert-FunctionMeasured $caseINoMigration 'src/identity.cpp' 'new_name' 'CASE I function rename without migration'
+    Assert-CheckerFailure $caseINoMigration 'CASE I function rename without migration' '(?s)identity disappeared.*migration'
+    $oldMetricI = Get-ReportFunctionMetric $caseI.Directory 'complexity-after.json' 'src/identity.cpp' 'old_name'
+    $newMetricI = Get-ReportFunctionMetric $caseI.Directory 'complexity-check.json' 'src/identity.cpp' 'new_name'
+    Write-MigrationDocument $caseI @(New-MigrationRecord $oldMetricI $newMetricI)
+    $caseIWithMigration = Invoke-ComplexityChecker $caseI 'Check'
+    Assert-CheckerFailure $caseIWithMigration 'CASE I migrated rename still uses old CC budget' '(?s)Complexity increased:.*new_name'
+    Commit-FixtureFile $caseI 'src/identity.cpp' (New-IfChain 'new_name' 'int' 1) 'fixture lower migrated rename complexity'
+    $caseIPass = Invoke-ComplexityChecker $caseI 'Check'
+    Assert-FunctionMeasured $caseIPass 'src/identity.cpp' 'new_name' 'CASE I migrated rename at baseline CC'
+    Assert-CheckerPass $caseIPass 'CASE I migrated rename at baseline CC'
+
+    $caseJ = New-Fixture 'case-j-signature-change' 'src/signature.cpp' (New-IfChain 'calculate' 'int' 1)
+    Prepare-FixtureBaseline $caseJ
+    $signatureChange = "int calculate(int value, bool mode) {`n    if (value > 0) { return value; }`n    if (mode) { return value + 1; }`n    return 0;`n}`n"
+    Commit-FixtureFile $caseJ 'src/signature.cpp' $signatureChange 'fixture change function signature'
+    $caseJResult = Invoke-ComplexityChecker $caseJ 'Check'
+    Assert-FunctionMeasured $caseJResult 'src/signature.cpp' 'calculate' 'CASE J signature change'
+    Assert-CheckerFailure $caseJResult 'CASE J unique-name signature continuity uses baseline CC' '(?s)Complexity increased:.*calculate'
+
+    $overloads = "int calculate(int value) {`n    if (value > 0) { return value; }`n    return 0;`n}`n" + "int calculate(bool mode) {`n    if (mode) { return 1; }`n    return 0;`n}`n"
+    $caseK = New-Fixture 'case-k-overload-ambiguity' 'src/overloads.cpp' $overloads
+    Prepare-FixtureBaseline $caseK
+    $ambiguousOverload = "int calculate(long value) {`n    if (value > 0) { return value; }`n    if (value > 1) { return value + 1; }`n    return 0;`n}`n"
+    Commit-FixtureFile $caseK 'src/overloads.cpp' $ambiguousOverload 'fixture create ambiguous overload continuity'
+    $caseKResult = Invoke-ComplexityChecker $caseK 'Check'
+    Assert-CheckerFailure $caseKResult 'CASE K overload ambiguity fails closed' '(?s)Ambiguous function identity.*calculate|Ambiguous baseline identity.*calculate'
+
+    $caseL = New-Fixture 'case-l-genuinely-new-function'
+    Prepare-FixtureBaseline $caseL
+    $newUnrelated = (New-IfChain 'genuinely_new' 'int' 1)
+    Commit-FixtureFile $caseL 'src/accepted.cpp' ((New-IfChain 'accepted_function' 'int' 1) + "`n" + $newUnrelated) 'fixture add unrelated low-complexity function'
+    $caseLResult = Invoke-ComplexityChecker $caseL 'Check'
+    Assert-FunctionMeasured $caseLResult 'src/accepted.cpp' 'genuinely_new' 'CASE L genuinely new function'
+    Assert-CheckerPass $caseLResult 'CASE L genuinely new CC <= 10 function'
+
+    $caseMContent = (New-IfChain 'old_name' 'int' 1) + "`n" + (New-IfChain 'other_name' 'int' 1)
+    $caseM = New-Fixture 'case-m-migration-validation' 'src/migrations.cpp' $caseMContent
+    Prepare-FixtureBaseline $caseM
+    $caseMCandidate = (New-IfChain 'new_name' 'int' 1) + "`n" + (New-IfChain 'other_new' 'int' 1)
+    Commit-FixtureFile $caseM 'src/migrations.cpp' $caseMCandidate 'fixture create migration targets'
+    $caseMInitial = Invoke-ComplexityChecker $caseM 'Check'
+    Assert-FunctionMeasured $caseMInitial 'src/migrations.cpp' 'new_name' 'CASE M migration target fixture'
+    Assert-CheckerFailure $caseMInitial 'CASE M initial unmigrated replacement' '(?s)identity disappeared.*migration'
+    $oldMetricM = Get-ReportFunctionMetric $caseM.Directory 'complexity-after.json' 'src/migrations.cpp' 'old_name'
+    $otherMetricM = Get-ReportFunctionMetric $caseM.Directory 'complexity-after.json' 'src/migrations.cpp' 'other_name'
+    $newMetricM = Get-ReportFunctionMetric $caseM.Directory 'complexity-check.json' 'src/migrations.cpp' 'new_name'
+    $otherNewMetricM = Get-ReportFunctionMetric $caseM.Directory 'complexity-check.json' 'src/migrations.cpp' 'other_new'
+    $migrationNew = New-MigrationRecord $oldMetricM $newMetricM
+    $migrationOther = New-MigrationRecord $otherMetricM $otherNewMetricM
+    $invalidBaseline = New-MigrationRecordValues 'not-an-accepted-baseline' 'cpp' 'function' 'src/migrations.cpp' 'new_name' $newMetricM.signature
+    Write-MigrationDocument $caseM @($invalidBaseline)
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M nonexistent baselineKey' 'baselineKey.*not-an-accepted-baseline'
+    $invalidTarget = New-MigrationRecordValues $oldMetricM.key 'cpp' 'function' 'src/missing.cpp' 'new_name' $newMetricM.signature
+    Write-MigrationDocument $caseM @($invalidTarget)
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M nonexistent current identity' 'missing\.cpp'
+    $duplicateOld = New-MigrationRecord $oldMetricM $otherNewMetricM
+    Write-MigrationDocument $caseM @($migrationNew, $duplicateOld)
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M duplicate old mapping' 'Duplicate identity migration baselineKey'
+    $duplicateNew = New-MigrationRecord $otherMetricM $newMetricM
+    Write-MigrationDocument $caseM @($migrationNew, $duplicateNew)
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M duplicate new mapping' 'Duplicate identity migration target'
+    $wrongSignature = New-MigrationRecordValues $oldMetricM.key 'cpp' 'function' 'src/migrations.cpp' 'new_name' 'new_name( int wrong_signature)'
+    Write-MigrationDocument $caseM @($wrongSignature)
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M wrong signature' 'wrong_signature'
+    $wrongPath = New-MigrationRecordValues $oldMetricM.key 'cpp' 'function' 'src/wrong.cpp' 'new_name' $newMetricM.signature
+    Write-MigrationDocument $caseM @($wrongPath)
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M wrong path' 'src/wrong\.cpp'
+    Commit-FixtureFile $caseM 'src/migrations.cpp' ($caseMCandidate + "`n" + (New-IfChain 'old_name' 'int' 1)) 'fixture restore stale old identity'
+    Write-MigrationDocument $caseM @($migrationNew)
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M stale mapping with old identity present' 'stale because'
+
+    $caseN = New-Fixture 'case-n-file-and-function-rename' 'src/a.cpp' (New-IfChain 'old_name' 'int' 1)
+    Prepare-FixtureBaseline $caseN
+    Commit-FixtureRename $caseN 'src/a.cpp' 'src/b.cpp' (New-IfChain 'new_name' 'int' 2) 'fixture rename file and function'
+    $caseNNoMigration = Invoke-ComplexityChecker $caseN 'Check'
+    Assert-FunctionMeasured $caseNNoMigration 'src/b.cpp' 'new_name' 'CASE N file/function rename without migration'
+    Assert-CheckerFailure $caseNNoMigration 'CASE N file/function rename without migration' '(?s)identity disappeared.*migration'
+    $oldMetricN = Get-ReportFunctionMetric $caseN.Directory 'complexity-after.json' 'src/a.cpp' 'old_name'
+    $newMetricN = Get-ReportFunctionMetric $caseN.Directory 'complexity-check.json' 'src/b.cpp' 'new_name'
+    Write-MigrationDocument $caseN @(New-MigrationRecord $oldMetricN $newMetricN)
+    $caseNWithMigration = Invoke-ComplexityChecker $caseN 'Check'
+    Assert-CheckerFailure $caseNWithMigration 'CASE N file/function migrated rename uses old CC budget' '(?s)Complexity increased:.*new_name'
+    Commit-FixtureFile $caseN 'src/b.cpp' (New-IfChain 'new_name' 'int' 1) 'fixture lower migrated file/function rename complexity'
+    $caseNPass = Invoke-ComplexityChecker $caseN 'Check'
+    Assert-FunctionMeasured $caseNPass 'src/b.cpp' 'new_name' 'CASE N migrated file/function rename at baseline CC'
+    Assert-CheckerPass $caseNPass 'CASE N migrated file/function rename at baseline CC'
+
+    Write-Output 'Complexity checker self-test: PASS (cases A-N)'
 } finally {
     if (Test-Path -LiteralPath $testRoot) {
         Remove-Item -LiteralPath $testRoot -Recurse -Force

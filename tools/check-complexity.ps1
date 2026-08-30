@@ -10,6 +10,7 @@ param(
     [string] $BeforePath = 'complexity-before.json',
     [string] $BaselinePath = 'complexity-after.json',
     [string] $AllowlistPath = 'complexity-exceptions.json',
+    [string] $IdentityMigrationsPath = 'complexity-identity-migrations.json',
     [string] $LizardPythonPath = ''
 )
 
@@ -675,6 +676,329 @@ function Get-ExactException {
     return $matches[0]
 }
 
+function New-EmptyIdentityMaps {
+    return [pscustomobject]@{
+        entries        = @()
+        byCurrentKey   = @{}
+        byBaselineKey  = @{}
+    }
+}
+
+function Get-IdentityMigrationBaseline {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Entry,
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey
+    )
+
+    $baselineKey = [string] (Get-ObjectPropertyValue $Entry 'baselineKey')
+    if (-not $baselineKey -or -not $BaselineByKey.ContainsKey($baselineKey)) {
+        throw "Identity migration baselineKey '$baselineKey' is not present in the accepted complexity baseline."
+    }
+    return [pscustomobject]@{
+        key    = $baselineKey
+        metric = $BaselineByKey[$baselineKey]
+    }
+}
+
+function Get-IdentityMigrationCurrent {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Entry,
+        [Parameter(Mandatory = $true)] [string] $BaselineKey
+    )
+
+    $current = Get-ObjectPropertyValue $Entry 'current'
+    if ($null -eq $current) {
+        throw "Identity migration for '$BaselineKey' must contain a current identity object."
+    }
+    $required = @('language', 'scopeKind', 'file', 'function', 'signature')
+    $missing = @($required | Where-Object { -not $current.PSObject.Properties[$_] })
+    if (@($missing).Count -gt 0) {
+        throw "Identity migration for '$BaselineKey' is missing current fields: $($missing -join ', ')."
+    }
+    $language = [string] $current.language
+    $scopeKind = [string] $current.scopeKind
+    $file = Normalize-RepoPath ([string] $current.file)
+    $function = [string] $current.function
+    $signature = [string] $current.signature
+    if ($language -notin @('cpp', 'powershell') -or $scopeKind -ne 'function' -or
+        -not $file -or -not $function -or -not $signature) {
+        throw "Identity migration for '$BaselineKey' has an invalid current identity."
+    }
+    return [pscustomobject]@{
+        language  = $language
+        scopeKind = $scopeKind
+        file      = $file
+        function  = $function
+        signature = $signature
+    }
+}
+
+function New-IdentityMigrationEntry {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Entry,
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey
+    )
+
+    $baselineInfo = Get-IdentityMigrationBaseline $Entry $BaselineByKey
+    $current = Get-IdentityMigrationCurrent $Entry $baselineInfo.key
+    if ($baselineInfo.metric.scopeKind -ne 'function' -or [string] $baselineInfo.metric.language -ne $current.language) {
+        throw "Identity migration for '$($baselineInfo.key)' changes language or scope kind."
+    }
+    $currentKey = Get-FunctionKey $current.language $current.file $current.function $current.signature $current.scopeKind
+    if ($currentKey -eq $baselineInfo.key) {
+        throw "Identity migration '$($baselineInfo.key)' must change the current identity."
+    }
+    if ($BaselineByKey.ContainsKey($currentKey)) {
+        throw "Identity migration target '$currentKey' is already an accepted baseline identity."
+    }
+    return [pscustomobject]@{
+        baselineKey = $baselineInfo.key
+        currentKey  = $currentKey
+        language    = $current.language
+        scopeKind   = $current.scopeKind
+        file        = $current.file
+        function    = $current.function
+        signature   = $current.signature
+        baseline    = $baselineInfo.metric
+        source      = 'reviewed'
+    }
+}
+
+function New-IdentityMigrationMaps {
+    param(
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [AllowNull()] [object[]] $Entries,
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey
+    )
+
+    $byCurrent = @{}
+    $byBaseline = @{}
+    $normalized = [System.Collections.Generic.List[object]]::new()
+    foreach ($entry in $Entries) {
+        $migration = New-IdentityMigrationEntry $entry $BaselineByKey
+        if ($byBaseline.ContainsKey($migration.baselineKey)) {
+            throw "Duplicate identity migration baselineKey '$($migration.baselineKey)'."
+        }
+        if ($byCurrent.ContainsKey($migration.currentKey)) {
+            throw "Duplicate identity migration target '$($migration.currentKey)'."
+        }
+        $byBaseline[$migration.baselineKey] = $migration.baseline
+        $byCurrent[$migration.currentKey] = $migration.baseline
+        $normalized.Add($migration)
+    }
+    return [pscustomobject]@{
+        entries       = @($normalized)
+        byCurrentKey  = $byCurrent
+        byBaselineKey = $byBaseline
+    }
+}
+
+function Merge-IdentityMigrationMaps {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Explicit,
+        [Parameter(Mandatory = $true)] [object] $Automatic
+    )
+
+    $byCurrent = @{}
+    $byBaseline = @{}
+    foreach ($key in $Explicit.byCurrentKey.Keys) {
+        $byCurrent[$key] = $Explicit.byCurrentKey[$key]
+    }
+    foreach ($key in $Explicit.byBaselineKey.Keys) {
+        $byBaseline[$key] = $Explicit.byBaselineKey[$key]
+    }
+    foreach ($key in $Automatic.byCurrentKey.Keys) {
+        if ($byCurrent.ContainsKey($key)) {
+            throw "Duplicate identity continuity target '$key'."
+        }
+        $byCurrent[$key] = $Automatic.byCurrentKey[$key]
+    }
+    foreach ($key in $Automatic.byBaselineKey.Keys) {
+        if ($byBaseline.ContainsKey($key)) {
+            throw "Duplicate identity continuity baseline '$key'."
+        }
+        $byBaseline[$key] = $Automatic.byBaselineKey[$key]
+    }
+    return [pscustomobject]@{
+        entries       = @($Explicit.entries + $Automatic.entries)
+        byCurrentKey  = $byCurrent
+        byBaselineKey = $byBaseline
+    }
+}
+
+function Assert-IdentityMigrationTargets {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Migrations,
+        [Parameter(Mandatory = $true)] [object[]] $CurrentMetrics
+    )
+
+    foreach ($migration in $Migrations.entries) {
+        $target = @($CurrentMetrics | Where-Object { [string] $_.key -eq [string] $migration.currentKey })
+        if (@($target).Count -ne 1) {
+            throw "Identity migration target '$($migration.currentKey)' does not exist exactly once in the measured candidate."
+        }
+        $old = @($CurrentMetrics | Where-Object { [string] $_.key -eq [string] $migration.baselineKey })
+        if (@($old).Count -gt 0) {
+            throw "Identity migration '$($migration.baselineKey)' is stale because the old identity still exists in the candidate."
+        }
+    }
+}
+
+function Get-SameNameBaselineCandidates {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Metric,
+        [Parameter(Mandatory = $true)] [object] $Scope,
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey
+    )
+
+    $lineage = @([string] $Metric.file) + @($Scope.HistoricalPaths)
+    return @($BaselineByKey.Values | Where-Object {
+            $_.scopeKind -eq 'function' -and $_.language -eq $Metric.language -and
+            $_.function -eq $Metric.function -and $lineage -contains [string] $_.file
+        })
+}
+
+function Get-SameNameCurrentCandidates {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Metric,
+        [Parameter(Mandatory = $true)] [object[]] $Functions
+    )
+
+    return @($Functions | Where-Object {
+            $_.file -eq $Metric.file -and $_.language -eq $Metric.language -and
+            $_.function -eq $Metric.function
+        })
+}
+
+function New-AutomaticIdentity {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Metric,
+        [Parameter(Mandatory = $true)] [object[]] $Functions,
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey,
+        [Parameter(Mandatory = $true)] [hashtable] $ScopeByPath,
+        [Parameter(Mandatory = $true)] [object] $Explicit
+    )
+
+    if ($Explicit.byCurrentKey.ContainsKey([string] $Metric.key)) {
+        return $null
+    }
+    $scope = $ScopeByPath[[string] $Metric.file]
+    $exact = @(Get-RelatedBaselineMetrics $Metric $scope $BaselineByKey)
+    if (@($exact).Count -gt 1) {
+        throw "Ambiguous baseline identity for $($Metric.file):$($Metric.startLine) $($Metric.function)."
+    }
+    if (@($exact).Count -eq 1) {
+        return $null
+    }
+    $sameNameBaseline = @(Get-SameNameBaselineCandidates $Metric $scope $BaselineByKey)
+    if (@($sameNameBaseline).Count -eq 0) {
+        return $null
+    }
+    $sameNameCurrent = @(Get-SameNameCurrentCandidates $Metric $Functions)
+    if (@($sameNameBaseline).Count -ne 1 -or @($sameNameCurrent).Count -ne 1) {
+        throw "Ambiguous function identity for $($Metric.file):$($Metric.startLine) $($Metric.function); add an exact reviewed migration."
+    }
+    $baseline = $sameNameBaseline[0]
+    if ($Explicit.byBaselineKey.ContainsKey([string] $baseline.key)) {
+        return $null
+    }
+    return [pscustomobject]@{
+        baselineKey = [string] $baseline.key
+        currentKey  = [string] $Metric.key
+        baseline    = $baseline
+        source      = 'automatic-unique-name'
+    }
+}
+
+function New-AutomaticIdentityMaps {
+    param(
+        [Parameter(Mandatory = $true)] [object[]] $CurrentMetrics,
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey,
+        [Parameter(Mandatory = $true)] [hashtable] $ScopeByPath,
+        [Parameter(Mandatory = $true)] [object] $Explicit
+    )
+
+    $byCurrent = @{}
+    $byBaseline = @{}
+    $entries = [System.Collections.Generic.List[object]]::new()
+    $functions = @($CurrentMetrics | Where-Object { $_.scopeKind -eq 'function' })
+    foreach ($metric in $functions) {
+        $migration = New-AutomaticIdentity $metric $functions $BaselineByKey $ScopeByPath $Explicit
+        if ($null -eq $migration) {
+            continue
+        }
+        if ($byCurrent.ContainsKey($migration.currentKey) -or $byBaseline.ContainsKey($migration.baselineKey)) {
+            throw "Duplicate automatic identity continuity mapping for '$($migration.currentKey)'."
+        }
+        $byCurrent[$migration.currentKey] = $migration.baseline
+        $byBaseline[$migration.baselineKey] = $migration.baseline
+        $entries.Add($migration)
+    }
+    return [pscustomobject]@{
+        entries       = @($entries)
+        byCurrentKey  = $byCurrent
+        byBaselineKey = $byBaseline
+    }
+}
+
+function Test-BaselineIdentityPresent {
+    param(
+        [Parameter(Mandatory = $true)] [object] $BaselineMetric,
+        [Parameter(Mandatory = $true)] [object[]] $CurrentMetrics,
+        [Parameter(Mandatory = $true)] [hashtable] $ScopeByPath
+    )
+
+    foreach ($metric in @($CurrentMetrics | Where-Object { $_.scopeKind -eq 'function' })) {
+        if ($metric.language -ne $BaselineMetric.language -or $metric.function -ne $BaselineMetric.function -or
+            $metric.signature -ne $BaselineMetric.signature) {
+            continue
+        }
+        $scope = $ScopeByPath[[string] $metric.file]
+        $lineage = @([string] $metric.file) + @($scope.HistoricalPaths)
+        if ($lineage -contains [string] $BaselineMetric.file) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Get-UnmigratedIdentityViolations {
+    param(
+        [Parameter(Mandatory = $true)] [object[]] $CurrentMetrics,
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey,
+        [Parameter(Mandatory = $true)] [hashtable] $ScopeByPath,
+        [Parameter(Mandatory = $true)] [object] $Continuity
+    )
+
+    $missing = [System.Collections.Generic.List[object]]::new()
+    foreach ($baseline in @($BaselineByKey.Values | Where-Object { $_.scopeKind -eq 'function' })) {
+        if ($Continuity.byBaselineKey.ContainsKey([string] $baseline.key)) {
+            continue
+        }
+        if (-not (Test-BaselineIdentityPresent $baseline $CurrentMetrics $ScopeByPath)) {
+            $missing.Add($baseline)
+        }
+    }
+    if ($missing.Count -eq 0) {
+        return @()
+    }
+    $newFunctions = [System.Collections.Generic.List[object]]::new()
+    foreach ($metric in @($CurrentMetrics | Where-Object { $_.scopeKind -eq 'function' })) {
+        $scope = $ScopeByPath[[string] $metric.file]
+        $baseline = Find-BeforeMetric $metric $BaselineByKey $scope $Continuity.byCurrentKey
+        if ($null -eq $baseline) {
+            $newFunctions.Add($metric)
+        }
+    }
+    if ($newFunctions.Count -eq 0) {
+        return @()
+    }
+    $violations = [System.Collections.Generic.List[string]]::new()
+    foreach ($baseline in $missing) {
+        $violations.Add("Accepted function identity disappeared without a reviewed migration: $($baseline.key). A replacement/new function is present; add an exact identity migration.")
+    }
+    return @($violations)
+}
+
 function New-MetricKeyMap {
     param(
         [Parameter(Mandatory = $true)] [object[]] $Metrics,
@@ -703,11 +1027,15 @@ function Test-MetricInScope {
         [Parameter(Mandatory = $true)] [object] $Metric,
         [Parameter(Mandatory = $true)] [object] $Scope,
         [Parameter(Mandatory = $true)] [string] $Mode,
-        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey,
+        [Parameter(Mandatory = $true)] [hashtable] $IdentityMigrationsByCurrentKey
     )
 
     if ($Mode -eq 'Baseline') {
         return Test-LineIntersection $Scope.AcceptedOperatorLines $Metric.startLine $Metric.endLine
+    }
+    if ($IdentityMigrationsByCurrentKey.ContainsKey([string] $Metric.key)) {
+        return $true
     }
     $matches = @(Get-RelatedBaselineMetrics $Metric $Scope $BaselineByKey)
     if (@($matches).Count -gt 1) {
@@ -727,7 +1055,8 @@ function New-PowerShellFunctionMetric {
         [Parameter(Mandatory = $true)] [hashtable] $Types,
         [Parameter(Mandatory = $true)] [object] $Scope,
         [Parameter(Mandatory = $true)] [string] $Mode,
-        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey,
+        [Parameter(Mandatory = $true)] [hashtable] $IdentityMigrationsByCurrentKey
     )
 
     $name = [string] $Function.Name
@@ -747,7 +1076,7 @@ function New-PowerShellFunctionMetric {
         nlocMethod            = 'nonblank non-comment source lines'
         ccMethod             = 'base 1 plus AST if/elseif, loop, switch-clause, catch, trap, ternary, and logical-and/or nodes'
     }
-    if (-not (Test-MetricInScope $metric $Scope $Mode $BaselineByKey)) {
+    if (-not (Test-MetricInScope $metric $Scope $Mode $BaselineByKey $IdentityMigrationsByCurrentKey)) {
         return $null
     }
     $nestedRanges = @($Functions | Where-Object {
@@ -813,7 +1142,8 @@ function Get-PowerShellFileMetrics {
         [Parameter(Mandatory = $true)] [object] $Scope,
         [Parameter(Mandatory = $true)] [string] $Mode,
         [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey,
-        [Parameter(Mandatory = $true)] [hashtable] $Types
+        [Parameter(Mandatory = $true)] [hashtable] $Types,
+        [Parameter(Mandatory = $true)] [hashtable] $IdentityMigrationsByCurrentKey
     )
 
     $fullPath = Join-Path $repoRoot $Path
@@ -832,7 +1162,7 @@ function Get-PowerShellFileMetrics {
     $ranges = Get-FunctionRanges $functions
     $metrics = [System.Collections.Generic.List[object]]::new()
     foreach ($function in $functions) {
-        $metric = New-PowerShellFunctionMetric $function $Path $sourceLines $functions $Types $Scope $Mode $BaselineByKey
+        $metric = New-PowerShellFunctionMetric $function $Path $sourceLines $functions $Types $Scope $Mode $BaselineByKey $IdentityMigrationsByCurrentKey
         if ($null -ne $metric) {
             $metrics.Add($metric)
         }
@@ -850,7 +1180,8 @@ function Get-PowerShellMetrics {
         [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [string[]] $Files,
         [Parameter(Mandatory = $true)] [hashtable] $ScopeByPath,
         [Parameter(Mandatory = $true)] [string] $Mode,
-        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey,
+        [Parameter(Mandatory = $true)] [hashtable] $IdentityMigrationsByCurrentKey
     )
 
     $types = Get-AstTypeMap
@@ -859,7 +1190,7 @@ function Get-PowerShellMetrics {
     }
     $metrics = [System.Collections.Generic.List[object]]::new()
     foreach ($path in $Files) {
-        foreach ($metric in (Get-PowerShellFileMetrics $path $ScopeByPath[$path] $Mode $BaselineByKey $types)) {
+        foreach ($metric in (Get-PowerShellFileMetrics $path $ScopeByPath[$path] $Mode $BaselineByKey $types $IdentityMigrationsByCurrentKey)) {
             $metrics.Add($metric)
         }
     }
@@ -872,7 +1203,8 @@ function Get-ScopedCppMetrics {
         [Parameter(Mandatory = $true)] [hashtable] $ScopeByPath,
         [Parameter(Mandatory = $true)] [string] $Mode,
         [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey,
-        [Parameter(Mandatory = $true)] [string] $Python
+        [Parameter(Mandatory = $true)] [string] $Python,
+        [Parameter(Mandatory = $true)] [hashtable] $IdentityMigrationsByCurrentKey
     )
 
     $version = Get-LizardVersion $Python
@@ -899,7 +1231,7 @@ function Get-ScopedCppMetrics {
             nlocMethod           = 'lizard NLOC'
             ccMethod             = 'lizard default CCN (switch cases counted individually)'
         }
-        if (-not (Test-MetricInScope $metric $ScopeByPath[$file] $Mode $BaselineByKey)) {
+        if (-not (Test-MetricInScope $metric $ScopeByPath[$file] $Mode $BaselineByKey $IdentityMigrationsByCurrentKey)) {
             continue
         }
         $metrics.Add($metric)
@@ -1118,7 +1450,8 @@ function Find-BeforeMetric {
     param(
         [Parameter(Mandatory = $true)] [object] $Metric,
         [Parameter(Mandatory = $true)] [hashtable] $Exact,
-        [Parameter(Mandatory = $true)] [object] $Scope
+        [Parameter(Mandatory = $true)] [object] $Scope,
+        [hashtable] $IdentityMigrationsByCurrentKey = @{}
     )
 
     $matches = @(Get-RelatedBaselineMetrics $Metric $Scope $Exact)
@@ -1127,6 +1460,9 @@ function Find-BeforeMetric {
     }
     if (@($matches).Count -eq 1) {
         return $matches[0]
+    }
+    if ($IdentityMigrationsByCurrentKey.ContainsKey([string] $Metric.key)) {
+        return $IdentityMigrationsByCurrentKey[[string] $Metric.key]
     }
     return $null
 }
@@ -1399,9 +1735,27 @@ $beforePathResolved = if (Test-Path -LiteralPath (Get-RepoFilePath $BeforePath))
 $acceptedBaselineResolved = if (Test-Path -LiteralPath (Get-RepoFilePath $BaselinePath)) {
     try { Read-JsonFile $BaselinePath } catch { $null }
 } else { $null }
+$acceptedBaselineByKey = if ($null -ne $acceptedBaselineResolved) {
+    New-MetricKeyMap @($acceptedBaselineResolved.functions) 'accepted complexity baseline'
+} else {
+    @{}
+}
+$identityEntries = if ($Mode -eq 'Check' -and (Test-Path -LiteralPath (Get-RepoFilePath $IdentityMigrationsPath))) {
+    @((Read-JsonFile $IdentityMigrationsPath) | Where-Object { $null -ne $_ })
+} else {
+    @()
+}
+if ($null -eq $identityEntries) {
+    $identityEntries = @()
+}
+$explicitIdentityMaps = if ($Mode -eq 'Check') {
+    New-IdentityMigrationMaps $identityEntries $acceptedBaselineByKey
+} else {
+    New-EmptyIdentityMaps
+}
 $inclusionBaselineByKey = @{}
 if ($Mode -eq 'Check' -and $null -ne $acceptedBaselineResolved) {
-    $inclusionBaselineByKey = New-MetricKeyMap @($acceptedBaselineResolved.functions) 'scope baseline'
+    $inclusionBaselineByKey = $acceptedBaselineByKey
     if ($null -ne $beforePathResolved) {
         foreach ($metric in $beforePathResolved.functions) {
             if (-not $inclusionBaselineByKey.ContainsKey([string] $metric.key)) {
@@ -1522,14 +1876,20 @@ foreach ($commit in $operatorAttributableCommits) {
 }
 
 $python = Get-PythonExecutable
-$cppMetrics = @(Get-ScopedCppMetrics $cppPaths $scopeByPath $Mode $inclusionBaselineByKey $python)
-$scriptMetrics = @(Get-PowerShellMetrics $scriptPaths $scopeByPath $Mode $inclusionBaselineByKey)
+$cppMetrics = @(Get-ScopedCppMetrics $cppPaths $scopeByPath $Mode $inclusionBaselineByKey $python $explicitIdentityMaps.byCurrentKey)
+$scriptMetrics = @(Get-PowerShellMetrics $scriptPaths $scopeByPath $Mode $inclusionBaselineByKey $explicitIdentityMaps.byCurrentKey)
 $metrics = @($cppMetrics + $scriptMetrics)
 if ($metrics.Count -eq 0) {
     throw 'No scoped functions were measured.'
 }
 Assert-UniqueFunctionIdentities $metrics
 $lizardVersion = Get-LizardVersion $python
+$automaticIdentityMaps = if ($Mode -eq 'Check') {
+    New-AutomaticIdentityMaps $metrics $acceptedBaselineByKey $scopeByPath $explicitIdentityMaps
+} else {
+    New-EmptyIdentityMaps
+}
+$continuityMaps = Merge-IdentityMigrationMaps $explicitIdentityMaps $automaticIdentityMaps
 
 $inventoryFiles = [System.Collections.Generic.List[object]]::new()
 foreach ($scope in $scopedPathRecords) {
@@ -1657,10 +2017,14 @@ if ($null -eq $allowlist) {
 }
 $baselineByKey = New-MetricKeyMap @($baseline.functions) 'accepted complexity baseline'
 Validate-Allowlist $allowlist $baselineByKey
+Assert-IdentityMigrationTargets $continuityMaps $report.functions
 $violations = [System.Collections.Generic.List[string]]::new()
+foreach ($identityViolation in (Get-UnmigratedIdentityViolations $report.functions $baselineByKey $scopeByPath $continuityMaps)) {
+    $violations.Add($identityViolation)
+}
 foreach ($metric in @($report.functions | Where-Object { $_.scopeKind -eq 'function' })) {
     $scope = $scopeByPath[[string] $metric.file]
-    $baselineMetric = Find-BeforeMetric $metric $baselineByKey $scope
+    $baselineMetric = Find-BeforeMetric $metric $baselineByKey $scope $continuityMaps.byCurrentKey
     $exception = Get-ExactException $metric $baselineMetric $allowlist
     $isException = $null -ne $exception -and [int] $exception.measuredCC -eq [int] $metric.cyclomaticComplexity
     if ($exception -and -not $isException) {

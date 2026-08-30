@@ -12,9 +12,10 @@
 **Phase-1 complexity hardening:** IN REVIEW
 
 The current Phase-1 review checkpoint hardens the complexity gate's moving
-post-Task-11 scope and adds deterministic checker self-tests. It does not
-change production engine/libobs behavior, does not accept Phase 1, and does not
-start Task 12.
+post-Task-11 scope, adds exact function-identity continuity migrations, and
+extends deterministic checker self-tests through A–N. It does not change
+production engine/libobs behavior, does not accept Phase 1, and does not start
+Task 12.
 
 This file is the current status ledger for the LibOBS split-engine project. If an older roadmap says Task 8 is active or Task 9 is only proposed, that older status is stale. Verify this ledger against Git/source/CI whenever resuming work.
 

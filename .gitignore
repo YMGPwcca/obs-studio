@@ -33,6 +33,7 @@
 !complexity-after.json
 !complexity-report.md
 !complexity-exceptions.json
+!complexity-identity-migrations.json
 !complexity-ownership-inventory.json
 !complexity-ownership-inventory.md
 !COC.rst

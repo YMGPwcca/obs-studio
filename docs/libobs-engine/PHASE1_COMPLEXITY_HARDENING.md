@@ -111,6 +111,34 @@ old same-file/name fallback is gone. The sole allowlist entry for
 `obs_source_destroy_defer` also records its exact signature and accepted
 baseline key, so a similarly named or recreated function cannot inherit it.
 
+### Function identity continuity
+
+`complexity-identity-migrations.json` is the reviewed escape hatch for a
+function rename or an otherwise non-derivable identity change. Each entry is
+an exact object of the form:
+
+```json
+{
+  "baselineKey": "cpp|function|src/a.cpp|old_name|old_name( int value)",
+  "current": {
+    "language": "cpp",
+    "scopeKind": "function",
+    "file": "src/b.cpp",
+    "function": "new_name",
+    "signature": "new_name( int value)"
+  }
+}
+```
+
+The old key must exist in `complexity-after.json`; the current identity must
+occur exactly once in the measured candidate; old and new identities are each
+one-to-one; and the old identity must no longer be present. No wildcard,
+prefix, regex, or fuzzy body matching is used. A unique same-name signature
+change in one file lineage is recognized automatically; multiple baseline or
+current overload candidates fail closed and require the exact metadata. A
+migration carries the old CC budget, so it never resets a function to the
+ordinary CC 10 allowance. Exceptions remain separate metadata.
+
 The only analyzers officially supported by this gate are C/C++ (including the
 repository's `.c`, `.cc`, `.cpp`, `.cxx`, `.h`, `.hh`, `.hpp`, `.hxx`, `.inc`,
 `.inl`, `.ipp`, `.tcc`, `.cppm`, and `.ixx` extensions) and PowerShell (`.ps1`,
@@ -124,13 +152,14 @@ documentation remain explicitly non-executable.
 The CI workflow is `.github/workflows/engine-complexity.yaml` and installs
 `lizard==1.24.0` only into the runner's temporary directory. Before enforcing
 the budget, it runs `tools/check-complexity.tests.ps1` in isolated temporary
-Git repositories. The self-test proves: a new bad `.cpp` fails; a new good
-`.cpp` is measured and passes; an implemented header with bad CC fails; an
-accepted function regressed by one decision fails; the exact exception passes
-but a similarly named function does not inherit it; a new PowerShell function
-with bad CC fails; a renamed historical file retains its exact baseline
-identity; and an unsupported Python file fails closed without being parsed as
-PowerShell.
+Git repositories. The self-test covers A–H plus: I function rename without a
+migration fails, then an exact migration preserves the old budget and permits
+the unchanged CC; J a unique signature change inherits the old budget; K
+overload ambiguity fails closed; L a genuinely unrelated CC<=10 function still
+passes; M nonexistent/duplicate/wrong/stale migration metadata fails closed;
+and N a combined file+function rename preserves the old budget. Existing A–H
+coverage still includes new bad `.cpp`/header/PowerShell functions, the exact
+exception, unsupported Python, and file-rename regression protection.
 
 ## Refactoring and semantic review
 
