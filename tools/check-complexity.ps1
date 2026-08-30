@@ -44,7 +44,7 @@ $knownOperatorEmails = @(
     'ymgpwcca@proton.me'
 )
 $knownOperatorName = 'YMGPwcca'
-$acceptedBaselineSha256 = 'D5B9860F699DDFF1B1FF3E4397A7E401AFC967D2C7E463493D58CD0F833CEE66'
+$acceptedBaselineBlob = '6c0254dd4517372e19cce1a5c3130164f78e08f2'
 $limitations = [System.Collections.Generic.List[object]]::new()
 
 function Get-RepoFilePath {
@@ -95,15 +95,15 @@ function Read-JsonFile {
     return (Get-Content -LiteralPath $fullPath -Raw | ConvertFrom-Json)
 }
 
-function Assert-TrustedBaselineHash {
+function Assert-TrustedBaselineBlob {
     param(
         [Parameter(Mandatory = $true)] [string] $Path,
         [Parameter(Mandatory = $true)] [string] $FullPath
     )
 
-    $actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $FullPath).Hash.ToUpperInvariant()
-    if ($actualHash -cne $acceptedBaselineSha256) {
-        throw "Accepted complexity baseline '$Path' failed integrity validation: SHA-256 $actualHash does not match the pinned accepted artifact."
+    $actualBlob = (@(Invoke-GitLines @('hash-object', '--path', $Path, $FullPath)) | Select-Object -First 1).Trim()
+    if ($actualBlob -cne $acceptedBaselineBlob) {
+        throw "Accepted complexity baseline '$Path' failed integrity validation: Git blob $actualBlob does not match the pinned accepted artifact."
     }
 }
 
@@ -180,7 +180,7 @@ function Read-TrustedAcceptedBaseline {
     if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
         throw "Accepted complexity baseline '$Path' was not found."
     }
-    Assert-TrustedBaselineHash $Path $fullPath
+    Assert-TrustedBaselineBlob $Path $fullPath
     $document = Read-TrustedBaselineDocument $Path
     Assert-TrustedBaselineReportShape $document $Path
     $scope = $document.PSObject.Properties['scope'].Value

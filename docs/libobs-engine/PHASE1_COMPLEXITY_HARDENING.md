@@ -105,8 +105,8 @@ the operator. `After` and `Check` then form a moving measurement universe:
    work; and
 4. carry exact historical file aliases across renames for baseline comparison.
 
-`Check` accepts `complexity-after.json` only after validating its pinned
-SHA-256, report schema, accepted/ownership references, and resolvable
+`Check` accepts `complexity-after.json` only after validating its pinned Git
+blob ID, report schema, accepted/ownership references, and resolvable
 measurement provenance. A replacement or malformed baseline therefore fails
 closed before any comparison can be skipped.
 

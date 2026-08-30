@@ -26,15 +26,14 @@ function Write-FixtureText {
 function Trust-FixtureBaseline {
     param([Parameter(Mandatory = $true)] [object] $Scenario)
 
-    $baselinePath = Join-Path $Scenario.Directory 'complexity-after.json'
-    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $baselinePath).Hash.ToUpperInvariant()
+    $hash = ((Invoke-FixtureGit $Scenario.Directory @('hash-object', '--path', 'complexity-after.json', '--', 'complexity-after.json')) | Select-Object -First 1).ToString().Trim()
     $checkerPath = Join-Path $Scenario.Directory 'tools/check-complexity.ps1'
     $checker = Get-Content -LiteralPath $checkerPath -Raw
-    $match = [regex]::Match($checker, '\$acceptedBaselineSha256 = ''[0-9A-Fa-f]{64}''')
+    $match = [regex]::Match($checker, '\$acceptedBaselineBlob = ''[0-9a-f]{40}''')
     if (-not $match.Success) {
-        throw 'Fixture checker did not contain the accepted-baseline integrity declaration.'
+        throw 'Fixture checker did not contain the accepted-baseline blob declaration.'
     }
-    $replacement = "`$acceptedBaselineSha256 = '$hash'"
+    $replacement = "`$acceptedBaselineBlob = '$hash'"
     $updatedChecker = $checker.Replace($match.Value, $replacement)
     Write-FixtureText $checkerPath $updatedChecker
 }
