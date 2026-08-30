@@ -940,6 +940,92 @@ function Merge-IdentityMigrationMaps {
     }
 }
 
+function Get-IdentityMigrationTargetMetric {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Migration,
+        [Parameter(Mandatory = $true)] [object[]] $CurrentMetrics
+    )
+
+    $target = @($CurrentMetrics | Where-Object { [string] $_.key -ceq [string] $Migration.currentKey })
+    if (@($target).Count -ne 1) {
+        throw "Identity migration target '$($Migration.currentKey)' does not exist exactly once in the measured candidate."
+    }
+    return $target[0]
+}
+
+function Assert-IdentityMigrationLineage {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Migration,
+        [Parameter(Mandatory = $true)] [object] $TargetMetric,
+        [Parameter(Mandatory = $true)] [object] $TargetScope,
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey
+    )
+
+    $lineageMatches = @(Get-RelatedBaselineMetrics $TargetMetric $TargetScope $BaselineByKey)
+    if (@($lineageMatches).Count -eq 0) {
+        return
+    }
+    $mappedMatch = @($lineageMatches | Where-Object { [string] $_.key -ceq [string] $Migration.baselineKey })
+    if (@($mappedMatch).Count -eq 0) {
+        throw "Identity migration target '$($Migration.currentKey)' is already bound to a different accepted baseline through file lineage."
+    }
+}
+
+function Assert-IdentityMigrationUniqueName {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Migration,
+        [Parameter(Mandatory = $true)] [object] $TargetMetric,
+        [Parameter(Mandatory = $true)] [object] $TargetScope,
+        [Parameter(Mandatory = $true)] [object[]] $CurrentMetrics,
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey
+    )
+
+    if ($TargetScope.IsRecreated) {
+        return
+    }
+    $sameNameBaseline = @(Get-SameNameBaselineCandidates $TargetMetric $TargetScope $BaselineByKey)
+    if (@($sameNameBaseline).Count -ne 1) {
+        return
+    }
+    $sameNameCurrent = @(Get-SameNameCurrentCandidates $TargetMetric $CurrentMetrics)
+    if (@($sameNameCurrent).Count -eq 1 -and
+        [string] $sameNameBaseline[0].key -cne [string] $Migration.baselineKey) {
+        throw "Identity migration target '$($Migration.currentKey)' is already bound to a different accepted baseline by unique function-name continuity."
+    }
+}
+
+function Assert-IdentityMigrationFunctionIdentity {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Migration,
+        [Parameter(Mandatory = $true)] [object] $TargetMetric,
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey
+    )
+
+    $sameIdentityBaselines = @($BaselineByKey.Values | Where-Object {
+            $_.scopeKind -ceq $TargetMetric.scopeKind -and $_.language -ceq $TargetMetric.language -and
+            $_.function -ceq $TargetMetric.function -and $_.signature -ceq $TargetMetric.signature
+        })
+    if (@($sameIdentityBaselines).Count -eq 0) {
+        return
+    }
+    $mappedMatch = @($sameIdentityBaselines | Where-Object { [string] $_.key -ceq [string] $Migration.baselineKey })
+    if (@($mappedMatch).Count -eq 0) {
+        throw "Identity migration target '$($Migration.currentKey)' conflicts with another accepted baseline sharing its exact function identity."
+    }
+}
+
+function Assert-IdentityMigrationNotStale {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Migration,
+        [Parameter(Mandatory = $true)] [object[]] $CurrentMetrics
+    )
+
+    $old = @($CurrentMetrics | Where-Object { [string] $_.key -ceq [string] $Migration.baselineKey })
+    if (@($old).Count -gt 0) {
+        throw "Identity migration '$($Migration.baselineKey)' is stale because the old identity still exists in the candidate."
+    }
+}
+
 function Assert-IdentityMigrationTargets {
     param(
         [Parameter(Mandatory = $true)] [object] $Migrations,
@@ -949,40 +1035,15 @@ function Assert-IdentityMigrationTargets {
     )
 
     foreach ($migration in $Migrations.entries) {
-        $target = @($CurrentMetrics | Where-Object { [string] $_.key -ceq [string] $migration.currentKey })
-        if (@($target).Count -ne 1) {
-            throw "Identity migration target '$($migration.currentKey)' does not exist exactly once in the measured candidate."
-        }
-        $targetMetric = $target[0]
+        $targetMetric = Get-IdentityMigrationTargetMetric $migration $CurrentMetrics
         $targetScope = $ScopeByPath[[string] $targetMetric.file]
         if ($null -eq $targetScope) {
             throw "Identity migration target '$($migration.currentKey)' has no measured scope record."
         }
-        $lineageMatches = @(Get-RelatedBaselineMetrics $targetMetric $targetScope $BaselineByKey)
-        if (@($lineageMatches).Count -gt 0 -and
-            @($lineageMatches | Where-Object { [string] $_.key -ceq [string] $migration.baselineKey }).Count -eq 0) {
-            throw "Identity migration target '$($migration.currentKey)' is already bound to a different accepted baseline through file lineage."
-        }
-        if (-not $targetScope.IsRecreated) {
-            $sameNameBaseline = @(Get-SameNameBaselineCandidates $targetMetric $targetScope $BaselineByKey)
-            $sameNameCurrent = @(Get-SameNameCurrentCandidates $targetMetric $CurrentMetrics)
-            if (@($sameNameBaseline).Count -eq 1 -and @($sameNameCurrent).Count -eq 1 -and
-                [string] $sameNameBaseline[0].key -cne [string] $migration.baselineKey) {
-                throw "Identity migration target '$($migration.currentKey)' is already bound to a different accepted baseline by unique function-name continuity."
-            }
-        }
-        $sameIdentityBaselines = @($BaselineByKey.Values | Where-Object {
-                $_.scopeKind -ceq $targetMetric.scopeKind -and $_.language -ceq $targetMetric.language -and
-                $_.function -ceq $targetMetric.function -and $_.signature -ceq $targetMetric.signature
-            })
-        if (@($sameIdentityBaselines).Count -gt 0 -and
-            @($sameIdentityBaselines | Where-Object { [string] $_.key -ceq [string] $migration.baselineKey }).Count -eq 0) {
-            throw "Identity migration target '$($migration.currentKey)' conflicts with another accepted baseline sharing its exact function identity."
-        }
-        $old = @($CurrentMetrics | Where-Object { [string] $_.key -ceq [string] $migration.baselineKey })
-        if (@($old).Count -gt 0) {
-            throw "Identity migration '$($migration.baselineKey)' is stale because the old identity still exists in the candidate."
-        }
+        Assert-IdentityMigrationLineage $migration $targetMetric $targetScope $BaselineByKey
+        Assert-IdentityMigrationUniqueName $migration $targetMetric $targetScope $CurrentMetrics $BaselineByKey
+        Assert-IdentityMigrationFunctionIdentity $migration $targetMetric $BaselineByKey
+        Assert-IdentityMigrationNotStale $migration $CurrentMetrics
     }
 }
 
