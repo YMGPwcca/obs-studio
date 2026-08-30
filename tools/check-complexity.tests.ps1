@@ -481,7 +481,7 @@ try {
     Write-FixtureText (Join-Path $caseM.Directory 'complexity-identity-migrations.json') ($migrationNew | ConvertTo-Json -Depth 5)
     Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M object migration document' 'Identity migration document'
     Write-FixtureText (Join-Path $caseM.Directory 'complexity-identity-migrations.json') (New-DuplicateMigrationDocument $oldMetricM.key $newMetricM)
-    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M duplicate JSON property' 'duplicate property'
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M duplicate JSON property' "'baselineKey'"
     $wildcardPath = New-MigrationRecordValues $oldMetricM.key 'cpp' 'function' 'src/*.cpp' 'new_name' $newMetricM.signature
     Write-MigrationDocument $caseM @($wildcardPath)
     Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M wildcard path' 'src/\*\.cpp'
