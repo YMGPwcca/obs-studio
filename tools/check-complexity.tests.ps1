@@ -215,7 +215,7 @@ try {
     Commit-FixtureFile $caseA 'engine/runtime_scene_v2.cpp' (New-IfChain 'runtime_scene_bad' 'int' 11) 'fixture add bad cpp'
     $caseAResult = Invoke-ComplexityChecker $caseA 'Check'
     Assert-FunctionMeasured $caseAResult 'engine/runtime_scene_v2.cpp' 'runtime_scene_bad' 'CASE A new C++ file'
-    Assert-CheckerFailure $caseAResult 'CASE A new C++ file CC > 10' 'CC > 10:.*runtime_scene_bad|New function exceeds CC 10:.*runtime_scene_bad'
+    Assert-CheckerFailure $caseAResult 'CASE A new C++ file CC > 10' '(?s)(?:CC > 10:.*runtime_scene_bad|New function exceeds CC 10:.*runtime_scene_bad)'
 
     $caseB = New-Fixture 'case-b-new-cpp-good'
     Prepare-FixtureBaseline $caseB
@@ -230,14 +230,14 @@ try {
     Commit-FixtureFile $caseC 'engine/new_runtime_scene.hpp' $header 'fixture add bad header implementation'
     $caseCResult = Invoke-ComplexityChecker $caseC 'Check'
     Assert-FunctionMeasured $caseCResult 'engine/new_runtime_scene.hpp' 'header_bad' 'CASE C new header implementation'
-    Assert-CheckerFailure $caseCResult 'CASE C new header implementation CC > 10' 'CC > 10:.*header_bad|New function exceeds CC 10:.*header_bad'
+    Assert-CheckerFailure $caseCResult 'CASE C new header implementation CC > 10' '(?s)(?:CC > 10:.*header_bad|New function exceeds CC 10:.*header_bad)'
 
     $caseD = New-Fixture 'case-d-baseline-regression'
     Prepare-FixtureBaseline $caseD
     Commit-FixtureFile $caseD 'src/accepted.cpp' "int accepted_function(int value) {`n    if (value > 0) { return value; }`n    if (value > 1) { return value + 1; }`n    return 0;`n}`n" 'fixture regress accepted function'
     $caseDResult = Invoke-ComplexityChecker $caseD 'Check'
     Assert-FunctionMeasured $caseDResult 'src/accepted.cpp' 'accepted_function' 'CASE D existing hardened function'
-    Assert-CheckerFailure $caseDResult 'CASE D existing hardened function baseline regression' 'Complexity increased:.*accepted_function'
+    Assert-CheckerFailure $caseDResult 'CASE D existing hardened function baseline regression' '(?s)Complexity increased:.*accepted_function'
 
     $exceptionSource = New-IfChain 'obs_source_destroy_defer' 'void' 12
     $caseE = New-Fixture 'case-e-exact-exception' 'libobs/obs-source.c' $exceptionSource
@@ -269,7 +269,7 @@ try {
     Commit-FixtureFile $caseE 'libobs/obs-source.c' ($exceptionSource + "`n" + $similar + "`n") 'fixture add similarly named unrelated function'
     $caseESimilarResult = Invoke-ComplexityChecker $caseE 'Check'
     Assert-FunctionMeasured $caseESimilarResult 'libobs/obs-source.c' 'obs_source_destroy_defer_extra' 'CASE E unrelated similarly named function'
-    Assert-CheckerFailure $caseESimilarResult 'CASE E unrelated similarly named function cannot inherit exception' 'CC > 10:.*obs_source_destroy_defer_extra|New function exceeds CC 10:.*obs_source_destroy_defer_extra'
+    Assert-CheckerFailure $caseESimilarResult 'CASE E unrelated similarly named function cannot inherit exception' '(?s)(?:CC > 10:.*obs_source_destroy_defer_extra|New function exceeds CC 10:.*obs_source_destroy_defer_extra)'
 
     $caseF = New-Fixture 'case-f-new-powershell-bad'
     Prepare-FixtureBaseline $caseF
@@ -277,7 +277,7 @@ try {
     Commit-FixtureFile $caseF 'tools/new-complexity-helper.ps1' $powerShellBad 'fixture add bad powershell function'
     $caseFResult = Invoke-ComplexityChecker $caseF 'Check'
     Assert-FunctionMeasured $caseFResult 'tools/new-complexity-helper.ps1' 'New-PowerShellBad' 'CASE F new PowerShell function'
-    Assert-CheckerFailure $caseFResult 'CASE F new PowerShell function CC > 10' 'CC > 10:.*New-PowerShellBad|New function exceeds CC 10:.*New-PowerShellBad'
+    Assert-CheckerFailure $caseFResult 'CASE F new PowerShell function CC > 10' '(?s)(?:CC > 10:.*New-PowerShellBad|New function exceeds CC 10:.*New-PowerShellBad)'
 
     $caseH = New-Fixture 'case-h-renamed-file-regression'
     Prepare-FixtureBaseline $caseH
@@ -285,7 +285,7 @@ try {
     Commit-FixtureRename $caseH 'src/accepted.cpp' 'src/renamed.cpp' $renamedContent 'fixture rename and regress function'
     $caseHResult = Invoke-ComplexityChecker $caseH 'Check'
     Assert-FunctionMeasured $caseHResult 'src/renamed.cpp' 'accepted_function' 'CASE H renamed file baseline identity'
-    Assert-CheckerFailure $caseHResult 'CASE H renamed file baseline regression' 'Complexity increased:.*accepted_function'
+    Assert-CheckerFailure $caseHResult 'CASE H renamed file baseline regression' '(?s)Complexity increased:.*accepted_function'
 
     $caseG = New-Fixture 'case-g-unsupported-script'
     Prepare-FixtureBaseline $caseG
