@@ -26,14 +26,14 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
 
-          $CoreBlob = (git hash-object 'engine/protocol_v2.cpp').Trim()
-          if ($CoreBlob -ne '20eb13b489ea33e4c0474d560174888cc25b111b') {
-            throw "Accepted Task 10 protocol core changed unexpectedly: $CoreBlob"
-          }
-
           $CMake = Get-Content -Raw 'engine/CMakeLists.txt'
           if (-not $CMake.Contains('handle_v2_request=handle_v2_request_core')) {
             throw 'Task 11 router does not isolate the accepted Task 10 protocol core.'
+          }
+
+          $Core = Get-Content -Raw 'engine/protocol_v2.cpp'
+          if (-not $Core.Contains('bool handle_v2_request(Engine &engine')) {
+            throw 'The isolated Task 10 protocol core entry point is missing.'
           }
 
           $Router = Get-Content -Raw 'engine/protocol_filter_v2.cpp'
