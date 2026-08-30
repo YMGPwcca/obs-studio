@@ -91,10 +91,11 @@ function Assert-CheckerFailure {
         [Parameter(Mandatory = $true)] [string] $Pattern
     )
 
-    if ($Result.ExitCode -eq 0 -or $Result.Output -notmatch $Pattern) {
-        throw "$Label did not fail as expected (exit $($Result.ExitCode), pattern '$Pattern').`n$($Result.Output)"
+    $normalizedOutput = $Result.Output -replace '\x1B\[[0-?]*[ -/]*[@-~]', ''
+    if ($Result.ExitCode -eq 0 -or $normalizedOutput -notmatch $Pattern) {
+        throw "$Label did not fail as expected (exit $($Result.ExitCode), pattern '$Pattern').`n$normalizedOutput"
     }
-    $compactOutput = ($Result.Output -replace '\s+', ' ').Trim()
+    $compactOutput = ($normalizedOutput -replace '\s+', ' ').Trim()
     $match = [regex]::Match($compactOutput, $Pattern)
     $detail = if ($match.Success) { $match.Value } else { $compactOutput }
     if ($detail.Length -gt 320) {
