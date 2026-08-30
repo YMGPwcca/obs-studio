@@ -943,13 +943,41 @@ function Merge-IdentityMigrationMaps {
 function Assert-IdentityMigrationTargets {
     param(
         [Parameter(Mandatory = $true)] [object] $Migrations,
-        [Parameter(Mandatory = $true)] [object[]] $CurrentMetrics
+        [Parameter(Mandatory = $true)] [object[]] $CurrentMetrics,
+        [Parameter(Mandatory = $true)] [hashtable] $ScopeByPath,
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey
     )
 
     foreach ($migration in $Migrations.entries) {
         $target = @($CurrentMetrics | Where-Object { [string] $_.key -ceq [string] $migration.currentKey })
         if (@($target).Count -ne 1) {
             throw "Identity migration target '$($migration.currentKey)' does not exist exactly once in the measured candidate."
+        }
+        $targetMetric = $target[0]
+        $targetScope = $ScopeByPath[[string] $targetMetric.file]
+        if ($null -eq $targetScope) {
+            throw "Identity migration target '$($migration.currentKey)' has no measured scope record."
+        }
+        $lineageMatches = @(Get-RelatedBaselineMetrics $targetMetric $targetScope $BaselineByKey)
+        if (@($lineageMatches).Count -gt 0 -and
+            @($lineageMatches | Where-Object { [string] $_.key -ceq [string] $migration.baselineKey }).Count -eq 0) {
+            throw "Identity migration target '$($migration.currentKey)' is already bound to a different accepted baseline through file lineage."
+        }
+        if (-not $targetScope.IsRecreated) {
+            $sameNameBaseline = @(Get-SameNameBaselineCandidates $targetMetric $targetScope $BaselineByKey)
+            $sameNameCurrent = @(Get-SameNameCurrentCandidates $targetMetric $CurrentMetrics)
+            if (@($sameNameBaseline).Count -eq 1 -and @($sameNameCurrent).Count -eq 1 -and
+                [string] $sameNameBaseline[0].key -cne [string] $migration.baselineKey) {
+                throw "Identity migration target '$($migration.currentKey)' is already bound to a different accepted baseline by unique function-name continuity."
+            }
+        }
+        $sameIdentityBaselines = @($BaselineByKey.Values | Where-Object {
+                $_.scopeKind -ceq $targetMetric.scopeKind -and $_.language -ceq $targetMetric.language -and
+                $_.function -ceq $targetMetric.function -and $_.signature -ceq $targetMetric.signature
+            })
+        if (@($sameIdentityBaselines).Count -gt 0 -and
+            @($sameIdentityBaselines | Where-Object { [string] $_.key -ceq [string] $migration.baselineKey }).Count -eq 0) {
+            throw "Identity migration target '$($migration.currentKey)' conflicts with another accepted baseline sharing its exact function identity."
         }
         $old = @($CurrentMetrics | Where-Object { [string] $_.key -ceq [string] $migration.baselineKey })
         if (@($old).Count -gt 0) {
@@ -1582,14 +1610,23 @@ function Find-BeforeMetric {
     )
 
     $matches = @(Get-RelatedBaselineMetrics $Metric $Scope $Exact)
+    $mapped = if ($IdentityMigrationsByCurrentKey.ContainsKey([string] $Metric.key)) {
+        $IdentityMigrationsByCurrentKey[[string] $Metric.key]
+    } else {
+        $null
+    }
+    if ($null -ne $mapped) {
+        if (@($matches).Count -gt 0 -and
+            @($matches | Where-Object { [string] $_.key -ceq [string] $mapped.key }).Count -eq 0) {
+            throw "Identity migration for '$($Metric.key)' conflicts with an existing exact or lineage baseline identity."
+        }
+        return $mapped
+    }
     if (@($matches).Count -gt 1) {
         throw "Ambiguous baseline identity for $($Metric.file):$($Metric.startLine) $($Metric.function)."
     }
     if (@($matches).Count -eq 1) {
         return $matches[0]
-    }
-    if ($IdentityMigrationsByCurrentKey.ContainsKey([string] $Metric.key)) {
-        return $IdentityMigrationsByCurrentKey[[string] $Metric.key]
     }
     return $null
 }
@@ -1838,7 +1875,8 @@ foreach ($commit in $futureHistory) {
             $deletedPathSet[[string] $record.Path] = $true
         } elseif ($record.Status -eq 'A' -and $deletedPathSet.ContainsKey([string] $record.Path)) {
             $recreatedPathSet[[string] $record.Path] = $true
-        } elseif ($record.Status -match '^R' -and $record.OldPath -and $deletedPathSet.ContainsKey([string] $record.OldPath)) {
+        } elseif ($record.Status -match '^R' -and $record.OldPath -and
+            ($deletedPathSet.ContainsKey([string] $record.OldPath) -or $deletedPathSet.ContainsKey([string] $record.Path))) {
             $recreatedPathSet[[string] $record.Path] = $true
         }
     }
@@ -2148,7 +2186,7 @@ if ($null -eq $allowlist) {
 }
 $baselineByKey = New-MetricKeyMap @($baseline.functions) 'accepted complexity baseline'
 Validate-Allowlist $allowlist $baselineByKey
-Assert-IdentityMigrationTargets $continuityMaps $allFunctionMetrics
+Assert-IdentityMigrationTargets $continuityMaps $allFunctionMetrics $scopeByPath $baselineByKey
 $violations = [System.Collections.Generic.List[string]]::new()
 foreach ($identityViolation in (Get-UnmigratedIdentityViolations $allFunctionMetrics $baselineByKey $scopeByPath $continuityMaps)) {
     $violations.Add($identityViolation)

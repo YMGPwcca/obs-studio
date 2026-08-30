@@ -133,13 +133,17 @@ an exact object in a top-level JSON array of the form:
 The old key must exist in `complexity-after.json`; the current identity must
 occur exactly once in the complete parsed candidate inventory; old and new
 identities are each one-to-one; and the old identity must no longer be present.
-The document and nested objects reject null/non-object entries and unsupported
-properties. No wildcard, prefix, regex, or fuzzy body matching is used. A
+An explicit target cannot override a different exact/lineage or unambiguous
+same-name binding. The document and nested objects reject null/non-object
+entries and unsupported properties. No wildcard, prefix, regex, or fuzzy body
+matching is used. A
 unique same-name signature change in one file lineage is recognized
 automatically; multiple baseline or current overload candidates fail closed
 and require the exact metadata. Deleted-and-recreated paths always require an
-explicit migration. A migration carries the old CC budget, so it never resets
-a function to the ordinary CC 10 allowance. Exceptions remain separate
+explicit migration with a changed current identity; same-key recreation is
+rejected because this schema cannot distinguish generations, so it remains a
+fail-closed error. A migration carries the old CC budget, so it never resets a
+function to the ordinary CC 10 allowance. Exceptions remain separate
 metadata.
 
 The only analyzers officially supported by this gate are C/C++ (including the
@@ -163,8 +167,10 @@ passes; M nonexistent/duplicate/wrong/stale migration metadata fails closed;
 and N a combined file+function rename preserves the old budget. Existing A–H
 coverage still includes new bad `.cpp`/header/PowerShell functions, the exact
 exception, unsupported Python, and file-rename regression protection.
-An additional O fixture proves deleted-and-recreated files cannot use automatic
-same-name continuity.
+Additional O and P fixtures prove deleted-and-recreated files cannot use
+automatic same-name continuity, including a rename into a previously deleted
+destination; Q proves a migration cannot override an existing file-lineage
+baseline binding.
 
 ## Refactoring and semantic review
 

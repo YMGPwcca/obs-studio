@@ -519,7 +519,34 @@ try {
     Write-MigrationDocument $caseO @(New-MigrationRecord $oldMetricO $newMetricO)
     Assert-CheckerFailure (Invoke-ComplexityChecker $caseO 'Check') 'CASE O same-key recreated migration fails closed' 'must change'
 
-    Write-Output 'Complexity checker self-test: PASS (cases A-O)'
+    $replacementSignature = "int calculate(int value, bool mode) {`n    if (mode) { return value; }`n    return value;`n}`n"
+    $caseP = New-Fixture 'case-p-rename-into-deleted-path' 'src/destination.cpp' (New-IfChain 'calculate' 'int' 1)
+    Prepare-FixtureBaseline $caseP
+    Commit-FixtureFile $caseP 'src/source.cpp' $replacementSignature 'fixture add replacement source'
+    Invoke-FixtureGit $caseP.Directory @('rm', '--', 'src/destination.cpp') | Out-Null
+    Invoke-FixtureGit $caseP.Directory @('commit', '-m', 'fixture delete destination path') | Out-Null
+    Commit-FixtureRename $caseP 'src/source.cpp' 'src/destination.cpp' $replacementSignature 'fixture rename into deleted destination'
+    $casePNoMigration = Invoke-ComplexityChecker $caseP 'Check'
+    Assert-FunctionMeasured $casePNoMigration 'src/destination.cpp' 'calculate' 'CASE P rename into deleted path'
+    Assert-CheckerFailure $casePNoMigration 'CASE P recreated destination requires migration' 'calculate\( int value\)'
+    $oldMetricP = Get-ReportFunctionMetric $caseP.Directory 'complexity-after.json' 'src/destination.cpp' 'calculate'
+    $newMetricP = Get-ReportFunctionMetric $caseP.Directory 'complexity-check.json' 'src/destination.cpp' 'calculate'
+    Write-MigrationDocument $caseP @(New-MigrationRecord $oldMetricP $newMetricP)
+    Assert-CheckerPass (Invoke-ComplexityChecker $caseP 'Check') 'CASE P explicit migration across recreated destination'
+
+    $stableQContent = (1..20 | ForEach-Object { "// stable lineage marker $_" }) -join "`n"
+    $caseQContent = $stableQContent + "`n" + (New-IfChain 'old_name' 'int' 1) + "`n" + (New-IfChain 'other_name' 'int' 1)
+    $caseQ = New-Fixture 'case-q-lineage-migration-collision' 'src/a.cpp' $caseQContent
+    Prepare-FixtureBaseline $caseQ
+    Commit-FixtureRename $caseQ 'src/a.cpp' 'src/b.cpp' ($stableQContent + "`n" + (New-IfChain 'old_name' 'int' 1)) 'fixture rename with second baseline removed'
+    $caseQNoMigration = Invoke-ComplexityChecker $caseQ 'Check'
+    Assert-FunctionMeasured $caseQNoMigration 'src/b.cpp' 'old_name' 'CASE Q lineage target fixture'
+    $oldMetricQ = Get-ReportFunctionMetric $caseQ.Directory 'complexity-after.json' 'src/a.cpp' 'other_name'
+    $newMetricQ = Get-ReportFunctionMetric $caseQ.Directory 'complexity-check.json' 'src/b.cpp' 'old_name'
+    Write-MigrationDocument $caseQ @(New-MigrationRecord $oldMetricQ $newMetricQ)
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseQ 'Check') 'CASE Q migration target conflicts with accepted baseline' 'accepted baseline'
+
+    Write-Output 'Complexity checker self-test: PASS (cases A-Q)'
 } finally {
     if (Test-Path -LiteralPath $testRoot) {
         Remove-Item -LiteralPath $testRoot -Recurse -Force
