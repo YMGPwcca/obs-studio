@@ -755,10 +755,18 @@ function Read-IdentityMigrationEntries {
     param([Parameter(Mandatory = $true)] [string] $Path)
 
     $fullPath = Get-RepoFilePath $Path
+    $raw = Get-Content -LiteralPath $fullPath -Raw
+    $jsonDocument = $null
     try {
-        $document = ConvertFrom-Json -InputObject (Get-Content -LiteralPath $fullPath -Raw) -NoEnumerate
+        $jsonDocument = [System.Text.Json.JsonDocument]::Parse($raw)
+        Assert-JsonUniqueProperties $jsonDocument.RootElement $Path
+        $document = ConvertFrom-Json -InputObject $raw -NoEnumerate
     } catch {
         throw "Could not parse identity migration document '$Path': $($_.Exception.Message)"
+    } finally {
+        if ($null -ne $jsonDocument) {
+            $jsonDocument.Dispose()
+        }
     }
     if ($null -eq $document -or $document -isnot [Array]) {
         throw "Identity migration document '$Path' must be a JSON array."
@@ -769,6 +777,28 @@ function Read-IdentityMigrationEntries {
         }
     }
     return ,$document
+}
+
+function Assert-JsonUniqueProperties {
+    param(
+        [Parameter(Mandatory = $true)] [System.Text.Json.JsonElement] $Element,
+        [Parameter(Mandatory = $true)] [string] $Context
+    )
+
+    if ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Object) {
+        $seen = New-ExactMap
+        foreach ($property in $Element.EnumerateObject()) {
+            if ($seen.ContainsKey($property.Name)) {
+                throw "JSON object contains duplicate property '$($property.Name)'."
+            }
+            $seen[$property.Name] = $true
+            Assert-JsonUniqueProperties $property.Value "$Context.$($property.Name)"
+        }
+    } elseif ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Array) {
+        foreach ($item in $Element.EnumerateArray()) {
+            Assert-JsonUniqueProperties $item $Context
+        }
+    }
 }
 
 function Get-IdentityMigrationBaseline {
@@ -1041,6 +1071,9 @@ function Test-BaselineIdentityPresent {
             continue
         }
         $scope = $ScopeByPath[[string] $metric.file]
+        if ($scope.IsRecreated) {
+            continue
+        }
         $lineage = @([string] $metric.file) + @($scope.HistoricalPaths)
         if (Test-ExactStringInList ([string] $BaselineMetric.file) $lineage) {
             return $true

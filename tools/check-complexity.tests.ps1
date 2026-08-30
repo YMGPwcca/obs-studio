@@ -284,6 +284,29 @@ function Write-MigrationDocument {
     Write-FixtureText (Join-Path $Scenario.Directory 'complexity-identity-migrations.json') $json
 }
 
+function New-DuplicateMigrationDocument {
+    param(
+        [Parameter(Mandatory = $true)] [string] $BaselineKey,
+        [Parameter(Mandatory = $true)] [object] $CurrentMetric
+    )
+
+    return @"
+[
+  {
+    "baselineKey": "$BaselineKey",
+    "baselineKey": "$BaselineKey",
+    "current": {
+      "language": "$($CurrentMetric.language)",
+      "scopeKind": "$($CurrentMetric.scopeKind)",
+      "file": "$($CurrentMetric.file)",
+      "function": "$($CurrentMetric.function)",
+      "signature": "$($CurrentMetric.signature)"
+    }
+  }
+]
+"@
+}
+
 try {
     New-Item -ItemType Directory -Path $testRoot -Force | Out-Null
 
@@ -456,6 +479,8 @@ try {
     Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M non-array migration document' 'Identity migration document'
     Write-FixtureText (Join-Path $caseM.Directory 'complexity-identity-migrations.json') ($migrationNew | ConvertTo-Json -Depth 5)
     Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M object migration document' 'Identity migration document'
+    Write-FixtureText (Join-Path $caseM.Directory 'complexity-identity-migrations.json') (New-DuplicateMigrationDocument $oldMetricM.key $newMetricM)
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M duplicate JSON property' 'duplicate property'
     $wildcardPath = New-MigrationRecordValues $oldMetricM.key 'cpp' 'function' 'src/*.cpp' 'new_name' $newMetricM.signature
     Write-MigrationDocument $caseM @($wildcardPath)
     Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M wildcard path' 'src/\*\.cpp'
@@ -483,7 +508,7 @@ try {
     Prepare-FixtureBaseline $caseO
     Invoke-FixtureGit $caseO.Directory @('rm', '--', 'src/recreated.cpp') | Out-Null
     Invoke-FixtureGit $caseO.Directory @('commit', '-m', 'fixture delete source identity') | Out-Null
-    $recreatedCandidate = "int calculate(int value, bool mode) {`n    if (mode) { return value; }`n    if (value > 0) { return value + 1; }`n    return 0;`n}`n"
+    $recreatedCandidate = New-IfChain 'calculate' 'int' 2
     Commit-FixtureFile $caseO 'src/recreated.cpp' $recreatedCandidate 'fixture recreate source with signature change'
     $caseONoMigration = Invoke-ComplexityChecker $caseO 'Check'
     Assert-FunctionMeasured $caseONoMigration 'src/recreated.cpp' 'calculate' 'CASE O recreated file without migration'
@@ -491,10 +516,9 @@ try {
     $oldMetricO = Get-ReportFunctionMetric $caseO.Directory 'complexity-after.json' 'src/recreated.cpp' 'calculate'
     $newMetricO = Get-ReportFunctionMetric $caseO.Directory 'complexity-check.json' 'src/recreated.cpp' 'calculate'
     Write-MigrationDocument $caseO @(New-MigrationRecord $oldMetricO $newMetricO)
-    $caseOWithMigration = Invoke-ComplexityChecker $caseO 'Check'
-    Assert-CheckerFailure $caseOWithMigration 'CASE O recreated file migrated identity uses old CC budget' 'baseline 2'
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseO 'Check') 'CASE O same-key recreated migration fails closed' 'must change'
 
-    Write-Output 'Complexity checker self-test: PASS (cases A-N plus O)'
+    Write-Output 'Complexity checker self-test: PASS (cases A-O)'
 } finally {
     if (Test-Path -LiteralPath $testRoot) {
         Remove-Item -LiteralPath $testRoot -Recurse -Force
