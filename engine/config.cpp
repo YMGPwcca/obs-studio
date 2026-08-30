@@ -30,6 +30,71 @@ bool parse_u32(const char *text, uint32_t min_value, uint32_t max_value, uint32_
 	return true;
 }
 
+enum class ArgumentResult { NotMatched, Parsed, Invalid };
+
+struct NumericArgument {
+	const char *prefix;
+	uint32_t min_value;
+	uint32_t max_value;
+	uint32_t Config::*field;
+};
+
+constexpr NumericArgument kNumericArguments[] = {
+	{"--width=", kMinDimension, kMaxDimension, &Config::width},
+	{"--height=", kMinDimension, kMaxDimension, &Config::height},
+	{"--fps=", 1, kMaxFps, &Config::fps},
+};
+
+ArgumentResult parse_numeric_argument(const char *arg, Config &config)
+{
+	for (const NumericArgument &option : kNumericArguments) {
+		const size_t prefix_length = std::strlen(option.prefix);
+		if (std::strncmp(arg, option.prefix, prefix_length) == 0)
+			return parse_u32(arg + prefix_length, option.min_value, option.max_value, config.*(option.field))
+				       ? ArgumentResult::Parsed
+				       : ArgumentResult::Invalid;
+	}
+	return ArgumentResult::NotMatched;
+}
+
+ArgumentResult parse_plugin_argument(const char *arg, Config &config)
+{
+	constexpr const char *prefix = "--plugin=";
+	const size_t prefix_length = std::strlen(prefix);
+	if (std::strncmp(arg, prefix, prefix_length) != 0)
+		return ArgumentResult::NotMatched;
+	const char *plugin = arg + prefix_length;
+	if (!is_safe_identifier(plugin, kMaxPluginNameBytes))
+		return ArgumentResult::Invalid;
+	config.plugins.emplace_back(plugin);
+	config.required_plugins.emplace_back(plugin);
+	return ArgumentResult::Parsed;
+}
+
+ArgumentResult parse_locale_argument(const char *arg, Config &config)
+{
+	constexpr const char *prefix = "--locale=";
+	const size_t prefix_length = std::strlen(prefix);
+	if (std::strncmp(arg, prefix, prefix_length) != 0)
+		return ArgumentResult::NotMatched;
+	const char *locale = arg + prefix_length;
+	if (!is_safe_identifier(locale, 32))
+		return ArgumentResult::Invalid;
+	config.locale = locale;
+	return ArgumentResult::Parsed;
+}
+
+ArgumentResult parse_value_argument(const char *arg, Config &config)
+{
+	const ArgumentResult numeric = parse_numeric_argument(arg, config);
+	if (numeric != ArgumentResult::NotMatched)
+		return numeric;
+	const ArgumentResult plugin = parse_plugin_argument(arg, config);
+	if (plugin != ArgumentResult::NotMatched)
+		return plugin;
+	return parse_locale_argument(arg, config);
+}
+
 } // namespace
 
 bool parse_args(int argc, char **argv, Config &config)
@@ -45,35 +110,10 @@ bool parse_args(int argc, char **argv, Config &config)
 			continue;
 		}
 
-		constexpr const char *width_prefix = "--width=";
-		constexpr const char *height_prefix = "--height=";
-		constexpr const char *fps_prefix = "--fps=";
-		constexpr const char *plugin_prefix = "--plugin=";
-		constexpr const char *locale_prefix = "--locale=";
-
-		if (std::strncmp(arg, width_prefix, std::strlen(width_prefix)) == 0) {
-			if (!parse_u32(arg + std::strlen(width_prefix), kMinDimension, kMaxDimension, config.width))
-				return false;
-		} else if (std::strncmp(arg, height_prefix, std::strlen(height_prefix)) == 0) {
-			if (!parse_u32(arg + std::strlen(height_prefix), kMinDimension, kMaxDimension, config.height))
-				return false;
-		} else if (std::strncmp(arg, fps_prefix, std::strlen(fps_prefix)) == 0) {
-			if (!parse_u32(arg + std::strlen(fps_prefix), 1, kMaxFps, config.fps))
-				return false;
-		} else if (std::strncmp(arg, plugin_prefix, std::strlen(plugin_prefix)) == 0) {
-			const char *plugin = arg + std::strlen(plugin_prefix);
-			if (!is_safe_identifier(plugin, kMaxPluginNameBytes))
-				return false;
-			config.plugins.emplace_back(plugin);
-			config.required_plugins.emplace_back(plugin);
-		} else if (std::strncmp(arg, locale_prefix, std::strlen(locale_prefix)) == 0) {
-			const char *locale = arg + std::strlen(locale_prefix);
-			if (!is_safe_identifier(locale, 32))
-				return false;
-			config.locale = locale;
-		} else {
-			return false;
-		}
+		const ArgumentResult value = parse_value_argument(arg, config);
+		if (value == ArgumentResult::Parsed)
+			continue;
+		return false;
 	}
 
 	std::sort(config.plugins.begin(), config.plugins.end());

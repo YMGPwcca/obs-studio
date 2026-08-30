@@ -230,6 +230,39 @@ bool parse_modifiers(obs_data_t *params, uint32_t &modifiers, RuntimeV2Error &er
 	return true;
 }
 
+bool decode_utf8_lead(unsigned char first, size_t &length, uint32_t &value)
+{
+	if (first <= 0x7F) {
+		length = 1;
+		value = first;
+	} else if (first >= 0xC2 && first <= 0xDF) {
+		length = 2;
+		value = first & 0x1F;
+	} else if (first >= 0xE0 && first <= 0xEF) {
+		length = 3;
+		value = first & 0x0F;
+	} else if (first >= 0xF0 && first <= 0xF4) {
+		length = 4;
+		value = first & 0x07;
+	} else {
+		return false;
+	}
+	return true;
+}
+
+bool is_valid_utf8_scalar(uint32_t value, size_t length)
+{
+	if (value == 0)
+		return false;
+	if (length == 3 && value < 0x800)
+		return false;
+	if (length == 4 && value < 0x10000)
+		return false;
+	if (value >= 0xD800 && value <= 0xDFFF)
+		return false;
+	return value <= 0x10FFFF;
+}
+
 bool decode_utf8_scalars(std::string_view text, std::vector<std::string> &scalars, size_t max_scalars)
 {
 	scalars.clear();
@@ -237,21 +270,8 @@ bool decode_utf8_scalars(std::string_view text, std::vector<std::string> &scalar
 		const auto first = static_cast<unsigned char>(text[index]);
 		size_t length = 0;
 		uint32_t value = 0;
-		if (first <= 0x7F) {
-			length = 1;
-			value = first;
-		} else if (first >= 0xC2 && first <= 0xDF) {
-			length = 2;
-			value = first & 0x1F;
-		} else if (first >= 0xE0 && first <= 0xEF) {
-			length = 3;
-			value = first & 0x0F;
-		} else if (first >= 0xF0 && first <= 0xF4) {
-			length = 4;
-			value = first & 0x07;
-		} else {
+		if (!decode_utf8_lead(first, length, value))
 			return false;
-		}
 		if (index + length > text.size())
 			return false;
 		for (size_t offset = 1; offset < length; ++offset) {
@@ -260,8 +280,7 @@ bool decode_utf8_scalars(std::string_view text, std::vector<std::string> &scalar
 				return false;
 			value = (value << 6) | (byte & 0x3F);
 		}
-		if (value == 0 || (length == 3 && value < 0x800) || (length == 4 && value < 0x10000) ||
-		    (value >= 0xD800 && value <= 0xDFFF) || value > 0x10FFFF)
+		if (!is_valid_utf8_scalar(value, length))
 			return false;
 		scalars.emplace_back(text.substr(index, length));
 		if (scalars.size() > max_scalars)
@@ -350,6 +369,57 @@ void prune_existing_interaction_state(const std::shared_ptr<InteractionV2State> 
 	prune_stale_interaction_sources_locked(*state, live_sources);
 }
 
+InteractionSourceState snapshot_interaction_state(const std::shared_ptr<InteractionV2State> &state,
+						  const LiveSourceMap &live_sources, uint64_t handle)
+{
+	InteractionSourceState snapshot;
+	if (!state)
+		return snapshot;
+	std::lock_guard lock(state->mutex);
+	prune_stale_interaction_sources_locked(*state, live_sources);
+	const auto it = state->sources.find(handle);
+	if (it != state->sources.end())
+		snapshot = it->second;
+	return snapshot;
+}
+
+int count_pressed_mouse_buttons(const InteractionSourceState &state)
+{
+	return static_cast<int>(state.mouse_left) + static_cast<int>(state.mouse_middle) +
+	       static_cast<int>(state.mouse_right);
+}
+
+void release_interaction_mouse_button(obs_source_t *source, obs_mouse_event &mouse, uint32_t &modifiers,
+					      int32_t button, bool pressed)
+{
+	if (!pressed)
+		return;
+	modifiers &= ~mouse_button_flag(button);
+	mouse.modifiers = modifiers;
+	obs_source_send_mouse_click(source, &mouse, button, true, 1);
+}
+
+void release_interaction_keys(obs_source_t *source, InteractionSourceState &state)
+{
+	for (TrackedKey &key : state.pressed_keys) {
+		obs_key_event event{};
+		event.modifiers = key.modifiers;
+		event.text = key.text.data();
+		event.native_modifiers = key.native_modifiers;
+		event.native_scancode = key.native_scancode;
+		event.native_vkey = key.native_vkey;
+		obs_source_send_key_click(source, &event, true);
+	}
+}
+
+void erase_interaction_state(const std::shared_ptr<InteractionV2State> &state, uint64_t handle)
+{
+	if (!state)
+		return;
+	std::lock_guard lock(state->mutex);
+	state->sources.erase(handle);
+}
+
 } // namespace
 
 bool Engine::v2_get_interaction_source(obs_data_t *params, uint64_t &handle, obs_source_t *&source,
@@ -430,6 +500,82 @@ bool Engine::v2_interaction_mouse_move(obs_data_t *params, RuntimeV2Result &resu
 	return true;
 }
 
+struct MouseButtonDescriptor {
+	std::string_view name;
+	int32_t value;
+};
+
+constexpr MouseButtonDescriptor kMouseButtons[] = {
+	{"left", MOUSE_LEFT},
+	{"middle", MOUSE_MIDDLE},
+	{"right", MOUSE_RIGHT},
+};
+
+bool parse_mouse_button(std::string_view text, int32_t &button)
+{
+	for (const MouseButtonDescriptor &descriptor : kMouseButtons) {
+		if (descriptor.name == text) {
+			button = descriptor.value;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool read_mouse_button_state(obs_data_t *params, bool &mouse_up, RuntimeV2Error &error)
+{
+	std::string state;
+	bool present = false;
+	if (!read_string_field(params, "state", state, present) || !present || (state != "down" && state != "up"))
+		return fail(error, "bad_request", "params.state must be 'down' or 'up'");
+	mouse_up = state == "up";
+	return true;
+}
+
+bool read_click_count(obs_data_t *params, uint32_t &click_count, RuntimeV2Error &error)
+{
+	click_count = 1;
+	long long raw = 0;
+	bool present = false;
+	if (!read_integer_field(params, "clickCount", raw, present))
+		return fail(error, "bad_request", "params.clickCount must be an integer when present");
+	if (!present)
+		return true;
+	if (raw < 1 || raw > kMaxClickCount)
+		return fail(error, "bad_request", "params.clickCount must be between 1 and 3");
+	click_count = static_cast<uint32_t>(raw);
+	return true;
+}
+
+struct MouseButtonInput {
+	int32_t x = 0;
+	int32_t y = 0;
+	int32_t button = -1;
+	bool mouse_up = false;
+	uint32_t click_count = 1;
+	uint32_t modifiers = 0;
+};
+
+bool read_mouse_button_input(obs_data_t *params, obs_source_t *source, MouseButtonInput &input,
+					 RuntimeV2Error &error)
+{
+	if (!read_int32_required(params, "x", input.x) || !read_int32_required(params, "y", input.y))
+		return fail(error, "bad_request", "params.x and params.y must be signed 32-bit integers");
+
+	std::string button_text;
+	bool present = false;
+	if (!read_string_field(params, "button", button_text, present) || !present ||
+	    !parse_mouse_button(button_text, input.button))
+		return fail(error, "bad_request", "params.button must be 'left', 'middle' or 'right'");
+	if (!read_mouse_button_state(params, input.mouse_up, error))
+		return false;
+	if (!input.mouse_up && !point_inside_source(source, input.x, input.y))
+		return fail(error, "bad_request", "mouse-down coordinates must be inside the source");
+	if (!read_click_count(params, input.click_count, error))
+		return false;
+	return parse_modifiers(params, input.modifiers, error);
+}
+
 bool Engine::v2_interaction_mouse_button(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
 	reset_result(result, error);
@@ -437,45 +583,8 @@ bool Engine::v2_interaction_mouse_button(obs_data_t *params, RuntimeV2Result &re
 	obs_source_t *source = nullptr;
 	if (!v2_get_interaction_source(params, handle, source, error))
 		return false;
-	int32_t x = 0;
-	int32_t y = 0;
-	if (!read_int32_required(params, "x", x) || !read_int32_required(params, "y", y))
-		return fail(error, "bad_request", "params.x and params.y must be signed 32-bit integers");
-
-	std::string button_text;
-	bool present = false;
-	if (!read_string_field(params, "button", button_text, present) || !present)
-		return fail(error, "bad_request", "params.button must be 'left', 'middle' or 'right'");
-	int32_t button = -1;
-	if (button_text == "left")
-		button = MOUSE_LEFT;
-	else if (button_text == "middle")
-		button = MOUSE_MIDDLE;
-	else if (button_text == "right")
-		button = MOUSE_RIGHT;
-	else
-		return fail(error, "bad_request", "params.button must be 'left', 'middle' or 'right'");
-
-	std::string state_text;
-	if (!read_string_field(params, "state", state_text, present) || !present ||
-	    (state_text != "down" && state_text != "up"))
-		return fail(error, "bad_request", "params.state must be 'down' or 'up'");
-	const bool mouse_up = state_text == "up";
-	if (!mouse_up && !point_inside_source(source, x, y))
-		return fail(error, "bad_request", "mouse-down coordinates must be inside the source");
-
-	uint32_t click_count = 1;
-	long long raw_click_count = 0;
-	if (!read_integer_field(params, "clickCount", raw_click_count, present))
-		return fail(error, "bad_request", "params.clickCount must be an integer when present");
-	if (present) {
-		if (raw_click_count < 1 || raw_click_count > kMaxClickCount)
-			return fail(error, "bad_request", "params.clickCount must be between 1 and 3");
-		click_count = static_cast<uint32_t>(raw_click_count);
-	}
-
-	uint32_t modifiers = 0;
-	if (!parse_modifiers(params, modifiers, error))
+	MouseButtonInput input;
+	if (!read_mouse_button_input(params, source, input, error))
 		return false;
 
 	auto state = ensure_interaction_state(interaction_v2_state_, sources_, handle);
@@ -483,17 +592,39 @@ bool Engine::v2_interaction_mouse_button(obs_data_t *params, RuntimeV2Result &re
 	{
 		std::lock_guard lock(state->mutex);
 		auto &source_state = state->sources.at(handle);
-		source_state.mouse_x = x;
-		source_state.mouse_y = y;
-		source_state.mouse_modifiers = modifiers;
-		bool *pressed = button == MOUSE_LEFT ? &source_state.mouse_left
-				 : button == MOUSE_MIDDLE ? &source_state.mouse_middle
-							   : &source_state.mouse_right;
-		*pressed = !mouse_up;
+		source_state.mouse_x = input.x;
+		source_state.mouse_y = input.y;
+		source_state.mouse_modifiers = input.modifiers;
+		bool *pressed = input.button == MOUSE_LEFT ? &source_state.mouse_left
+					 : input.button == MOUSE_MIDDLE ? &source_state.mouse_middle
+									     : &source_state.mouse_right;
+		*pressed = !input.mouse_up;
 	}
-	obs_mouse_event event{modifiers, x, y};
-	obs_source_send_mouse_click(source, &event, button, mouse_up, click_count);
+	obs_mouse_event event{input.modifiers, input.x, input.y};
+	obs_source_send_mouse_click(source, &event, input.button, input.mouse_up, input.click_count);
 	return true;
+}
+
+struct MouseWheelInput {
+	int32_t x = 0;
+	int32_t y = 0;
+	int32_t delta_x = 0;
+	int32_t delta_y = 0;
+	uint32_t modifiers = 0;
+};
+
+bool read_mouse_wheel_input(obs_data_t *params, obs_source_t *source, MouseWheelInput &input,
+					RuntimeV2Error &error)
+{
+	if (!read_int32_required(params, "x", input.x) || !read_int32_required(params, "y", input.y) ||
+	    !read_int32_required(params, "deltaX", input.delta_x) ||
+	    !read_int32_required(params, "deltaY", input.delta_y))
+		return fail(error, "bad_request", "mouse wheel coordinates and deltas must be signed 32-bit integers");
+	if (!point_inside_source(source, input.x, input.y))
+		return fail(error, "bad_request", "mouse wheel coordinates must be inside the source");
+	if (input.delta_x == 0 && input.delta_y == 0)
+		return fail(error, "bad_request", "at least one mouse wheel delta must be non-zero");
+	return parse_modifiers(params, input.modifiers, error);
 }
 
 bool Engine::v2_interaction_mouse_wheel(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
@@ -503,19 +634,8 @@ bool Engine::v2_interaction_mouse_wheel(obs_data_t *params, RuntimeV2Result &res
 	obs_source_t *source = nullptr;
 	if (!v2_get_interaction_source(params, handle, source, error))
 		return false;
-	int32_t x = 0;
-	int32_t y = 0;
-	int32_t delta_x = 0;
-	int32_t delta_y = 0;
-	if (!read_int32_required(params, "x", x) || !read_int32_required(params, "y", y) ||
-	    !read_int32_required(params, "deltaX", delta_x) || !read_int32_required(params, "deltaY", delta_y))
-		return fail(error, "bad_request", "mouse wheel coordinates and deltas must be signed 32-bit integers");
-	if (!point_inside_source(source, x, y))
-		return fail(error, "bad_request", "mouse wheel coordinates must be inside the source");
-	if (delta_x == 0 && delta_y == 0)
-		return fail(error, "bad_request", "at least one mouse wheel delta must be non-zero");
-	uint32_t modifiers = 0;
-	if (!parse_modifiers(params, modifiers, error))
+	MouseWheelInput input;
+	if (!read_mouse_wheel_input(params, source, input, error))
 		return false;
 
 	auto state = ensure_interaction_state(interaction_v2_state_, sources_, handle);
@@ -523,12 +643,100 @@ bool Engine::v2_interaction_mouse_wheel(obs_data_t *params, RuntimeV2Result &res
 	{
 		std::lock_guard lock(state->mutex);
 		auto &source_state = state->sources.at(handle);
-		source_state.mouse_x = x;
-		source_state.mouse_y = y;
-		source_state.mouse_modifiers = modifiers;
+		source_state.mouse_x = input.x;
+		source_state.mouse_y = input.y;
+		source_state.mouse_modifiers = input.modifiers;
 	}
-	obs_mouse_event event{modifiers, x, y};
-	obs_source_send_mouse_wheel(source, &event, delta_x, delta_y);
+	obs_mouse_event event{input.modifiers, input.x, input.y};
+	obs_source_send_mouse_wheel(source, &event, input.delta_x, input.delta_y);
+	return true;
+}
+
+struct KeyInput {
+	bool key_up = false;
+	std::string text;
+	uint32_t modifiers = 0;
+	uint32_t native_modifiers = 0;
+	uint32_t native_scancode = 0;
+	uint32_t native_vkey = 0;
+};
+
+bool read_key_state(obs_data_t *params, bool &key_up, RuntimeV2Error &error)
+{
+	std::string state;
+	bool present = false;
+	if (!read_string_field(params, "state", state, present) || !present || (state != "down" && state != "up"))
+		return fail(error, "bad_request", "params.state must be 'down' or 'up'");
+	key_up = state == "up";
+	return true;
+}
+
+bool read_key_text(obs_data_t *params, std::string &text, RuntimeV2Error &error)
+{
+	bool present = false;
+	if (!read_string_field(params, "text", text, present))
+		return fail(error, "bad_request", "params.text must be a string when present");
+	if (!present)
+		text.clear();
+	if (text.size() > kMaxKeyTextBytes)
+		return fail(error, "bad_request", "params.text is too long for one key event");
+	std::vector<std::string> scalars;
+	if (!decode_utf8_scalars(text, scalars, 1) || scalars.size() > 1)
+		return fail(error, "bad_request", "params.text must contain at most one non-NUL UTF-8 scalar");
+	return true;
+}
+
+bool read_key_native_fields(obs_data_t *params, KeyInput &input, RuntimeV2Error &error)
+{
+	if (!read_u32_optional(params, "nativeModifiers", input.native_modifiers))
+		return fail(error, "bad_request", "params.nativeModifiers must be an unsigned 32-bit integer");
+	if (!read_u32_optional(params, "nativeScanCode", input.native_scancode))
+		return fail(error, "bad_request", "params.nativeScanCode must be an unsigned 32-bit integer");
+	if (!read_u32_optional(params, "nativeVirtualKey", input.native_vkey))
+		return fail(error, "bad_request", "params.nativeVirtualKey must be an unsigned 32-bit integer");
+	return true;
+}
+
+bool read_key_input(obs_data_t *params, KeyInput &input, RuntimeV2Error &error)
+{
+	if (!read_key_state(params, input.key_up, error) || !read_key_text(params, input.text, error) ||
+	    !read_key_native_fields(params, input, error))
+		return false;
+	if (input.text.empty() && input.native_scancode == 0 && input.native_vkey == 0)
+		return fail(error, "bad_request", "key event requires text, nativeScanCode or nativeVirtualKey");
+	return parse_modifiers(params, input.modifiers, error);
+}
+
+bool read_text_input(obs_data_t *params, std::string &text, std::vector<std::string> &scalars, uint32_t &modifiers,
+				     RuntimeV2Error &error)
+{
+	bool present = false;
+	if (!read_string_field(params, "text", text, present) || !present || text.empty())
+		return fail(error, "bad_request", "params.text must be a non-empty UTF-8 string");
+	if (text.size() > kMaxTextBytes)
+		return fail(error, "bad_request", "params.text exceeds the 4096-byte interaction limit");
+	if (!decode_utf8_scalars(text, scalars, kMaxTextScalars) || scalars.empty())
+		return fail(error, "bad_request", "params.text must contain valid non-NUL UTF-8 scalar values");
+	return parse_modifiers(params, modifiers, error);
+}
+
+bool update_key_tracking(InteractionSourceState &source_state, const KeyInput &input, RuntimeV2Error &error)
+{
+	auto &keys = source_state.pressed_keys;
+	const auto it = std::find_if(keys.begin(), keys.end(), [&](const TrackedKey &key) {
+		return key_matches(key, input.native_scancode, input.native_vkey, input.text);
+	});
+	if (input.key_up) {
+		if (it != keys.end())
+			keys.erase(it);
+		return true;
+	}
+	if (it != keys.end())
+		return true;
+	if (keys.size() >= kMaxTrackedKeysPerSource)
+		return fail(error, "busy", "source has too many distinct held keys; release keys or reset input");
+	keys.push_back(TrackedKey{input.modifiers, input.text, input.native_modifiers, input.native_scancode,
+					  input.native_vkey});
 	return true;
 }
 
@@ -540,66 +748,26 @@ bool Engine::v2_interaction_key(obs_data_t *params, RuntimeV2Result &result, Run
 	if (!v2_get_interaction_source(params, handle, source, error))
 		return false;
 
-	std::string state_text;
-	bool present = false;
-	if (!read_string_field(params, "state", state_text, present) || !present ||
-	    (state_text != "down" && state_text != "up"))
-		return fail(error, "bad_request", "params.state must be 'down' or 'up'");
-	const bool key_up = state_text == "up";
-
-	std::string text;
-	if (!read_string_field(params, "text", text, present))
-		return fail(error, "bad_request", "params.text must be a string when present");
-	if (!present)
-		text.clear();
-	if (text.size() > kMaxKeyTextBytes)
-		return fail(error, "bad_request", "params.text is too long for one key event");
-	std::vector<std::string> scalars;
-	if (!decode_utf8_scalars(text, scalars, 1) || scalars.size() > 1)
-		return fail(error, "bad_request", "params.text must contain at most one non-NUL UTF-8 scalar");
-
-	uint32_t native_modifiers = 0;
-	uint32_t native_scancode = 0;
-	uint32_t native_vkey = 0;
-	if (!read_u32_optional(params, "nativeModifiers", native_modifiers))
-		return fail(error, "bad_request", "params.nativeModifiers must be an unsigned 32-bit integer");
-	if (!read_u32_optional(params, "nativeScanCode", native_scancode))
-		return fail(error, "bad_request", "params.nativeScanCode must be an unsigned 32-bit integer");
-	if (!read_u32_optional(params, "nativeVirtualKey", native_vkey))
-		return fail(error, "bad_request", "params.nativeVirtualKey must be an unsigned 32-bit integer");
-	if (text.empty() && native_scancode == 0 && native_vkey == 0)
-		return fail(error, "bad_request", "key event requires text, nativeScanCode or nativeVirtualKey");
-
-	uint32_t modifiers = 0;
-	if (!parse_modifiers(params, modifiers, error))
+	KeyInput input;
+	if (!read_key_input(params, input, error))
 		return false;
 
 	auto state = ensure_interaction_state(interaction_v2_state_, sources_, handle);
 	ObsDataPtr data = make_source_result(handle);
 	{
 		std::lock_guard lock(state->mutex);
-		auto &keys = state->sources.at(handle).pressed_keys;
-		const auto it = std::find_if(keys.begin(), keys.end(), [&](const TrackedKey &key) {
-			return key_matches(key, native_scancode, native_vkey, text);
-		});
-		if (key_up) {
-			if (it != keys.end())
-				keys.erase(it);
-		} else if (it == keys.end()) {
-			if (keys.size() >= kMaxTrackedKeysPerSource)
-				return fail(error, "busy", "source has too many distinct held keys; release keys or reset input");
-			keys.push_back(TrackedKey{modifiers, text, native_modifiers, native_scancode, native_vkey});
-		}
+		if (!update_key_tracking(state->sources.at(handle), input, error))
+			return false;
 	}
 	result.data = std::move(data);
 
 	obs_key_event event{};
-	event.modifiers = modifiers;
-	event.text = text.data();
-	event.native_modifiers = native_modifiers;
-	event.native_scancode = native_scancode;
-	event.native_vkey = native_vkey;
-	obs_source_send_key_click(source, &event, key_up);
+	event.modifiers = input.modifiers;
+	event.text = input.text.data();
+	event.native_modifiers = input.native_modifiers;
+	event.native_scancode = input.native_scancode;
+	event.native_vkey = input.native_vkey;
+	obs_source_send_key_click(source, &event, input.key_up);
 	return true;
 }
 
@@ -611,16 +779,9 @@ bool Engine::v2_interaction_text(obs_data_t *params, RuntimeV2Result &result, Ru
 	if (!v2_get_interaction_source(params, handle, source, error))
 		return false;
 	std::string text;
-	bool present = false;
-	if (!read_string_field(params, "text", text, present) || !present || text.empty())
-		return fail(error, "bad_request", "params.text must be a non-empty UTF-8 string");
-	if (text.size() > kMaxTextBytes)
-		return fail(error, "bad_request", "params.text exceeds the 4096-byte interaction limit");
 	std::vector<std::string> scalars;
-	if (!decode_utf8_scalars(text, scalars, kMaxTextScalars) || scalars.empty())
-		return fail(error, "bad_request", "params.text must contain valid non-NUL UTF-8 scalar values");
 	uint32_t modifiers = 0;
-	if (!parse_modifiers(params, modifiers, error))
+	if (!read_text_input(params, text, scalars, modifiers, error))
 		return false;
 
 	prune_existing_interaction_state(interaction_v2_state_, sources_);
@@ -643,27 +804,15 @@ bool Engine::v2_interaction_reset(obs_data_t *params, RuntimeV2Result &result, R
 	if (!v2_get_interaction_source(params, handle, source, error))
 		return false;
 
-	InteractionSourceState state;
 	std::shared_ptr<InteractionV2State> interaction_state = interaction_v2_state_;
-	if (interaction_state) {
-		std::lock_guard lock(interaction_state->mutex);
-		prune_stale_interaction_sources_locked(*interaction_state, sources_);
-		const auto it = interaction_state->sources.find(handle);
-		if (it != interaction_state->sources.end())
-			state = it->second;
-	}
+	InteractionSourceState state = snapshot_interaction_state(interaction_state, sources_, handle);
 
 	ObsDataPtr data = make_source_result(handle);
 	obs_data_set_int(data.get(), "releasedKeys", static_cast<long long>(state.pressed_keys.size()));
-	const int released_buttons = static_cast<int>(state.mouse_left) + static_cast<int>(state.mouse_middle) +
-				     static_cast<int>(state.mouse_right);
-	obs_data_set_int(data.get(), "releasedButtons", released_buttons);
+	obs_data_set_int(data.get(), "releasedButtons", count_pressed_mouse_buttons(state));
 	result.data = std::move(data);
 
-	if (interaction_state) {
-		std::lock_guard lock(interaction_state->mutex);
-		interaction_state->sources.erase(handle);
-	}
+	erase_interaction_state(interaction_state, handle);
 
 	obs_mouse_event mouse{};
 	mouse.x = state.mouse_x;
@@ -675,26 +824,10 @@ bool Engine::v2_interaction_reset(obs_data_t *params, RuntimeV2Result &result, R
 		mouse_modifiers |= INTERACT_MOUSE_MIDDLE;
 	if (state.mouse_right)
 		mouse_modifiers |= INTERACT_MOUSE_RIGHT;
-	auto release_button = [&](int32_t button, bool pressed) {
-		if (!pressed)
-			return;
-		mouse_modifiers &= ~mouse_button_flag(button);
-		mouse.modifiers = mouse_modifiers;
-		obs_source_send_mouse_click(source, &mouse, button, true, 1);
-	};
-	release_button(MOUSE_LEFT, state.mouse_left);
-	release_button(MOUSE_MIDDLE, state.mouse_middle);
-	release_button(MOUSE_RIGHT, state.mouse_right);
-
-	for (TrackedKey &key : state.pressed_keys) {
-		obs_key_event event{};
-		event.modifiers = key.modifiers;
-		event.text = key.text.data();
-		event.native_modifiers = key.native_modifiers;
-		event.native_scancode = key.native_scancode;
-		event.native_vkey = key.native_vkey;
-		obs_source_send_key_click(source, &event, true);
-	}
+	release_interaction_mouse_button(source, mouse, mouse_modifiers, MOUSE_LEFT, state.mouse_left);
+	release_interaction_mouse_button(source, mouse, mouse_modifiers, MOUSE_MIDDLE, state.mouse_middle);
+	release_interaction_mouse_button(source, mouse, mouse_modifiers, MOUSE_RIGHT, state.mouse_right);
+	release_interaction_keys(source, state);
 
 	obs_mouse_event leave_event{};
 	leave_event.x = state.mouse_x;

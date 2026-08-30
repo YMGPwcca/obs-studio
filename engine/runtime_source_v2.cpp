@@ -263,6 +263,81 @@ ObsDataPtr make_state_snapshot(uint64_t handle, obs_source_t *source, RuntimeV2E
 	return data;
 }
 
+struct SourceStateInput {
+	std::string kind;
+	std::string name;
+	ObsDataPtr settings;
+};
+
+bool read_source_state_version(obs_data_t *state, RuntimeV2Error &error)
+{
+	long long version = 0;
+	bool present = false;
+	if (!read_integer_field(state, "version", version, present) || !present || version != kSourceStateVersion)
+		return fail(error, "bad_request", "source state version is unsupported");
+	return true;
+}
+
+bool read_source_state_kind(obs_data_t *state, obs_source_t *source, std::string &kind, RuntimeV2Error &error)
+{
+	bool present = false;
+	if (!read_string_field(state, "kind", kind, present) || !present ||
+	    !is_safe_identifier(kind.c_str(), kMaxSourceKindBytes))
+		return fail(error, "bad_request", "source state kind is invalid");
+	if (kind != obs_source_get_id(source))
+		return fail(error, "bad_request", "source state kind does not match the target source");
+	return true;
+}
+
+bool read_source_state_name(obs_data_t *state, std::string &name, RuntimeV2Error &error)
+{
+	bool present = false;
+	if (!read_string_field(state, "name", name, present) || !present || name.empty() ||
+	    !is_bounded_string(name.c_str(), kMaxObjectNameBytes))
+		return fail(error, "bad_request", "source state name must be a 1-256 byte string");
+	return true;
+}
+
+bool read_source_state_settings(obs_data_t *state, ObsDataPtr &settings, RuntimeV2Error &error)
+{
+	bool present = false;
+	if (!read_object_field(state, "settings", settings, present) || !present)
+		return fail(error, "bad_request", "source state settings object is required");
+	return true;
+}
+
+bool read_source_duplicate_name(obs_data_t *params, std::string &name, RuntimeV2Error &error)
+{
+	bool present = false;
+	if (!read_string_field(params, "name", name, present))
+		return fail(error, "bad_request", "params.name must be a string when present");
+	if (present && (name.empty() || !is_bounded_string(name.c_str(), kMaxObjectNameBytes)))
+		return fail(error, "bad_request", "source duplicate name must be between 1 and 256 bytes");
+	return true;
+}
+
+ObsDataPtr make_source_duplicate_data(uint64_t duplicate_handle, uint64_t original_handle, obs_source_t *duplicate)
+{
+	ObsDataPtr data(obs_data_create());
+	set_handle(data.get(), "source", duplicate_handle);
+	obs_data_set_string(data.get(), "name", obs_source_get_name(duplicate));
+	obs_data_set_string(data.get(), "kind", obs_source_get_id(duplicate));
+	set_handle(data.get(), "duplicateOf", original_handle);
+	return data;
+}
+
+bool read_source_state_input(obs_data_t *params, obs_source_t *source, SourceStateInput &input,
+				     RuntimeV2Error &error)
+{
+	ObsDataPtr state;
+	bool present = false;
+	if (!read_object_field(params, "state", state, present) || !present)
+		return fail(error, "bad_request", "params.state object is required");
+	return read_source_state_version(state.get(), error) && read_source_state_kind(state.get(), source, input.kind, error) &&
+	       read_source_state_name(state.get(), input.name, error) &&
+	       read_source_state_settings(state.get(), input.settings, error);
+}
+
 } // namespace
 
 struct SourceV2Observer;
@@ -432,12 +507,66 @@ void publish_deferred_source_snapshot(DeferredSourceEventSnapshot snapshot, Revi
 	}
 }
 
+bool capture_source_events_locked(SourceV2State &state, uint64_t handle, std::vector<RuntimeV2Event> &generated)
+{
+	if (!state.capture)
+		return false;
+	if (result_has_source_event(*state.capture, "source.removed", handle))
+		return true;
+	for (RuntimeV2Event &event : generated) {
+		if (!result_has_source_event(*state.capture, event.name, handle))
+			state.capture->events.push_back(std::move(event));
+	}
+	state.capture->mutated = true;
+	return true;
+}
+
+bool queue_deferred_source_events_locked(SourceV2State &state, uint64_t handle,
+					       std::vector<RuntimeV2Event> generated)
+{
+	if (state.deferred_overflow)
+		return true;
+	if (generated.size() > kDefaultEventQueueCapacity ||
+	    state.deferred_event_count > kDefaultEventQueueCapacity - generated.size()) {
+		state.deferred.clear();
+		state.deferred_event_count = 0;
+		state.deferred_overflow = true;
+		return true;
+	}
+	state.deferred_event_count += generated.size();
+	state.deferred.push_back(DeferredSourceEventBatch{handle, std::move(generated)});
+	return true;
+}
+
+bool commit_direct_source_event_locked(SourceV2State &state, RevisionState *&revisions, EventDispatcher *&events,
+					       uint64_t &revision)
+{
+	revisions = state.revisions;
+	events = state.events;
+	if (!revisions || !events)
+		return false;
+	if (!revisions->can_commit_mutation()) {
+		std::fprintf(stderr, "obs-engine: source event requires resync because revision space is exhausted\n");
+		std::fflush(stderr);
+		events->require_resync_due_to_overflow(revisions->current());
+		return false;
+	}
+
+	// Keep the source bridge mutex across the revision commit. Runtime mutating
+	// requests establish the capture gate before taking the revision guard. A
+	// callback therefore either commits before capture or observes capture and
+	// defers; it never holds a libobs signal mutex waiting behind the request.
+	revision = revisions->commit_mutation();
+	return true;
+}
+
 void publish_source_events(SourceV2State &state, uint64_t handle, std::vector<RuntimeV2Event> generated)
 {
 	if (generated.empty())
 		return;
 
 	EventDispatcher *events = nullptr;
+	RevisionState *revisions = nullptr;
 	uint64_t revision = 0;
 	{
 		std::lock_guard lock(state.mutex);
@@ -445,51 +574,111 @@ void publish_source_events(SourceV2State &state, uint64_t handle, std::vector<Ru
 			return;
 
 		const SourceEventCaptureRoute route = state.capture_gate.route_for_current_thread();
-		if (route == SourceEventCaptureRoute::Capture && state.capture) {
-			if (result_has_source_event(*state.capture, "source.removed", handle))
-				return;
-			for (RuntimeV2Event &event : generated) {
-				if (!result_has_source_event(*state.capture, event.name, handle))
-					state.capture->events.push_back(std::move(event));
-			}
-			state.capture->mutated = true;
+		if (route == SourceEventCaptureRoute::Capture && capture_source_events_locked(state, handle, generated))
 			return;
-		}
 		if (route == SourceEventCaptureRoute::Defer) {
-			if (state.deferred_overflow)
-				return;
-			if (generated.size() > kDefaultEventQueueCapacity ||
-			    state.deferred_event_count > kDefaultEventQueueCapacity - generated.size()) {
-				state.deferred.clear();
-				state.deferred_event_count = 0;
-				state.deferred_overflow = true;
-				return;
-			}
-			state.deferred_event_count += generated.size();
-			state.deferred.push_back(DeferredSourceEventBatch{handle, std::move(generated)});
+			queue_deferred_source_events_locked(state, handle, std::move(generated));
 			return;
 		}
 
-		RevisionState *revisions = state.revisions;
-		events = state.events;
-		if (!revisions || !events)
+		if (!commit_direct_source_event_locked(state, revisions, events, revision))
 			return;
-		if (!revisions->can_commit_mutation()) {
-			std::fprintf(stderr, "obs-engine: source event requires resync because revision space is exhausted\n");
-			std::fflush(stderr);
-			events->require_resync_due_to_overflow(revisions->current());
-			return;
-		}
-
-		// Keep the source bridge mutex across the revision commit. Runtime mutating
-		// requests establish the capture gate before taking the revision guard. A
-		// callback therefore either commits before capture or observes capture and
-		// defers; it never holds a libobs signal mutex waiting behind the request.
-		revision = revisions->commit_mutation();
 	}
 
 	for (RuntimeV2Event &event : generated)
 		events->publish(EngineEventKind::State, event.name, revision, event.data.get());
+}
+
+ObsDataPtr make_source_event_data(const SourceV2Observer &observer)
+{
+	ObsDataPtr data(obs_data_create());
+	set_handle(data.get(), "source", observer.handle);
+	return data;
+}
+
+void append_source_settings_event(SourceV2Observer &observer, SourceSignal signal, obs_source_t *source,
+					  std::vector<RuntimeV2Event> &generated)
+{
+	if (signal != SourceSignal::Update)
+		return;
+	ObsDataPtr settings(obs_source_get_settings(source));
+	if (!settings)
+		return;
+	ObsDataPtr data = make_source_event_data(observer);
+	obs_data_set_obj(data.get(), "settings", settings.get());
+	generated.push_back(RuntimeV2Event{"source.settingsChanged", std::move(data)});
+}
+
+void append_source_rename_event(SourceV2Observer &observer, SourceSignal signal, const std::string &current_name,
+					std::vector<RuntimeV2Event> &generated)
+{
+	if (signal != SourceSignal::Rename || current_name == observer.name)
+		return;
+	ObsDataPtr data = make_source_event_data(observer);
+	obs_data_set_string(data.get(), "name", current_name.c_str());
+	obs_data_set_string(data.get(), "previousName", observer.name.c_str());
+	generated.push_back(RuntimeV2Event{"source.renamed", std::move(data)});
+}
+
+void append_source_flags_event(SourceV2Observer &observer, obs_source_t *source, uint32_t current_flags,
+					std::vector<RuntimeV2Event> &generated)
+{
+	if (current_flags != observer.flags)
+		generated.push_back(RuntimeV2Event{"source.flagsChanged", make_flags_data(observer.handle, source)});
+}
+
+void append_source_active_event(SourceV2Observer &observer, bool current_active,
+					std::vector<RuntimeV2Event> &generated)
+{
+	if (current_active == observer.active)
+		return;
+	ObsDataPtr data = make_source_event_data(observer);
+	obs_data_set_bool(data.get(), "active", current_active);
+	generated.push_back(RuntimeV2Event{"source.activeChanged", std::move(data)});
+}
+
+void append_source_showing_event(SourceV2Observer &observer, bool current_showing,
+					 std::vector<RuntimeV2Event> &generated)
+{
+	if (current_showing == observer.showing)
+		return;
+	ObsDataPtr data = make_source_event_data(observer);
+	obs_data_set_bool(data.get(), "showing", current_showing);
+	generated.push_back(RuntimeV2Event{"source.showingChanged", std::move(data)});
+}
+
+void append_source_dimensions_event(SourceV2Observer &observer, obs_source_t *source, uint32_t current_width,
+					    uint32_t current_height, std::vector<RuntimeV2Event> &generated)
+{
+	if (current_width != observer.width || current_height != observer.height)
+		generated.push_back(RuntimeV2Event{"source.dimensionsChanged", make_dimensions_data(observer.handle, source)});
+}
+
+void collect_source_state_events(SourceV2Observer &observer, SourceSignal signal, obs_source_t *source,
+					 std::vector<RuntimeV2Event> &generated)
+{
+	std::lock_guard cache_lock(observer.cache_mutex);
+	const char *name = obs_source_get_name(source);
+	const std::string current_name = name ? name : "";
+	const uint32_t current_flags = obs_source_get_output_flags(source);
+	const uint32_t current_width = obs_source_get_width(source);
+	const uint32_t current_height = obs_source_get_height(source);
+	const bool current_active = obs_source_active(source);
+	const bool current_showing = obs_source_showing(source);
+
+	append_source_settings_event(observer, signal, source, generated);
+	append_source_rename_event(observer, signal, current_name, generated);
+	append_source_flags_event(observer, source, current_flags, generated);
+	append_source_active_event(observer, current_active, generated);
+	append_source_showing_event(observer, current_showing, generated);
+	append_source_dimensions_event(observer, source, current_width, current_height, generated);
+
+	observer.name = current_name;
+	observer.flags = current_flags;
+	observer.width = current_width;
+	observer.height = current_height;
+	observer.active = current_active;
+	observer.showing = current_showing;
 }
 
 void collect_source_signal(SourceV2Observer &observer, SourceSignal signal)
@@ -508,60 +697,7 @@ void collect_source_signal(SourceV2Observer &observer, SourceSignal signal)
 
 	std::vector<RuntimeV2Event> generated;
 	try {
-		std::lock_guard cache_lock(observer.cache_mutex);
-
-		const std::string current_name = obs_source_get_name(source) ? obs_source_get_name(source) : "";
-		const uint32_t current_flags = obs_source_get_output_flags(source);
-		const uint32_t current_width = obs_source_get_width(source);
-		const uint32_t current_height = obs_source_get_height(source);
-		const bool current_active = obs_source_active(source);
-		const bool current_showing = obs_source_showing(source);
-
-		if (signal == SourceSignal::Update) {
-			ObsDataPtr settings(obs_source_get_settings(source));
-			if (settings) {
-				ObsDataPtr data(obs_data_create());
-				set_handle(data.get(), "source", observer.handle);
-				obs_data_set_obj(data.get(), "settings", settings.get());
-				generated.push_back(RuntimeV2Event{"source.settingsChanged", std::move(data)});
-			}
-		}
-
-		if (signal == SourceSignal::Rename && current_name != observer.name) {
-			ObsDataPtr data(obs_data_create());
-			set_handle(data.get(), "source", observer.handle);
-			obs_data_set_string(data.get(), "name", current_name.c_str());
-			obs_data_set_string(data.get(), "previousName", observer.name.c_str());
-			generated.push_back(RuntimeV2Event{"source.renamed", std::move(data)});
-		}
-
-		if ((signal == SourceSignal::Flags || current_flags != observer.flags) && current_flags != observer.flags)
-			generated.push_back(RuntimeV2Event{"source.flagsChanged", make_flags_data(observer.handle, source)});
-
-		if ((signal == SourceSignal::Active || current_active != observer.active) && current_active != observer.active) {
-			ObsDataPtr data(obs_data_create());
-			set_handle(data.get(), "source", observer.handle);
-			obs_data_set_bool(data.get(), "active", current_active);
-			generated.push_back(RuntimeV2Event{"source.activeChanged", std::move(data)});
-		}
-
-		if ((signal == SourceSignal::Showing || current_showing != observer.showing) &&
-		    current_showing != observer.showing) {
-			ObsDataPtr data(obs_data_create());
-			set_handle(data.get(), "source", observer.handle);
-			obs_data_set_bool(data.get(), "showing", current_showing);
-			generated.push_back(RuntimeV2Event{"source.showingChanged", std::move(data)});
-		}
-
-		if (current_width != observer.width || current_height != observer.height)
-			generated.push_back(RuntimeV2Event{"source.dimensionsChanged", make_dimensions_data(observer.handle, source)});
-
-		observer.name = current_name;
-		observer.flags = current_flags;
-		observer.width = current_width;
-		observer.height = current_height;
-		observer.active = current_active;
-		observer.showing = current_showing;
+		collect_source_state_events(observer, signal, source, generated);
 	} catch (...) {
 		obs_source_release(source);
 		throw;
@@ -649,6 +785,63 @@ void disconnect_observer(SourceV2Observer &observer)
 }
 
 } // namespace
+
+bool Engine::v2_get_source(obs_data_t *params, uint64_t &handle, obs_source_t *&source,
+				   RuntimeV2Error &error) const
+{
+	if (!read_handle_field(params, "source", handle))
+		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
+	auto it = sources_.find(handle);
+	if (it == sources_.end())
+		return fail(error, "not_found", "source handle was not found");
+	source = it->second;
+	return true;
+}
+
+bool Engine::v2_store_source_duplicate(uint64_t handle, obs_source_t *duplicate, RuntimeV2Error &error)
+{
+	const auto [_, inserted] = sources_.emplace(handle, duplicate);
+	if (!inserted) {
+		obs_source_release(duplicate);
+		return fail(error, "internal_error", "source handle collision");
+	}
+	// libobs duplicates attached filters as nested source state. Register
+	// those copies for later filter.list discovery, but do not synthesize
+	// filter.created events into the already-accepted source.duplicate wire
+	// contract. The caller owns rollback if registration throws.
+	v2_filter_register_source_filters(handle, duplicate);
+	return true;
+}
+
+void Engine::v2_add_source_observer(uint64_t handle, obs_source_t *source,
+					    std::vector<std::shared_ptr<SourceV2Observer>> &retire)
+{
+	auto observer = std::make_shared<SourceV2Observer>();
+	observer->state = source_v2_state_.get();
+	observer->handle = handle;
+	observer->weak = obs_source_get_weak_source(source);
+	observer->name = obs_source_get_name(source) ? obs_source_get_name(source) : "";
+	observer->flags = obs_source_get_output_flags(source);
+	observer->width = obs_source_get_width(source);
+	observer->height = obs_source_get_height(source);
+	observer->active = obs_source_active(source);
+	observer->showing = obs_source_showing(source);
+	connect_observer(*observer, source);
+
+	bool keep = false;
+	{
+		std::lock_guard lock(source_v2_state_->mutex);
+		if (source_v2_state_->accepting && sources_.contains(handle) &&
+		    !source_v2_state_->observers.contains(handle)) {
+			source_v2_state_->observers.emplace(handle, observer);
+			keep = true;
+		}
+	}
+	if (!keep) {
+		disconnect_observer(*observer);
+		retire.push_back(std::move(observer));
+	}
+}
 
 void Engine::v2_bind_source_events(RevisionState *revisions, EventDispatcher *events)
 {
@@ -761,31 +954,7 @@ void Engine::v2_sync_source_observers()
 	}
 
 	for (const auto &[handle, source] : add) {
-		auto observer = std::make_shared<SourceV2Observer>();
-		observer->state = source_v2_state_.get();
-		observer->handle = handle;
-		observer->weak = obs_source_get_weak_source(source);
-		observer->name = obs_source_get_name(source) ? obs_source_get_name(source) : "";
-		observer->flags = obs_source_get_output_flags(source);
-		observer->width = obs_source_get_width(source);
-		observer->height = obs_source_get_height(source);
-		observer->active = obs_source_active(source);
-		observer->showing = obs_source_showing(source);
-		connect_observer(*observer, source);
-
-		bool keep = false;
-		{
-			std::lock_guard lock(source_v2_state_->mutex);
-			if (source_v2_state_->accepting && sources_.contains(handle) &&
-			    !source_v2_state_->observers.contains(handle)) {
-				source_v2_state_->observers.emplace(handle, observer);
-				keep = true;
-			}
-		}
-		if (!keep) {
-			disconnect_observer(*observer);
-			retire.push_back(std::move(observer));
-		}
+		v2_add_source_observer(handle, source, retire);
 	}
 
 	for (auto &observer : retire)
@@ -892,12 +1061,10 @@ bool Engine::v2_source_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	result.data = make_source_summary(handle, it->second);
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
+	result.data = make_source_summary(handle, source);
 	return true;
 }
 
@@ -905,56 +1072,31 @@ bool Engine::v2_source_duplicate(obs_data_t *params, RuntimeV2Result &result, Ru
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	if ((obs_source_get_output_flags(it->second) & OBS_SOURCE_DO_NOT_DUPLICATE) != 0)
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
+	if ((obs_source_get_output_flags(source) & OBS_SOURCE_DO_NOT_DUPLICATE) != 0)
 		return fail(error, "not_available", "source kind does not support independent duplication");
 
 	std::string requested_name;
-	bool present = false;
-	if (!read_string_field(params, "name", requested_name, present))
-		return fail(error, "bad_request", "params.name must be a string when present");
-	if (present && (requested_name.empty() || !is_bounded_string(requested_name.c_str(), kMaxObjectNameBytes)))
-		return fail(error, "bad_request", "source duplicate name must be between 1 and 256 bytes");
+	if (!read_source_duplicate_name(params, requested_name, error))
+		return false;
 
 	const uint64_t duplicate_handle = allocate_handle();
-	const std::string generated_name = std::string(obs_source_get_name(it->second)) + " copy";
-	const char *name = present ? requested_name.c_str() : generated_name.c_str();
-	obs_source_t *duplicate = obs_source_duplicate(it->second, name, true);
-	if (!duplicate || duplicate == it->second) {
+	const std::string generated_name = std::string(obs_source_get_name(source)) + " copy";
+	const char *name = requested_name.empty() ? generated_name.c_str() : requested_name.c_str();
+	obs_source_t *duplicate = obs_source_duplicate(source, name, true);
+	if (!duplicate || duplicate == source) {
 		if (duplicate)
 			obs_source_release(duplicate);
 		return fail(error, "obs_error", "libobs did not create an independent source duplicate");
 	}
 
 	try {
-		ObsDataPtr data(obs_data_create());
-		set_handle(data.get(), "source", duplicate_handle);
-		obs_data_set_string(data.get(), "name", obs_source_get_name(duplicate));
-		obs_data_set_string(data.get(), "kind", obs_source_get_id(duplicate));
-		set_handle(data.get(), "duplicateOf", handle);
-
-		ObsDataPtr event_data(obs_data_create());
-		set_handle(event_data.get(), "source", duplicate_handle);
-		obs_data_set_string(event_data.get(), "name", obs_source_get_name(duplicate));
-		obs_data_set_string(event_data.get(), "kind", obs_source_get_id(duplicate));
-		set_handle(event_data.get(), "duplicateOf", handle);
-		append_event(result, "source.created", std::move(event_data));
-		result.data = std::move(data);
-
-		const auto [_, inserted] = sources_.emplace(duplicate_handle, duplicate);
-		if (!inserted) {
-			obs_source_release(duplicate);
-			return fail(error, "internal_error", "source handle collision");
-		}
-		// libobs duplicates attached filters as nested source state.  Register
-		// those copies for later filter.list discovery, but do not synthesize
-		// filter.created events into the already-accepted source.duplicate wire
-		// contract.
-		v2_filter_register_source_filters(duplicate_handle, duplicate);
+		result.data = make_source_duplicate_data(duplicate_handle, handle, duplicate);
+		append_event(result, "source.created", clone_data(result.data.get()));
+		if (!v2_store_source_duplicate(duplicate_handle, duplicate, error))
+			return false;
 	} catch (...) {
 		v2_filter_forget_source(duplicate_handle);
 		sources_.erase(duplicate_handle);
@@ -970,11 +1112,9 @@ bool Engine::v2_source_rename(obs_data_t *params, RuntimeV2Result &result, Runti
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
 
 	std::string name;
 	bool present = false;
@@ -987,10 +1127,10 @@ bool Engine::v2_source_rename(obs_data_t *params, RuntimeV2Result &result, Runti
 	obs_data_set_string(data.get(), "name", name.c_str());
 	result.data = std::move(data);
 
-	const char *current = obs_source_get_name(it->second);
+	const char *current = obs_source_get_name(source);
 	if (current && name == current)
 		return true;
-	obs_source_set_name(it->second, name.c_str());
+	obs_source_set_name(source, name.c_str());
 	result.mutated = true;
 	return true;
 }
@@ -999,18 +1139,16 @@ bool Engine::v2_source_replace_settings(obs_data_t *params, RuntimeV2Result &res
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
 
 	ObsDataPtr replacement;
 	bool present = false;
 	if (!read_object_field(params, "settings", replacement, present) || !present)
 		return fail(error, "bad_request", "params.settings object is required");
 
-	ObsDataPtr settings(obs_source_get_settings(it->second));
+	ObsDataPtr settings(obs_source_get_settings(source));
 	if (!settings)
 		return fail(error, "obs_error", "could not read source settings before replacement");
 	ObsDataPtr data(obs_data_create());
@@ -1018,7 +1156,7 @@ bool Engine::v2_source_replace_settings(obs_data_t *params, RuntimeV2Result &res
 	obs_data_set_obj(data.get(), "settings", settings.get());
 	result.data = std::move(data);
 
-	obs_source_reset_settings(it->second, replacement.get());
+	obs_source_reset_settings(source, replacement.get());
 	result.mutated = true;
 	return true;
 }
@@ -1027,16 +1165,14 @@ bool Engine::v2_source_reset_settings(obs_data_t *params, RuntimeV2Result &resul
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
 
-	ObsDataPtr defaults(obs_get_source_defaults(obs_source_get_id(it->second)));
+	ObsDataPtr defaults(obs_get_source_defaults(obs_source_get_id(source)));
 	if (!defaults)
 		return fail(error, "obs_error", "source kind did not provide defaults");
-	ObsDataPtr settings(obs_source_get_settings(it->second));
+	ObsDataPtr settings(obs_source_get_settings(source));
 	if (!settings)
 		return fail(error, "obs_error", "could not read source settings before reset");
 	ObsDataPtr data(obs_data_create());
@@ -1044,7 +1180,7 @@ bool Engine::v2_source_reset_settings(obs_data_t *params, RuntimeV2Result &resul
 	obs_data_set_obj(data.get(), "settings", settings.get());
 	result.data = std::move(data);
 
-	obs_source_reset_settings(it->second, defaults.get());
+	obs_source_reset_settings(source, defaults.get());
 	result.mutated = true;
 	return true;
 }
@@ -1053,10 +1189,9 @@ bool Engine::v2_source_get_properties(obs_data_t *params, RuntimeV2Result &resul
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	if (!sources_.contains(handle))
-		return fail(error, "not_found", "source handle was not found");
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
 
 	ObsDataPtr bridge(obs_data_create());
 	ObsDataPtr target(obs_data_create());
@@ -1070,12 +1205,10 @@ bool Engine::v2_source_get_flags(obs_data_t *params, RuntimeV2Result &result, Ru
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	result.data = make_flags_data(handle, it->second);
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
+	result.data = make_flags_data(handle, source);
 	return true;
 }
 
@@ -1083,12 +1216,10 @@ bool Engine::v2_source_get_dimensions(obs_data_t *params, RuntimeV2Result &resul
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	result.data = make_dimensions_data(handle, it->second);
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
+	result.data = make_dimensions_data(handle, source);
 	return true;
 }
 
@@ -1096,14 +1227,12 @@ bool Engine::v2_source_get_active(obs_data_t *params, RuntimeV2Result &result, R
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
 	ObsDataPtr data(obs_data_create());
 	set_handle(data.get(), "source", handle);
-	obs_data_set_bool(data.get(), "active", obs_source_active(it->second));
+	obs_data_set_bool(data.get(), "active", obs_source_active(source));
 	result.data = std::move(data);
 	return true;
 }
@@ -1112,14 +1241,12 @@ bool Engine::v2_source_get_showing(obs_data_t *params, RuntimeV2Result &result, 
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
 	ObsDataPtr data(obs_data_create());
 	set_handle(data.get(), "source", handle);
-	obs_data_set_bool(data.get(), "showing", obs_source_showing(it->second));
+	obs_data_set_bool(data.get(), "showing", obs_source_showing(source));
 	result.data = std::move(data);
 	return true;
 }
@@ -1128,19 +1255,17 @@ bool Engine::v2_source_get_state(obs_data_t *params, RuntimeV2Result &result, Ru
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
 
-	ObsDataPtr settings(obs_source_get_settings(it->second));
+	ObsDataPtr settings(obs_source_get_settings(source));
 	if (!settings)
 		return fail(error, "obs_error", "could not read source settings");
-	ObsDataPtr data = make_source_summary(handle, it->second);
-	ObsDataPtr flags = make_flags_data(handle, it->second);
+	ObsDataPtr data = make_source_summary(handle, source);
+	ObsDataPtr flags = make_flags_data(handle, source);
 	obs_data_erase(flags.get(), "source");
-	ObsDataPtr dimensions = make_dimensions_data(handle, it->second);
+	ObsDataPtr dimensions = make_dimensions_data(handle, source);
 	obs_data_erase(dimensions.get(), "source");
 	obs_data_set_obj(data.get(), "flags", flags.get());
 	obs_data_set_obj(data.get(), "dimensions", dimensions.get());
@@ -1153,13 +1278,11 @@ bool Engine::v2_source_get_missing_files(obs_data_t *params, RuntimeV2Result &re
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
 
-	obs_missing_files_t *missing = obs_source_get_missing_files(it->second);
+	obs_missing_files_t *missing = obs_source_get_missing_files(source);
 	if (!missing)
 		return fail(error, "obs_error", "could not query source missing files");
 
@@ -1195,12 +1318,10 @@ bool Engine::v2_source_refresh(obs_data_t *params, RuntimeV2Result &result, Runt
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	obs_source_update_properties(it->second);
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
+	obs_source_update_properties(source);
 	ObsDataPtr data(obs_data_create());
 	set_handle(data.get(), "source", handle);
 	obs_data_set_bool(data.get(), "refreshed", true);
@@ -1212,12 +1333,10 @@ bool Engine::v2_source_save_state(obs_data_t *params, RuntimeV2Result &result, R
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	result.data = make_state_snapshot(handle, it->second, error);
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
+	result.data = make_state_snapshot(handle, source, error);
 	return static_cast<bool>(result.data);
 }
 
@@ -1225,50 +1344,31 @@ bool Engine::v2_source_load_state(obs_data_t *params, RuntimeV2Result &result, R
 {
 	reset_result(result, error);
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
 
-	ObsDataPtr state;
-	bool present = false;
-	if (!read_object_field(params, "state", state, present) || !present)
-		return fail(error, "bad_request", "params.state object is required");
-	long long version = 0;
-	if (!read_integer_field(state.get(), "version", version, present) || !present || version != kSourceStateVersion)
-		return fail(error, "bad_request", "source state version is unsupported");
-	std::string kind;
-	if (!read_string_field(state.get(), "kind", kind, present) || !present ||
-	    !is_safe_identifier(kind.c_str(), kMaxSourceKindBytes))
-		return fail(error, "bad_request", "source state kind is invalid");
-	if (kind != obs_source_get_id(it->second))
-		return fail(error, "bad_request", "source state kind does not match the target source");
-	std::string name;
-	if (!read_string_field(state.get(), "name", name, present) || !present || name.empty() ||
-	    !is_bounded_string(name.c_str(), kMaxObjectNameBytes))
-		return fail(error, "bad_request", "source state name must be a 1-256 byte string");
-	ObsDataPtr replacement;
-	if (!read_object_field(state.get(), "settings", replacement, present) || !present)
-		return fail(error, "bad_request", "source state settings object is required");
+	SourceStateInput input;
+	if (!read_source_state_input(params, source, input, error))
+		return false;
 
-	ObsDataPtr live_settings(obs_source_get_settings(it->second));
+	ObsDataPtr live_settings(obs_source_get_settings(source));
 	if (!live_settings)
 		return fail(error, "obs_error", "could not read source settings before state restore");
 	ObsDataPtr state_response(obs_data_create());
 	obs_data_set_int(state_response.get(), "version", kSourceStateVersion);
-	obs_data_set_string(state_response.get(), "kind", kind.c_str());
-	obs_data_set_string(state_response.get(), "name", name.c_str());
+	obs_data_set_string(state_response.get(), "kind", input.kind.c_str());
+	obs_data_set_string(state_response.get(), "name", input.name.c_str());
 	obs_data_set_obj(state_response.get(), "settings", live_settings.get());
 	ObsDataPtr data(obs_data_create());
 	set_handle(data.get(), "source", handle);
 	obs_data_set_obj(data.get(), "state", state_response.get());
 	result.data = std::move(data);
 
-	const char *current_name = obs_source_get_name(it->second);
-	if (!current_name || name != current_name)
-		obs_source_set_name(it->second, name.c_str());
-	obs_source_reset_settings(it->second, replacement.get());
+	const char *current_name = obs_source_get_name(source);
+	if (!current_name || input.name != current_name)
+		obs_source_set_name(source, input.name.c_str());
+	obs_source_reset_settings(source, input.settings.get());
 	result.mutated = true;
 	return true;
 }

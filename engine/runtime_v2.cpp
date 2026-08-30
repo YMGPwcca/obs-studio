@@ -151,7 +151,109 @@ ObsDataPtr make_transform_data(uint64_t item_handle, const obs_transform_info &i
 	return data;
 }
 
+bool apply_transform_vector(obs_data_t *transform, const char *name, const char *object_error, const char *x_error,
+				    const char *y_error, double min_value, double max_value, vec2 &target, bool &changed,
+				    RuntimeV2Error &error)
+{
+	ObsDataPtr component;
+	bool present = false;
+	if (!read_object_field(transform, name, component, present))
+		return fail(error, "bad_request", object_error);
+	if (!present)
+		return true;
+
+	double value = 0.0;
+	bool value_present = false;
+	if (!read_finite_double(component.get(), "x", min_value, max_value, value, value_present))
+		return fail(error, "bad_request", x_error);
+	if (value_present) {
+		target.x = static_cast<float>(value);
+		changed = true;
+	}
+	if (!read_finite_double(component.get(), "y", min_value, max_value, value, value_present))
+		return fail(error, "bad_request", y_error);
+	if (value_present) {
+		target.y = static_cast<float>(value);
+		changed = true;
+	}
+	return true;
+}
+
+bool apply_transform_rotation(obs_data_t *transform, obs_transform_info &info, bool &changed, RuntimeV2Error &error)
+{
+	double value = 0.0;
+	bool present = false;
+	if (!read_finite_double(transform, "rotation", -1000000.0, 1000000.0, value, present))
+		return fail(error, "bad_request", "invalid transform.rotation");
+	if (present) {
+		info.rot = static_cast<float>(value);
+		changed = true;
+	}
+	return true;
+}
+
+bool apply_transform_alignment(obs_data_t *transform, obs_transform_info &info, bool &changed,
+				       RuntimeV2Error &error)
+{
+	long long alignment = 0;
+	bool present = false;
+	if (!read_integer(transform, "alignment", alignment, present))
+		return fail(error, "bad_request", "transform.alignment must be an integer");
+	if (!present)
+		return true;
+
+	const uint32_t allowed = OBS_ALIGN_LEFT | OBS_ALIGN_RIGHT | OBS_ALIGN_TOP | OBS_ALIGN_BOTTOM;
+	if (alignment < 0 || static_cast<uint64_t>(alignment) > std::numeric_limits<uint32_t>::max() ||
+	    (static_cast<uint32_t>(alignment) & ~allowed) != 0)
+		return fail(error, "bad_request", "invalid transform.alignment");
+	info.alignment = static_cast<uint32_t>(alignment);
+	changed = true;
+	return true;
+}
+
 } // namespace
+
+std::vector<uint64_t> Engine::v2_item_handles_for_scene(uint64_t scene_id) const
+{
+	std::vector<uint64_t> handles;
+	for (const auto &[handle, entry] : items_) {
+		if (entry.scene_id == scene_id)
+			handles.push_back(handle);
+	}
+	std::sort(handles.begin(), handles.end());
+	return handles;
+}
+
+bool Engine::v2_append_item_removal_events(const std::vector<uint64_t> &item_handles, RuntimeV2Result &result,
+						   RuntimeV2Error &error) const
+{
+	for (uint64_t item_handle : item_handles) {
+		auto item_it = items_.find(item_handle);
+		if (item_it == items_.end())
+			return fail(error, "internal_error", "scene item map changed during removal preparation");
+		append_event(result, "item.removed",
+			     make_item_identity(item_handle, item_it->second.scene_id, item_it->second.source_id));
+	}
+	return true;
+}
+
+bool Engine::v2_read_source_create_options(obs_data_t *params, std::string &kind, std::string &name,
+						ObsDataPtr &settings, RuntimeV2Error &error) const
+{
+	bool present = false;
+	if (!read_string_field(params, "kind", kind, present) || !present ||
+	    !is_safe_identifier(kind.c_str(), kMaxSourceKindBytes))
+		return fail(error, "bad_request", "params.kind must be a valid source kind identifier");
+	if (!input_type_exists(kind.c_str()))
+		return fail(error, "not_found", "source kind is not registered");
+	if (!read_string_field(params, "name", name, present))
+		return fail(error, "bad_request", "params.name must be a string when present");
+	if (present && !is_bounded_string(name.c_str(), kMaxObjectNameBytes))
+		return fail(error, "bad_request", "source name is too long");
+	if (!read_object_field(params, "settings", settings, present))
+		return fail(error, "bad_request", "params.settings must be an object when present");
+	return true;
+}
 
 bool Engine::v2_source_kind_list(obs_data_t *, RuntimeV2Result &result, RuntimeV2Error &error)
 {
@@ -211,22 +313,10 @@ bool Engine::v2_source_create(obs_data_t *params, RuntimeV2Result &result, Runti
 	reset_result(result, error);
 
 	std::string kind;
-	bool present = false;
-	if (!read_string_field(params, "kind", kind, present) || !present ||
-	    !is_safe_identifier(kind.c_str(), kMaxSourceKindBytes))
-		return fail(error, "bad_request", "params.kind must be a valid source kind identifier");
-	if (!input_type_exists(kind.c_str()))
-		return fail(error, "not_found", "source kind is not registered");
-
 	std::string requested_name;
-	if (!read_string_field(params, "name", requested_name, present))
-		return fail(error, "bad_request", "params.name must be a string when present");
-	if (present && !is_bounded_string(requested_name.c_str(), kMaxObjectNameBytes))
-		return fail(error, "bad_request", "source name is too long");
-
 	ObsDataPtr settings;
-	if (!read_object_field(params, "settings", settings, present))
-		return fail(error, "bad_request", "params.settings must be an object when present");
+	if (!v2_read_source_create_options(params, kind, requested_name, settings, error))
+		return false;
 
 	const uint64_t handle = allocate_handle();
 	const std::string generated_name = "engine-source-" + std::to_string(handle);
@@ -267,13 +357,11 @@ bool Engine::v2_source_get_settings(obs_data_t *params, RuntimeV2Result &result,
 	reset_result(result, error);
 
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
 
-	ObsDataPtr settings(obs_source_get_settings(it->second));
+	ObsDataPtr settings(obs_source_get_settings(source));
 	if (!settings)
 		return fail(error, "obs_error", "could not read source settings");
 
@@ -289,11 +377,9 @@ bool Engine::v2_source_patch_settings(obs_data_t *params, RuntimeV2Result &resul
 	reset_result(result, error);
 
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
-	auto it = sources_.find(handle);
-	if (it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
 
 	ObsDataPtr patch;
 	bool present = false;
@@ -303,7 +389,7 @@ bool Engine::v2_source_patch_settings(obs_data_t *params, RuntimeV2Result &resul
 	// libobs keeps source settings in one context object and obs_source_update()
 	// applies the patch to that object in place. Hold the object before updating
 	// so there is no fallible post-mutation settings lookup.
-	ObsDataPtr settings(obs_source_get_settings(it->second));
+	ObsDataPtr settings(obs_source_get_settings(source));
 	if (!settings)
 		return fail(error, "obs_error", "could not read source settings before update");
 
@@ -317,7 +403,7 @@ bool Engine::v2_source_patch_settings(obs_data_t *params, RuntimeV2Result &resul
 	append_event(result, "source.settingsChanged", std::move(event_data));
 	result.data = std::move(data);
 
-	obs_source_update(it->second, patch.get());
+	obs_source_update(source, patch.get());
 	result.mutated = true;
 	return true;
 }
@@ -327,11 +413,10 @@ bool Engine::v2_source_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 	reset_result(result, error);
 
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "source", handle))
-		return fail(error, "bad_request", "params.source must be a canonical decimal handle string");
+	obs_source_t *source = nullptr;
+	if (!v2_get_source(params, handle, source, error))
+		return false;
 	auto source_it = sources_.find(handle);
-	if (source_it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
 
 	std::vector<uint64_t> item_handles;
 	for (const auto &[item_handle, entry] : items_) {
@@ -362,7 +447,7 @@ bool Engine::v2_source_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 		if (item_it != items_.end())
 			release_item(item_it);
 	}
-	obs_source_release(source_it->second);
+	obs_source_release(source);
 	sources_.erase(source_it);
 
 	result.mutated = true;
@@ -424,21 +509,11 @@ bool Engine::v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, Runtim
 	if (scene_it == scenes_.end())
 		return fail(error, "not_found", "scene handle was not found");
 
-	std::vector<uint64_t> item_handles;
-	for (const auto &[item_handle, entry] : items_) {
-		if (entry.scene_id == handle)
-			item_handles.push_back(item_handle);
-	}
-	std::sort(item_handles.begin(), item_handles.end());
+	const std::vector<uint64_t> item_handles = v2_item_handles_for_scene(handle);
 
 	result.events.reserve(item_handles.size() + 1);
-	for (uint64_t item_handle : item_handles) {
-		auto item_it = items_.find(item_handle);
-		if (item_it == items_.end())
-			return fail(error, "internal_error", "scene item map changed during removal preparation");
-		append_event(result, "item.removed",
-			     make_item_identity(item_handle, item_it->second.scene_id, item_it->second.source_id));
-	}
+	if (!v2_append_item_removal_events(item_handles, result, error))
+		return false;
 	ObsDataPtr scene_event(obs_data_create());
 	set_handle(scene_event.get(), "scene", handle);
 	append_event(result, "scene.removed", std::move(scene_event));
@@ -545,64 +620,15 @@ bool Engine::v2_item_set_transform(obs_data_t *params, RuntimeV2Result &result, 
 	obs_transform_info info = {};
 	obs_sceneitem_get_info2(it->second.item, &info);
 	bool changed = false;
-	double value = 0.0;
-	bool value_present = false;
-
-	ObsDataPtr position;
-	if (!read_object_field(transform.get(), "position", position, present))
-		return fail(error, "bad_request", "transform.position must be an object when present");
-	if (present) {
-		if (!read_finite_double(position.get(), "x", -10000000.0, 10000000.0, value, value_present))
-			return fail(error, "bad_request", "invalid transform.position.x");
-		if (value_present) {
-			info.pos.x = static_cast<float>(value);
-			changed = true;
-		}
-		if (!read_finite_double(position.get(), "y", -10000000.0, 10000000.0, value, value_present))
-			return fail(error, "bad_request", "invalid transform.position.y");
-		if (value_present) {
-			info.pos.y = static_cast<float>(value);
-			changed = true;
-		}
-	}
-
-	ObsDataPtr scale;
-	if (!read_object_field(transform.get(), "scale", scale, present))
-		return fail(error, "bad_request", "transform.scale must be an object when present");
-	if (present) {
-		if (!read_finite_double(scale.get(), "x", -10000.0, 10000.0, value, value_present))
-			return fail(error, "bad_request", "invalid transform.scale.x");
-		if (value_present) {
-			info.scale.x = static_cast<float>(value);
-			changed = true;
-		}
-		if (!read_finite_double(scale.get(), "y", -10000.0, 10000.0, value, value_present))
-			return fail(error, "bad_request", "invalid transform.scale.y");
-		if (value_present) {
-			info.scale.y = static_cast<float>(value);
-			changed = true;
-		}
-	}
-
-	if (!read_finite_double(transform.get(), "rotation", -1000000.0, 1000000.0, value, value_present))
-		return fail(error, "bad_request", "invalid transform.rotation");
-	if (value_present) {
-		info.rot = static_cast<float>(value);
-		changed = true;
-	}
-
-	long long alignment = 0;
-	bool alignment_present = false;
-	if (!read_integer(transform.get(), "alignment", alignment, alignment_present))
-		return fail(error, "bad_request", "transform.alignment must be an integer");
-	if (alignment_present) {
-		const uint32_t allowed = OBS_ALIGN_LEFT | OBS_ALIGN_RIGHT | OBS_ALIGN_TOP | OBS_ALIGN_BOTTOM;
-		if (alignment < 0 || static_cast<uint64_t>(alignment) > std::numeric_limits<uint32_t>::max() ||
-		    (static_cast<uint32_t>(alignment) & ~allowed) != 0)
-			return fail(error, "bad_request", "invalid transform.alignment");
-		info.alignment = static_cast<uint32_t>(alignment);
-		changed = true;
-	}
+	if (!apply_transform_vector(transform.get(), "position", "transform.position must be an object when present",
+				    "invalid transform.position.x", "invalid transform.position.y", -10000000.0,
+				    10000000.0, info.pos, changed, error) ||
+	    !apply_transform_vector(transform.get(), "scale", "transform.scale must be an object when present",
+				    "invalid transform.scale.x", "invalid transform.scale.y", -10000.0, 10000.0,
+				    info.scale, changed, error) ||
+	    !apply_transform_rotation(transform.get(), info, changed, error) ||
+	    !apply_transform_alignment(transform.get(), info, changed, error))
+		return false;
 
 	if (!changed)
 		return fail(error, "bad_request", "params.transform must contain at least one supported transform field");

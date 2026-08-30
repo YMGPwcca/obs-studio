@@ -370,6 +370,15 @@ bool commit_filter_result(const V2Request &request, RuntimeV2Result &result, Rev
 	return false;
 }
 
+bool execute_filter_request(Engine &engine, FilterMethod method, const V2Request &request, RuntimeV2Result &result,
+				    RuntimeV2Error &error, const std::optional<FilterCaptureScope> &capture)
+{
+	bool succeeded = execute_filter_method(engine, method, request.params.get(), result, error);
+	if (succeeded && capture && needs_settings_settle(method) && result.mutated)
+		succeeded = engine.v2_settle_filter_mutation(request.params.get(), result, error);
+	return succeeded;
+}
+
 bool handle_capability_request(RevisionState &revisions, const V2Request &request)
 {
 	if (reject_guard_on_read(request, revisions.current()))
@@ -415,9 +424,7 @@ bool handle_filter_request(Engine &engine, RevisionState &revisions, EventDispat
 	if (!prepare_filter_mutation(request, mutating, engine, revisions, result, capture, guard))
 		return true;
 
-	bool succeeded = execute_filter_method(engine, method, request.params.get(), result, error);
-	if (succeeded && capture && needs_settings_settle(method) && result.mutated)
-		succeeded = engine.v2_settle_filter_mutation(request.params.get(), result, error);
+	const bool succeeded = execute_filter_request(engine, method, request, result, error, capture);
 
 	// This cascades source -> media -> filter observer synchronization while the
 	// capture gate is still active.

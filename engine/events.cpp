@@ -13,8 +13,8 @@ namespace {
 
 bool is_event_name_character(unsigned char ch)
 {
-	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' ||
-	       ch == '-';
+	constexpr std::string_view allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-";
+	return allowed.find(static_cast<char>(ch)) != std::string_view::npos;
 }
 
 bool is_event_name(std::string_view value)
@@ -290,37 +290,40 @@ void EventDispatcher::require_resync_after_queued_events(uint64_t revision) noex
 	}
 }
 
+EventDispatcher::NextEventResult EventDispatcher::wait_for_next_event(PendingEvent &event, uint64_t &resync_revision)
+{
+	std::unique_lock lock(mutex_);
+	cv_.wait(lock, [&] { return stopping_ || resync_pending_ || !queue_.empty(); });
+	if (resync_pending_) {
+		resync_revision = resync_revision_;
+		resync_pending_ = false;
+		resync_revision_ = 0;
+		return NextEventResult::Resync;
+	}
+	if (!queue_.empty()) {
+		event = std::move(queue_.front());
+		queue_.pop_front();
+		return NextEventResult::Event;
+	}
+	return NextEventResult::Stop;
+}
+
 void EventDispatcher::run() noexcept
 {
 	try {
 		for (;;) {
 			PendingEvent event;
-			bool have_event = false;
-			bool emit_resync = false;
 			uint64_t resync_revision = 0;
-
-			{
-				std::unique_lock lock(mutex_);
-				cv_.wait(lock, [&] { return stopping_ || resync_pending_ || !queue_.empty(); });
-
-				if (resync_pending_) {
-					emit_resync = true;
-					resync_revision = resync_revision_;
-					resync_pending_ = false;
-					resync_revision_ = 0;
-				} else if (!queue_.empty()) {
-					event = std::move(queue_.front());
-					queue_.pop_front();
-					have_event = true;
-				} else if (stopping_) {
-					break;
-				}
-			}
-
-			if (emit_resync)
+			switch (wait_for_next_event(event, resync_revision)) {
+			case NextEventResult::Stop:
+				return;
+			case NextEventResult::Resync:
 				emit_resync_required(resync_revision);
-			else if (have_event)
+				break;
+			case NextEventResult::Event:
 				emit(std::move(event));
+				break;
+			}
 		}
 	} catch (const std::exception &error) {
 		std::fprintf(stderr, "obs-engine: event dispatcher failed internally: %s\n", error.what());

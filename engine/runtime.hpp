@@ -5,6 +5,7 @@
 #include "revision.hpp"
 
 #include <obs.h>
+#include <obs-properties.h>
 
 #include <cstdint>
 #include <memory>
@@ -18,7 +19,9 @@ namespace obs_engine {
 class EventDispatcher;
 struct InteractionV2State;
 struct MediaV2State;
+struct MediaV2Observer;
 struct FilterV2State;
+struct SourceV2Observer;
 struct SourceV2State;
 
 struct ItemEntry {
@@ -101,6 +104,17 @@ public:
 	void v2_filter_forget_source(uint64_t source_id) noexcept;
 	void v2_filter_prepare_parent_removal(uint64_t source_id, RuntimeV2Result &result);
 	void v2_filter_register_source_filters(uint64_t source_id, obs_source_t *source);
+	bool v2_get_filter_parent(obs_data_t *params, uint64_t &handle, FilterEntry *&entry,
+					  obs_source_t *&parent, RuntimeV2Error &error);
+	bool v2_move_filter(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error,
+				    enum obs_order_movement movement);
+	bool v2_apply_filter_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error,
+				      bool replace_settings);
+	bool v2_create_filter_object(uint64_t source_id, obs_source_t *parent, uint64_t handle,
+				     const std::string &kind, const std::string &name, ObsDataPtr &settings,
+				     RuntimeV2Error &error);
+	void v2_register_attached_filter(uint64_t source_id, obs_source_t *parent, uint64_t handle,
+					 obs_source_t *filter);
 
 	bool v2_source_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_source_kind_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -187,11 +201,49 @@ private:
 	uint64_t allocate_handle();
 	bool input_type_exists(const char *type) const;
 	bool validate_source_type(long long request_id, obs_data_t *request, const char *&type) const;
+	struct PropertyButtonContext {
+		~PropertyButtonContext();
+		ObsDataPtr target;
+		ObsDataPtr settings;
+		obs_properties_t *properties = nullptr;
+		obs_source_t *source = nullptr;
+		std::vector<std::string> previous_sensitive;
+		std::string property_name;
+		std::string changed_property;
+		bool changed_present = false;
+		bool resolved_refresh = false;
+		obs_property_t *property = nullptr;
+	};
+	bool v2_build_source_property_target(obs_data_t *requested_target, ObsDataPtr &target,
+					    ObsDataPtr &base_settings, obs_properties_t *&properties,
+					    obs_source_t *&source, RuntimeV2Error &error);
+	bool v2_build_source_kind_property_target(obs_data_t *requested_target, ObsDataPtr &target,
+						 ObsDataPtr &base_settings, obs_properties_t *&properties,
+						 obs_source_t *&source, RuntimeV2Error &error);
+	bool v2_build_filter_property_target(obs_data_t *requested_target, ObsDataPtr &target,
+					    ObsDataPtr &base_settings, obs_properties_t *&properties,
+					    obs_source_t *&source, RuntimeV2Error &error);
+	bool v2_build_filter_kind_property_target(obs_data_t *requested_target, ObsDataPtr &target,
+						 ObsDataPtr &base_settings, obs_properties_t *&properties,
+						 obs_source_t *&source, RuntimeV2Error &error);
+	bool v2_prepare_property_button(obs_data_t *params, PropertyButtonContext &context, RuntimeV2Error &error);
+	bool v2_get_source(obs_data_t *params, uint64_t &handle, obs_source_t *&source, RuntimeV2Error &error) const;
+	bool v2_read_source_create_options(obs_data_t *params, std::string &kind, std::string &name,
+					   ObsDataPtr &settings, RuntimeV2Error &error) const;
+	bool v2_store_source_duplicate(uint64_t handle, obs_source_t *duplicate, RuntimeV2Error &error);
 	bool v2_build_property_target(obs_data_t *params, ObsDataPtr &target, ObsDataPtr &settings,
 				      obs_properties_t *&properties, obs_source_t *&source, RuntimeV2Error &error);
 	ObsDataPtr v2_filter_order_data(uint64_t source_id, uint64_t changed, obs_source_t *parent) const;
 	void v2_register_filter(uint64_t handle, uint64_t source_id, obs_source_t *filter);
 	void v2_add_filter_observer(uint64_t handle);
+	void v2_add_source_observer(uint64_t handle, obs_source_t *source,
+					 std::vector<std::shared_ptr<SourceV2Observer>> &retire);
+	void v2_add_media_observer(uint64_t handle, obs_source_t *source,
+					 std::vector<std::shared_ptr<MediaV2Observer>> &retire);
+	bool v2_collect_media_observer_changes(std::vector<std::pair<uint64_t, obs_source_t *>> &add,
+					       std::vector<std::shared_ptr<MediaV2Observer>> &retire);
+	bool v2_prepare_filter_settlement(obs_data_t *params, RuntimeV2Result &result, uint64_t &handle,
+					 FilterEntry *&entry, RuntimeV2Error &error);
 	bool v2_sync_filter_registry(std::unordered_set<obs_source_t *> &attached);
 	void v2_remove_unattached_filters(const std::unordered_set<obs_source_t *> &attached);
 	std::vector<uint64_t> v2_filter_observers_to_add() const;
@@ -200,8 +252,8 @@ private:
 	bool v2_get_interaction_source(obs_data_t *params, uint64_t &handle, obs_source_t *&source,
 				       RuntimeV2Error &error);
 
-	bool command_hello(long long request_id);
-	bool command_source_types(long long request_id);
+	bool command_hello(long long request_id, obs_data_t *request);
+	bool command_source_types(long long request_id, obs_data_t *request);
 	bool command_source_defaults(long long request_id, obs_data_t *request);
 	bool command_source_create(long long request_id, obs_data_t *request);
 	bool command_source_update(long long request_id, obs_data_t *request);
@@ -215,8 +267,14 @@ private:
 	bool command_program_set(long long request_id, obs_data_t *request);
 
 	void release_item(ItemMap::iterator &it);
+	std::vector<uint64_t> v2_item_handles_for_scene(uint64_t scene_id) const;
+	bool v2_append_item_removal_events(const std::vector<uint64_t> &item_handles, RuntimeV2Result &result,
+					   RuntimeV2Error &error) const;
 	void remove_items_for_source(uint64_t source_id);
 	void remove_items_for_scene(uint64_t scene_id);
+	bool prepare_startup_environment();
+	bool reset_video();
+	bool load_runtime_modules();
 	void shutdown();
 
 	Config config_;

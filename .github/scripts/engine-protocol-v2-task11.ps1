@@ -99,39 +99,54 @@ function Assert-Error($Response, [string] $Code, [int64] $ExpectedRevision, [str
     }
 }
 
-function Read-Event([string] $Name, [int64] $ExpectedRevision, [string] $Filter = '', [string] $Source = '') {
-    while ($true) {
-        if ($script:Events.Count -gt 0) {
-            $Event = $script:Events[0]
-            $script:Events.RemoveAt(0)
-        } else {
-            $Event = Read-EngineMessage
-        }
-        if ($Event.op -ne 'event') {
-            Fail "expected event '$Name' but received response '$($Event.id)'."
-        }
-        if ([string]$Event.event -ne $Name) {
-            Fail "expected event '$Name' but received '$($Event.event)'."
-        }
-        if ([uint64]$Event.seq -ne $script:NextSeq) {
-            Fail "event '$Name' seq=$($Event.seq), expected $script:NextSeq."
-        }
-        if ([int64]$Event.revision -ne $ExpectedRevision) {
-            Fail "event '$Name' revision=$($Event.revision), expected $ExpectedRevision."
-        }
-        $WireEvent = @($script:WireLog | Where-Object { $_.Seq -eq [uint64]$Event.seq }) | Select-Object -First 1
-        if ($null -eq $WireEvent -or $WireEvent.Index -le $script:LastResponseWireIndex) {
-            Fail "command-owned event '$Name' was emitted before its response."
-        }
-        if ($Filter -and [string]$Event.data.filter -ne $Filter) {
-            Fail "event '$Name' filter=$($Event.data.filter), expected $Filter."
-        }
-        if ($Source -and [string]$Event.data.source -ne $Source) {
-            Fail "event '$Name' source=$($Event.data.source), expected $Source."
-        }
-        $script:NextSeq++
-        return $Event
+function Read-PendingEvent {
+    if ($script:Events.Count -gt 0) {
+        $Event = $script:Events[0]
+        $script:Events.RemoveAt(0)
+    } else {
+        $Event = Read-EngineMessage
     }
+    return $Event
+}
+
+function Assert-EventSequence($Event, [string] $Label) {
+    if ($Event.op -ne 'event') {
+        Fail "$Label expected an event but received response '$($Event.id)'."
+    }
+    if ([uint64]$Event.seq -ne $script:NextSeq) {
+        Fail "$Label seq=$($Event.seq), expected $script:NextSeq."
+    }
+    $script:NextSeq++
+}
+
+function Assert-CommandEventAfterResponse($Event, [string] $Name) {
+    $WireEvent = @($script:WireLog | Where-Object { $_.Seq -eq [uint64]$Event.seq }) | Select-Object -First 1
+    if ($null -eq $WireEvent -or $WireEvent.Index -le $script:LastResponseWireIndex) {
+        Fail "command-owned event '$Name' was emitted before its response."
+    }
+}
+
+function Assert-EventTargets($Event, [string] $Name, [string] $Filter, [string] $Source) {
+    if ($Filter -and [string]$Event.data.filter -ne $Filter) {
+        Fail "event '$Name' filter=$($Event.data.filter), expected $Filter."
+    }
+    if ($Source -and [string]$Event.data.source -ne $Source) {
+        Fail "event '$Name' source=$($Event.data.source), expected $Source."
+    }
+}
+
+function Read-Event([string] $Name, [int64] $ExpectedRevision, [string] $Filter = '', [string] $Source = '') {
+    $Event = Read-PendingEvent
+    Assert-EventSequence $Event "event '$Name'"
+    if ([string]$Event.event -ne $Name) {
+        Fail "expected event '$Name' but received '$($Event.event)'."
+    }
+    if ([int64]$Event.revision -ne $ExpectedRevision) {
+        Fail "event '$Name' revision=$($Event.revision), expected $ExpectedRevision."
+    }
+    Assert-CommandEventAfterResponse $Event $Name
+    Assert-EventTargets $Event $Name $Filter $Source
+    return $Event
 }
 
 function Assert-Order($Data, [string[]] $Expected, [string] $Label) {
@@ -156,19 +171,8 @@ function Assert-NoQueuedEvents([string] $Label) {
 function Read-Until-Resync([int64] $MinimumRevision) {
     $script:LastResyncBatch = [System.Collections.Generic.List[object]]::new()
     while ($true) {
-        if ($script:Events.Count -gt 0) {
-            $Event = $script:Events[0]
-            $script:Events.RemoveAt(0)
-        } else {
-            $Event = Read-EngineMessage
-        }
-        if ($Event.op -ne 'event') {
-            Fail 'received a response while waiting for session.resyncRequired.'
-        }
-        if ([uint64]$Event.seq -ne $script:NextSeq) {
-            Fail "resync wait saw seq=$($Event.seq), expected $script:NextSeq."
-        }
-        $script:NextSeq++
+        $Event = Read-PendingEvent
+        Assert-EventSequence $Event 'resync wait'
         $null = $script:LastResyncBatch.Add($Event)
         if ([string]$Event.event -eq 'session.resyncRequired') {
             if ([int64]$Event.revision -lt $MinimumRevision -or
@@ -189,35 +193,32 @@ function Assert-NoLateSettingsEvent([string] $Filter, [string] $Label) {
     }
 }
 
+function Assert-SafeEventWireOrder($Event) {
+    $WireEvent = @($script:WireLog | Where-Object { $_.Seq -eq [uint64]$Event.seq }) | Select-Object -First 1
+    if ($null -ne $WireEvent -and $WireEvent.Index -le $script:LastResponseWireIndex -and
+        [string]$Event.event -ne 'session.resyncRequired') {
+        Fail "safe-after-late observed a normal event before its response: $($Event.event)."
+    }
+}
+
+function Assert-SafeSettingsPayload($Event, [string] $Filter, [int64] $Value, [int64] $ExpectedRevision) {
+    if ([string]$Event.event -ne 'filter.settingsChanged' -or
+        [string]$Event.data.filter -ne $Filter -or
+        [int64]$Event.data.settings.value -ne $Value -or
+        [int64]$Event.revision -ne $ExpectedRevision) {
+        Fail 'safe-after-late did not receive its exact command-owned settings event.'
+    }
+}
+
 function Read-SafeSettingsEvent([string] $Filter, [int64] $Value, [int64] $ExpectedRevision) {
     while ($true) {
-        if ($script:Events.Count -gt 0) {
-            $Event = $script:Events[0]
-            $script:Events.RemoveAt(0)
-        } else {
-            $Event = Read-EngineMessage
-        }
-        if ($Event.op -ne 'event') {
-            Fail 'safe-after-late received a response while waiting for its settings event.'
-        }
-        if ([uint64]$Event.seq -ne $script:NextSeq) {
-            Fail "safe-after-late saw seq=$($Event.seq), expected $script:NextSeq."
-        }
-        $WireEvent = @($script:WireLog | Where-Object { $_.Seq -eq [uint64]$Event.seq }) | Select-Object -First 1
-        if ($null -ne $WireEvent -and $WireEvent.Index -le $script:LastResponseWireIndex -and
-            [string]$Event.event -ne 'session.resyncRequired') {
-            Fail "safe-after-late observed a normal event before its response: $($Event.event)."
-        }
-        $script:NextSeq++
+        $Event = Read-PendingEvent
+        Assert-EventSequence $Event 'safe-after-late'
+        Assert-SafeEventWireOrder $Event
         if ([string]$Event.event -eq 'session.resyncRequired') {
             continue
         }
-        if ([string]$Event.event -ne 'filter.settingsChanged' -or
-            [string]$Event.data.filter -ne $Filter -or
-            [int64]$Event.data.settings.value -ne $Value -or
-            [int64]$Event.revision -ne $ExpectedRevision) {
-            Fail 'safe-after-late did not receive its exact command-owned settings event.'
-        }
+        Assert-SafeSettingsPayload $Event $Filter $Value $ExpectedRevision
         return $Event
     }
 }

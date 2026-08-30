@@ -190,6 +190,52 @@ bool dispatch_request(obs_engine::Engine &engine, const obs_engine::Config &conf
 	return true;
 }
 
+void run_protocol_loop(obs_engine::Engine &engine, const obs_engine::Config &config,
+			       obs_engine::RevisionState &revisions, obs_engine::EventDispatcher &events)
+{
+	std::string line;
+	for (;;) {
+		const obs_engine::ReadLineResult read_result = obs_engine::read_line_limited(line);
+		if (read_result == obs_engine::ReadLineResult::Eof)
+			return;
+		if (read_result == obs_engine::ReadLineResult::TooLong) {
+			obs_engine::send_error(0, "message_too_large", "request exceeds the protocol size limit");
+			continue;
+		}
+		if (line.empty())
+			continue;
+
+		obs_engine::ObsDataPtr request(obs_data_create_from_json(line.c_str()));
+		if (!request) {
+			obs_engine::send_error(0, "invalid_json", "request is not valid JSON");
+			continue;
+		}
+		if (!dispatch_request(engine, config, revisions, events, request.get()))
+			return;
+	}
+}
+
+int run_engine(const obs_engine::Config &config)
+{
+	obs_engine::Engine engine(config);
+	if (!engine.start())
+		return 3;
+
+	ProtocolWriterScope writer;
+	if (!writer.start()) {
+		std::fprintf(stderr, "obs-engine: failed to start protocol writer\n");
+		return 5;
+	}
+
+	obs_engine::EventDispatcher events;
+	events.start();
+	obs_engine::RevisionState revisions;
+	SourceEventBridgeScope source_events(engine, revisions, events);
+	send_ready_event(config);
+	run_protocol_loop(engine, config, revisions, events);
+	return 0;
+}
+
 } // namespace
 
 int main(int argc, char **argv)
@@ -224,43 +270,7 @@ int main(int argc, char **argv)
 	obs_set_cmdline_args(argc, obs_args.data());
 
 	try {
-		obs_engine::Engine engine(config);
-		if (!engine.start())
-			return 3;
-
-		ProtocolWriterScope writer;
-		if (!writer.start()) {
-			std::fprintf(stderr, "obs-engine: failed to start protocol writer\n");
-			return 5;
-		}
-
-		obs_engine::EventDispatcher events;
-		events.start();
-		obs_engine::RevisionState revisions;
-		SourceEventBridgeScope source_events(engine, revisions, events);
-		send_ready_event(config);
-
-		std::string line;
-		for (;;) {
-			const obs_engine::ReadLineResult read_result = obs_engine::read_line_limited(line);
-			if (read_result == obs_engine::ReadLineResult::Eof)
-				break;
-			if (read_result == obs_engine::ReadLineResult::TooLong) {
-				obs_engine::send_error(0, "message_too_large", "request exceeds the protocol size limit");
-				continue;
-			}
-			if (line.empty())
-				continue;
-
-			obs_engine::ObsDataPtr request(obs_data_create_from_json(line.c_str()));
-			if (!request) {
-				obs_engine::send_error(0, "invalid_json", "request is not valid JSON");
-				continue;
-			}
-
-			if (!dispatch_request(engine, config, revisions, events, request.get()))
-				break;
-		}
+		return run_engine(config);
 	} catch (const std::exception &error) {
 		std::fprintf(stderr, "obs-engine: fatal error: %s\n", error.what());
 		return 4;

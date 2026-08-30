@@ -205,7 +205,155 @@ bool read_property_name(obs_data_t *params, std::string &property, RuntimeV2Erro
 	return true;
 }
 
+bool read_property_target(obs_data_t *params, ObsDataPtr &target, std::string &type, RuntimeV2Error &error)
+{
+	bool present = false;
+	if (!read_object_field(params, "target", target, present) || !present)
+		return fail(error, "bad_request", "params.target must be an object");
+	if (!read_string_field(target.get(), "type", type, present) || !present ||
+	    !is_safe_identifier(type.c_str(), kMaxPropertyTargetTypeBytes))
+		return fail(error, "bad_request", "params.target.type must be a valid target identifier");
+	return true;
+}
+
+bool validate_button_target(obs_property_t *property, obs_source_t *source, RuntimeV2Error &error)
+{
+	if (obs_property_get_type(property) != OBS_PROPERTY_BUTTON)
+		return fail(error, "bad_request", "params.property does not identify a button property");
+	if (!obs_property_visible(property) || !obs_property_enabled(property))
+		return fail(error, "invalid_state", "button property is not currently visible and enabled");
+	if (obs_property_button_type(property) != OBS_BUTTON_URL && !source)
+		return fail(error, "not_available", "non-URL property buttons require a live source target in Task 7");
+	return true;
+}
+
+bool finalize_property_target(ObsDataPtr &settings, ObsDataPtr &base_settings, obs_properties_t *&properties,
+				     RuntimeV2Error &error)
+{
+	settings = clone_property_settings(base_settings.get());
+	if (settings)
+		return true;
+	obs_properties_destroy(properties);
+	properties = nullptr;
+	return fail(error, "internal_error", "could not clone target settings for property resolution");
+}
+
 } // namespace
+
+Engine::PropertyButtonContext::~PropertyButtonContext()
+{
+	if (properties)
+		obs_properties_destroy(properties);
+}
+
+bool Engine::v2_build_source_property_target(obs_data_t *requested_target, ObsDataPtr &target,
+					     ObsDataPtr &base_settings, obs_properties_t *&properties,
+					     obs_source_t *&source, RuntimeV2Error &error)
+{
+	uint64_t handle = 0;
+	if (!read_handle_field(requested_target, "source", handle))
+		return fail(error, "bad_request", "source property targets require a canonical decimal target.source handle");
+	auto it = sources_.find(handle);
+	if (it == sources_.end())
+		return fail(error, "not_found", "source property target was not found");
+	source = it->second;
+	properties = obs_source_properties(source);
+	if (!properties)
+		return fail(error, "not_available", "source does not expose configurable libobs properties");
+	base_settings.reset(obs_source_get_settings(source));
+	target.reset(obs_data_create());
+	obs_data_set_string(target.get(), "type", "source");
+	set_handle(target.get(), "source", handle);
+	return true;
+}
+
+bool Engine::v2_build_source_kind_property_target(obs_data_t *requested_target, ObsDataPtr &target,
+						  ObsDataPtr &base_settings, obs_properties_t *&properties,
+						  obs_source_t *&source, RuntimeV2Error &error)
+{
+	std::string kind;
+	bool present = false;
+	if (!read_string_field(requested_target, "kind", kind, present) || !present ||
+	    !is_safe_identifier(kind.c_str(), kMaxSourceKindBytes))
+		return fail(error, "bad_request", "sourceKind property targets require a valid target.kind identifier");
+	if (!input_type_exists(kind.c_str()))
+		return fail(error, "not_found", "source kind property target is not registered");
+	properties = obs_get_source_properties(kind.c_str());
+	if (!properties)
+		return fail(error, "not_available", "source kind does not expose configurable libobs properties");
+	base_settings.reset(obs_get_source_defaults(kind.c_str()));
+	target.reset(obs_data_create());
+	obs_data_set_string(target.get(), "type", "sourceKind");
+	obs_data_set_string(target.get(), "kind", kind.c_str());
+	source = nullptr;
+	return true;
+}
+
+bool Engine::v2_build_filter_property_target(obs_data_t *requested_target, ObsDataPtr &target,
+					     ObsDataPtr &base_settings, obs_properties_t *&properties,
+					     obs_source_t *&source, RuntimeV2Error &error)
+{
+	uint64_t handle = 0;
+	if (!read_handle_field(requested_target, "filter", handle))
+		return fail(error, "bad_request", "filter property targets require a canonical decimal target.filter handle");
+	auto it = filters_.find(handle);
+	if (it == filters_.end())
+		return fail(error, "not_found", "filter property target was not found");
+	source = it->second.filter;
+	properties = obs_source_properties(source);
+	if (!properties)
+		return fail(error, "not_available", "filter does not expose configurable libobs properties");
+	base_settings.reset(obs_source_get_settings(source));
+	target.reset(obs_data_create());
+	obs_data_set_string(target.get(), "type", "filter");
+	set_handle(target.get(), "filter", handle);
+	set_handle(target.get(), "source", it->second.source_id);
+	return true;
+}
+
+bool Engine::v2_build_filter_kind_property_target(obs_data_t *requested_target, ObsDataPtr &target,
+						  ObsDataPtr &base_settings, obs_properties_t *&properties,
+						  obs_source_t *&source, RuntimeV2Error &error)
+{
+	std::string kind;
+	bool present = false;
+	if (!read_string_field(requested_target, "kind", kind, present) || !present ||
+	    !is_safe_identifier(kind.c_str(), kMaxSourceKindBytes))
+		return fail(error, "bad_request", "filterKind property targets require a valid target.kind identifier");
+	if (!filter_type_exists(kind.c_str()))
+		return fail(error, "not_found", "filter kind property target is not registered");
+	properties = obs_get_source_properties(kind.c_str());
+	if (!properties)
+		return fail(error, "not_available", "filter kind does not expose configurable libobs properties");
+	base_settings.reset(obs_get_source_defaults(kind.c_str()));
+	target.reset(obs_data_create());
+	obs_data_set_string(target.get(), "type", "filterKind");
+	obs_data_set_string(target.get(), "kind", kind.c_str());
+	source = nullptr;
+	return true;
+}
+
+bool Engine::v2_prepare_property_button(obs_data_t *params, PropertyButtonContext &context, RuntimeV2Error &error)
+{
+	if (!v2_build_property_target(params, context.target, context.settings, context.properties, context.source, error))
+		return false;
+	context.previous_sensitive = collect_sensitive_property_names(context.properties);
+
+	ObsDataPtr candidate;
+	bool candidate_present = false;
+	if (!read_candidate_params(params, false, candidate, candidate_present, context.changed_property,
+					   context.changed_present, error))
+		return false;
+	if (!apply_candidate(context.properties, context.settings.get(), candidate.get(), candidate_present,
+				     context.changed_property, context.changed_present, context.resolved_refresh, error))
+		return false;
+	if (!read_property_name(params, context.property_name, error))
+		return false;
+	context.property = obs_properties_get(context.properties, context.property_name.c_str());
+	if (!context.property)
+		return fail(error, "not_found", "button property was not found in the resolved target schema");
+	return validate_button_target(context.property, context.source, error);
+}
 
 bool Engine::v2_build_property_target(obs_data_t *params, ObsDataPtr &target, ObsDataPtr &settings,
 				      obs_properties_t *&properties, obs_source_t *&source, RuntimeV2Error &error)
@@ -216,86 +364,37 @@ bool Engine::v2_build_property_target(obs_data_t *params, ObsDataPtr &target, Ob
 	source = nullptr;
 
 	ObsDataPtr requested_target;
-	bool present = false;
-	if (!read_object_field(params, "target", requested_target, present) || !present)
-		return fail(error, "bad_request", "params.target must be an object");
-
 	std::string type;
-	if (!read_string_field(requested_target.get(), "type", type, present) || !present ||
-	    !is_safe_identifier(type.c_str(), kMaxPropertyTargetTypeBytes))
-		return fail(error, "bad_request", "params.target.type must be a valid target identifier");
+	if (!read_property_target(params, requested_target, type, error))
+		return false;
+
+	using TargetBuilder = bool (Engine::*)(obs_data_t *, ObsDataPtr &, ObsDataPtr &, obs_properties_t *&,
+						      obs_source_t *&, RuntimeV2Error &);
+		struct TargetDescriptor {
+			const char *type;
+			TargetBuilder builder;
+		};
+		constexpr TargetDescriptor builders[] = {
+			{"source", &Engine::v2_build_source_property_target},
+			{"sourceKind", &Engine::v2_build_source_kind_property_target},
+			{"filter", &Engine::v2_build_filter_property_target},
+			{"filterKind", &Engine::v2_build_filter_kind_property_target},
+		};
+	TargetBuilder builder = nullptr;
+	for (const TargetDescriptor &descriptor : builders) {
+		if (type == descriptor.type) {
+			builder = descriptor.builder;
+			break;
+		}
+	}
+	if (!builder)
+		return fail(error, "unsupported_capability", "properties target type is not supported by the current engine");
 
 	ObsDataPtr base_settings;
-	if (type == "source") {
-		uint64_t handle = 0;
-		if (!read_handle_field(requested_target.get(), "source", handle))
-			return fail(error, "bad_request", "source property targets require a canonical decimal target.source handle");
-		auto it = sources_.find(handle);
-		if (it == sources_.end())
-			return fail(error, "not_found", "source property target was not found");
-		source = it->second;
-		properties = obs_source_properties(source);
-		if (!properties)
-			return fail(error, "not_available", "source does not expose configurable libobs properties");
-		base_settings.reset(obs_source_get_settings(source));
-		target.reset(obs_data_create());
-		obs_data_set_string(target.get(), "type", "source");
-		set_handle(target.get(), "source", handle);
-	} else if (type == "sourceKind") {
-		std::string kind;
-		if (!read_string_field(requested_target.get(), "kind", kind, present) || !present ||
-		    !is_safe_identifier(kind.c_str(), kMaxSourceKindBytes))
-			return fail(error, "bad_request", "sourceKind property targets require a valid target.kind identifier");
-		if (!input_type_exists(kind.c_str()))
-			return fail(error, "not_found", "source kind property target is not registered");
-		properties = obs_get_source_properties(kind.c_str());
-		if (!properties)
-			return fail(error, "not_available", "source kind does not expose configurable libobs properties");
-		base_settings.reset(obs_get_source_defaults(kind.c_str()));
-		target.reset(obs_data_create());
-		obs_data_set_string(target.get(), "type", "sourceKind");
-		obs_data_set_string(target.get(), "kind", kind.c_str());
-	} else if (type == "filter") {
-		uint64_t handle = 0;
-		if (!read_handle_field(requested_target.get(), "filter", handle))
-			return fail(error, "bad_request", "filter property targets require a canonical decimal target.filter handle");
-		auto it = filters_.find(handle);
-		if (it == filters_.end())
-			return fail(error, "not_found", "filter property target was not found");
-		source = it->second.filter;
-		properties = obs_source_properties(source);
-		if (!properties)
-			return fail(error, "not_available", "filter does not expose configurable libobs properties");
-		base_settings.reset(obs_source_get_settings(source));
-		target.reset(obs_data_create());
-		obs_data_set_string(target.get(), "type", "filter");
-		set_handle(target.get(), "filter", handle);
-		set_handle(target.get(), "source", it->second.source_id);
-	} else if (type == "filterKind") {
-		std::string kind;
-		if (!read_string_field(requested_target.get(), "kind", kind, present) || !present ||
-		    !is_safe_identifier(kind.c_str(), kMaxSourceKindBytes))
-			return fail(error, "bad_request", "filterKind property targets require a valid target.kind identifier");
-		if (!filter_type_exists(kind.c_str()))
-			return fail(error, "not_found", "filter kind property target is not registered");
-		properties = obs_get_source_properties(kind.c_str());
-		if (!properties)
-			return fail(error, "not_available", "filter kind does not expose configurable libobs properties");
-		base_settings.reset(obs_get_source_defaults(kind.c_str()));
-		target.reset(obs_data_create());
-		obs_data_set_string(target.get(), "type", "filterKind");
-		obs_data_set_string(target.get(), "kind", kind.c_str());
-	} else {
-		return fail(error, "unsupported_capability", "properties target type is not supported by the current engine");
-	}
+	if (!(this->*builder)(requested_target.get(), target, base_settings, properties, source, error))
+		return false;
 
-	settings = clone_property_settings(base_settings.get());
-	if (!settings) {
-		obs_properties_destroy(properties);
-		properties = nullptr;
-		return fail(error, "internal_error", "could not clone target settings for property resolution");
-	}
-	return true;
+	return finalize_property_target(settings, base_settings, properties, error);
 }
 
 bool Engine::v2_properties_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
@@ -440,50 +539,22 @@ bool Engine::v2_properties_refresh(obs_data_t *params, RuntimeV2Result &result, 
 bool Engine::v2_properties_invoke_button(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
 	reset_result(result, error);
-	ObsDataPtr target;
-	ObsDataPtr settings;
-	obs_properties_t *raw_properties = nullptr;
-	obs_source_t *source = nullptr;
-	if (!v2_build_property_target(params, target, settings, raw_properties, source, error))
+	PropertyButtonContext context;
+	if (!v2_prepare_property_button(params, context, error))
 		return false;
-	ObsPropertiesPtr properties(raw_properties);
-	const SensitivePropertyNames previous_sensitive = collect_sensitive_property_names(properties.get());
-
-	ObsDataPtr candidate;
-	bool candidate_present = false;
-	std::string changed_property;
-	bool changed_present = false;
-	if (!read_candidate_params(params, false, candidate, candidate_present, changed_property, changed_present, error))
-		return false;
-	bool resolved_refresh = false;
-	if (!apply_candidate(properties.get(), settings.get(), candidate.get(), candidate_present, changed_property,
-			     changed_present, resolved_refresh, error))
-		return false;
-
-	std::string property_name;
-	if (!read_property_name(params, property_name, error))
-		return false;
-	obs_property_t *property = obs_properties_get(properties.get(), property_name.c_str());
-	if (!property)
-		return fail(error, "not_found", "button property was not found in the resolved target schema");
-	if (obs_property_get_type(property) != OBS_PROPERTY_BUTTON)
-		return fail(error, "bad_request", "params.property does not identify a button property");
-	if (!obs_property_visible(property) || !obs_property_enabled(property))
-		return fail(error, "invalid_state", "button property is not currently visible and enabled");
-
-	const bool is_url = obs_property_button_type(property) == OBS_BUTTON_URL;
-	if (!is_url && !source)
-		return fail(error, "not_available", "non-URL property buttons require a live source target in Task 7");
+	ObsPropertiesPtr properties(context.properties);
+	context.properties = nullptr;
 
 	PropertyButtonResult button;
-	if (!invoke_property_button(property, source, button))
+	if (!invoke_property_button(context.property, context.source, button))
 		return fail(error, "internal_error", "property button dispatch failed");
 
 	if (button.is_url) {
-		result.data = make_properties_document(target.get(), properties.get(), settings.get(), resolved_refresh,
-						       changed_present ? changed_property.c_str() : nullptr,
-						       &previous_sensitive);
-		obs_data_set_string(result.data.get(), "property", property_name.c_str());
+		result.data = make_properties_document(context.target.get(), properties.get(), context.settings.get(),
+						       context.resolved_refresh,
+						       context.changed_present ? context.changed_property.c_str() : nullptr,
+						       &context.previous_sensitive);
+		obs_data_set_string(result.data.get(), "property", context.property_name.c_str());
 		obs_data_set_string(result.data.get(), "buttonType", "url");
 		obs_data_set_bool(result.data.get(), "invoked", false);
 		obs_data_set_string(result.data.get(), "url", button.url.c_str());
@@ -496,17 +567,19 @@ bool Engine::v2_properties_invoke_button(obs_data_t *params, RuntimeV2Result &re
 	// the already-valid form/settings if the plugin no longer exposes a new one.
 	result.mutated = true;
 	if (button.requires_refresh) {
-		obs_properties_t *refreshed = obs_source_properties(source);
+		obs_properties_t *refreshed = obs_source_properties(context.source);
 		if (refreshed)
 			properties.reset(refreshed);
 	}
-	ObsDataPtr refreshed_settings(obs_source_get_settings(source));
+	ObsDataPtr refreshed_settings(obs_source_get_settings(context.source));
 	if (refreshed_settings)
-		settings = clone_property_settings(refreshed_settings.get());
+		context.settings = clone_property_settings(refreshed_settings.get());
 
-	result.data = make_properties_document(target.get(), properties.get(), settings.get(), button.requires_refresh,
-					       button.requires_refresh ? property_name.c_str() : nullptr, &previous_sensitive);
-	obs_data_set_string(result.data.get(), "property", property_name.c_str());
+	result.data = make_properties_document(context.target.get(), properties.get(), context.settings.get(),
+					       button.requires_refresh,
+					       button.requires_refresh ? context.property_name.c_str() : nullptr,
+					       &context.previous_sensitive);
+	obs_data_set_string(result.data.get(), "property", context.property_name.c_str());
 	obs_data_set_string(result.data.get(), "buttonType", "default");
 	obs_data_set_bool(result.data.get(), "invoked", true);
 	return true;

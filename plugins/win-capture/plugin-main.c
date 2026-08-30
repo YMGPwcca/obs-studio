@@ -109,42 +109,38 @@ void init_hook_files(void);
 bool graphics_uses_d3d11 = false;
 bool wgc_supported = false;
 
-bool obs_module_load(void)
+static void initialize_compatibility_updater(void)
 {
-	struct win_version_info ver;
-	bool win8_or_above = false;
-	const bool capture_only = capture_only_mode();
+	char *local_dir;
+	char *config_dir;
+	char update_url[128];
 
-	if (!capture_only) {
-		char *local_dir;
-		char *config_dir;
-		char update_url[128];
-
-		snprintf(update_url, sizeof(update_url), "%s/v%d", COMPAT_URL, COMPAT_FORMAT_VERSION);
-		local_dir = obs_module_file(NULL);
-		config_dir = obs_module_config_path(NULL);
-		if (config_dir) {
-			os_mkdirs(config_dir);
-
-			if (local_dir) {
-				update_info = update_info_create(WIN_CAPTURE_LOG_STRING, WIN_CAPTURE_VER_STRING, update_url,
+	snprintf(update_url, sizeof(update_url), "%s/v%d", COMPAT_URL, COMPAT_FORMAT_VERSION);
+	local_dir = obs_module_file(NULL);
+	config_dir = obs_module_config_path(NULL);
+	if (config_dir) {
+		os_mkdirs(config_dir);
+		if (local_dir) {
+			update_info = update_info_create(WIN_CAPTURE_LOG_STRING, WIN_CAPTURE_VER_STRING, update_url,
 								 local_dir, config_dir, confirm_compat_file, NULL);
-			}
 		}
-		bfree(config_dir);
-		bfree(local_dir);
 	}
+	bfree(config_dir);
+	bfree(local_dir);
+}
 
-	struct win_version_info win1903 = {.major = 10, .minor = 0, .build = 18362, .revis = 0};
-	get_win_ver(&ver);
-	win8_or_above = ver.major > 6 || (ver.major == 6 && ver.minor >= 2);
+static void register_capture_sources(const struct win_version_info *version)
+{
+	const bool win8_or_above = version->major > 6 || (version->major == 6 && version->minor >= 2);
 
 	obs_enter_graphics();
 	graphics_uses_d3d11 = gs_get_device_type() == GS_DEVICE_DIRECT3D_11;
 	obs_leave_graphics();
 
-	if (graphics_uses_d3d11)
-		wgc_supported = win_version_compare(&ver, &win1903) >= 0;
+	if (graphics_uses_d3d11) {
+		const struct win_version_info win1903 = {.major = 10, .minor = 0, .build = 18362, .revis = 0};
+		wgc_supported = win_version_compare(version, &win1903) >= 0;
+	}
 
 	if (win8_or_above && graphics_uses_d3d11)
 		obs_register_source(&duplicator_capture_info);
@@ -152,16 +148,14 @@ bool obs_module_load(void)
 		obs_register_source(&monitor_capture_info);
 
 	obs_register_source(&window_capture_info);
+}
 
-	if (capture_only) {
-		blog(LOG_INFO, WIN_CAPTURE_LOG_STRING "capture-only mode: Game Capture hooks and compatibility updater disabled");
-		return true;
-	}
-
+static void start_game_capture(void)
+{
 	char *config_path = obs_module_config_path(NULL);
 	if (!config_path) {
 		blog(LOG_WARNING, WIN_CAPTURE_LOG_STRING "could not create Game Capture configuration path");
-		return true;
+		return;
 	}
 
 	init_hook_files();
@@ -171,6 +165,21 @@ bool obs_module_load(void)
 		bfree(config_path);
 	}
 	obs_register_source(&game_capture_info);
+}
+
+bool obs_module_load(void)
+{
+	struct win_version_info ver;
+	const bool capture_only = capture_only_mode();
+	if (!capture_only)
+		initialize_compatibility_updater();
+	get_win_ver(&ver);
+	register_capture_sources(&ver);
+	if (capture_only) {
+		blog(LOG_INFO, WIN_CAPTURE_LOG_STRING "capture-only mode: Game Capture hooks and compatibility updater disabled");
+		return true;
+	}
+	start_game_capture();
 
 	return true;
 }

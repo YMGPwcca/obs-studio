@@ -223,6 +223,83 @@ bool filter_type_exists(const char *kind)
 	return false;
 }
 
+bool read_filter_kind(obs_data_t *params, std::string &kind, RuntimeV2Error &error)
+{
+	bool present = false;
+	if (!read_string_field(params, "kind", kind, present) || !present ||
+	    !is_safe_identifier(kind.c_str(), kMaxFilterKindBytes))
+		return fail(error, "bad_request", "params.kind must be a valid filter kind identifier");
+	if (!filter_type_exists(kind.c_str()))
+		return fail(error, "not_found", "filter kind is not registered");
+	return true;
+}
+
+bool read_optional_filter_name(obs_data_t *params, std::string &name, const char *invalid_message,
+					       RuntimeV2Error &error)
+{
+	bool present = false;
+	if (!read_string_field(params, "name", name, present))
+		return fail(error, "bad_request", "params.name must be a string when present");
+	if (present && (name.empty() || !is_bounded_string(name.c_str(), kMaxFilterNameBytes)))
+		return fail(error, "bad_request", invalid_message);
+	return true;
+}
+
+struct FilterSettingsInput {
+	ObsDataPtr requested;
+	ObsDataPtr before;
+	ObsDataPtr proposed;
+};
+
+bool read_filter_settings_input(obs_data_t *params, obs_source_t *filter, bool replace_settings,
+					FilterSettingsInput &input, RuntimeV2Error &error)
+{
+	bool present = false;
+	if (!read_object_field(params, "settings", input.requested, present) || !present)
+		return fail(error, "bad_request", "params.settings object is required");
+	input.before.reset(obs_source_get_settings(filter));
+	if (!input.before)
+		return fail(error, "obs_error", replace_settings ? "could not read filter settings before replacement"
+										 : "could not read filter settings before update");
+	if (replace_settings)
+		return true;
+	input.proposed = clone_data(input.before.get());
+	if (!input.proposed)
+		return fail(error, "obs_error", "could not read filter settings before update");
+	obs_data_apply(input.proposed.get(), input.requested.get());
+	return true;
+}
+
+bool filter_settings_are_equal(const FilterSettingsInput &input, bool replace_settings)
+{
+	const char *before_json = obs_data_get_json(input.before.get());
+	const char *requested_json = replace_settings ? obs_data_get_json(input.requested.get())
+								     : obs_data_get_json(input.proposed.get());
+	return before_json && requested_json && std::strcmp(before_json, requested_json) == 0;
+}
+
+bool submit_filter_settings(obs_source_t *filter, const FilterSettingsInput &input, bool replace_settings,
+					 uint64_t &update_serial, RuntimeV2Error &error)
+{
+	const bool submitted = replace_settings
+				       ? obs_source_reset_settings_tracked(filter, input.requested.get(), &update_serial)
+				       : obs_source_update_tracked(filter, input.requested.get(), &update_serial);
+	if (submitted && update_serial != 0)
+		return true;
+	const char *message = replace_settings ? "filter replacement could not obtain a deferred-update identity"
+						       : "filter update could not obtain a deferred-update identity";
+	return fail(error, "internal_error", message);
+}
+
+ObsDataPtr make_filter_settings_result(uint64_t handle, const FilterEntry &entry, obs_data_t *settings)
+{
+	ObsDataPtr data(obs_data_create());
+	set_handle(data.get(), "filter", handle);
+	set_handle(data.get(), "source", entry.source_id);
+	obs_data_set_obj(data.get(), "settings", settings);
+	return data;
+}
+
 void append_event(RuntimeV2Result &result, const char *name, ObsDataPtr data)
 {
 	result.events.push_back(RuntimeV2Event{name, std::move(data)});
@@ -331,6 +408,27 @@ void clear_uncertain_filter_updates(FilterV2State &state)
 	state.uncertain_update_count = 0;
 }
 
+bool resolve_uncertain_filter_updates_locked(FilterV2State &state, uint64_t handle, uint64_t serial_end);
+
+void annotate_filter_batch_locked(FilterV2State &state, DeferredFilterEventBatch &batch, bool &overflow)
+{
+	if (state.uncertain_tracking) {
+		batch.uncertain = true;
+		return;
+	}
+	auto uncertain = state.uncertain_update_serials.find(batch.handle);
+	if (uncertain == state.uncertain_update_serials.end())
+		return;
+	batch.uncertain = true;
+	if (resolve_uncertain_filter_updates_locked(state, batch.handle, batch.update_serial_end))
+		overflow = true;
+}
+
+bool should_discard_filter_batch(const FilterV2State &state, const DeferredFilterEventBatch &batch, bool end_capture)
+{
+	return end_capture && state.capture && result_has_filter_event(*state.capture, "filter.removed", batch.handle);
+}
+
 bool resolve_uncertain_filter_updates_locked(FilterV2State &state, uint64_t handle, uint64_t serial_end)
 {
 	if (serial_end == 0)
@@ -402,16 +500,8 @@ DeferredFilterEventSnapshot take_deferred_filter_events(FilterV2State &state, bo
 		DeferredFilterEventBatch batch = std::move(state.deferred.front());
 		state.deferred.pop_front();
 		state.deferred_event_count -= batch.events.size();
-		if (state.uncertain_tracking) {
-			batch.uncertain = true;
-		} else if (auto uncertain = state.uncertain_update_serials.find(batch.handle);
-			   uncertain != state.uncertain_update_serials.end()) {
-			batch.uncertain = true;
-			if (resolve_uncertain_filter_updates_locked(state, batch.handle, batch.update_serial_end))
-				snapshot.overflow = true;
-		}
-		if (end_capture && state.capture &&
-		    result_has_filter_event(*state.capture, "filter.removed", batch.handle))
+		annotate_filter_batch_locked(state, batch, snapshot.overflow);
+		if (should_discard_filter_batch(state, batch, end_capture))
 			continue;
 		snapshot.batches.push_back(std::move(batch));
 	}
@@ -423,43 +513,54 @@ DeferredFilterEventSnapshot take_deferred_filter_events(FilterV2State &state, bo
 	return snapshot;
 }
 
+uint64_t commit_filter_resync_revision(RevisionState::MutationGuard &guard)
+{
+	return guard.can_commit_mutation() ? guard.commit_mutation() : guard.current();
+}
+
+void report_filter_resync(EventDispatcher *events, uint64_t revision, bool after_queued_events,
+				 const char *message)
+{
+	if (events) {
+		if (after_queued_events)
+			events->require_resync_after_queued_events(revision);
+		else
+			events->require_resync_due_to_overflow(revision);
+	}
+	std::fprintf(stderr, "%s\n", message);
+	std::fflush(stderr);
+}
+
+bool publish_filter_batch(DeferredFilterEventBatch &batch, const DeferredFilterEventSnapshot &snapshot,
+				  RevisionState::MutationGuard &guard)
+{
+	if (batch.uncertain) {
+		report_filter_resync(snapshot.events, commit_filter_resync_revision(guard), true,
+				      "obs-engine: deferred filter completion was uncertain; controller resync required");
+		return true;
+	}
+	if (!guard.can_commit_mutation()) {
+		report_filter_resync(snapshot.events, guard.current(), false,
+				      "obs-engine: deferred filter events require resync because revision space is exhausted");
+		return false;
+	}
+	const uint64_t revision = guard.commit_mutation();
+	if (snapshot.events) {
+		for (RuntimeV2Event &event : batch.events)
+			snapshot.events->publish(EngineEventKind::State, event.name, revision, event.data.get());
+	}
+	return true;
+}
+
 void publish_deferred_filter_snapshot(DeferredFilterEventSnapshot snapshot, RevisionState::MutationGuard &guard)
 {
-	if (snapshot.overflow) {
-		uint64_t revision = guard.current();
-		if (guard.can_commit_mutation())
-			revision = guard.commit_mutation();
-		if (snapshot.events)
-			snapshot.events->require_resync_due_to_overflow(revision);
-		std::fprintf(stderr, "obs-engine: deferred filter event queue overflowed; controller resync required\n");
-		std::fflush(stderr);
-	}
+	if (snapshot.overflow)
+		report_filter_resync(snapshot.events, commit_filter_resync_revision(guard), false,
+				      "obs-engine: deferred filter event queue overflowed; controller resync required");
 
 	for (DeferredFilterEventBatch &batch : snapshot.batches) {
-		if (batch.uncertain) {
-			uint64_t revision = guard.current();
-			if (guard.can_commit_mutation())
-				revision = guard.commit_mutation();
-			if (snapshot.events)
-				snapshot.events->require_resync_after_queued_events(revision);
-			std::fprintf(stderr,
-				     "obs-engine: deferred filter completion was uncertain; controller resync required\n");
-			std::fflush(stderr);
-			continue;
-		}
-		if (!guard.can_commit_mutation()) {
-			if (snapshot.events)
-				snapshot.events->require_resync_due_to_overflow(guard.current());
-			std::fprintf(stderr,
-				     "obs-engine: deferred filter events require resync because revision space is exhausted\n");
-			std::fflush(stderr);
+		if (!publish_filter_batch(batch, snapshot, guard))
 			return;
-		}
-		const uint64_t revision = guard.commit_mutation();
-		if (snapshot.events) {
-			for (RuntimeV2Event &event : batch.events)
-				snapshot.events->publish(EngineEventKind::State, event.name, revision, event.data.get());
-		}
 	}
 }
 
@@ -479,7 +580,7 @@ bool update_filter_uncertainty_locked(FilterV2State &state, uint64_t handle, uin
 	return false;
 }
 
-bool capture_filter_events_locked(FilterV2State &state, uint64_t handle, std::vector<RuntimeV2Event> generated)
+bool capture_filter_events_locked(FilterV2State &state, uint64_t handle, std::vector<RuntimeV2Event> &generated)
 {
 	if (!state.capture)
 		return false;
@@ -542,6 +643,68 @@ bool quarantine_uncertain_filter_event_locked(FilterV2State &state, SourceEventC
 	return false;
 }
 
+struct FilterEventRouting {
+	FilterV2State &state;
+	uint64_t handle;
+	uint64_t update_generation;
+	uint64_t update_serial_begin;
+	uint64_t update_serial_end;
+	SourceEventCaptureRoute route;
+	bool uncertain;
+	bool uncertainty_resolved;
+	std::vector<RuntimeV2Event> &generated;
+	RevisionState *&revisions;
+	EventDispatcher *&events;
+	uint64_t &revision;
+	bool &require_resync;
+};
+
+enum class FilterEventRoutingResult { NotApplicable, Handled, ContinueAfterUnlock };
+
+FilterEventRoutingResult route_filter_uncertainty_locked(FilterEventRouting &routing)
+{
+	if (!routing.uncertain &&
+	    !(routing.uncertainty_resolved && routing.route == SourceEventCaptureRoute::Direct))
+		return FilterEventRoutingResult::NotApplicable;
+	if (quarantine_uncertain_filter_event_locked(routing.state, routing.route))
+		return FilterEventRoutingResult::Handled;
+	if (!commit_direct_filter_event_locked(routing.state, routing.revisions, routing.events, routing.revision))
+		return FilterEventRoutingResult::Handled;
+	routing.require_resync = true;
+	return FilterEventRoutingResult::ContinueAfterUnlock;
+}
+
+bool route_filter_payload_locked(FilterEventRouting &routing)
+{
+	if (routing.generated.empty()) {
+		if (routing.uncertainty_resolved && routing.route != SourceEventCaptureRoute::Direct) {
+			routing.state.deferred_overflow = true;
+			routing.state.callback_cv.notify_all();
+		}
+		return true;
+	}
+	if (routing.route == SourceEventCaptureRoute::Capture &&
+	    capture_filter_events_locked(routing.state, routing.handle, routing.generated))
+		return true;
+	if (routing.route == SourceEventCaptureRoute::Defer) {
+		queue_deferred_filter_events_locked(routing.state, routing.handle, routing.update_generation,
+								    routing.update_serial_begin, routing.update_serial_end,
+								    std::move(routing.generated));
+		return true;
+	}
+	return !commit_direct_filter_event_locked(routing.state, routing.revisions, routing.events, routing.revision);
+}
+
+bool route_filter_event_locked(FilterEventRouting &routing)
+{
+	const FilterEventRoutingResult uncertainty = route_filter_uncertainty_locked(routing);
+	if (uncertainty == FilterEventRoutingResult::Handled)
+		return true;
+	if (uncertainty == FilterEventRoutingResult::ContinueAfterUnlock)
+		return false;
+	return route_filter_payload_locked(routing);
+}
+
 void publish_filter_events(FilterV2State &state, uint64_t handle, uint64_t update_generation,
 			   uint64_t update_serial_begin, uint64_t update_serial_end, bool is_update_signal,
 			   std::vector<RuntimeV2Event> generated)
@@ -559,35 +722,10 @@ void publish_filter_events(FilterV2State &state, uint64_t handle, uint64_t updat
 		bool uncertainty_resolved = false;
 		const bool uncertain = is_update_signal &&
 			update_filter_uncertainty_locked(state, handle, update_serial_end, route, uncertainty_resolved);
-
-		if (uncertain || (uncertainty_resolved && route == SourceEventCaptureRoute::Direct)) {
-			if (quarantine_uncertain_filter_event_locked(state, route))
-				return;
-
-			if (!commit_direct_filter_event_locked(state, revisions, events, revision))
-				return;
-			require_resync = true;
-		} else if (generated.empty()) {
-			if (uncertainty_resolved && route != SourceEventCaptureRoute::Direct) {
-				state.deferred_overflow = true;
-				state.callback_cv.notify_all();
-			}
+		FilterEventRouting routing{state, handle, update_generation, update_serial_begin, update_serial_end, route,
+						  uncertain, uncertainty_resolved, generated, revisions, events, revision, require_resync};
+		if (route_filter_event_locked(routing))
 			return;
-		} else {
-
-			if (route == SourceEventCaptureRoute::Capture && capture_filter_events_locked(state, handle,
-										  std::move(generated)))
-				return;
-
-			if (route == SourceEventCaptureRoute::Defer) {
-				queue_deferred_filter_events_locked(state, handle, update_generation, update_serial_begin,
-								    update_serial_end, std::move(generated));
-				return;
-			}
-
-			if (!commit_direct_filter_event_locked(state, revisions, events, revision))
-				return;
-		}
 	}
 
 	if (require_resync) {
@@ -633,6 +771,29 @@ void Engine::v2_register_filter(uint64_t handle, uint64_t source_id, obs_source_
 			filter_handles_.erase(filter);
 		if (inserted_filter)
 			filters_.erase(handle);
+		obs_source_release(filter);
+		throw;
+	}
+}
+
+void Engine::v2_register_attached_filter(uint64_t source_id, obs_source_t *parent, uint64_t handle,
+						 obs_source_t *filter)
+{
+	bool inserted_filter = false;
+	bool inserted_handle = false;
+	try {
+		if (!filters_.emplace(handle, FilterEntry{source_id, filter}).second)
+			throw std::runtime_error("filter handle collision");
+		inserted_filter = true;
+		inserted_handle = filter_handles_.emplace(filter, handle).second;
+		if (!inserted_handle)
+			throw std::runtime_error("filter object was already registered");
+	} catch (...) {
+		if (inserted_handle)
+			filter_handles_.erase(filter);
+		if (inserted_filter)
+			filters_.erase(handle);
+		obs_source_filter_remove(parent, filter);
 		obs_source_release(filter);
 		throw;
 	}
@@ -717,6 +878,38 @@ ObsDataPtr make_filter_event_data(const FilterV2Observer &observer)
 	return data;
 }
 
+void append_filter_settings_event(FilterV2Observer &observer, FilterSignal signal,
+					  ObsDataPtr &current_settings_data, bool have_settings,
+					  const std::string &current_settings, std::vector<RuntimeV2Event> &generated)
+{
+	if (signal != FilterSignal::Update || !have_settings || current_settings == observer.settings)
+		return;
+	ObsDataPtr data = make_filter_event_data(observer);
+	obs_data_set_obj(data.get(), "settings", current_settings_data.get());
+	generated.push_back(RuntimeV2Event{"filter.settingsChanged", std::move(data)});
+}
+
+void append_filter_rename_event(FilterV2Observer &observer, const std::string &current_name,
+					std::vector<RuntimeV2Event> &generated)
+{
+	if (current_name == observer.name)
+		return;
+	ObsDataPtr data = make_filter_event_data(observer);
+	obs_data_set_string(data.get(), "name", current_name.c_str());
+	obs_data_set_string(data.get(), "previousName", observer.name.c_str());
+	generated.push_back(RuntimeV2Event{"filter.renamed", std::move(data)});
+}
+
+void append_filter_enabled_event(FilterV2Observer &observer, bool current_enabled,
+					 std::vector<RuntimeV2Event> &generated)
+{
+	if (current_enabled == observer.enabled)
+		return;
+	ObsDataPtr data = make_filter_event_data(observer);
+	obs_data_set_bool(data.get(), "enabled", current_enabled);
+	generated.push_back(RuntimeV2Event{"filter.enabledChanged", std::move(data)});
+}
+
 void collect_filter_state_events(FilterV2Observer &observer, FilterSignal signal, obs_source_t *filter,
 					 std::vector<RuntimeV2Event> &generated)
 {
@@ -729,22 +922,9 @@ void collect_filter_state_events(FilterV2Observer &observer, FilterSignal signal
 	const bool have_settings = current_settings_json != nullptr;
 	const std::string current_settings = current_settings_json ? current_settings_json : "";
 
-	if (signal == FilterSignal::Update && have_settings && current_settings != observer.settings) {
-		ObsDataPtr data = make_filter_event_data(observer);
-		obs_data_set_obj(data.get(), "settings", current_settings_data.get());
-		generated.push_back(RuntimeV2Event{"filter.settingsChanged", std::move(data)});
-	}
-	if (current_name != observer.name) {
-		ObsDataPtr data = make_filter_event_data(observer);
-		obs_data_set_string(data.get(), "name", current_name.c_str());
-		obs_data_set_string(data.get(), "previousName", observer.name.c_str());
-		generated.push_back(RuntimeV2Event{"filter.renamed", std::move(data)});
-	}
-	if (current_enabled != observer.enabled) {
-		ObsDataPtr data = make_filter_event_data(observer);
-		obs_data_set_bool(data.get(), "enabled", current_enabled);
-		generated.push_back(RuntimeV2Event{"filter.enabledChanged", std::move(data)});
-	}
+	append_filter_settings_event(observer, signal, current_settings_data, have_settings, current_settings, generated);
+	append_filter_rename_event(observer, current_name, generated);
+	append_filter_enabled_event(observer, current_enabled, generated);
 
 	observer.name = current_name;
 	observer.enabled = current_enabled;
@@ -936,34 +1116,37 @@ bool promote_deferred_filter_update(FilterV2State &state, uint64_t handle, uint6
 	return false;
 }
 
-bool settle_deferred_filter_update(FilterV2State &state, uint64_t handle, uint64_t baseline_generation,
-					   uint64_t serial, const std::string &expected_settings, RuntimeV2Result &result)
+std::shared_ptr<FilterV2Observer> find_filter_observer(FilterV2State &state, uint64_t handle)
 {
-	std::shared_ptr<FilterV2Observer> observer;
-	{
-		std::lock_guard lock(state.mutex);
-		auto it = state.observers.find(handle);
-		if (it == state.observers.end())
-			return false;
-		observer = it->second;
-	}
+	std::lock_guard lock(state.mutex);
+	auto it = state.observers.find(handle);
+	return it == state.observers.end() ? nullptr : it->second;
+}
 
-	uint64_t observed_generation = baseline_generation;
-	{
-		std::lock_guard lock(observer->update_mutex);
-		if (!observer->attached || observer->update_generation < baseline_generation)
-			return false;
-		observed_generation = observer->update_generation;
-	}
+bool read_filter_observer_generation(const std::shared_ptr<FilterV2Observer> &observer, uint64_t baseline_generation,
+					     uint64_t &observed_generation)
+{
+	std::lock_guard lock(observer->update_mutex);
+	if (!observer->attached || observer->update_generation < baseline_generation)
+		return false;
+	observed_generation = observer->update_generation;
+	return true;
+}
 
-	if (result_matches_filter_update(result, handle, serial, expected_settings)) {
-		std::lock_guard lock(observer->update_mutex);
-		if (observer->attached && observer->update_generation > baseline_generation)
-			return true;
-	}
-	if (promote_deferred_filter_update(state, handle, baseline_generation, serial, expected_settings, result))
-		return true;
+bool filter_update_is_settled(const std::shared_ptr<FilterV2Observer> &observer, const RuntimeV2Result &result,
+				      uint64_t handle, uint64_t baseline_generation, uint64_t serial,
+				      const std::string &expected_settings)
+{
+	if (!result_matches_filter_update(result, handle, serial, expected_settings))
+		return false;
+	std::lock_guard lock(observer->update_mutex);
+	return observer->attached && observer->update_generation > baseline_generation;
+}
 
+bool wait_for_filter_update(FilterV2State &state, const std::shared_ptr<FilterV2Observer> &observer,
+				    uint64_t handle, uint64_t baseline_generation, uint64_t serial,
+				    const std::string &expected_settings, RuntimeV2Result &result, uint64_t observed_generation)
+{
 	const auto deadline = std::chrono::steady_clock::now() + kFilterUpdateSettleTimeout;
 	for (;;) {
 		{
@@ -976,19 +1159,30 @@ bool settle_deferred_filter_update(FilterV2State &state, uint64_t handle, uint64
 				break;
 			observed_generation = observer->update_generation;
 		}
-		if (result_matches_filter_update(result, handle, serial, expected_settings)) {
-			std::lock_guard lock(observer->update_mutex);
-			if (observer->attached && observer->update_generation > baseline_generation)
-				return true;
-		}
+		if (filter_update_is_settled(observer, result, handle, baseline_generation, serial, expected_settings))
+			return true;
 		if (promote_deferred_filter_update(state, handle, baseline_generation, serial, expected_settings, result))
 			return true;
 	}
+	return filter_update_is_settled(observer, result, handle, baseline_generation, serial, expected_settings);
+}
 
-	return result_matches_filter_update(result, handle, serial, expected_settings) && [&] {
-		std::lock_guard lock(observer->update_mutex);
-		return observer->attached && observer->update_generation > baseline_generation;
-	}();
+bool settle_deferred_filter_update(FilterV2State &state, uint64_t handle, uint64_t baseline_generation,
+					   uint64_t serial, const std::string &expected_settings, RuntimeV2Result &result)
+{
+	std::shared_ptr<FilterV2Observer> observer = find_filter_observer(state, handle);
+	if (!observer)
+		return false;
+
+	uint64_t observed_generation = baseline_generation;
+	if (!read_filter_observer_generation(observer, baseline_generation, observed_generation))
+		return false;
+	if (filter_update_is_settled(observer, result, handle, baseline_generation, serial, expected_settings))
+		return true;
+	if (promote_deferred_filter_update(state, handle, baseline_generation, serial, expected_settings, result))
+		return true;
+	return wait_for_filter_update(state, observer, handle, baseline_generation, serial, expected_settings, result,
+					     observed_generation);
 }
 
 void mark_filter_settlement_lost(FilterV2State &state, uint64_t handle, uint64_t baseline_generation,
@@ -1169,6 +1363,46 @@ bool Engine::v2_filter_record_update_baseline(uint64_t handle, RuntimeV2Result &
 	return true;
 }
 
+bool Engine::v2_get_filter_parent(obs_data_t *params, uint64_t &handle, FilterEntry *&entry,
+					  obs_source_t *&parent, RuntimeV2Error &error)
+{
+	v2_sync_filter_observers();
+	if (!read_handle_field(params, "filter", handle))
+		return fail(error, "bad_request", "params.filter must be a canonical decimal filter handle string");
+	auto filter_it = filters_.find(handle);
+	if (filter_it == filters_.end())
+		return fail(error, "not_found", "filter handle was not found");
+	auto source_it = sources_.find(filter_it->second.source_id);
+	if (source_it == sources_.end())
+		return fail(error, "not_found", "filter parent source was not found");
+	entry = &filter_it->second;
+	parent = source_it->second;
+	return true;
+}
+
+bool Engine::v2_move_filter(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error,
+				    enum obs_order_movement movement)
+{
+	reset_result(result, error);
+	uint64_t handle = 0;
+	FilterEntry *entry = nullptr;
+	obs_source_t *parent = nullptr;
+	if (!v2_get_filter_parent(params, handle, entry, parent, error))
+		return false;
+	const int old_index = obs_source_filter_get_index(parent, entry->filter);
+	if (old_index < 0)
+		return fail(error, "not_found", "filter is no longer attached to its parent source");
+	obs_source_filter_set_order(parent, entry->filter, movement);
+	const int new_index = obs_source_filter_get_index(parent, entry->filter);
+	const bool changed = new_index != old_index;
+	result.data = v2_filter_order_data(entry->source_id, changed ? handle : 0, parent);
+	if (changed) {
+		append_event(result, "filter.orderChanged", clone_data(result.data.get()));
+		result.mutated = true;
+	}
+	return true;
+}
+
 void Engine::v2_filter_forget_source(uint64_t source_id) noexcept
 {
 	try {
@@ -1346,11 +1580,11 @@ void Engine::v2_filter_prepare_parent_removal(uint64_t source_id, RuntimeV2Resul
 	}
 }
 
-bool Engine::v2_settle_filter_mutation(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
+bool Engine::v2_prepare_filter_settlement(obs_data_t *params, RuntimeV2Result &result, uint64_t &handle,
+						 FilterEntry *&entry, RuntimeV2Error &error)
 {
 	if (!result.mutated || !filter_v2_state_ || !result.has_filter_update_baseline || result.filter_update_serial == 0)
 		return fail(error, "internal_error", "filter settings update has no observer baseline");
-	uint64_t handle = 0;
 	if (!read_handle_field(params, "filter", handle))
 		return fail(error, "internal_error", "filter settings update has an invalid target handle");
 	if (handle != result.filter_update_handle)
@@ -1358,8 +1592,18 @@ bool Engine::v2_settle_filter_mutation(obs_data_t *params, RuntimeV2Result &resu
 	auto it = filters_.find(handle);
 	if (it == filters_.end())
 		return fail(error, "not_found", "filter handle was removed during settings settlement");
+	entry = &it->second;
+	return true;
+}
 
-	ObsDataPtr current(obs_source_get_settings(it->second.filter));
+bool Engine::v2_settle_filter_mutation(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
+{
+	uint64_t handle = 0;
+	FilterEntry *entry = nullptr;
+	if (!v2_prepare_filter_settlement(params, result, handle, entry, error))
+		return false;
+
+	ObsDataPtr current(obs_source_get_settings(entry->filter));
 	const char *json = current ? obs_data_get_json(current.get()) : nullptr;
 	const std::string expected = json ? json : "";
 	if (expected.empty() ||
@@ -1417,12 +1661,8 @@ bool Engine::v2_filter_kind_defaults(obs_data_t *params, RuntimeV2Result &result
 {
 	reset_result(result, error);
 	std::string kind;
-	bool present = false;
-	if (!read_string_field(params, "kind", kind, present) || !present ||
-	    !is_safe_identifier(kind.c_str(), kMaxFilterKindBytes))
-		return fail(error, "bad_request", "params.kind must be a valid filter kind identifier");
-	if (!filter_type_exists(kind.c_str()))
-		return fail(error, "not_found", "filter kind is not registered");
+	if (!read_filter_kind(params, kind, error))
+		return false;
 	ObsDataPtr defaults(obs_get_source_defaults(kind.c_str()));
 	if (!defaults)
 		return fail(error, "obs_error", "filter kind did not provide defaults");
@@ -1437,12 +1677,8 @@ bool Engine::v2_filter_kind_properties(obs_data_t *params, RuntimeV2Result &resu
 {
 	reset_result(result, error);
 	std::string kind;
-	bool present = false;
-	if (!read_string_field(params, "kind", kind, present) || !present ||
-	    !is_safe_identifier(kind.c_str(), kMaxFilterKindBytes))
-		return fail(error, "bad_request", "params.kind must be a valid filter kind identifier");
-	if (!filter_type_exists(kind.c_str()))
-		return fail(error, "not_found", "filter kind is not registered");
+	if (!read_filter_kind(params, kind, error))
+		return false;
 	ObsDataPtr bridge(obs_data_create());
 	ObsDataPtr target(obs_data_create());
 	obs_data_set_string(target.get(), "type", "filterKind");
@@ -1451,31 +1687,51 @@ bool Engine::v2_filter_kind_properties(obs_data_t *params, RuntimeV2Result &resu
 	return v2_properties_get(bridge.get(), result, error);
 }
 
+bool Engine::v2_create_filter_object(uint64_t source_id, obs_source_t *parent, uint64_t handle,
+					     const std::string &kind, const std::string &name, ObsDataPtr &settings,
+					     RuntimeV2Error &error)
+{
+	const std::string generated_name = "engine-filter-" + std::to_string(handle);
+	const char *actual_name = name.empty() ? generated_name.c_str() : name.c_str();
+	obs_source_t *filter = obs_source_create_private(kind.c_str(), actual_name, settings.get());
+	if (!filter)
+		return fail(error, "obs_error", "obs_source_create_private did not create the filter");
+	if (obs_source_get_type(filter) != OBS_SOURCE_TYPE_FILTER) {
+		obs_source_release(filter);
+		return fail(error, "obs_error", "registered filter kind did not create a filter source");
+	}
+	obs_source_filter_add(parent, filter);
+	if (obs_source_filter_get_index(parent, filter) < 0) {
+		obs_source_release(filter);
+		return fail(error, "incompatible_filter", "libobs did not attach the filter to the source");
+	}
+	v2_register_attached_filter(source_id, parent, handle, filter);
+	return true;
+}
+
 bool Engine::v2_filter_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
 	reset_result(result, error);
 	v2_sync_filter_observers();
 	uint64_t source_id = 0;
-	if (!read_handle_field(params, "source", source_id))
-		return fail(error, "bad_request", "params.source must be a canonical decimal source handle string");
-	auto source_it = sources_.find(source_id);
-	if (source_it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
-	v2_filter_register_source_filters(source_id, source_it->second);
+	obs_source_t *parent = nullptr;
+	if (!v2_get_source(params, source_id, parent, error))
+		return false;
+	v2_filter_register_source_filters(source_id, parent);
 	v2_sync_filter_observers();
 
 	std::vector<std::pair<int, uint64_t>> ordered;
 	for (const auto &[handle, entry] : filters_) {
 		if (entry.source_id != source_id)
 			continue;
-		const int index = obs_source_filter_get_index(source_it->second, entry.filter);
+		const int index = obs_source_filter_get_index(parent, entry.filter);
 		if (index >= 0)
 			ordered.emplace_back(index, handle);
 	}
 	std::sort(ordered.begin(), ordered.end());
 	ObsArrayPtr filters(obs_data_array_create());
 	for (const auto &[_, handle] : ordered) {
-		ObsDataPtr summary = make_filter_summary(handle, filters_.at(handle), source_it->second);
+		ObsDataPtr summary = make_filter_summary(handle, filters_.at(handle), parent);
 		obs_data_array_push_back(filters.get(), summary.get());
 	}
 	ObsDataPtr data(obs_data_create());
@@ -1489,17 +1745,12 @@ bool Engine::v2_filter_list(obs_data_t *params, RuntimeV2Result &result, Runtime
 bool Engine::v2_filter_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
 	reset_result(result, error);
-	v2_sync_filter_observers();
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "filter", handle))
-		return fail(error, "bad_request", "params.filter must be a canonical decimal filter handle string");
-	auto it = filters_.find(handle);
-	if (it == filters_.end())
-		return fail(error, "not_found", "filter handle was not found");
-	auto source_it = sources_.find(it->second.source_id);
-	if (source_it == sources_.end())
-		return fail(error, "not_found", "filter parent source was not found");
-	result.data = make_filter_summary(handle, it->second, source_it->second);
+	FilterEntry *entry = nullptr;
+	obs_source_t *parent = nullptr;
+	if (!v2_get_filter_parent(params, handle, entry, parent, error))
+		return false;
+	result.data = make_filter_summary(handle, *entry, parent);
 	return true;
 }
 
@@ -1508,65 +1759,27 @@ bool Engine::v2_filter_create(obs_data_t *params, RuntimeV2Result &result, Runti
 	reset_result(result, error);
 	v2_sync_filter_observers();
 	uint64_t source_id = 0;
-	if (!read_handle_field(params, "source", source_id))
-		return fail(error, "bad_request", "params.source must be a canonical decimal source handle string");
-	auto source_it = sources_.find(source_id);
-	if (source_it == sources_.end())
-		return fail(error, "not_found", "source handle was not found");
+	obs_source_t *parent = nullptr;
+	if (!v2_get_source(params, source_id, parent, error))
+		return false;
 
 	std::string kind;
-	bool present = false;
-	if (!read_string_field(params, "kind", kind, present) || !present ||
-	    !is_safe_identifier(kind.c_str(), kMaxFilterKindBytes))
-		return fail(error, "bad_request", "params.kind must be a valid filter kind identifier");
-	if (!filter_type_exists(kind.c_str()))
-		return fail(error, "not_found", "filter kind is not registered");
+	if (!read_filter_kind(params, kind, error))
+		return false;
 
 	std::string name;
-	if (!read_string_field(params, "name", name, present))
-		return fail(error, "bad_request", "params.name must be a string when present");
-	if (present && (name.empty() || !is_bounded_string(name.c_str(), kMaxFilterNameBytes)))
-		return fail(error, "bad_request", "filter name must be a 1-256 byte string");
+	bool present = false;
+	if (!read_optional_filter_name(params, name, "filter name must be a 1-256 byte string", error))
+		return false;
 	ObsDataPtr settings;
 	if (!read_object_field(params, "settings", settings, present))
 		return fail(error, "bad_request", "params.settings must be an object when present");
 
 	const uint64_t allocated = allocate_handle();
-	const std::string generated_name = "engine-filter-" + std::to_string(allocated);
-	const char *actual_name = name.empty() ? generated_name.c_str() : name.c_str();
-	obs_source_t *filter = obs_source_create_private(kind.c_str(), actual_name, settings.get());
-	if (!filter)
-		return fail(error, "obs_error", "obs_source_create_private did not create the filter");
-	if (obs_source_get_type(filter) != OBS_SOURCE_TYPE_FILTER) {
-		obs_source_release(filter);
-		return fail(error, "obs_error", "registered filter kind did not create a filter source");
-	}
-	obs_source_filter_add(source_it->second, filter);
-	if (obs_source_filter_get_index(source_it->second, filter) < 0) {
-		obs_source_release(filter);
-		return fail(error, "incompatible_filter", "libobs did not attach the filter to the source");
-	}
+	if (!v2_create_filter_object(source_id, parent, allocated, kind, name, settings, error))
+		return false;
 
-	bool inserted_filter = false;
-	bool inserted_handle = false;
-	try {
-		if (!filters_.emplace(allocated, FilterEntry{source_id, filter}).second)
-			throw std::runtime_error("filter handle collision");
-		inserted_filter = true;
-		inserted_handle = filter_handles_.emplace(filter, allocated).second;
-		if (!inserted_handle)
-			throw std::runtime_error("filter object was already registered");
-	} catch (...) {
-		if (inserted_handle)
-			filter_handles_.erase(filter);
-		if (inserted_filter)
-			filters_.erase(allocated);
-		obs_source_filter_remove(source_it->second, filter);
-		obs_source_release(filter);
-		throw;
-	}
-
-	result.data = make_filter_summary(allocated, filters_.at(allocated), source_it->second);
+	result.data = make_filter_summary(allocated, filters_.at(allocated), parent);
 	append_event(result, "filter.created", clone_data(result.data.get()));
 	result.mutated = true;
 	v2_sync_filter_observers();
@@ -1576,29 +1789,24 @@ bool Engine::v2_filter_create(obs_data_t *params, RuntimeV2Result &result, Runti
 bool Engine::v2_filter_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
 	reset_result(result, error);
-	v2_sync_filter_observers();
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "filter", handle))
-		return fail(error, "bad_request", "params.filter must be a canonical decimal filter handle string");
-	auto it = filters_.find(handle);
-	if (it == filters_.end())
-		return fail(error, "not_found", "filter handle was not found");
-	auto source_it = sources_.find(it->second.source_id);
-	if (source_it == sources_.end())
-		return fail(error, "not_found", "filter parent source was not found");
-	if (obs_source_filter_get_index(source_it->second, it->second.filter) < 0)
+	FilterEntry *entry = nullptr;
+	obs_source_t *parent = nullptr;
+	if (!v2_get_filter_parent(params, handle, entry, parent, error))
+		return false;
+	if (obs_source_filter_get_index(parent, entry->filter) < 0)
 		return fail(error, "not_found", "filter is no longer attached to its parent source");
 
 	ObsDataPtr data(obs_data_create());
 	set_handle(data.get(), "filter", handle);
-	set_handle(data.get(), "source", it->second.source_id);
+	set_handle(data.get(), "source", entry->source_id);
 	result.data = std::move(data);
 	append_event(result, "filter.removed", clone_data(result.data.get()));
 	remove_filter_observer(filter_v2_state_.get(), handle);
-	obs_source_filter_remove(source_it->second, it->second.filter);
-	filter_handles_.erase(it->second.filter);
-	obs_source_release(it->second.filter);
-	filters_.erase(it);
+	obs_source_filter_remove(parent, entry->filter);
+	filter_handles_.erase(entry->filter);
+	obs_source_release(entry->filter);
+	filters_.erase(handle);
 	result.mutated = true;
 	return true;
 }
@@ -1606,29 +1814,25 @@ bool Engine::v2_filter_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 bool Engine::v2_filter_rename(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
 	reset_result(result, error);
-	v2_sync_filter_observers();
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "filter", handle))
-		return fail(error, "bad_request", "params.filter must be a canonical decimal filter handle string");
-	auto it = filters_.find(handle);
-	if (it == filters_.end())
-		return fail(error, "not_found", "filter handle was not found");
-	auto source_it = sources_.find(it->second.source_id);
-	if (source_it == sources_.end())
-		return fail(error, "not_found", "filter parent source was not found");
+	FilterEntry *entry = nullptr;
+	obs_source_t *parent = nullptr;
+	if (!v2_get_filter_parent(params, handle, entry, parent, error))
+		return false;
 	std::string name;
 	bool present = false;
 	if (!read_string_field(params, "name", name, present) || !present || name.empty() ||
 	    !is_bounded_string(name.c_str(), kMaxFilterNameBytes))
 		return fail(error, "bad_request", "params.name must be a 1-256 byte string");
 	v2_sync_filter_observers();
-	const char *current = obs_source_get_name(it->second.filter);
+	entry = &filters_.at(handle);
+	const char *current = obs_source_get_name(entry->filter);
 	if (current && name == current) {
-		result.data = make_filter_summary(handle, it->second, source_it->second);
+		result.data = make_filter_summary(handle, *entry, parent);
 		return true;
 	}
-	obs_source_set_name(it->second.filter, name.c_str());
-	result.data = make_filter_summary(handle, it->second, source_it->second);
+	obs_source_set_name(entry->filter, name.c_str());
+	result.data = make_filter_summary(handle, *entry, parent);
 	result.mutated = true;
 	return true;
 }
@@ -1636,56 +1840,31 @@ bool Engine::v2_filter_rename(obs_data_t *params, RuntimeV2Result &result, Runti
 bool Engine::v2_filter_duplicate(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
 	reset_result(result, error);
-	v2_sync_filter_observers();
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "filter", handle))
-		return fail(error, "bad_request", "params.filter must be a canonical decimal filter handle string");
-	auto it = filters_.find(handle);
-	if (it == filters_.end())
-		return fail(error, "not_found", "filter handle was not found");
-	auto source_it = sources_.find(it->second.source_id);
-	if (source_it == sources_.end())
-		return fail(error, "not_found", "filter parent source was not found");
+	FilterEntry *entry = nullptr;
+	obs_source_t *parent = nullptr;
+	if (!v2_get_filter_parent(params, handle, entry, parent, error))
+		return false;
 	std::string name;
-	bool present = false;
-	if (!read_string_field(params, "name", name, present))
-		return fail(error, "bad_request", "params.name must be a string when present");
-	if (present && (name.empty() || !is_bounded_string(name.c_str(), kMaxFilterNameBytes)))
-		return fail(error, "bad_request", "filter duplicate name must be a 1-256 byte string");
+	if (!read_optional_filter_name(params, name, "filter duplicate name must be a 1-256 byte string", error))
+		return false;
 	const uint64_t duplicate_handle = allocate_handle();
-	const std::string generated_name = std::string(obs_source_get_name(it->second.filter)) + " copy";
+	const std::string generated_name = std::string(obs_source_get_name(entry->filter)) + " copy";
 	const char *requested_name = name.empty() ? generated_name.c_str() : name.c_str();
-	obs_source_t *duplicate = obs_source_duplicate(it->second.filter, requested_name, true);
-	if (!duplicate || duplicate == it->second.filter) {
+	obs_source_t *duplicate = obs_source_duplicate(entry->filter, requested_name, true);
+	if (!duplicate || duplicate == entry->filter) {
 		if (duplicate)
 			obs_source_release(duplicate);
 		return fail(error, "obs_error", "libobs did not create an independent filter duplicate");
 	}
-	obs_source_set_enabled(duplicate, obs_source_enabled(it->second.filter));
-	obs_source_filter_add(source_it->second, duplicate);
-	if (obs_source_filter_get_index(source_it->second, duplicate) < 0) {
+	obs_source_set_enabled(duplicate, obs_source_enabled(entry->filter));
+	obs_source_filter_add(parent, duplicate);
+	if (obs_source_filter_get_index(parent, duplicate) < 0) {
 		obs_source_release(duplicate);
 		return fail(error, "incompatible_filter", "libobs did not attach the duplicated filter");
 	}
-	bool inserted_filter = false;
-	bool inserted_handle = false;
-	try {
-		if (!filters_.emplace(duplicate_handle, FilterEntry{it->second.source_id, duplicate}).second)
-			throw std::runtime_error("filter handle collision");
-		inserted_filter = true;
-		inserted_handle = filter_handles_.emplace(duplicate, duplicate_handle).second;
-		if (!inserted_handle)
-			throw std::runtime_error("filter object was already registered");
-	} catch (...) {
-		if (inserted_handle)
-			filter_handles_.erase(duplicate);
-		if (inserted_filter)
-			filters_.erase(duplicate_handle);
-		obs_source_filter_remove(source_it->second, duplicate);
-		obs_source_release(duplicate);
-		throw;
-	}
-	result.data = make_filter_summary(duplicate_handle, filters_.at(duplicate_handle), source_it->second);
+	v2_register_attached_filter(entry->source_id, parent, duplicate_handle, duplicate);
+	result.data = make_filter_summary(duplicate_handle, filters_.at(duplicate_handle), parent);
 	set_handle(result.data.get(), "duplicateOf", handle);
 	ObsDataPtr event_data = clone_data(result.data.get());
 	append_event(result, "filter.created", std::move(event_data));
@@ -1715,92 +1894,51 @@ bool Engine::v2_filter_get_settings(obs_data_t *params, RuntimeV2Result &result,
 	return true;
 }
 
-bool Engine::v2_filter_patch_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
+bool Engine::v2_apply_filter_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error,
+					      bool replace_settings)
 {
-	reset_result(result, error);
-	v2_sync_filter_observers();
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "filter", handle))
-		return fail(error, "bad_request", "params.filter must be a canonical decimal filter handle string");
-	auto it = filters_.find(handle);
-	if (it == filters_.end())
-		return fail(error, "not_found", "filter handle was not found");
-	ObsDataPtr patch;
-	bool present = false;
-	if (!read_object_field(params, "settings", patch, present) || !present)
-		return fail(error, "bad_request", "params.settings object is required");
-	ObsDataPtr before(obs_source_get_settings(it->second.filter));
-	ObsDataPtr proposed = clone_data(before.get());
-	if (!before || !proposed)
-		return fail(error, "obs_error", "could not read filter settings before update");
-	obs_data_apply(proposed.get(), patch.get());
-	const char *before_json = obs_data_get_json(before.get());
-	const char *proposed_json = obs_data_get_json(proposed.get());
-	if (before_json && proposed_json && std::strcmp(before_json, proposed_json) == 0) {
-		result.data = make_filter_summary(handle, it->second, sources_.at(it->second.source_id));
-		obs_data_set_obj(result.data.get(), "settings", before.get());
+	FilterEntry *entry = nullptr;
+	obs_source_t *parent = nullptr;
+	if (!v2_get_filter_parent(params, handle, entry, parent, error))
+		return false;
+
+	FilterSettingsInput input;
+	if (!read_filter_settings_input(params, entry->filter, replace_settings, input, error))
+		return false;
+	if (filter_settings_are_equal(input, replace_settings)) {
+		result.data = make_filter_summary(handle, *entry, parent);
+		obs_data_set_obj(result.data.get(), "settings", input.before.get());
 		return true;
 	}
+
 	v2_sync_filter_observers();
+	entry = &filters_.at(handle);
 	if (!v2_filter_record_update_baseline(handle, result))
 		return fail(error, "internal_error", "filter update observer is not available");
 	uint64_t update_serial = 0;
-	if (!obs_source_update_tracked(it->second.filter, patch.get(), &update_serial) || update_serial == 0)
-		return fail(error, "internal_error", "filter update could not obtain a deferred-update identity");
+	if (!submit_filter_settings(entry->filter, input, replace_settings, update_serial, error))
+		return false;
 	result.filter_update_serial = update_serial;
-	ObsDataPtr settings(obs_source_get_settings(it->second.filter));
+	ObsDataPtr settings(obs_source_get_settings(entry->filter));
 	if (!settings)
-		return fail(error, "obs_error", "could not read filter settings after update");
-	ObsDataPtr data(obs_data_create());
-	set_handle(data.get(), "filter", handle);
-	set_handle(data.get(), "source", it->second.source_id);
-	obs_data_set_obj(data.get(), "settings", settings.get());
-	result.data = std::move(data);
+		return fail(error, "obs_error", replace_settings ? "could not read filter settings after replacement"
+										 : "could not read filter settings after update");
+	result.data = make_filter_settings_result(handle, *entry, settings.get());
 	result.mutated = true;
 	return true;
+}
+
+bool Engine::v2_filter_patch_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
+{
+	reset_result(result, error);
+	return v2_apply_filter_settings(params, result, error, false);
 }
 
 bool Engine::v2_filter_replace_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
 	reset_result(result, error);
-	v2_sync_filter_observers();
-	uint64_t handle = 0;
-	if (!read_handle_field(params, "filter", handle))
-		return fail(error, "bad_request", "params.filter must be a canonical decimal filter handle string");
-	auto it = filters_.find(handle);
-	if (it == filters_.end())
-		return fail(error, "not_found", "filter handle was not found");
-	ObsDataPtr replacement;
-	bool present = false;
-	if (!read_object_field(params, "settings", replacement, present) || !present)
-		return fail(error, "bad_request", "params.settings object is required");
-	ObsDataPtr before(obs_source_get_settings(it->second.filter));
-	if (!before)
-		return fail(error, "obs_error", "could not read filter settings before replacement");
-	const char *before_json = obs_data_get_json(before.get());
-	const char *replacement_json = obs_data_get_json(replacement.get());
-	if (before_json && replacement_json && std::strcmp(before_json, replacement_json) == 0) {
-		result.data = make_filter_summary(handle, it->second, sources_.at(it->second.source_id));
-		obs_data_set_obj(result.data.get(), "settings", before.get());
-		return true;
-	}
-	v2_sync_filter_observers();
-	if (!v2_filter_record_update_baseline(handle, result))
-		return fail(error, "internal_error", "filter update observer is not available");
-	uint64_t update_serial = 0;
-	if (!obs_source_reset_settings_tracked(it->second.filter, replacement.get(), &update_serial) || update_serial == 0)
-		return fail(error, "internal_error", "filter replacement could not obtain a deferred-update identity");
-	result.filter_update_serial = update_serial;
-	ObsDataPtr settings(obs_source_get_settings(it->second.filter));
-	if (!settings)
-		return fail(error, "obs_error", "could not read filter settings after replacement");
-	ObsDataPtr data(obs_data_create());
-	set_handle(data.get(), "filter", handle);
-	set_handle(data.get(), "source", it->second.source_id);
-	obs_data_set_obj(data.get(), "settings", settings.get());
-	result.data = std::move(data);
-	result.mutated = true;
-	return true;
+	return v2_apply_filter_settings(params, result, error, true);
 }
 
 bool Engine::v2_filter_set_enabled(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
@@ -1852,30 +1990,26 @@ bool Engine::v2_filter_get_enabled(obs_data_t *params, RuntimeV2Result &result, 
 bool Engine::v2_filter_set_order(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
 	reset_result(result, error);
-	v2_sync_filter_observers();
 	uint64_t handle = 0;
-	if (!read_handle_field(params, "filter", handle))
-		return fail(error, "bad_request", "params.filter must be a canonical decimal filter handle string");
-	auto it = filters_.find(handle);
-	if (it == filters_.end())
-		return fail(error, "not_found", "filter handle was not found");
-	auto source_it = sources_.find(it->second.source_id);
-	if (source_it == sources_.end())
-		return fail(error, "not_found", "filter parent source was not found");
+	FilterEntry *entry = nullptr;
+	obs_source_t *parent = nullptr;
+	if (!v2_get_filter_parent(params, handle, entry, parent, error))
+		return false;
 	long long index = 0;
 	bool present = false;
 	if (!read_integer_field(params, "index", index, present) || !present || index < 0 ||
-	    static_cast<uint64_t>(index) >= obs_source_filter_count(source_it->second))
+	    static_cast<uint64_t>(index) >= obs_source_filter_count(parent))
 		return fail(error, "bad_request", "params.index must be an integer within the current filter list");
-	const int old_index = obs_source_filter_get_index(source_it->second, it->second.filter);
+	const int old_index = obs_source_filter_get_index(parent, entry->filter);
 	if (old_index < 0)
 		return fail(error, "not_found", "filter is no longer attached to its parent source");
 	v2_sync_filter_observers();
+	entry = &filters_.at(handle);
 	if (old_index != index)
-		obs_source_filter_set_index(source_it->second, it->second.filter, static_cast<size_t>(index));
-	const int new_index = obs_source_filter_get_index(source_it->second, it->second.filter);
+		obs_source_filter_set_index(parent, entry->filter, static_cast<size_t>(index));
+	const int new_index = obs_source_filter_get_index(parent, entry->filter);
 	const bool changed = new_index != old_index;
-	result.data = v2_filter_order_data(it->second.source_id, changed ? handle : 0, source_it->second);
+	result.data = v2_filter_order_data(entry->source_id, changed ? handle : 0, parent);
 	if (changed) {
 		append_event(result, "filter.orderChanged", clone_data(result.data.get()));
 		result.mutated = true;
@@ -1885,110 +2019,22 @@ bool Engine::v2_filter_set_order(obs_data_t *params, RuntimeV2Result &result, Ru
 
 bool Engine::v2_filter_move_up(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
-	reset_result(result, error);
-	v2_sync_filter_observers();
-	uint64_t handle = 0;
-	if (!read_handle_field(params, "filter", handle))
-		return fail(error, "bad_request", "params.filter must be a canonical decimal filter handle string");
-	auto it = filters_.find(handle);
-	if (it == filters_.end())
-		return fail(error, "not_found", "filter handle was not found");
-	auto source_it = sources_.find(it->second.source_id);
-	if (source_it == sources_.end())
-		return fail(error, "not_found", "filter parent source was not found");
-	const int old_index = obs_source_filter_get_index(source_it->second, it->second.filter);
-	if (old_index < 0)
-		return fail(error, "not_found", "filter is no longer attached to its parent source");
-	obs_source_filter_set_order(source_it->second, it->second.filter, OBS_ORDER_MOVE_UP);
-	const int new_index = obs_source_filter_get_index(source_it->second, it->second.filter);
-	const bool changed = new_index != old_index;
-	result.data = v2_filter_order_data(it->second.source_id, changed ? handle : 0, source_it->second);
-	if (changed) {
-		append_event(result, "filter.orderChanged", clone_data(result.data.get()));
-		result.mutated = true;
-	}
-	return true;
+	return v2_move_filter(params, result, error, OBS_ORDER_MOVE_UP);
 }
 
 bool Engine::v2_filter_move_down(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
-	reset_result(result, error);
-	v2_sync_filter_observers();
-	uint64_t handle = 0;
-	if (!read_handle_field(params, "filter", handle))
-		return fail(error, "bad_request", "params.filter must be a canonical decimal filter handle string");
-	auto it = filters_.find(handle);
-	if (it == filters_.end())
-		return fail(error, "not_found", "filter handle was not found");
-	auto source_it = sources_.find(it->second.source_id);
-	if (source_it == sources_.end())
-		return fail(error, "not_found", "filter parent source was not found");
-	const int old_index = obs_source_filter_get_index(source_it->second, it->second.filter);
-	if (old_index < 0)
-		return fail(error, "not_found", "filter is no longer attached to its parent source");
-	obs_source_filter_set_order(source_it->second, it->second.filter, OBS_ORDER_MOVE_DOWN);
-	const int new_index = obs_source_filter_get_index(source_it->second, it->second.filter);
-	const bool changed = new_index != old_index;
-	result.data = v2_filter_order_data(it->second.source_id, changed ? handle : 0, source_it->second);
-	if (changed) {
-		append_event(result, "filter.orderChanged", clone_data(result.data.get()));
-		result.mutated = true;
-	}
-	return true;
+	return v2_move_filter(params, result, error, OBS_ORDER_MOVE_DOWN);
 }
 
 bool Engine::v2_filter_move_top(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
-	reset_result(result, error);
-	v2_sync_filter_observers();
-	uint64_t handle = 0;
-	if (!read_handle_field(params, "filter", handle))
-		return fail(error, "bad_request", "params.filter must be a canonical decimal filter handle string");
-	auto it = filters_.find(handle);
-	if (it == filters_.end())
-		return fail(error, "not_found", "filter handle was not found");
-	auto source_it = sources_.find(it->second.source_id);
-	if (source_it == sources_.end())
-		return fail(error, "not_found", "filter parent source was not found");
-	const int old_index = obs_source_filter_get_index(source_it->second, it->second.filter);
-	if (old_index < 0)
-		return fail(error, "not_found", "filter is no longer attached to its parent source");
-	obs_source_filter_set_order(source_it->second, it->second.filter, OBS_ORDER_MOVE_TOP);
-	const int new_index = obs_source_filter_get_index(source_it->second, it->second.filter);
-	const bool changed = new_index != old_index;
-	result.data = v2_filter_order_data(it->second.source_id, changed ? handle : 0, source_it->second);
-	if (changed) {
-		append_event(result, "filter.orderChanged", clone_data(result.data.get()));
-		result.mutated = true;
-	}
-	return true;
+	return v2_move_filter(params, result, error, OBS_ORDER_MOVE_TOP);
 }
 
 bool Engine::v2_filter_move_bottom(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
-	reset_result(result, error);
-	v2_sync_filter_observers();
-	uint64_t handle = 0;
-	if (!read_handle_field(params, "filter", handle))
-		return fail(error, "bad_request", "params.filter must be a canonical decimal filter handle string");
-	auto it = filters_.find(handle);
-	if (it == filters_.end())
-		return fail(error, "not_found", "filter handle was not found");
-	auto source_it = sources_.find(it->second.source_id);
-	if (source_it == sources_.end())
-		return fail(error, "not_found", "filter parent source was not found");
-	const int old_index = obs_source_filter_get_index(source_it->second, it->second.filter);
-	if (old_index < 0)
-		return fail(error, "not_found", "filter is no longer attached to its parent source");
-	obs_source_filter_set_order(source_it->second, it->second.filter, OBS_ORDER_MOVE_BOTTOM);
-	const int new_index = obs_source_filter_get_index(source_it->second, it->second.filter);
-	const bool changed = new_index != old_index;
-	result.data = v2_filter_order_data(it->second.source_id, changed ? handle : 0, source_it->second);
-	if (changed) {
-		append_event(result, "filter.orderChanged", clone_data(result.data.get()));
-		result.mutated = true;
-	}
-	return true;
+	return v2_move_filter(params, result, error, OBS_ORDER_MOVE_BOTTOM);
 }
 
 } // namespace obs_engine

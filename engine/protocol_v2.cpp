@@ -719,13 +719,13 @@ bool commit_runtime_result(const V2Request &request, RuntimeV2Result &result, Re
 }
 
 bool handle_runtime_method(Engine &engine, RevisionState &revisions, EventDispatcher &events,
-				   const V2Request &request, V2Method method, RuntimeV2Result &runtime_result,
+				   const V2Request &request, V2Method method, RuntimeV2Result &result,
 				   std::optional<RevisionState::MutationGuard> &mutation_guard,
 				   std::optional<RuntimeEventCaptureScope> &capture)
 {
 	RuntimeV2Error error;
-	const bool succeeded = execute_runtime_method(engine, method, request.params.get(), runtime_result, error);
-	prepare_runtime_result(engine, method, request, runtime_result, succeeded, capture);
+	const bool succeeded = execute_runtime_method(engine, method, request.params.get(), result, error);
+	prepare_runtime_result(engine, method, request, result, succeeded, capture);
 
 	// Observer connect/disconnect can take libobs signal mutexes. Keep the
 	// capture gate active until synchronization is complete so cross-thread
@@ -740,13 +740,99 @@ bool handle_runtime_method(Engine &engine, RevisionState &revisions, EventDispat
 	}
 
 	uint64_t revision = 0;
-	if (!commit_runtime_result(request, runtime_result, revisions, mutation_guard, revision))
+	if (!commit_runtime_result(request, result, revisions, mutation_guard, revision))
 		return true;
-	send_v2_ok(request.id, runtime_result.data.get(), revision);
-	publish_runtime_events(events, revision, runtime_result);
+	send_v2_ok(request.id, result.data.get(), revision);
+	publish_runtime_events(events, revision, result);
 	if (capture)
 		capture->flush(*mutation_guard);
 	return true;
+}
+
+bool parse_v2_request_id(obs_data_t *request, V2Request &out, V2ParseError &error)
+{
+	bool present = false;
+	if (read_string_field(request, "id", out.id, present) && present &&
+	    is_safe_identifier(out.id.c_str(), kMaxV2RequestIdBytes))
+		return true;
+	set_parse_error(error, "", "bad_request",
+			"id must be a 1-128 byte token using only ASCII letters, digits, '_', '-' or '.'");
+	return false;
+}
+
+bool parse_v2_request_operation(obs_data_t *request, V2Request &out, V2ParseError &error)
+{
+	bool present = false;
+	std::string op;
+	if (read_string_field(request, "op", op, present) && present && op == "request")
+		return true;
+	set_parse_error(error, out.id, "bad_request", "op must be the string 'request'");
+	return false;
+}
+
+bool parse_v2_request_method(obs_data_t *request, V2Request &out, V2ParseError &error)
+{
+	bool present = false;
+	if (read_string_field(request, "method", out.method, present) && present &&
+	    is_safe_identifier(out.method.c_str(), kMaxV2MethodBytes))
+		return true;
+	set_parse_error(error, out.id, "bad_request", "method must be a 1-128 byte protocol identifier");
+	return false;
+}
+
+bool parse_v2_request_params(obs_data_t *request, V2Request &out, V2ParseError &error)
+{
+	bool present = false;
+	if (!read_object_field(request, "params", out.params, present)) {
+		set_parse_error(error, out.id, "bad_request", "params must be an object when present");
+		return false;
+	}
+	if (!present)
+		out.params.reset(obs_data_create());
+	return true;
+}
+
+bool parse_v2_request_options(obs_data_t *request, V2Request &out, V2ParseError &error)
+{
+	if (read_integer(request, "ifRevision", out.if_revision, out.has_if_revision) &&
+	    (!out.has_if_revision || out.if_revision >= 0)) {
+		if (read_integer(request, "timeoutMs", out.timeout_ms, out.has_timeout_ms) &&
+		    (!out.has_timeout_ms || out.timeout_ms > 0))
+			return true;
+		set_parse_error(error, out.id, "bad_request", "timeoutMs must be a positive integer");
+		return false;
+	}
+	set_parse_error(error, out.id, "bad_request", "ifRevision must be a non-negative integer");
+	return false;
+}
+
+bool prepare_v2_request(Engine &engine, RevisionState &revisions, const V2Request &request, V2Method method,
+				RuntimeV2Result &runtime_result, std::optional<RevisionState::MutationGuard> &mutation_guard,
+				std::optional<RuntimeEventCaptureScope> &capture)
+{
+	if (method_is_mutating(method)) {
+		if (method_is_runtime(method)) {
+			capture.emplace(engine, runtime_result);
+			engine.v2_wait_for_event_capture_callbacks();
+		}
+		mutation_guard.emplace(revisions.lock_mutation());
+		if (capture)
+			engine.v2_drain_deferred_source_events(*mutation_guard);
+	}
+
+	const uint64_t guarded_revision = mutation_guard ? mutation_guard->current() : revisions.current();
+	if (!validate_revision_guard(request, method, guarded_revision)) {
+		if (capture)
+			capture->flush(*mutation_guard);
+		return false;
+	}
+	if (!mutation_guard || mutation_guard->can_commit_mutation())
+		return true;
+	send_v2_error(request.id, "internal_error", "engine revision space is exhausted", nullptr,
+			      mutation_guard->current());
+	if (capture)
+		capture->flush(*mutation_guard);
+	return false;
 }
 
 } // namespace
@@ -755,40 +841,9 @@ bool parse_v2_request(obs_data_t *request, V2Request &out, V2ParseError &error)
 {
 	out = V2Request{};
 	error = V2ParseError{};
-	bool present = false;
-	if (!read_string_field(request, "id", out.id, present) || !present ||
-	    !is_safe_identifier(out.id.c_str(), kMaxV2RequestIdBytes)) {
-		set_parse_error(error, "", "bad_request",
-				"id must be a 1-128 byte token using only ASCII letters, digits, '_', '-' or '.'");
-		return false;
-	}
-	std::string op;
-	if (!read_string_field(request, "op", op, present) || !present || op != "request") {
-		set_parse_error(error, out.id, "bad_request", "op must be the string 'request'");
-		return false;
-	}
-	if (!read_string_field(request, "method", out.method, present) || !present ||
-	    !is_safe_identifier(out.method.c_str(), kMaxV2MethodBytes)) {
-		set_parse_error(error, out.id, "bad_request", "method must be a 1-128 byte protocol identifier");
-		return false;
-	}
-	if (!read_object_field(request, "params", out.params, present)) {
-		set_parse_error(error, out.id, "bad_request", "params must be an object when present");
-		return false;
-	}
-	if (!present)
-		out.params.reset(obs_data_create());
-	if (!read_integer(request, "ifRevision", out.if_revision, out.has_if_revision) ||
-	    (out.has_if_revision && out.if_revision < 0)) {
-		set_parse_error(error, out.id, "bad_request", "ifRevision must be a non-negative integer");
-		return false;
-	}
-	if (!read_integer(request, "timeoutMs", out.timeout_ms, out.has_timeout_ms) ||
-	    (out.has_timeout_ms && out.timeout_ms <= 0)) {
-		set_parse_error(error, out.id, "bad_request", "timeoutMs must be a positive integer");
-		return false;
-	}
-	return true;
+	return parse_v2_request_id(request, out, error) && parse_v2_request_operation(request, out, error) &&
+	       parse_v2_request_method(request, out, error) && parse_v2_request_params(request, out, error) &&
+	       parse_v2_request_options(request, out, error);
 }
 
 void send_v2_error(const std::string &request_id, const char *code, const char *message, obs_data_t *details,
@@ -844,36 +899,11 @@ bool handle_v2_request(Engine &engine, const Config &, RevisionState &revisions,
 	std::optional<RevisionState::MutationGuard> mutation_guard;
 	std::optional<RuntimeEventCaptureScope> capture;
 
-	// Source callbacks run while libobs owns its signal mutex. Establish the
-	// request-thread capture gate before taking the revision mutex so a callback
-	// can never hold a libobs signal mutex while waiting behind this request.
-	if (method_is_runtime(method) && method_is_mutating(method))
-		capture.emplace(engine, runtime_result);
-	if (capture)
-		engine.v2_wait_for_event_capture_callbacks();
-	if (method_is_mutating(method))
-		mutation_guard.emplace(revisions.lock_mutation());
-
-	// Callbacks that raced with capture establishment are older than this
-	// request's revision guard. Give their normalized batches independent
-	// revisions before validating ifRevision; callbacks arriving after this
-	// snapshot remain deferred until the request finishes.
-	if (capture)
-		engine.v2_drain_deferred_source_events(*mutation_guard);
-
-	const uint64_t guarded_revision = mutation_guard ? mutation_guard->current() : revisions.current();
-	if (!validate_revision_guard(request, method, guarded_revision)) {
-		if (capture)
-			capture->flush(*mutation_guard);
+	// Source callbacks run while libobs owns its signal mutex. The preparation
+	// helper keeps capture setup and the pre-lock callback barrier together so
+	// this ordering remains visible in one place.
+	if (!prepare_v2_request(engine, revisions, request, method, runtime_result, mutation_guard, capture))
 		return true;
-	}
-	if (mutation_guard && !mutation_guard->can_commit_mutation()) {
-		send_v2_error(request.id, "internal_error", "engine revision space is exhausted", nullptr,
-			      mutation_guard->current());
-		if (capture)
-			capture->flush(*mutation_guard);
-		return true;
-	}
 
 	if (const std::optional<bool> session_result =
 			handle_session_method(request, revisions, events, mutation_guard))

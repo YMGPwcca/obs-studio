@@ -293,6 +293,21 @@ void clear_deferred_media_events(MediaV2State &state)
 	state.deferred_overflow = false;
 }
 
+void mark_orphaned_media_batch_locked(MediaV2State &state, DeferredMediaEventBatch &batch)
+{
+	if (!is_action_signal(batch.signal))
+		return;
+	if (state.timed_out_tracking_uncertain ||
+	    (batch.action_serial != 0 &&
+	     state.timed_out.erase(MediaActionKey{batch.handle, batch.action_serial}) != 0))
+		batch.orphaned = true;
+}
+
+bool should_discard_media_batch(const MediaV2State &state, const DeferredMediaEventBatch &batch, bool end_capture)
+{
+	return end_capture && state.capture && result_has_source_event(*state.capture, "source.removed", batch.handle);
+}
+
 DeferredMediaEventSnapshot take_deferred_media_events(MediaV2State &state, bool wait_for_pre_capture,
 							     bool end_capture)
 {
@@ -318,12 +333,8 @@ DeferredMediaEventSnapshot take_deferred_media_events(MediaV2State &state, bool 
 		DeferredMediaEventBatch batch = std::move(state.deferred.front());
 		state.deferred.pop_front();
 		state.deferred_event_count -= batch.events.size();
-		if (is_action_signal(batch.signal) &&
-		    (state.timed_out_tracking_uncertain ||
-		     (batch.action_serial != 0 &&
-		      state.timed_out.erase(MediaActionKey{batch.handle, batch.action_serial}) != 0)))
-			batch.orphaned = true;
-		if (end_capture && state.capture && result_has_source_event(*state.capture, "source.removed", batch.handle))
+		mark_orphaned_media_batch_locked(state, batch);
+		if (should_discard_media_batch(state, batch, end_capture))
 			continue;
 		snapshot.batches.push_back(std::move(batch));
 	}
@@ -335,48 +346,59 @@ DeferredMediaEventSnapshot take_deferred_media_events(MediaV2State &state, bool 
 	return snapshot;
 }
 
+uint64_t commit_media_resync_revision(RevisionState::MutationGuard &guard)
+{
+	return guard.can_commit_mutation() ? guard.commit_mutation() : guard.current();
+}
+
+void report_media_resync(EventDispatcher *events, uint64_t revision, bool after_queued_events,
+				const char *message)
+	{
+	if (events) {
+		if (after_queued_events)
+			events->require_resync_after_queued_events(revision);
+		else
+			events->require_resync_due_to_overflow(revision);
+	}
+	std::fprintf(stderr, "%s\n", message);
+	std::fflush(stderr);
+}
+
+
+bool publish_media_batch(DeferredMediaEventBatch &batch, const DeferredMediaEventSnapshot &snapshot,
+				 RevisionState::MutationGuard &guard)
+{
+	const bool requires_resync = batch.orphaned ||
+		(is_action_signal(batch.signal) && action_requires_resync(batch.signal));
+	if (requires_resync) {
+		report_media_resync(snapshot.events, commit_media_resync_revision(guard), true,
+				    "obs-engine: deferred media action completion is not incrementally representable; controller resync required");
+		return true;
+	}
+	if (batch.events.empty())
+		return true;
+	if (!guard.can_commit_mutation()) {
+		report_media_resync(snapshot.events, guard.current(), false,
+				    "obs-engine: deferred media events require resync because revision space is exhausted");
+		return false;
+	}
+	const uint64_t revision = guard.commit_mutation();
+	if (snapshot.events) {
+		for (RuntimeV2Event &event : batch.events)
+			snapshot.events->publish(EngineEventKind::State, event.name, revision, event.data.get());
+	}
+	return true;
+}
+
 void publish_deferred_media_snapshot(DeferredMediaEventSnapshot snapshot, RevisionState::MutationGuard &guard)
 {
-	if (snapshot.overflow) {
-		uint64_t revision = guard.current();
-		if (guard.can_commit_mutation())
-			revision = guard.commit_mutation();
-		if (snapshot.events)
-			snapshot.events->require_resync_due_to_overflow(revision);
-		std::fprintf(stderr, "obs-engine: deferred media event queue overflowed; controller resync required\n");
-		std::fflush(stderr);
-	}
+	if (snapshot.overflow)
+		report_media_resync(snapshot.events, commit_media_resync_revision(guard), false,
+				    "obs-engine: deferred media event queue overflowed; controller resync required");
 
 	for (DeferredMediaEventBatch &batch : snapshot.batches) {
-		const bool requires_resync = batch.orphaned ||
-			(is_action_signal(batch.signal) && action_requires_resync(batch.signal));
-		if (requires_resync) {
-			uint64_t revision = guard.current();
-			if (guard.can_commit_mutation())
-				revision = guard.commit_mutation();
-			if (snapshot.events)
-				snapshot.events->require_resync_after_queued_events(revision);
-			std::fprintf(stderr,
-				     "obs-engine: deferred media action completion is not incrementally representable; controller resync required\n");
-			std::fflush(stderr);
-			continue;
-		}
-		if (batch.events.empty())
-			continue;
-		if (!guard.can_commit_mutation()) {
-			if (snapshot.events)
-				snapshot.events->require_resync_due_to_overflow(guard.current());
-			std::fprintf(stderr,
-				     "obs-engine: deferred media events require resync because revision space is exhausted\n");
-			std::fflush(stderr);
+		if (!publish_media_batch(batch, snapshot, guard))
 			return;
-		}
-
-		const uint64_t revision = guard.commit_mutation();
-		if (snapshot.events) {
-			for (RuntimeV2Event &event : batch.events)
-				snapshot.events->publish(EngineEventKind::State, event.name, revision, event.data.get());
-		}
 	}
 }
 
@@ -416,6 +438,67 @@ bool queue_deferred_media_events_locked(MediaV2State &state, uint64_t handle, Me
 	return true;
 }
 
+bool route_queued_media_event_locked(MediaV2State &state, SourceEventCaptureRoute route, uint64_t handle,
+					     MediaV2Signal signal, uint64_t action_serial, bool orphaned,
+					     std::vector<RuntimeV2Event> &generated)
+{
+	if (route != SourceEventCaptureRoute::Capture && route != SourceEventCaptureRoute::Defer)
+		return false;
+	if (route == SourceEventCaptureRoute::Capture && state.capture &&
+	    result_has_source_event(*state.capture, "source.removed", handle))
+		return true;
+	queue_deferred_media_events_locked(state, handle, signal, action_serial, orphaned, std::move(generated));
+	return true;
+}
+
+bool commit_direct_media_event_locked(MediaV2State &state, RevisionState *&revisions, EventDispatcher *&events,
+					      uint64_t &revision);
+
+struct MediaEventRouting {
+	MediaV2State &state;
+	SourceEventCaptureRoute route;
+	uint64_t handle;
+	MediaV2Signal signal;
+	uint64_t action_serial;
+	bool orphaned;
+	bool require_resync;
+	std::vector<RuntimeV2Event> &generated;
+	RevisionState *&revisions;
+	EventDispatcher *&events;
+	uint64_t &revision;
+};
+
+struct MediaEventDecision {
+	bool orphaned = false;
+	bool require_resync = false;
+	bool resync_after_queued_events = false;
+};
+
+MediaEventDecision classify_media_event_locked(MediaV2State &state, uint64_t handle, MediaV2Signal signal,
+						       uint64_t action_serial, SourceEventCaptureRoute route)
+{
+	MediaEventDecision decision;
+	if (!is_action_signal(signal))
+		return decision;
+	decision.require_resync = action_requires_resync(signal);
+	decision.orphaned = consume_timed_out_media_action_locked(state, handle, action_serial);
+	if (decision.orphaned) {
+		decision.resync_after_queued_events = true;
+		decision.require_resync = decision.require_resync || route == SourceEventCaptureRoute::Direct;
+	}
+	return decision;
+}
+
+bool route_media_event_locked(MediaEventRouting &routing)
+{
+	if (route_queued_media_event_locked(routing.state, routing.route, routing.handle, routing.signal,
+						    routing.action_serial, routing.orphaned, routing.generated))
+		return true;
+	if (!routing.require_resync && routing.generated.empty())
+		return true;
+	return !commit_direct_media_event_locked(routing.state, routing.revisions, routing.events, routing.revision);
+}
+
 bool commit_direct_media_event_locked(MediaV2State &state, RevisionState *&revisions, EventDispatcher *&events,
 					      uint64_t &revision)
 {
@@ -443,39 +526,23 @@ void publish_media_events(MediaV2State &state, uint64_t handle, MediaV2Signal si
 	EventDispatcher *events = nullptr;
 	RevisionState *revisions = nullptr;
 	uint64_t revision = 0;
-	bool require_resync = action_signal && action_requires_resync(signal);
-	bool orphaned = false;
-	bool resync_after_queued_events = false;
+	MediaEventDecision decision;
 	{
 		std::lock_guard lock(state.mutex);
 		if (!state.accepting)
 			return;
 
 		const SourceEventCaptureRoute route = state.capture_gate.route_for_current_thread();
-		if (action_signal)
-			orphaned = consume_timed_out_media_action_locked(state, handle, action_serial);
-		if (orphaned) {
-			resync_after_queued_events = true;
-			if (route == SourceEventCaptureRoute::Direct)
-				require_resync = true;
-		}
+		decision = classify_media_event_locked(state, handle, signal, action_serial, route);
 
-		if (route == SourceEventCaptureRoute::Capture || route == SourceEventCaptureRoute::Defer) {
-			if (route == SourceEventCaptureRoute::Capture && state.capture &&
-			    result_has_source_event(*state.capture, "source.removed", handle))
-				return;
-			queue_deferred_media_events_locked(state, handle, signal, action_serial, orphaned, std::move(generated));
-			return;
-		}
-
-		if (!require_resync && generated.empty())
-			return;
-		if (!commit_direct_media_event_locked(state, revisions, events, revision))
+		MediaEventRouting routing{state, route, handle, signal, action_serial, decision.orphaned,
+						  decision.require_resync, generated, revisions, events, revision};
+		if (route_media_event_locked(routing))
 			return;
 	}
 
-	if (require_resync) {
-		if (resync_after_queued_events)
+	if (decision.require_resync) {
+		if (decision.resync_after_queued_events)
 			events->require_resync_after_queued_events(revision);
 		else
 			events->require_resync_due_to_overflow(revision);
@@ -509,59 +576,84 @@ bool promote_deferred_media_action_locked(MediaV2State &state, uint64_t handle, 
 }
 
 template<typename Submit>
-bool settle_media_action(MediaV2State &state, uint64_t handle, obs_source_t *source, MediaV2Signal signal,
-				 Submit &&submit, RuntimeV2Result &result, RuntimeV2Error &error)
+bool enqueue_media_action(MediaV2State &state, Submit &&submit, uint64_t &action_serial, RuntimeV2Error &error)
 {
-	uint64_t action_serial = 0;
 	const auto enqueue_status = std::forward<Submit>(submit)(action_serial);
 	if (enqueue_status == OBS_SOURCE_MEDIA_ACTION_SERIAL_EXHAUSTED)
 		return fail(error, "internal_error", "media action ticket space is exhausted");
-	if (enqueue_status != OBS_SOURCE_MEDIA_ACTION_ENQUEUED || action_serial == 0) {
-		{
-			std::lock_guard lock(state.mutex);
-			state.deferred_overflow = true;
-			state.callback_cv.notify_all();
-		}
-		return fail(error, "timeout", "media action could not be queued for settlement");
+	if (enqueue_status == OBS_SOURCE_MEDIA_ACTION_ENQUEUED && action_serial != 0)
+		return true;
+	{
+		std::lock_guard lock(state.mutex);
+		state.deferred_overflow = true;
+		state.callback_cv.notify_all();
 	}
+	return fail(error, "timeout", "media action could not be queued for settlement");
+}
 
+enum class MediaActionWaitResult { Settled, TimedOut, Unavailable };
+
+bool has_pending_media_action_locked(const MediaV2State &state, uint64_t handle, MediaV2Signal signal,
+					     uint64_t action_serial)
+{
+	return std::any_of(state.deferred.begin(), state.deferred.end(), [&](const DeferredMediaEventBatch &batch) {
+		return batch.handle == handle && batch.signal == signal && batch.action_serial == action_serial &&
+		       !batch.orphaned;
+	});
+}
+
+MediaActionWaitResult wait_for_media_action(MediaV2State &state, uint64_t handle, MediaV2Signal signal,
+					    uint64_t action_serial, RuntimeV2Result &result)
+{
 	std::unique_lock lock(state.mutex);
 	const auto deadline = std::chrono::steady_clock::now() + kMediaActionSettleTimeout;
 	for (;;) {
 		if (promote_deferred_media_action_locked(state, handle, signal, action_serial, result))
-			return true;
+			return MediaActionWaitResult::Settled;
 		if (!state.accepting)
-			return fail(error, "not_available", "media event bridge is shutting down");
+			return MediaActionWaitResult::Unavailable;
 		if (state.deferred_overflow)
-			break;
+			return MediaActionWaitResult::TimedOut;
 		if (!state.callback_cv.wait_until(lock, deadline, [&] {
 				return !state.accepting || state.deferred_overflow ||
-				       std::any_of(state.deferred.begin(), state.deferred.end(), [&](const DeferredMediaEventBatch &batch) {
-					       return batch.handle == handle && batch.signal == signal &&
-						      batch.action_serial == action_serial && !batch.orphaned;
-				       });
-			       }))
-			break;
+				       has_pending_media_action_locked(state, handle, signal, action_serial);
+				}))
+			return MediaActionWaitResult::TimedOut;
 	}
+}
 
-	const bool source_removed = obs_source_removed(source);
-	lock.unlock();
-	if (source_removed)
-		return fail(error, "not_found", "media source was removed during action settlement");
-	{
-		std::lock_guard state_lock(state.mutex);
-		const MediaActionKey key{handle, action_serial};
-		if (!state.timed_out.contains(key)) {
-			if (state.timed_out.size() >= kMaxMediaActionBatches) {
-				state.timed_out.clear();
-				state.timed_out_tracking_uncertain = true;
-			} else {
-				state.timed_out.insert(key);
-			}
+void remember_timed_out_media_action(MediaV2State &state, uint64_t handle, uint64_t action_serial)
+{
+	std::lock_guard lock(state.mutex);
+	const MediaActionKey key{handle, action_serial};
+	if (!state.timed_out.contains(key)) {
+		if (state.timed_out.size() >= kMaxMediaActionBatches) {
+			state.timed_out.clear();
+			state.timed_out_tracking_uncertain = true;
+		} else {
+			state.timed_out.insert(key);
 		}
-		state.deferred_overflow = true;
-		state.callback_cv.notify_all();
 	}
+	state.deferred_overflow = true;
+	state.callback_cv.notify_all();
+}
+
+template<typename Submit>
+bool settle_media_action(MediaV2State &state, uint64_t handle, obs_source_t *source, MediaV2Signal signal,
+				 Submit &&submit, RuntimeV2Result &result, RuntimeV2Error &error)
+{
+	uint64_t action_serial = 0;
+	if (!enqueue_media_action(state, std::forward<Submit>(submit), action_serial, error))
+		return false;
+	const MediaActionWaitResult wait_result = wait_for_media_action(state, handle, signal, action_serial, result);
+	if (wait_result == MediaActionWaitResult::Settled)
+		return true;
+	if (wait_result == MediaActionWaitResult::Unavailable)
+		return fail(error, "not_available", "media event bridge is shutting down");
+
+	if (obs_source_removed(source))
+		return fail(error, "not_found", "media source was removed during action settlement");
+	remember_timed_out_media_action(state, handle, action_serial);
 	return fail(error, "timeout", "media action was not observed before the settlement deadline");
 }
 
@@ -604,6 +696,25 @@ void append_media_signal_event(std::vector<RuntimeV2Event> &events, uint64_t han
 	}
 }
 
+void collect_media_state_events(MediaV2Observer &observer, MediaV2Signal signal, obs_source_t *source,
+					std::vector<RuntimeV2Event> &generated)
+{
+	const obs_media_state current_state = obs_source_media_get_state(source);
+	std::lock_guard cache_lock(observer.cache_mutex);
+	const bool changed = !observer.state_known || current_state != observer.state_value;
+	if (changed)
+		generated.push_back(RuntimeV2Event{"media.stateChanged", make_state_data(observer.handle, current_state)});
+
+	append_media_signal_event(generated, observer.handle, signal, current_state);
+
+	if (current_state == OBS_MEDIA_STATE_ERROR &&
+	    (!observer.state_known || observer.state_value != OBS_MEDIA_STATE_ERROR))
+		generated.push_back(RuntimeV2Event{"media.error", make_state_data(observer.handle, current_state)});
+
+	observer.state_known = true;
+	observer.state_value = current_state;
+}
+
 void collect_media_signal(MediaV2Observer &observer, MediaV2Signal signal, uint64_t action_serial)
 {
 	MediaV2State *state = observer.state;
@@ -620,22 +731,7 @@ void collect_media_signal(MediaV2Observer &observer, MediaV2Signal signal, uint6
 
 	std::vector<RuntimeV2Event> generated;
 	try {
-		const obs_media_state current_state = obs_source_media_get_state(source);
-		std::lock_guard cache_lock(observer.cache_mutex);
-		const bool changed = !observer.state_known || current_state != observer.state_value;
-		if (changed) {
-			ObsDataPtr data = make_state_data(observer.handle, current_state);
-			generated.push_back(RuntimeV2Event{"media.stateChanged", std::move(data)});
-		}
-
-		append_media_signal_event(generated, observer.handle, signal, current_state);
-
-		if (current_state == OBS_MEDIA_STATE_ERROR &&
-		    (!observer.state_known || observer.state_value != OBS_MEDIA_STATE_ERROR))
-			generated.push_back(RuntimeV2Event{"media.error", make_state_data(observer.handle, current_state)});
-
-		observer.state_known = true;
-		observer.state_value = current_state;
+		collect_media_state_events(observer, signal, source, generated);
 	} catch (...) {
 		obs_source_release(source);
 		throw;
@@ -780,6 +876,34 @@ bool Engine::v2_get_media_source(obs_data_t *params, uint64_t &handle, obs_sourc
 	return true;
 }
 
+void Engine::v2_add_media_observer(uint64_t handle, obs_source_t *source,
+					    std::vector<std::shared_ptr<MediaV2Observer>> &retire)
+{
+	auto observer = std::make_shared<MediaV2Observer>();
+	observer->state = media_v2_state_.get();
+	observer->handle = handle;
+	observer->weak = obs_source_get_weak_source(source);
+	observer->state_value = obs_source_media_get_state(source);
+	observer->state_known = true;
+	connect_media_observer(*observer, source);
+
+	bool keep = false;
+	{
+		std::lock_guard lock(media_v2_state_->mutex);
+		const auto source_it = sources_.find(handle);
+		const bool controllable = source_it != sources_.end() &&
+			(obs_source_get_output_flags(source_it->second) & OBS_SOURCE_CONTROLLABLE_MEDIA) != 0;
+		if (media_v2_state_->accepting && controllable && !media_v2_state_->observers.contains(handle)) {
+			media_v2_state_->observers.emplace(handle, observer);
+			keep = true;
+		}
+	}
+	if (!keep) {
+		disconnect_media_observer(*observer);
+		retire.push_back(std::move(observer));
+	}
+}
+
 void Engine::v2_bind_media_events(RevisionState *revisions, EventDispatcher *events)
 {
 	if (!media_v2_state_)
@@ -854,6 +978,32 @@ void Engine::v2_flush_deferred_media_events(RevisionState::MutationGuard &guard)
 	publish_deferred_media_snapshot(std::move(snapshot), guard);
 }
 
+bool Engine::v2_collect_media_observer_changes(std::vector<std::pair<uint64_t, obs_source_t *>> &add,
+						       std::vector<std::shared_ptr<MediaV2Observer>> &retire)
+{
+	std::lock_guard lock(media_v2_state_->mutex);
+	if (!media_v2_state_->accepting)
+		return false;
+	for (const auto &[handle, source] : sources_) {
+		const bool controllable =
+			(obs_source_get_output_flags(source) & OBS_SOURCE_CONTROLLABLE_MEDIA) != 0;
+		if (controllable && !media_v2_state_->observers.contains(handle))
+			add.emplace_back(handle, source);
+	}
+	for (auto it = media_v2_state_->observers.begin(); it != media_v2_state_->observers.end();) {
+		auto source_it = sources_.find(it->first);
+		const bool still_controllable = source_it != sources_.end() &&
+			(obs_source_get_output_flags(source_it->second) & OBS_SOURCE_CONTROLLABLE_MEDIA) != 0;
+		if (still_controllable) {
+			++it;
+			continue;
+		}
+		retire.push_back(it->second);
+		it = media_v2_state_->observers.erase(it);
+	}
+	return true;
+}
+
 void Engine::v2_sync_media_observers()
 {
 	if (!media_v2_state_)
@@ -861,53 +1011,11 @@ void Engine::v2_sync_media_observers()
 
 	std::vector<std::shared_ptr<MediaV2Observer>> retire;
 	std::vector<std::pair<uint64_t, obs_source_t *>> add;
-	{
-		std::lock_guard lock(media_v2_state_->mutex);
-		if (!media_v2_state_->accepting)
-			return;
-		for (const auto &[handle, source] : sources_) {
-			const bool controllable =
-				(obs_source_get_output_flags(source) & OBS_SOURCE_CONTROLLABLE_MEDIA) != 0;
-			if (controllable && !media_v2_state_->observers.contains(handle))
-				add.emplace_back(handle, source);
-		}
-		for (auto it = media_v2_state_->observers.begin(); it != media_v2_state_->observers.end();) {
-			auto source_it = sources_.find(it->first);
-			const bool still_controllable = source_it != sources_.end() &&
-				(obs_source_get_output_flags(source_it->second) & OBS_SOURCE_CONTROLLABLE_MEDIA) != 0;
-			if (!still_controllable) {
-				retire.push_back(it->second);
-				it = media_v2_state_->observers.erase(it);
-			} else {
-				++it;
-			}
-		}
-	}
+	if (!v2_collect_media_observer_changes(add, retire))
+		return;
 
 	for (const auto &[handle, source] : add) {
-		auto observer = std::make_shared<MediaV2Observer>();
-		observer->state = media_v2_state_.get();
-		observer->handle = handle;
-		observer->weak = obs_source_get_weak_source(source);
-		observer->state_value = obs_source_media_get_state(source);
-		observer->state_known = true;
-		connect_media_observer(*observer, source);
-
-		bool keep = false;
-		{
-			std::lock_guard lock(media_v2_state_->mutex);
-			const auto source_it = sources_.find(handle);
-			const bool controllable = source_it != sources_.end() &&
-				(obs_source_get_output_flags(source_it->second) & OBS_SOURCE_CONTROLLABLE_MEDIA) != 0;
-			if (media_v2_state_->accepting && controllable && !media_v2_state_->observers.contains(handle)) {
-				media_v2_state_->observers.emplace(handle, observer);
-				keep = true;
-			}
-		}
-		if (!keep) {
-			disconnect_media_observer(*observer);
-			retire.push_back(std::move(observer));
-		}
+		v2_add_media_observer(handle, source, retire);
 	}
 
 	for (auto &observer : retire)
@@ -1119,6 +1227,19 @@ bool Engine::v2_media_get_position(obs_data_t *params, RuntimeV2Result &result, 
 	return true;
 }
 
+bool read_media_position(obs_data_t *params, obs_source_t *source, int64_t &position, RuntimeV2Error &error)
+{
+	long long raw_position = 0;
+	bool present = false;
+	if (!read_integer_field(params, "positionMs", raw_position, present) || !present || raw_position < 0)
+		return fail(error, "bad_request", "params.positionMs must be a non-negative signed 64-bit integer");
+	const int64_t duration = obs_source_media_get_duration(source);
+	if (duration >= 0 && raw_position > duration)
+		return fail(error, "bad_request", "params.positionMs exceeds the current media duration");
+	position = static_cast<int64_t>(raw_position);
+	return true;
+}
+
 bool Engine::v2_media_set_position(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
 	reset_result(result, error);
@@ -1127,13 +1248,9 @@ bool Engine::v2_media_set_position(obs_data_t *params, RuntimeV2Result &result, 
 	if (!v2_get_media_source(params, handle, source, error))
 		return false;
 
-	long long position = 0;
-	bool present = false;
-	if (!read_integer_field(params, "positionMs", position, present) || !present || position < 0)
-		return fail(error, "bad_request", "params.positionMs must be a non-negative signed 64-bit integer");
-	const int64_t duration = obs_source_media_get_duration(source);
-	if (duration >= 0 && position > duration)
-		return fail(error, "bad_request", "params.positionMs exceeds the current media duration");
+	int64_t position = 0;
+	if (!read_media_position(params, source, position, error))
+		return false;
 	const int64_t current_position = obs_source_media_get_time(source);
 	if (current_position == position) {
 		result.data = make_action_data(handle, "setPosition", obs_source_media_get_state(source), false);

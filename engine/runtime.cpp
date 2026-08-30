@@ -34,6 +34,40 @@ bool is_bounded_string(const char *value, size_t max_bytes)
 	return false;
 }
 
+bool apply_legacy_transform_scalar(long long request_id, obs_data_t *request, const char *field, float &target,
+					   double min_value, double max_value, const char *error_message)
+{
+	double value = 0.0;
+	bool present = false;
+	if (!read_finite_double(request, field, min_value, max_value, value, present)) {
+		send_error(request_id, "bad_request", error_message);
+		return false;
+	}
+	if (present)
+		target = static_cast<float>(value);
+	return true;
+}
+
+bool apply_legacy_transform_alignment(long long request_id, obs_data_t *request, obs_transform_info &info)
+{
+	long long alignment = 0;
+	bool present = false;
+	if (!read_integer(request, "alignment", alignment, present)) {
+		send_error(request_id, "bad_request", "alignment must be an integer");
+		return false;
+	}
+	if (!present)
+		return true;
+	const uint32_t allowed = OBS_ALIGN_LEFT | OBS_ALIGN_RIGHT | OBS_ALIGN_TOP | OBS_ALIGN_BOTTOM;
+	if (alignment < 0 || static_cast<uint64_t>(alignment) > std::numeric_limits<uint32_t>::max() ||
+	    (static_cast<uint32_t>(alignment) & ~allowed) != 0) {
+		send_error(request_id, "bad_request", "invalid alignment");
+		return false;
+	}
+	info.alignment = static_cast<uint32_t>(alignment);
+	return true;
+}
+
 } // namespace
 
 Engine::Engine(Config config) : config_(std::move(config)) {}
@@ -43,7 +77,7 @@ Engine::~Engine()
 	shutdown();
 }
 
-bool Engine::start()
+bool Engine::prepare_startup_environment()
 {
 	if (!SetEnvironmentVariableW(kCaptureOnlyEnvironment, config_.enable_game_capture ? nullptr : L"1")) {
 		std::fprintf(stderr, "obs-engine: failed to configure win-capture mode\n");
@@ -70,7 +104,11 @@ bool Engine::start()
 
 	for (const std::string &plugin : config_.plugins)
 		obs_add_safe_module(plugin.c_str());
+	return true;
+}
 
+bool Engine::reset_video()
+{
 	obs_video_info video = {};
 	video.graphics_module = DL_D3D11;
 	video.fps_num = config_.fps;
@@ -91,7 +129,11 @@ bool Engine::start()
 		std::fprintf(stderr, "obs-engine: obs_reset_video failed (%d)\n", video_result);
 		return false;
 	}
+	return true;
+}
 
+bool Engine::load_runtime_modules()
+{
 	obs_module_failure_info failures = {};
 	obs_load_all_modules2(&failures);
 	if (failures.count != 0) {
@@ -115,6 +157,11 @@ bool Engine::start()
 	return true;
 }
 
+bool Engine::start()
+{
+	return prepare_startup_environment() && reset_video() && load_runtime_modules();
+}
+
 bool Engine::handle(obs_data_t *request)
 {
 	long long request_id = 0;
@@ -130,32 +177,30 @@ bool Engine::handle(obs_data_t *request)
 		return true;
 	}
 
-	if (std::strcmp(command, "hello") == 0)
-		return command_hello(request_id);
-	if (std::strcmp(command, "source.types") == 0)
-		return command_source_types(request_id);
-	if (std::strcmp(command, "source.defaults") == 0)
-		return command_source_defaults(request_id, request);
-	if (std::strcmp(command, "source.create") == 0)
-		return command_source_create(request_id, request);
-	if (std::strcmp(command, "source.update") == 0)
-		return command_source_update(request_id, request);
-	if (std::strcmp(command, "source.settings") == 0)
-		return command_source_settings(request_id, request);
-	if (std::strcmp(command, "source.destroy") == 0)
-		return command_source_destroy(request_id, request);
-	if (std::strcmp(command, "scene.create") == 0)
-		return command_scene_create(request_id, request);
-	if (std::strcmp(command, "scene.destroy") == 0)
-		return command_scene_destroy(request_id, request);
-	if (std::strcmp(command, "scene.add") == 0)
-		return command_scene_add(request_id, request);
-	if (std::strcmp(command, "item.remove") == 0)
-		return command_item_remove(request_id, request);
-	if (std::strcmp(command, "item.transform") == 0)
-		return command_item_transform(request_id, request);
-	if (std::strcmp(command, "program.set") == 0)
-		return command_program_set(request_id, request);
+	using LegacyCommandHandler = bool (Engine::*)(long long, obs_data_t *);
+	struct LegacyCommand {
+		const char *name;
+		LegacyCommandHandler handler;
+	};
+	constexpr LegacyCommand commands[] = {
+		{"hello", &Engine::command_hello},
+		{"source.types", &Engine::command_source_types},
+		{"source.defaults", &Engine::command_source_defaults},
+		{"source.create", &Engine::command_source_create},
+		{"source.update", &Engine::command_source_update},
+		{"source.settings", &Engine::command_source_settings},
+		{"source.destroy", &Engine::command_source_destroy},
+		{"scene.create", &Engine::command_scene_create},
+		{"scene.destroy", &Engine::command_scene_destroy},
+		{"scene.add", &Engine::command_scene_add},
+		{"item.remove", &Engine::command_item_remove},
+		{"item.transform", &Engine::command_item_transform},
+		{"program.set", &Engine::command_program_set},
+	};
+	for (const LegacyCommand &entry : commands) {
+		if (std::strcmp(command, entry.name) == 0)
+			return (this->*entry.handler)(request_id, request);
+	}
 	if (std::strcmp(command, "shutdown") == 0) {
 		send_ok(request_id);
 		return false;
@@ -196,7 +241,7 @@ bool Engine::validate_source_type(long long request_id, obs_data_t *request, con
 	return true;
 }
 
-bool Engine::command_hello(long long request_id)
+bool Engine::command_hello(long long request_id, obs_data_t *)
 {
 	ObsDataPtr result(obs_data_create());
 	obs_data_set_int(result.get(), "protocol", kProtocolVersion);
@@ -221,7 +266,7 @@ bool Engine::command_hello(long long request_id)
 	return true;
 }
 
-bool Engine::command_source_types(long long request_id)
+bool Engine::command_source_types(long long request_id, obs_data_t *)
 {
 	ObsDataPtr result(obs_data_create());
 	ObsArrayPtr types(obs_data_array_create());
@@ -514,55 +559,18 @@ bool Engine::command_item_transform(long long request_id, obs_data_t *request)
 
 	obs_transform_info info = {};
 	obs_sceneitem_get_info2(it->second.item, &info);
-	double value = 0.0;
-	bool present = false;
-
-	if (!read_finite_double(request, "x", -10000000.0, 10000000.0, value, present)) {
-		send_error(request_id, "bad_request", "invalid x");
+	if (!apply_legacy_transform_scalar(request_id, request, "x", info.pos.x, -10000000.0, 10000000.0,
+					   "invalid x") ||
+	    !apply_legacy_transform_scalar(request_id, request, "y", info.pos.y, -10000000.0, 10000000.0,
+					   "invalid y") ||
+	    !apply_legacy_transform_scalar(request_id, request, "scale_x", info.scale.x, -10000.0, 10000.0,
+					   "invalid scale_x") ||
+	    !apply_legacy_transform_scalar(request_id, request, "scale_y", info.scale.y, -10000.0, 10000.0,
+					   "invalid scale_y") ||
+	    !apply_legacy_transform_scalar(request_id, request, "rotation", info.rot, -1000000.0, 1000000.0,
+					   "invalid rotation") ||
+	    !apply_legacy_transform_alignment(request_id, request, info))
 		return true;
-	}
-	if (present)
-		info.pos.x = static_cast<float>(value);
-	if (!read_finite_double(request, "y", -10000000.0, 10000000.0, value, present)) {
-		send_error(request_id, "bad_request", "invalid y");
-		return true;
-	}
-	if (present)
-		info.pos.y = static_cast<float>(value);
-	if (!read_finite_double(request, "scale_x", -10000.0, 10000.0, value, present)) {
-		send_error(request_id, "bad_request", "invalid scale_x");
-		return true;
-	}
-	if (present)
-		info.scale.x = static_cast<float>(value);
-	if (!read_finite_double(request, "scale_y", -10000.0, 10000.0, value, present)) {
-		send_error(request_id, "bad_request", "invalid scale_y");
-		return true;
-	}
-	if (present)
-		info.scale.y = static_cast<float>(value);
-	if (!read_finite_double(request, "rotation", -1000000.0, 1000000.0, value, present)) {
-		send_error(request_id, "bad_request", "invalid rotation");
-		return true;
-	}
-	if (present)
-		info.rot = static_cast<float>(value);
-
-	long long alignment = 0;
-	bool alignment_present = false;
-	if (!read_integer(request, "alignment", alignment, alignment_present)) {
-		send_error(request_id, "bad_request", "alignment must be an integer");
-		return true;
-	}
-	if (alignment_present) {
-		const uint32_t allowed = OBS_ALIGN_LEFT | OBS_ALIGN_RIGHT | OBS_ALIGN_TOP | OBS_ALIGN_BOTTOM;
-		if (alignment < 0 || static_cast<uint64_t>(alignment) > std::numeric_limits<uint32_t>::max() ||
-		    (static_cast<uint32_t>(alignment) & ~allowed) != 0) {
-			send_error(request_id, "bad_request", "invalid alignment");
-			return true;
-		}
-		info.alignment = static_cast<uint32_t>(alignment);
-	}
 
 	obs_sceneitem_set_info2(it->second.item, &info);
 	send_ok(request_id);

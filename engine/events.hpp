@@ -64,12 +64,14 @@ private:
 		uint64_t revision = 0;
 		std::string data_json;
 	};
+	enum class NextEventResult { Stop, Resync, Event };
 
 	bool matches_locked(EngineEventKind kind, std::string_view event_name) const;
 	EventPublishResult enqueue_event_locked(PendingEvent pending);
 	EventPublishResult enqueue_telemetry_locked(PendingEvent pending);
 	EventPublishResult enqueue_state_locked(PendingEvent pending);
 	void invalidate_queued_events_locked(uint64_t revision);
+	NextEventResult wait_for_next_event(PendingEvent &event, uint64_t &resync_revision);
 	void run() noexcept;
 	void emit(PendingEvent event) noexcept;
 	void emit_resync_required(uint64_t revision) noexcept;

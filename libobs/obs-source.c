@@ -214,14 +214,8 @@ static inline bool requires_canvas(const struct obs_source *source)
 
 extern char *find_libobs_data_file(const char *file);
 
-/* internal initialization */
-static bool obs_source_init(struct obs_source *source)
+static bool initialize_source_mutexes(struct obs_source *source)
 {
-	source->user_volume = 1.0f;
-	source->volume = 1.0f;
-	source->sync_offset = 0;
-	source->balance = 0.5f;
-	source->audio_active = true;
 	pthread_mutex_init_value(&source->filter_mutex);
 	pthread_mutex_init_value(&source->deferred_update_mutex);
 	pthread_mutex_init_value(&source->async_mutex);
@@ -248,6 +242,19 @@ static bool obs_source_init(struct obs_source *source)
 	if (pthread_mutex_init(&source->caption_cb_mutex, NULL) != 0)
 		return false;
 	if (pthread_mutex_init(&source->media_actions_mutex, NULL) != 0)
+		return false;
+	return true;
+}
+
+/* internal initialization */
+static bool obs_source_init(struct obs_source *source)
+{
+	source->user_volume = 1.0f;
+	source->volume = 1.0f;
+	source->sync_offset = 0;
+	source->balance = 0.5f;
+	source->audio_active = true;
+	if (!initialize_source_mutexes(source))
 		return false;
 
 	if (is_audio_source(source) || is_composite_source(source))
@@ -1096,6 +1103,32 @@ uint32_t obs_get_source_output_flags(const char *id)
 	return info ? info->output_flags : 0;
 }
 
+static bool reserve_source_update_serial_locked(obs_source_t *source, bool require_serial, uint64_t *serial)
+{
+	if (require_serial && source->update_serial >= INT64_MAX)
+		return false;
+	*serial = source->update_serial < INT64_MAX ? ++source->update_serial : 0;
+	return true;
+}
+
+static void record_source_update_range_locked(obs_source_t *source, uint64_t serial, bool is_video)
+{
+	if (!is_video)
+		return;
+	if (serial == 0) {
+		/* A public untracked caller may continue after serial exhaustion, but
+		 * its deferred completion can no longer be correlated safely. */
+		source->deferred_update_start_serial = 0;
+		source->deferred_update_end_serial = 0;
+		os_atomic_inc_long(&source->defer_update_count);
+		return;
+	}
+	if (os_atomic_load_long(&source->defer_update_count) == 0)
+		source->deferred_update_start_serial = serial;
+	source->deferred_update_end_serial = serial;
+	os_atomic_inc_long(&source->defer_update_count);
+}
+
 static bool obs_source_update_internal(obs_source_t *source, obs_data_t *settings, uint64_t *serial,
 					       bool require_serial, bool reset_settings)
 {
@@ -1107,7 +1140,7 @@ static bool obs_source_update_internal(obs_source_t *source, obs_data_t *setting
 	const bool is_video = (source->info.output_flags & OBS_SOURCE_VIDEO) != 0;
 	uint64_t update_serial = 0;
 	pthread_mutex_lock(&source->deferred_update_mutex);
-	if (require_serial && source->update_serial >= INT64_MAX) {
+	if (!reserve_source_update_serial_locked(source, require_serial, &update_serial)) {
 		pthread_mutex_unlock(&source->deferred_update_mutex);
 		return false;
 	}
@@ -1117,21 +1150,7 @@ static bool obs_source_update_internal(obs_source_t *source, obs_data_t *setting
 	if (settings)
 		obs_data_apply(source->context.settings, settings);
 
-	if (source->update_serial < INT64_MAX)
-		update_serial = ++source->update_serial;
-	if (is_video) {
-		if (update_serial == 0) {
-			/* A public untracked caller may continue after serial exhaustion, but
-			 * its deferred completion can no longer be correlated safely. */
-			source->deferred_update_start_serial = 0;
-			source->deferred_update_end_serial = 0;
-		} else {
-			if (os_atomic_load_long(&source->defer_update_count) == 0)
-				source->deferred_update_start_serial = update_serial;
-			source->deferred_update_end_serial = update_serial;
-		}
-		os_atomic_inc_long(&source->defer_update_count);
-	}
+	record_source_update_range_locked(source, update_serial, is_video);
 	pthread_mutex_unlock(&source->deferred_update_mutex);
 
 	if (serial)
@@ -1376,6 +1395,41 @@ static void filter_frame(obs_source_t *source, struct obs_source_frame **ref_fra
 	*ref_frame = frame;
 }
 
+static void process_media_action(obs_source_t *source, const struct media_action *action)
+{
+	switch (action->type) {
+	case MEDIA_ACTION_PLAY_PAUSE:
+		source->info.media_play_pause(source->context.data, action->pause);
+		if (action->pause)
+			obs_source_dosignal_media_action(source, "media_pause", action->serial);
+		else
+			obs_source_dosignal_media_action(source, "media_play", action->serial);
+		break;
+	case MEDIA_ACTION_RESTART:
+		source->info.media_restart(source->context.data);
+		obs_source_dosignal_media_action(source, "media_restart", action->serial);
+		break;
+	case MEDIA_ACTION_STOP:
+		source->info.media_stop(source->context.data);
+		obs_source_dosignal_media_action(source, "media_stopped", action->serial);
+		break;
+	case MEDIA_ACTION_NEXT:
+		source->info.media_next(source->context.data);
+		obs_source_dosignal_media_action(source, "media_next", action->serial);
+		break;
+	case MEDIA_ACTION_PREVIOUS:
+		source->info.media_previous(source->context.data);
+		obs_source_dosignal_media_action(source, "media_previous", action->serial);
+		break;
+	case MEDIA_ACTION_SET_TIME:
+		source->info.media_set_time(source->context.data, action->ms);
+		obs_source_dosignal_media_action(source, "media_time", action->serial);
+		break;
+	case MEDIA_ACTION_NONE:
+		break;
+	}
+}
+
 void process_media_actions(obs_source_t *source)
 {
 	struct media_action action = {0};
@@ -1390,40 +1444,9 @@ void process_media_actions(obs_source_t *source)
 		}
 		pthread_mutex_unlock(&source->media_actions_mutex);
 
-		switch (action.type) {
-		case MEDIA_ACTION_NONE:
+		if (action.type == MEDIA_ACTION_NONE)
 			return;
-		case MEDIA_ACTION_PLAY_PAUSE:
-			source->info.media_play_pause(source->context.data, action.pause);
-
-			if (action.pause)
-				obs_source_dosignal_media_action(source, "media_pause", action.serial);
-			else
-				obs_source_dosignal_media_action(source, "media_play", action.serial);
-			break;
-
-		case MEDIA_ACTION_RESTART:
-			source->info.media_restart(source->context.data);
-			obs_source_dosignal_media_action(source, "media_restart", action.serial);
-			break;
-
-		case MEDIA_ACTION_STOP:
-			source->info.media_stop(source->context.data);
-			obs_source_dosignal_media_action(source, "media_stopped", action.serial);
-			break;
-		case MEDIA_ACTION_NEXT:
-			source->info.media_next(source->context.data);
-			obs_source_dosignal_media_action(source, "media_next", action.serial);
-			break;
-		case MEDIA_ACTION_PREVIOUS:
-			source->info.media_previous(source->context.data);
-			obs_source_dosignal_media_action(source, "media_previous", action.serial);
-			break;
-		case MEDIA_ACTION_SET_TIME:
-			source->info.media_set_time(source->context.data, action.ms);
-			obs_source_dosignal_media_action(source, "media_time", action.serial);
-			break;
-		}
+		process_media_action(source, &action);
 	}
 }
 
@@ -5855,6 +5878,49 @@ const char *obs_source_get_light_icon(const char *id)
 	return (info && info->get_light_icon) ? info->get_light_icon(info->type_data) : NULL;
 }
 
+static bool media_action_callback_available(obs_source_t *source, enum obs_source_media_action_type type)
+{
+	switch (type) {
+	case OBS_SOURCE_MEDIA_ACTION_PLAY_PAUSE:
+		return source->info.media_play_pause != NULL;
+	case OBS_SOURCE_MEDIA_ACTION_RESTART:
+		return source->info.media_restart != NULL;
+	case OBS_SOURCE_MEDIA_ACTION_STOP:
+		return source->info.media_stop != NULL;
+	case OBS_SOURCE_MEDIA_ACTION_NEXT:
+		return source->info.media_next != NULL;
+	case OBS_SOURCE_MEDIA_ACTION_PREVIOUS:
+		return source->info.media_previous != NULL;
+	case OBS_SOURCE_MEDIA_ACTION_SET_TIME:
+		return source->info.media_set_time != NULL;
+	default:
+		return false;
+	}
+}
+
+static bool translate_media_action_type(obs_source_t *source, enum obs_source_media_action_type type,
+						enum media_action_type *internal_type)
+{
+	static const struct {
+		enum obs_source_media_action_type external_type;
+		enum media_action_type internal_type;
+	} mappings[] = {
+		{OBS_SOURCE_MEDIA_ACTION_PLAY_PAUSE, MEDIA_ACTION_PLAY_PAUSE},
+		{OBS_SOURCE_MEDIA_ACTION_RESTART, MEDIA_ACTION_RESTART},
+		{OBS_SOURCE_MEDIA_ACTION_STOP, MEDIA_ACTION_STOP},
+		{OBS_SOURCE_MEDIA_ACTION_NEXT, MEDIA_ACTION_NEXT},
+		{OBS_SOURCE_MEDIA_ACTION_PREVIOUS, MEDIA_ACTION_PREVIOUS},
+		{OBS_SOURCE_MEDIA_ACTION_SET_TIME, MEDIA_ACTION_SET_TIME},
+	};
+	for (size_t index = 0; index < sizeof(mappings) / sizeof(mappings[0]); ++index) {
+		if (mappings[index].external_type == type && media_action_callback_available(source, type)) {
+			*internal_type = mappings[index].internal_type;
+			return true;
+		}
+	}
+	return false;
+}
+
 EXPORT enum obs_source_media_action_enqueue_status obs_source_media_action_enqueue(
 	obs_source_t *source, enum obs_source_media_action_type type, int64_t value, uint64_t *serial)
 {
@@ -5866,40 +5932,8 @@ EXPORT enum obs_source_media_action_enqueue_status obs_source_media_action_enque
 		return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
 
 	enum media_action_type internal_type = MEDIA_ACTION_NONE;
-	switch (type) {
-	case OBS_SOURCE_MEDIA_ACTION_PLAY_PAUSE:
-		if (!source->info.media_play_pause)
-			return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
-		internal_type = MEDIA_ACTION_PLAY_PAUSE;
-		break;
-	case OBS_SOURCE_MEDIA_ACTION_RESTART:
-		if (!source->info.media_restart)
-			return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
-		internal_type = MEDIA_ACTION_RESTART;
-		break;
-	case OBS_SOURCE_MEDIA_ACTION_STOP:
-		if (!source->info.media_stop)
-			return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
-		internal_type = MEDIA_ACTION_STOP;
-		break;
-	case OBS_SOURCE_MEDIA_ACTION_NEXT:
-		if (!source->info.media_next)
-			return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
-		internal_type = MEDIA_ACTION_NEXT;
-		break;
-	case OBS_SOURCE_MEDIA_ACTION_PREVIOUS:
-		if (!source->info.media_previous)
-			return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
-		internal_type = MEDIA_ACTION_PREVIOUS;
-		break;
-	case OBS_SOURCE_MEDIA_ACTION_SET_TIME:
-		if (!source->info.media_set_time)
-			return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
-		internal_type = MEDIA_ACTION_SET_TIME;
-		break;
-	default:
+	if (!translate_media_action_type(source, type, &internal_type))
 		return OBS_SOURCE_MEDIA_ACTION_UNSUPPORTED;
-	}
 
 	struct media_action action = {
 		.type = internal_type,

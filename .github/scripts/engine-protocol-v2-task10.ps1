@@ -84,54 +84,50 @@ function Assert-Error($Response, [string] $Code, [int64] $ExpectedRevision, [str
     }
 }
 
-function Read-Event([string] $Name, [int64] $ExpectedRevision, [string] $Source = '') {
-    while ($true) {
-        if ($script:Events.Count -gt 0) {
-            $Event = $script:Events[0]
-            $script:Events.RemoveAt(0)
-        } else {
-            $Event = Read-EngineMessage
-        }
-        if ($Event.op -ne 'event') {
-            Fail "expected event '$Name' but received response '$($Event.id)'."
-        }
-        if ([string]$Event.event -ne $Name) {
-            Fail "expected event '$Name' but received '$($Event.event)'."
-        }
-        if ([uint64]$Event.seq -ne $script:NextSeq) {
-            Fail "event '$Name' seq=$($Event.seq), expected $script:NextSeq."
-        }
-        if ([int64]$Event.revision -ne $ExpectedRevision) {
-            Fail "event '$Name' revision=$($Event.revision), expected $ExpectedRevision."
-        }
-        if ($Source -and [string]$Event.data.source -ne $Source) {
-            Fail "event '$Name' source=$($Event.data.source), expected $Source."
-        }
-        if (($Event.PSObject.Properties.Name -contains 'telemetry') -and $null -ne $Event.telemetry) {
-            Fail "media state event '$Name' was incorrectly marked as telemetry."
-        }
-        $script:NextSeq++
-        return $Event
+function Read-PendingEvent {
+    if ($script:Events.Count -gt 0) {
+        $Event = $script:Events[0]
+        $script:Events.RemoveAt(0)
+    } else {
+        $Event = Read-EngineMessage
     }
+    return $Event
+}
+
+function Assert-EventSequence($Event, [string] $Label) {
+    if ($Event.op -ne 'event') {
+        Fail "$Label expected an event but received response '$($Event.id)'."
+    }
+    if ([uint64]$Event.seq -ne $script:NextSeq) {
+        Fail "$Label seq=$($Event.seq), expected $script:NextSeq."
+    }
+    $script:NextSeq++
+}
+
+function Read-Event([string] $Name, [int64] $ExpectedRevision, [string] $Source = '') {
+	$Event = Read-PendingEvent
+	Assert-EventSequence $Event "event '$Name'"
+	if ([string]$Event.event -ne $Name) {
+		Fail "expected event '$Name' but received '$($Event.event)'."
+	}
+	if ([int64]$Event.revision -ne $ExpectedRevision) {
+		Fail "event '$Name' revision=$($Event.revision), expected $ExpectedRevision."
+	}
+	if ($Source -and [string]$Event.data.source -ne $Source) {
+		Fail "event '$Name' source=$($Event.data.source), expected $Source."
+	}
+	if (($Event.PSObject.Properties.Name -contains 'telemetry') -and $null -ne $Event.telemetry) {
+		Fail "media state event '$Name' was incorrectly marked as telemetry."
+	}
+	return $Event
 }
 
 function Read-Until-Resync([int64] $MinimumRevision) {
-    while ($true) {
-        if ($script:Events.Count -gt 0) {
-            $Event = $script:Events[0]
-            $script:Events.RemoveAt(0)
-        } else {
-            $Event = Read-EngineMessage
-        }
-        if ($Event.op -ne 'event') {
-            Fail 'received a response while waiting for the overflow resync event.'
-        }
-        Write-Host "overflow event: $($Event.event) revision=$($Event.revision) seq=$($Event.seq)"
-        if ([uint64]$Event.seq -ne $script:NextSeq) {
-            Fail "overflow event seq=$($Event.seq), expected $script:NextSeq."
-        }
-        $script:NextSeq++
-        if ([string]$Event.event -eq 'session.resyncRequired') {
+	while ($true) {
+		$Event = Read-PendingEvent
+		Assert-EventSequence $Event 'overflow event'
+		Write-Host "overflow event: $($Event.event) revision=$($Event.revision) seq=$($Event.seq)"
+		if ([string]$Event.event -eq 'session.resyncRequired') {
             if ([int64]$Event.revision -lt $MinimumRevision -or
                 [string]$Event.data.reason -ne 'event_queue_overflow') {
                 Fail 'overflow resync event had an invalid revision or reason.'
