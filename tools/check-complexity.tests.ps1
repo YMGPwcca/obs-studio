@@ -50,6 +50,7 @@ function Invoke-ComplexityChecker {
     )
 
     $directory = [string] $Scenario.Directory
+    $reportStem = $Mode.ToLowerInvariant()
     $arguments = @(
         '-NoProfile', '-File', (Join-Path $directory 'tools/check-complexity.ps1'),
         '-Mode', $Mode, '-AcceptedRef', ([string] $Scenario.AcceptedRef),
@@ -57,8 +58,8 @@ function Invoke-ComplexityChecker {
         '-BaselinePath', (Join-Path $directory 'complexity-after.json'),
         '-AllowlistPath', (Join-Path $directory 'complexity-exceptions.json'),
         '-InventoryPath', (Join-Path $directory 'complexity-ownership-inventory.json'),
-        '-JsonPath', (Join-Path $directory ("complexity-$Mode.json")),
-        '-MarkdownPath', (Join-Path $directory ("complexity-$Mode.md"))
+        '-JsonPath', (Join-Path $directory ("complexity-$reportStem.json")),
+        '-MarkdownPath', (Join-Path $directory ("complexity-$reportStem.md"))
     )
     if ($LizardPythonPath) {
         $arguments += @('-LizardPythonPath', $LizardPythonPath)
@@ -105,7 +106,7 @@ function Assert-FunctionMeasured {
         [Parameter(Mandatory = $true)] [string] $Label
     )
 
-    $reportPath = Join-Path ([string] $Result.ReportDirectory) 'complexity-Check.json'
+    $reportPath = Join-Path ([string] $Result.ReportDirectory) 'complexity-check.json'
     if (-not (Test-Path -LiteralPath $reportPath)) {
         throw "$Label did not produce a diagnostic check report."
     }
