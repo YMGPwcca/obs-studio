@@ -160,7 +160,9 @@ function New-Fixture {
     param(
         [Parameter(Mandatory = $true)] [string] $Name,
         [string] $AcceptedPath = 'src/accepted.cpp',
-        [string] $AcceptedContent = "int accepted_function(int value) {`n    if (value > 0) { return value; }`n    return 0;`n}`n"
+        [string] $AcceptedContent = "int accepted_function(int value) {`n    if (value > 0) { return value; }`n    return 0;`n}`n",
+        [string] $BasePath = '',
+        [string] $BaseContent = ''
     )
 
     $directory = Join-Path $testRoot $Name
@@ -169,6 +171,9 @@ function New-Fixture {
     Write-FixtureText (Join-Path $directory 'README.md') "fixture $Name`n"
     Write-FixtureText (Join-Path $directory 'complexity-exceptions.json') "[]`n"
     Write-FixtureText (Join-Path $directory 'complexity-identity-migrations.json') "[]`n"
+    if ($BasePath) {
+        Write-FixtureText (Join-Path $directory $BasePath) $BaseContent
+    }
     Invoke-FixtureGit $directory @('init', '-b', 'master') | Out-Null
     Invoke-FixtureGit $directory @('config', 'user.name', 'Fixture Upstream') | Out-Null
     Invoke-FixtureGit $directory @('config', 'user.email', 'fixture-upstream@example.invalid') | Out-Null
@@ -378,7 +383,7 @@ try {
     $newMetricI = Get-ReportFunctionMetric $caseI.Directory 'complexity-check.json' 'src/identity.cpp' 'new_name'
     Write-MigrationDocument $caseI @(New-MigrationRecord $oldMetricI $newMetricI)
     $caseIWithMigration = Invoke-ComplexityChecker $caseI 'Check'
-    Assert-CheckerFailure $caseIWithMigration 'CASE I migrated rename still uses old CC budget' 'new_name'
+    Assert-CheckerFailure $caseIWithMigration 'CASE I migrated rename still uses old CC budget' 'baseline 2'
     Commit-FixtureFile $caseI 'src/identity.cpp' (New-IfChain 'new_name' 'int' 1) 'fixture lower migrated rename complexity'
     $caseIPass = Invoke-ComplexityChecker $caseI 'Check'
     Assert-FunctionMeasured $caseIPass 'src/identity.cpp' 'new_name' 'CASE I migrated rename at baseline CC'
@@ -390,15 +395,22 @@ try {
     Commit-FixtureFile $caseJ 'src/signature.cpp' $signatureChange 'fixture change function signature'
     $caseJResult = Invoke-ComplexityChecker $caseJ 'Check'
     Assert-FunctionMeasured $caseJResult 'src/signature.cpp' 'calculate' 'CASE J signature change'
-    Assert-CheckerFailure $caseJResult 'CASE J unique-name signature continuity uses baseline CC' 'calculate'
+    Assert-CheckerFailure $caseJResult 'CASE J unique-name signature continuity uses baseline CC' 'baseline 2'
+    $signatureBaseline = "int calculate(int value, bool mode) {`n    if (mode) { return value; }`n    return 0;`n}`n"
+    Commit-FixtureFile $caseJ 'src/signature.cpp' $signatureBaseline 'fixture restore signature-change baseline complexity'
+    $caseJPass = Invoke-ComplexityChecker $caseJ 'Check'
+    Assert-FunctionMeasured $caseJPass 'src/signature.cpp' 'calculate' 'CASE J signature change at baseline CC'
+    Assert-CheckerPass $caseJPass 'CASE J signature change at baseline CC'
 
-    $overloads = "int calculate(int value) {`n    if (value > 0) { return value; }`n    return 0;`n}`n" + "int calculate(bool mode) {`n    if (mode) { return 1; }`n    return 0;`n}`n"
-    $caseK = New-Fixture 'case-k-overload-ambiguity' 'src/overloads.cpp' $overloads
+    $upstreamOverload = "int calculate(double value) {`n    if (value > 0) { return 1; }`n    return 0;`n}`n"
+    $projectOverloads = "int calculate(int value) {`n    if (value > 0) { return value; }`n    return 0;`n}`n" + "int calculate(bool mode) {`n    if (mode) { return 1; }`n    return 0;`n}`n"
+    $overloads = $upstreamOverload + $projectOverloads
+    $caseK = New-Fixture 'case-k-overload-ambiguity' 'src/overloads.cpp' $overloads 'src/overloads.cpp' $upstreamOverload
     Prepare-FixtureBaseline $caseK
     $ambiguousOverload = "int calculate(long value) {`n    if (value > 0) { return value; }`n    if (value > 1) { return value + 1; }`n    return 0;`n}`n"
-    Commit-FixtureFile $caseK 'src/overloads.cpp' $ambiguousOverload 'fixture create ambiguous overload continuity'
+    Commit-FixtureFile $caseK 'src/overloads.cpp' ($overloads + $ambiguousOverload) 'fixture create ambiguous overload continuity'
     $caseKResult = Invoke-ComplexityChecker $caseK 'Check'
-    Assert-CheckerFailure $caseKResult 'CASE K overload ambiguity fails closed' 'overloads\.cpp'
+    Assert-CheckerFailure $caseKResult 'CASE K overload ambiguity fails closed' 'Ambiguous function identity'
 
     $caseL = New-Fixture 'case-l-genuinely-new-function'
     Prepare-FixtureBaseline $caseL
@@ -440,6 +452,13 @@ try {
     $wrongPath = New-MigrationRecordValues $oldMetricM.key 'cpp' 'function' 'src/wrong.cpp' 'new_name' $newMetricM.signature
     Write-MigrationDocument $caseM @($wrongPath)
     Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M wrong path' 'src/wrong\.cpp'
+    Write-FixtureText (Join-Path $caseM.Directory 'complexity-identity-migrations.json') "null`n"
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M non-array migration document' 'must be a JSON array'
+    Write-FixtureText (Join-Path $caseM.Directory 'complexity-identity-migrations.json') ($migrationNew | ConvertTo-Json -Depth 5)
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M object migration document' 'must be a JSON array'
+    $wildcardPath = New-MigrationRecordValues $oldMetricM.key 'cpp' 'function' 'src/*.cpp' 'new_name' $newMetricM.signature
+    Write-MigrationDocument $caseM @($wildcardPath)
+    Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M wildcard path' 'src/\*\.cpp'
     Commit-FixtureFile $caseM 'src/migrations.cpp' ($caseMCandidate + "`n" + (New-IfChain 'old_name' 'int' 1)) 'fixture restore stale old identity'
     Write-MigrationDocument $caseM @($migrationNew)
     Assert-CheckerFailure (Invoke-ComplexityChecker $caseM 'Check') 'CASE M stale mapping with old identity present' 'stale'
@@ -454,13 +473,28 @@ try {
     $newMetricN = Get-ReportFunctionMetric $caseN.Directory 'complexity-check.json' 'src/b.cpp' 'new_name'
     Write-MigrationDocument $caseN @(New-MigrationRecord $oldMetricN $newMetricN)
     $caseNWithMigration = Invoke-ComplexityChecker $caseN 'Check'
-    Assert-CheckerFailure $caseNWithMigration 'CASE N file/function migrated rename uses old CC budget' 'new_name'
+    Assert-CheckerFailure $caseNWithMigration 'CASE N file/function migrated rename uses old CC budget' 'baseline 2'
     Commit-FixtureFile $caseN 'src/b.cpp' (New-IfChain 'new_name' 'int' 1) 'fixture lower migrated file/function rename complexity'
     $caseNPass = Invoke-ComplexityChecker $caseN 'Check'
     Assert-FunctionMeasured $caseNPass 'src/b.cpp' 'new_name' 'CASE N migrated file/function rename at baseline CC'
     Assert-CheckerPass $caseNPass 'CASE N migrated file/function rename at baseline CC'
 
-    Write-Output 'Complexity checker self-test: PASS (cases A-N)'
+    $caseO = New-Fixture 'case-o-recreated-file' 'src/recreated.cpp' (New-IfChain 'calculate' 'int' 1)
+    Prepare-FixtureBaseline $caseO
+    Invoke-FixtureGit $caseO.Directory @('rm', '--', 'src/recreated.cpp') | Out-Null
+    Invoke-FixtureGit $caseO.Directory @('commit', '-m', 'fixture delete source identity') | Out-Null
+    $recreatedCandidate = "int calculate(int value, bool mode) {`n    if (mode) { return value; }`n    if (value > 0) { return value + 1; }`n    return 0;`n}`n"
+    Commit-FixtureFile $caseO 'src/recreated.cpp' $recreatedCandidate 'fixture recreate source with signature change'
+    $caseONoMigration = Invoke-ComplexityChecker $caseO 'Check'
+    Assert-FunctionMeasured $caseONoMigration 'src/recreated.cpp' 'calculate' 'CASE O recreated file without migration'
+    Assert-CheckerFailure $caseONoMigration 'CASE O recreated file requires explicit migration' 'calculate\( int value\)'
+    $oldMetricO = Get-ReportFunctionMetric $caseO.Directory 'complexity-after.json' 'src/recreated.cpp' 'calculate'
+    $newMetricO = Get-ReportFunctionMetric $caseO.Directory 'complexity-check.json' 'src/recreated.cpp' 'calculate'
+    Write-MigrationDocument $caseO @(New-MigrationRecord $oldMetricO $newMetricO)
+    $caseOWithMigration = Invoke-ComplexityChecker $caseO 'Check'
+    Assert-CheckerFailure $caseOWithMigration 'CASE O recreated file migrated identity uses old CC budget' 'baseline 2'
+
+    Write-Output 'Complexity checker self-test: PASS (cases A-N plus O)'
 } finally {
     if (Test-Path -LiteralPath $testRoot) {
         Remove-Item -LiteralPath $testRoot -Recurse -Force

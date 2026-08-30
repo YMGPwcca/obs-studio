@@ -55,6 +55,24 @@ function Get-RepoFilePath {
     return Join-Path $repoRoot $Path
 }
 
+function New-ExactMap {
+    return [System.Collections.Hashtable]::new([StringComparer]::Ordinal)
+}
+
+function Test-ExactStringInList {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Value,
+        [AllowEmptyCollection()] [string[]] $Values
+    )
+
+    foreach ($candidate in $Values) {
+        if ($candidate -ceq $Value) {
+            return $true
+        }
+    }
+    return $false
+}
+
 function Write-Utf8File {
     param(
         [Parameter(Mandatory = $true)] [string] $Path,
@@ -349,7 +367,7 @@ function Get-HistoricalPathAliases {
         [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $RenameRecords
     )
 
-    $aliases = @{}
+    $aliases = New-ExactMap
     foreach ($path in $HistoricalPaths) {
         $aliases[$path] = [System.Collections.Generic.List[string]]::new()
         $aliases[$path].Add($path)
@@ -594,8 +612,12 @@ function Get-RelatedBaselineMetrics {
         return @()
     }
     $matches = [System.Collections.Generic.List[object]]::new()
-    $paths = @([string] $Metric.file) + @($Scope.HistoricalPaths)
-    foreach ($path in ($paths | Sort-Object -Unique)) {
+    $paths = New-ExactMap
+    $paths[[string] $Metric.file] = $true
+    foreach ($path in $Scope.HistoricalPaths) {
+        $paths[[string] $path] = $true
+    }
+    foreach ($path in $paths.Keys) {
         $key = Get-FunctionKey ([string] $Metric.language) $path ([string] $Metric.function) ([string] $Metric.signature) ([string] $Metric.scopeKind)
         if ($BaselineByKey.ContainsKey($key)) {
             $matches.Add($BaselineByKey[$key])
@@ -623,8 +645,8 @@ function Test-ExceptionIdentity {
         [Parameter(Mandatory = $true)] [object] $Metric
     )
 
-    return [string](Get-ObjectPropertyValue $Exception 'language') -eq [string] $Metric.language -and
-        [string](Get-ObjectPropertyValue $Exception 'scopeKind') -eq [string] $Metric.scopeKind -and
+    return [string](Get-ObjectPropertyValue $Exception 'language') -ceq [string] $Metric.language -and
+        [string](Get-ObjectPropertyValue $Exception 'scopeKind') -ceq [string] $Metric.scopeKind -and
         (Normalize-RepoPath ([string](Get-ObjectPropertyValue $Exception 'file'))) -ceq [string] $Metric.file -and
         [string](Get-ObjectPropertyValue $Exception 'function') -ceq [string] $Metric.function -and
         [string](Get-ObjectPropertyValue $Exception 'signature') -ceq [string] $Metric.signature
@@ -679,9 +701,74 @@ function Get-ExactException {
 function New-EmptyIdentityMaps {
     return [pscustomobject]@{
         entries        = @()
-        byCurrentKey   = @{}
-        byBaselineKey  = @{}
+        byCurrentKey   = New-ExactMap
+        byBaselineKey  = New-ExactMap
     }
+}
+
+function Get-ExactJsonPropertyValue {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Object,
+        [Parameter(Mandatory = $true)] [string] $Name
+    )
+
+    $properties = @($Object.PSObject.Properties | Where-Object { $_.Name -ceq $Name })
+    if (@($properties).Count -gt 1) {
+        throw "JSON object contains duplicate property '$Name'."
+    }
+    if (@($properties).Count -eq 1) {
+        return $properties[0].Value
+    }
+    return $null
+}
+
+function Get-IdentityStringField {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Object,
+        [Parameter(Mandatory = $true)] [string] $Name,
+        [Parameter(Mandatory = $true)] [string] $Context
+    )
+
+    $value = Get-ExactJsonPropertyValue $Object $Name
+    if ($null -eq $value -or $value -isnot [string] -or [string]::IsNullOrWhiteSpace($value)) {
+        throw "$Context field '$Name' must be a non-empty JSON string."
+    }
+    return $value
+}
+
+function Assert-ExactJsonShape {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Object,
+        [Parameter(Mandatory = $true)] [string[]] $Allowed,
+        [Parameter(Mandatory = $true)] [string] $Context
+    )
+
+    $unexpected = @($Object.PSObject.Properties | Where-Object {
+            -not (Test-ExactStringInList $_.Name $Allowed)
+        })
+    if (@($unexpected).Count -gt 0) {
+        throw "$Context contains unsupported property '$($unexpected[0].Name)'."
+    }
+}
+
+function Read-IdentityMigrationEntries {
+    param([Parameter(Mandatory = $true)] [string] $Path)
+
+    $fullPath = Get-RepoFilePath $Path
+    try {
+        $document = ConvertFrom-Json -InputObject (Get-Content -LiteralPath $fullPath -Raw) -NoEnumerate
+    } catch {
+        throw "Could not parse identity migration document '$Path': $($_.Exception.Message)"
+    }
+    if ($null -eq $document -or $document -isnot [Array]) {
+        throw "Identity migration document '$Path' must be a JSON array."
+    }
+    foreach ($entry in $document) {
+        if ($null -eq $entry -or $entry -is [Array] -or $entry -isnot [pscustomobject]) {
+            throw "Identity migration document '$Path' contains a non-object entry."
+        }
+    }
+    return ,$document
 }
 
 function Get-IdentityMigrationBaseline {
@@ -690,7 +777,7 @@ function Get-IdentityMigrationBaseline {
         [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey
     )
 
-    $baselineKey = [string] (Get-ObjectPropertyValue $Entry 'baselineKey')
+    $baselineKey = Get-IdentityStringField $Entry 'baselineKey' 'Identity migration'
     if (-not $baselineKey -or -not $BaselineByKey.ContainsKey($baselineKey)) {
         throw "Identity migration baselineKey '$baselineKey' is not present in the accepted complexity baseline."
     }
@@ -706,20 +793,17 @@ function Get-IdentityMigrationCurrent {
         [Parameter(Mandatory = $true)] [string] $BaselineKey
     )
 
-    $current = Get-ObjectPropertyValue $Entry 'current'
-    if ($null -eq $current) {
+    $current = Get-ExactJsonPropertyValue $Entry 'current'
+    if ($null -eq $current -or $current -is [Array] -or $current -isnot [pscustomobject]) {
         throw "Identity migration for '$BaselineKey' must contain a current identity object."
     }
     $required = @('language', 'scopeKind', 'file', 'function', 'signature')
-    $missing = @($required | Where-Object { -not $current.PSObject.Properties[$_] })
-    if (@($missing).Count -gt 0) {
-        throw "Identity migration for '$BaselineKey' is missing current fields: $($missing -join ', ')."
-    }
-    $language = [string] $current.language
-    $scopeKind = [string] $current.scopeKind
-    $file = Normalize-RepoPath ([string] $current.file)
-    $function = [string] $current.function
-    $signature = [string] $current.signature
+    Assert-ExactJsonShape $current $required "Identity migration current object for '$BaselineKey'"
+    $language = Get-IdentityStringField $current 'language' "Identity migration current object for '$BaselineKey'"
+    $scopeKind = Get-IdentityStringField $current 'scopeKind' "Identity migration current object for '$BaselineKey'"
+    $file = Normalize-RepoPath (Get-IdentityStringField $current 'file' "Identity migration current object for '$BaselineKey'")
+    $function = Get-IdentityStringField $current 'function' "Identity migration current object for '$BaselineKey'"
+    $signature = Get-IdentityStringField $current 'signature' "Identity migration current object for '$BaselineKey'"
     if ($language -notin @('cpp', 'powershell') -or $scopeKind -ne 'function' -or
         -not $file -or -not $function -or -not $signature) {
         throw "Identity migration for '$BaselineKey' has an invalid current identity."
@@ -739,13 +823,14 @@ function New-IdentityMigrationEntry {
         [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey
     )
 
+    Assert-ExactJsonShape $Entry @('baselineKey', 'current') 'Identity migration entry'
     $baselineInfo = Get-IdentityMigrationBaseline $Entry $BaselineByKey
     $current = Get-IdentityMigrationCurrent $Entry $baselineInfo.key
-    if ($baselineInfo.metric.scopeKind -ne 'function' -or [string] $baselineInfo.metric.language -ne $current.language) {
+    if ($baselineInfo.metric.scopeKind -cne 'function' -or [string] $baselineInfo.metric.language -cne $current.language) {
         throw "Identity migration for '$($baselineInfo.key)' changes language or scope kind."
     }
     $currentKey = Get-FunctionKey $current.language $current.file $current.function $current.signature $current.scopeKind
-    if ($currentKey -eq $baselineInfo.key) {
+    if ($currentKey -ceq $baselineInfo.key) {
         throw "Identity migration '$($baselineInfo.key)' must change the current identity."
     }
     if ($BaselineByKey.ContainsKey($currentKey)) {
@@ -770,8 +855,8 @@ function New-IdentityMigrationMaps {
         [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey
     )
 
-    $byCurrent = @{}
-    $byBaseline = @{}
+    $byCurrent = New-ExactMap
+    $byBaseline = New-ExactMap
     $normalized = [System.Collections.Generic.List[object]]::new()
     foreach ($entry in $Entries) {
         $migration = New-IdentityMigrationEntry $entry $BaselineByKey
@@ -798,8 +883,8 @@ function Merge-IdentityMigrationMaps {
         [Parameter(Mandatory = $true)] [object] $Automatic
     )
 
-    $byCurrent = @{}
-    $byBaseline = @{}
+    $byCurrent = New-ExactMap
+    $byBaseline = New-ExactMap
     foreach ($key in $Explicit.byCurrentKey.Keys) {
         $byCurrent[$key] = $Explicit.byCurrentKey[$key]
     }
@@ -832,11 +917,11 @@ function Assert-IdentityMigrationTargets {
     )
 
     foreach ($migration in $Migrations.entries) {
-        $target = @($CurrentMetrics | Where-Object { [string] $_.key -eq [string] $migration.currentKey })
+        $target = @($CurrentMetrics | Where-Object { [string] $_.key -ceq [string] $migration.currentKey })
         if (@($target).Count -ne 1) {
             throw "Identity migration target '$($migration.currentKey)' does not exist exactly once in the measured candidate."
         }
-        $old = @($CurrentMetrics | Where-Object { [string] $_.key -eq [string] $migration.baselineKey })
+        $old = @($CurrentMetrics | Where-Object { [string] $_.key -ceq [string] $migration.baselineKey })
         if (@($old).Count -gt 0) {
             throw "Identity migration '$($migration.baselineKey)' is stale because the old identity still exists in the candidate."
         }
@@ -852,8 +937,8 @@ function Get-SameNameBaselineCandidates {
 
     $lineage = @([string] $Metric.file) + @($Scope.HistoricalPaths)
     return @($BaselineByKey.Values | Where-Object {
-            $_.scopeKind -eq 'function' -and $_.language -eq $Metric.language -and
-            $_.function -eq $Metric.function -and $lineage -contains [string] $_.file
+            $_.scopeKind -ceq 'function' -and $_.language -ceq $Metric.language -and
+            $_.function -ceq $Metric.function -and (Test-ExactStringInList ([string] $_.file) $lineage)
         })
 }
 
@@ -864,8 +949,8 @@ function Get-SameNameCurrentCandidates {
     )
 
     return @($Functions | Where-Object {
-            $_.file -eq $Metric.file -and $_.language -eq $Metric.language -and
-            $_.function -eq $Metric.function
+            $_.file -ceq $Metric.file -and $_.language -ceq $Metric.language -and
+            $_.function -ceq $Metric.function
         })
 }
 
@@ -882,6 +967,9 @@ function New-AutomaticIdentity {
         return $null
     }
     $scope = $ScopeByPath[[string] $Metric.file]
+    if ($scope.IsRecreated) {
+        return $null
+    }
     $exact = @(Get-RelatedBaselineMetrics $Metric $scope $BaselineByKey)
     if (@($exact).Count -gt 1) {
         throw "Ambiguous baseline identity for $($Metric.file):$($Metric.startLine) $($Metric.function)."
@@ -917,8 +1005,8 @@ function New-AutomaticIdentityMaps {
         [Parameter(Mandatory = $true)] [object] $Explicit
     )
 
-    $byCurrent = @{}
-    $byBaseline = @{}
+    $byCurrent = New-ExactMap
+    $byBaseline = New-ExactMap
     $entries = [System.Collections.Generic.List[object]]::new()
     $functions = @($CurrentMetrics | Where-Object { $_.scopeKind -eq 'function' })
     foreach ($metric in $functions) {
@@ -948,13 +1036,13 @@ function Test-BaselineIdentityPresent {
     )
 
     foreach ($metric in @($CurrentMetrics | Where-Object { $_.scopeKind -eq 'function' })) {
-        if ($metric.language -ne $BaselineMetric.language -or $metric.function -ne $BaselineMetric.function -or
-            $metric.signature -ne $BaselineMetric.signature) {
+        if ($metric.language -cne $BaselineMetric.language -or $metric.function -cne $BaselineMetric.function -or
+            $metric.signature -cne $BaselineMetric.signature) {
             continue
         }
         $scope = $ScopeByPath[[string] $metric.file]
         $lineage = @([string] $metric.file) + @($scope.HistoricalPaths)
-        if ($lineage -contains [string] $BaselineMetric.file) {
+        if (Test-ExactStringInList ([string] $BaselineMetric.file) $lineage) {
             return $true
         }
     }
@@ -1005,7 +1093,7 @@ function New-MetricKeyMap {
         [Parameter(Mandatory = $true)] [string] $Label
     )
 
-    $map = @{}
+    $map = New-ExactMap
     foreach ($metric in $Metrics) {
         $key = [string] $metric.key
         if ($map.ContainsKey($key)) {
@@ -1017,7 +1105,7 @@ function New-MetricKeyMap {
 }
 
 function Assert-UniqueFunctionIdentities {
-    param([Parameter(Mandatory = $true)] [object[]] $Metrics)
+    param([Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $Metrics)
 
     $null = New-MetricKeyMap @($Metrics | Where-Object { $_.scopeKind -eq 'function' }) 'measured'
 }
@@ -1056,7 +1144,8 @@ function New-PowerShellFunctionMetric {
         [Parameter(Mandatory = $true)] [object] $Scope,
         [Parameter(Mandatory = $true)] [string] $Mode,
         [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey,
-        [Parameter(Mandatory = $true)] [hashtable] $IdentityMigrationsByCurrentKey
+        [Parameter(Mandatory = $true)] [hashtable] $IdentityMigrationsByCurrentKey,
+        [switch] $IgnoreScope
     )
 
     $name = [string] $Function.Name
@@ -1076,7 +1165,7 @@ function New-PowerShellFunctionMetric {
         nlocMethod            = 'nonblank non-comment source lines'
         ccMethod             = 'base 1 plus AST if/elseif, loop, switch-clause, catch, trap, ternary, and logical-and/or nodes'
     }
-    if (-not (Test-MetricInScope $metric $Scope $Mode $BaselineByKey $IdentityMigrationsByCurrentKey)) {
+    if (-not $IgnoreScope -and -not (Test-MetricInScope $metric $Scope $Mode $BaselineByKey $IdentityMigrationsByCurrentKey)) {
         return $null
     }
     $nestedRanges = @($Functions | Where-Object {
@@ -1143,7 +1232,8 @@ function Get-PowerShellFileMetrics {
         [Parameter(Mandatory = $true)] [string] $Mode,
         [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey,
         [Parameter(Mandatory = $true)] [hashtable] $Types,
-        [Parameter(Mandatory = $true)] [hashtable] $IdentityMigrationsByCurrentKey
+        [Parameter(Mandatory = $true)] [hashtable] $IdentityMigrationsByCurrentKey,
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [System.Collections.Generic.List[object]] $AllMetrics
     )
 
     $fullPath = Join-Path $repoRoot $Path
@@ -1162,8 +1252,9 @@ function Get-PowerShellFileMetrics {
     $ranges = Get-FunctionRanges $functions
     $metrics = [System.Collections.Generic.List[object]]::new()
     foreach ($function in $functions) {
-        $metric = New-PowerShellFunctionMetric $function $Path $sourceLines $functions $Types $Scope $Mode $BaselineByKey $IdentityMigrationsByCurrentKey
-        if ($null -ne $metric) {
+        $metric = New-PowerShellFunctionMetric $function $Path $sourceLines $functions $Types $Scope $Mode $BaselineByKey $IdentityMigrationsByCurrentKey -IgnoreScope
+        $AllMetrics.Add($metric)
+        if (Test-MetricInScope $metric $Scope $Mode $BaselineByKey $IdentityMigrationsByCurrentKey) {
             $metrics.Add($metric)
         }
     }
@@ -1181,7 +1272,8 @@ function Get-PowerShellMetrics {
         [Parameter(Mandatory = $true)] [hashtable] $ScopeByPath,
         [Parameter(Mandatory = $true)] [string] $Mode,
         [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey,
-        [Parameter(Mandatory = $true)] [hashtable] $IdentityMigrationsByCurrentKey
+        [Parameter(Mandatory = $true)] [hashtable] $IdentityMigrationsByCurrentKey,
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [System.Collections.Generic.List[object]] $AllMetrics
     )
 
     $types = Get-AstTypeMap
@@ -1190,7 +1282,7 @@ function Get-PowerShellMetrics {
     }
     $metrics = [System.Collections.Generic.List[object]]::new()
     foreach ($path in $Files) {
-        foreach ($metric in (Get-PowerShellFileMetrics $path $ScopeByPath[$path] $Mode $BaselineByKey $types $IdentityMigrationsByCurrentKey)) {
+        foreach ($metric in (Get-PowerShellFileMetrics $path $ScopeByPath[$path] $Mode $BaselineByKey $types $IdentityMigrationsByCurrentKey $AllMetrics)) {
             $metrics.Add($metric)
         }
     }
@@ -1204,7 +1296,8 @@ function Get-ScopedCppMetrics {
         [Parameter(Mandatory = $true)] [string] $Mode,
         [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey,
         [Parameter(Mandatory = $true)] [string] $Python,
-        [Parameter(Mandatory = $true)] [hashtable] $IdentityMigrationsByCurrentKey
+        [Parameter(Mandatory = $true)] [hashtable] $IdentityMigrationsByCurrentKey,
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [System.Collections.Generic.List[object]] $AllMetrics
     )
 
     $version = Get-LizardVersion $Python
@@ -1231,6 +1324,7 @@ function Get-ScopedCppMetrics {
             nlocMethod           = 'lizard NLOC'
             ccMethod             = 'lizard default CCN (switch cases counted individually)'
         }
+        $AllMetrics.Add($metric)
         if (-not (Test-MetricInScope $metric $ScopeByPath[$file] $Mode $BaselineByKey $IdentityMigrationsByCurrentKey)) {
             continue
         }
@@ -1451,7 +1545,7 @@ function Find-BeforeMetric {
         [Parameter(Mandatory = $true)] [object] $Metric,
         [Parameter(Mandatory = $true)] [hashtable] $Exact,
         [Parameter(Mandatory = $true)] [object] $Scope,
-        [hashtable] $IdentityMigrationsByCurrentKey = @{}
+        [hashtable] $IdentityMigrationsByCurrentKey = $(New-ExactMap)
     )
 
     $matches = @(Get-RelatedBaselineMetrics $Metric $Scope $Exact)
@@ -1654,12 +1748,12 @@ $discoveredAliases = @($identityHistory | Where-Object {
     } | Select-Object Name, Email -Unique)
 $operatorEmails = @($knownOperatorEmails + @($discoveredAliases | ForEach-Object { $_.Email })) |
     ForEach-Object { ([string] $_).ToLowerInvariant() } | Sort-Object -Unique
-$operatorEmailSet = @{}
+$operatorEmailSet = New-ExactMap
 foreach ($email in $operatorEmails) {
     $operatorEmailSet[$email] = $true
 }
 $operatorNames = @($knownOperatorName + @($discoveredAliases | ForEach-Object { $_.Name })) | Sort-Object -Unique
-$operatorNameSet = @{}
+$operatorNameSet = New-ExactMap
 foreach ($name in $operatorNames) {
     $operatorNameSet[$name] = $true
 }
@@ -1670,7 +1764,7 @@ if ($operatorCommits.Count -eq 0) {
 }
 $futureOperatorCommits = @($futureHistory | Where-Object { & $operatorPredicate $_ })
 $historicalOperatorRecords = @(Get-OperatorCommitPathRecords $history $operatorPredicate)
-$historicalOperatorPathSet = @{}
+$historicalOperatorPathSet = New-ExactMap
 foreach ($record in $historicalOperatorRecords) {
     $historicalOperatorPathSet[[string] $record.Path] = $true
     if ($record.OldPath) {
@@ -1679,7 +1773,7 @@ foreach ($record in $historicalOperatorRecords) {
 }
 
 $historicalRecords = @(Get-ChangedPathRecords $range)
-$historicalPathSet = @{}
+$historicalPathSet = New-ExactMap
 foreach ($record in $historicalRecords) {
     if (Test-PathAtRef $acceptedResolved $record.Path) {
         $historicalPathSet[[string] $record.Path] = $true
@@ -1692,19 +1786,19 @@ $workingTreeRecords = @(Get-ChangedPathRecords $measurementHead)
 $untrackedRecords = @(Get-UntrackedPathRecords)
 $postRecords = @($postCommitRecords + $workingTreeRecords + $untrackedRecords)
 $futureOperatorRecords = @(Get-OperatorCommitPathRecords $futureHistory $operatorPredicate)
-$futureOperatorPathSet = @{}
+$futureOperatorPathSet = New-ExactMap
 foreach ($record in $futureOperatorRecords) {
     $futureOperatorPathSet[[string] $record.Path] = $true
     if ($record.OldPath) {
         $futureOperatorPathSet[[string] $record.OldPath] = $true
     }
 }
-$workingTreePathSet = @{}
+$workingTreePathSet = New-ExactMap
 foreach ($record in $workingTreeRecords + $untrackedRecords) {
     $workingTreePathSet[[string] $record.Path] = $true
 }
-$recreatedPathSet = @{}
-$deletedPathSet = @{}
+$recreatedPathSet = New-ExactMap
+$deletedPathSet = New-ExactMap
 foreach ($commit in $futureHistory) {
     foreach ($record in (Get-CommitPathRecords ([string] $commit.Hash))) {
         if ($record.Status -eq 'D') {
@@ -1717,7 +1811,7 @@ foreach ($commit in $futureHistory) {
     }
 }
 $historicalAliases = Get-HistoricalPathAliases $historicalPaths $postRecords
-$currentPathSet = @{}
+$currentPathSet = New-ExactMap
 foreach ($path in $historicalPaths) {
     if (Test-CurrentPath $path) {
         $currentPathSet[$path] = $true
@@ -1738,10 +1832,10 @@ $acceptedBaselineResolved = if (Test-Path -LiteralPath (Get-RepoFilePath $Baseli
 $acceptedBaselineByKey = if ($null -ne $acceptedBaselineResolved) {
     New-MetricKeyMap @($acceptedBaselineResolved.functions) 'accepted complexity baseline'
 } else {
-    @{}
+    New-ExactMap
 }
 $identityEntries = if ($Mode -eq 'Check' -and (Test-Path -LiteralPath (Get-RepoFilePath $IdentityMigrationsPath))) {
-    @((Read-JsonFile $IdentityMigrationsPath) | Where-Object { $null -ne $_ })
+    Read-IdentityMigrationEntries $IdentityMigrationsPath
 } else {
     @()
 }
@@ -1753,7 +1847,7 @@ $explicitIdentityMaps = if ($Mode -eq 'Check') {
 } else {
     New-EmptyIdentityMaps
 }
-$inclusionBaselineByKey = @{}
+$inclusionBaselineByKey = New-ExactMap
 if ($Mode -eq 'Check' -and $null -ne $acceptedBaselineResolved) {
     $inclusionBaselineByKey = $acceptedBaselineByKey
     if ($null -ne $beforePathResolved) {
@@ -1767,7 +1861,7 @@ if ($Mode -eq 'Check' -and $null -ne $acceptedBaselineResolved) {
     $inclusionBaselineByKey = New-MetricKeyMap @($beforePathResolved.functions) 'scope baseline'
 }
 
-$scopeByPath = @{}
+$scopeByPath = New-ExactMap
 $scopedPathRecords = [System.Collections.Generic.List[object]]::new()
 $policyErrors = [System.Collections.Generic.List[string]]::new()
 $unscopedExecutablePaths = [System.Collections.Generic.List[string]]::new()
@@ -1852,7 +1946,7 @@ if ($policyErrors.Count -gt 0) {
 
 $cppPaths = @($scopedPathRecords | Where-Object language -eq 'cpp' | ForEach-Object path | Sort-Object -Unique)
 $scriptPaths = @($scopedPathRecords | Where-Object language -eq 'powershell' | ForEach-Object path | Sort-Object -Unique)
-$codePathSet = @{}
+$codePathSet = New-ExactMap
 foreach ($path in $cppPaths + $scriptPaths) {
     $codePathSet[$path] = $true
 }
@@ -1876,16 +1970,20 @@ foreach ($commit in $operatorAttributableCommits) {
 }
 
 $python = Get-PythonExecutable
-$cppMetrics = @(Get-ScopedCppMetrics $cppPaths $scopeByPath $Mode $inclusionBaselineByKey $python $explicitIdentityMaps.byCurrentKey)
-$scriptMetrics = @(Get-PowerShellMetrics $scriptPaths $scopeByPath $Mode $inclusionBaselineByKey $explicitIdentityMaps.byCurrentKey)
+$allCppMetrics = [System.Collections.Generic.List[object]]::new()
+$allScriptMetrics = [System.Collections.Generic.List[object]]::new()
+$cppMetrics = @(Get-ScopedCppMetrics $cppPaths $scopeByPath $Mode $inclusionBaselineByKey $python $explicitIdentityMaps.byCurrentKey $allCppMetrics)
+$scriptMetrics = @(Get-PowerShellMetrics $scriptPaths $scopeByPath $Mode $inclusionBaselineByKey $explicitIdentityMaps.byCurrentKey $allScriptMetrics)
 $metrics = @($cppMetrics + $scriptMetrics)
 if ($metrics.Count -eq 0) {
     throw 'No scoped functions were measured.'
 }
 Assert-UniqueFunctionIdentities $metrics
+$allFunctionMetrics = @($allCppMetrics + $allScriptMetrics)
+Assert-UniqueFunctionIdentities $allFunctionMetrics
 $lizardVersion = Get-LizardVersion $python
 $automaticIdentityMaps = if ($Mode -eq 'Check') {
-    New-AutomaticIdentityMaps $metrics $acceptedBaselineByKey $scopeByPath $explicitIdentityMaps
+    New-AutomaticIdentityMaps $allFunctionMetrics $acceptedBaselineByKey $scopeByPath $explicitIdentityMaps
 } else {
     New-EmptyIdentityMaps
 }
@@ -2017,9 +2115,9 @@ if ($null -eq $allowlist) {
 }
 $baselineByKey = New-MetricKeyMap @($baseline.functions) 'accepted complexity baseline'
 Validate-Allowlist $allowlist $baselineByKey
-Assert-IdentityMigrationTargets $continuityMaps $report.functions
+Assert-IdentityMigrationTargets $continuityMaps $allFunctionMetrics
 $violations = [System.Collections.Generic.List[string]]::new()
-foreach ($identityViolation in (Get-UnmigratedIdentityViolations $report.functions $baselineByKey $scopeByPath $continuityMaps)) {
+foreach ($identityViolation in (Get-UnmigratedIdentityViolations $allFunctionMetrics $baselineByKey $scopeByPath $continuityMaps)) {
     $violations.Add($identityViolation)
 }
 foreach ($metric in @($report.functions | Where-Object { $_.scopeKind -eq 'function' })) {
