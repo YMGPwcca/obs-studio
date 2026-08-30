@@ -1,7 +1,11 @@
 [
   {
+    "language": "cpp",
+    "scopeKind": "function",
     "file": "libobs/obs-source.c",
     "function": "obs_source_destroy_defer",
+    "signature": "obs_source_destroy_defer( struct obs_source * source)",
+    "baselineKey": "cpp|function|libobs/obs-source.c|obs_source_destroy_defer|obs_source_destroy_defer( struct obs_source * source)",
     "measuredCC": 13,
     "reason": "Upstream source destruction pipeline; the operator-attributed change is only the accepted deferred_update_mutex destruction line. Further extraction would rewrite lifetime/resource/mutex teardown ordering and create metric-only risk.",
     "dateTask": "2026-08-30 Phase-1 complexity hardening",

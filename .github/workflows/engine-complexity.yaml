@@ -23,6 +23,14 @@ jobs:
           python3 -m pip install --disable-pip-version-check --no-warn-script-location \
             --target "$RUNNER_TEMP/libobs-lizard" 'lizard==1.24.0'
 
+      - name: Run complexity checker self-tests
+        shell: pwsh
+        env:
+          LIZARD_PATH: ${{ runner.temp }}/libobs-lizard
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & pwsh -NoProfile -File tools/check-complexity.tests.ps1 -LizardPythonPath $env:LIZARD_PATH
+
       - name: Enforce complexity budget
         shell: pwsh
         env:

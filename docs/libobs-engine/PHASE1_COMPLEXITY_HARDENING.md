@@ -92,14 +92,45 @@ and CC > 10 lists, including NLOC and parameters, are generated in
 
 ## Regression gate
 
-The repository gate is `tools/check-complexity.ps1`. It derives the scoped
-inventory from Git history, measures C/C++ with lizard and PowerShell with the
-AST parser, rejects new functions above CC 10, and rejects increases over the
-accepted after-report unless an exact reviewed exception matches. The current
-allowlist has one entry for `obs_source_destroy_defer`.
+The repository gate is `tools/check-complexity.ps1`. Its historical ownership
+baseline remains anchored at `3fc2e678d10809a4dca8b28107710534160803ab` and the
+merge-base of `origin/master` for answering which pre-hardening code belongs to
+the operator. `After` and `Check` then form a moving measurement universe:
+
+1. retain every surviving historical target;
+2. add every current C/C++ or PowerShell file added by operator work after the
+   accepted checkpoint, measuring all functions in a new or recreated file;
+3. add functions in later operator-modified files when exact accepted identity,
+   current operator blame, or candidate diff lines attribute them to project
+   work; and
+4. carry exact historical file aliases across renames for baseline comparison.
+
+Deleted-and-recreated paths are treated as new identities. Baseline matching is
+exact on language, scope, normalized path, function name, and signature; the
+old same-file/name fallback is gone. The sole allowlist entry for
+`obs_source_destroy_defer` also records its exact signature and accepted
+baseline key, so a similarly named or recreated function cannot inherit it.
+
+The only analyzers officially supported by this gate are C/C++ (including the
+repository's `.c`, `.cc`, `.cpp`, `.cxx`, `.h`, `.hh`, `.hpp`, `.hxx`, `.inc`,
+`.inl`, `.ipp`, `.tcc`, `.cppm`, and `.ixx` extensions) and PowerShell (`.ps1`,
+`.psm1`). Known executable extensions such as Python, Lua, shell, batch,
+JavaScript/TypeScript, Ruby, Go, Rust, Java/Kotlin, Swift, and Objective-C are
+rejected with a clear fail-closed message; they are never sent to the
+PowerShell parser. Unknown extensions introduced by project work are also
+rejected until a language policy/analyzer is defined. Static declarations and
+documentation remain explicitly non-executable.
 
 The CI workflow is `.github/workflows/engine-complexity.yaml` and installs
-`lizard==1.24.0` only into the runner's temporary directory.
+`lizard==1.24.0` only into the runner's temporary directory. Before enforcing
+the budget, it runs `tools/check-complexity.tests.ps1` in isolated temporary
+Git repositories. The self-test proves: a new bad `.cpp` fails; a new good
+`.cpp` is measured and passes; an implemented header with bad CC fails; an
+accepted function regressed by one decision fails; the exact exception passes
+but a similarly named function does not inherit it; a new PowerShell function
+with bad CC fails; a renamed historical file retains its exact baseline
+identity; and an unsupported Python file fails closed without being parsed as
+PowerShell.
 
 ## Refactoring and semantic review
 
