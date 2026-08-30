@@ -1,0 +1,32 @@
+name: Phase-1 Complexity Regression Gate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  complexity:
+    name: Check scoped cyclomatic-complexity budget
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Install isolated complexity analyzer
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-warn-script-location \
+            --target "$RUNNER_TEMP/libobs-lizard" 'lizard==1.24.0'
+
+      - name: Enforce complexity budget
+        shell: pwsh
+        env:
+          LIZARD_PATH: ${{ runner.temp }}/libobs-lizard
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & pwsh -NoProfile -File tools/check-complexity.ps1 -Mode Check -LizardPythonPath $env:LIZARD_PATH

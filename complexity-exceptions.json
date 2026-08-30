@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "file": "libobs/obs-source.c",
+    "function": "obs_source_destroy_defer",
+    "measuredCC": 13,
+    "reason": "Upstream source destruction pipeline; the operator-attributed change is only the accepted deferred_update_mutex destruction line. Further extraction would rewrite lifetime/resource/mutex teardown ordering and create metric-only risk.",
+    "dateTask": "2026-08-30 Phase-1 complexity hardening",
+    "reviewerNote": "Review item: preserve exact libobs teardown order; no metric-only rewrite."
+  }
+]

@@ -30,6 +30,8 @@
 !complexity-baseline.json
 !complexity-baseline.md
 !complexity-before.json
+!complexity-after.json
+!complexity-report.md
 !complexity-exceptions.json
 !complexity-ownership-inventory.json
 !complexity-ownership-inventory.md
