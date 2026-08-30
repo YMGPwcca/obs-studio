@@ -546,7 +546,18 @@ try {
     Write-MigrationDocument $caseQ @(New-MigrationRecord $oldMetricQ $newMetricQ)
     Assert-CheckerFailure (Invoke-ComplexityChecker $caseQ 'Check') 'CASE Q migration target conflicts with accepted baseline' 'accepted baseline'
 
-    Write-Output 'Complexity checker self-test: PASS (cases A-Q)'
+    $caseR = New-Fixture 'case-r-provenance-through-nonoperator-rename'
+    Prepare-FixtureBaseline $caseR
+    $operatorOwnedBad = New-IfChain 'operator_owned_bad' 'int' 11
+    Commit-FixtureFile $caseR 'src/operator_owned.cpp' $operatorOwnedBad 'fixture operator adds executable source'
+    Invoke-FixtureGit $caseR.Directory @('config', 'user.name', 'Fixture Upstream') | Out-Null
+    Invoke-FixtureGit $caseR.Directory @('config', 'user.email', 'fixture-upstream@example.invalid') | Out-Null
+    Commit-FixtureRename $caseR 'src/operator_owned.cpp' 'src/nonoperator_renamed.cpp' $operatorOwnedBad 'fixture nonoperator renames project source'
+    $caseRResult = Invoke-ComplexityChecker $caseR 'Check'
+    Assert-FunctionMeasured $caseRResult 'src/nonoperator_renamed.cpp' 'operator_owned_bad' 'CASE R operator provenance after nonoperator rename'
+    Assert-CheckerFailure $caseRResult 'CASE R renamed operator source remains measured' '(?s)operator_owned_bad'
+
+    Write-Output 'Complexity checker self-test: PASS (cases A-R)'
 } finally {
     if (Test-Path -LiteralPath $testRoot) {
         Remove-Item -LiteralPath $testRoot -Recurse -Force

@@ -361,6 +361,58 @@ function Get-OperatorCommitPathRecords {
     return @($records)
 }
 
+function Update-PostAcceptedPathProvenance {
+    param(
+        [Parameter(Mandatory = $true)] [hashtable] $OwnedPaths,
+        [Parameter(Mandatory = $true)] [hashtable] $LineagePaths,
+        [Parameter(Mandatory = $true)] [object] $Record,
+        [Parameter(Mandatory = $true)] [bool] $OperatorCommit
+    )
+
+    if ($OperatorCommit) {
+        $LineagePaths[[string] $Record.Path] = $true
+        if ($Record.OldPath) {
+            $LineagePaths[[string] $Record.OldPath] = $true
+        }
+    }
+    if ($Record.Status -eq 'D') {
+        $null = $OwnedPaths.Remove([string] $Record.Path)
+        return
+    }
+    if ($Record.Status -match '^R' -and $Record.OldPath) {
+        $sourceWasOwned = $OwnedPaths.ContainsKey([string] $Record.OldPath)
+        $null = $OwnedPaths.Remove([string] $Record.OldPath)
+        if ($OperatorCommit -or $sourceWasOwned) {
+            $OwnedPaths[[string] $Record.Path] = $true
+            $LineagePaths[[string] $Record.Path] = $true
+        }
+        return
+    }
+    if ($OperatorCommit) {
+        $OwnedPaths[[string] $Record.Path] = $true
+    }
+}
+
+function Get-PostAcceptedOperatorPathSets {
+    param(
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $Commits,
+        [Parameter(Mandatory = $true)] [scriptblock] $OperatorPredicate
+    )
+
+    $ownedPaths = New-ExactMap
+    $lineagePaths = New-ExactMap
+    foreach ($commit in $Commits) {
+        $operatorCommit = [bool] (& $OperatorPredicate $commit)
+        foreach ($record in (Get-CommitPathRecords ([string] $commit.Hash))) {
+            Update-PostAcceptedPathProvenance $ownedPaths $lineagePaths $record $operatorCommit
+        }
+    }
+    return [pscustomobject]@{
+        current  = $ownedPaths
+        lineage  = $lineagePaths
+    }
+}
+
 function Get-HistoricalPathAliases {
     param(
         [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [string[]] $HistoricalPaths,
@@ -1848,7 +1900,7 @@ function New-ReportObject {
             baseRef          = $Base
             acceptedRef      = $Accepted
             measurementHead  = $MeasurementHead
-            currentScopeRule = 'Historical operator-attributed functions plus current C/C++ and PowerShell files introduced by operator work after acceptedRef; changed functions in later operator-modified files are selected by exact baseline identity, current blame, or candidate diff lines. Unsupported executable languages fail closed.'
+            currentScopeRule = 'Historical operator-attributed functions plus current C/C++ and PowerShell files introduced by operator work after acceptedRef or descended through later file renames; changed functions in later operator-modified files are selected by exact baseline identity, current blame, or candidate diff lines. Unsupported executable languages fail closed.'
         }
         analyzer      = [ordered]@{
             cpp        = "lizard $LizardVersion (C/C++ parser, CSV output, default CCN)"
@@ -1916,14 +1968,9 @@ $postCommitRecords = @(Get-ChangedPathRecords "$acceptedResolved..$measurementHe
 $workingTreeRecords = @(Get-ChangedPathRecords $measurementHead)
 $untrackedRecords = @(Get-UntrackedPathRecords)
 $postRecords = @($postCommitRecords + $workingTreeRecords + $untrackedRecords)
-$futureOperatorRecords = @(Get-OperatorCommitPathRecords $futureHistory $operatorPredicate)
-$futureOperatorPathSet = New-ExactMap
-foreach ($record in $futureOperatorRecords) {
-    $futureOperatorPathSet[[string] $record.Path] = $true
-    if ($record.OldPath) {
-        $futureOperatorPathSet[[string] $record.OldPath] = $true
-    }
-}
+$futureOperatorPathSets = Get-PostAcceptedOperatorPathSets $futureHistory $operatorPredicate
+$futureOperatorPathSet = $futureOperatorPathSets.current
+$futureOperatorLineagePathSet = $futureOperatorPathSets.lineage
 $workingTreePathSet = New-ExactMap
 foreach ($record in $workingTreeRecords + $untrackedRecords) {
     $workingTreePathSet[[string] $record.Path] = $true
@@ -2087,8 +2134,8 @@ $operatorCodeCommitRecords = [System.Collections.Generic.List[object]]::new()
 foreach ($commit in $operatorAttributableCommits) {
     $commitRecords = @(Get-CommitPathRecords ([string] $commit.Hash))
     $hits = @($commitRecords | ForEach-Object {
-            if ($codePathSet.ContainsKey([string] $_.Path)) { $_.Path }
-            if ($_.OldPath -and $codePathSet.ContainsKey([string] $_.OldPath)) { $_.OldPath }
+            if ($codePathSet.ContainsKey([string] $_.Path) -or $futureOperatorLineagePathSet.ContainsKey([string] $_.Path)) { $_.Path }
+            if ($_.OldPath -and ($codePathSet.ContainsKey([string] $_.OldPath) -or $futureOperatorLineagePathSet.ContainsKey([string] $_.OldPath))) { $_.OldPath }
         } | Sort-Object -Unique)
     if ($hits.Count -gt 0) {
         $operatorCodeCommitRecords.Add([pscustomobject]@{
@@ -2179,7 +2226,7 @@ $inventory = [ordered]@{
     nonCyclomaticChangedFiles               = @($nonCyclomatic)
     scopeRules                              = @(
         'Historical C/C++ scope is the complete current function when accepted-HEAD blame attributes at least one line in the function to an operator commit.',
-        'After and Check add every current C/C++ or PowerShell file added by operator work after acceptedRef, and add changed functions in operator-modified files by current blame or candidate diff lines.',
+        'After and Check add every current C/C++ or PowerShell file added by operator work after acceptedRef, including descendants of later file renames, and add changed functions in operator-modified files by current blame or candidate diff lines.',
         'A renamed historical file retains exact path aliases for baseline comparison; a deleted-and-recreated path is measured as a new file identity.',
         'Only C/C++ and PowerShell are analyzable. Known unsupported or unknown executable paths introduced by project work fail closed instead of entering the wrong parser.',
         'CMake/control files and static declarations are recorded for review but are not function-level CC targets.',

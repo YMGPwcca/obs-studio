@@ -170,7 +170,8 @@ exception, unsupported Python, and file-rename regression protection.
 Additional O and P fixtures prove deleted-and-recreated files cannot use
 automatic same-name continuity, including a rename into a previously deleted
 destination; Q proves a migration cannot override an existing file-lineage
-baseline binding.
+baseline binding; R proves operator provenance follows a later non-operator
+file rename.
 
 ## Refactoring and semantic review
 
