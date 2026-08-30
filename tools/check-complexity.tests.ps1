@@ -94,8 +94,13 @@ function Assert-CheckerFailure {
     if ($Result.ExitCode -eq 0 -or $Result.Output -notmatch $Pattern) {
         throw "$Label did not fail as expected (exit $($Result.ExitCode), pattern '$Pattern').`n$($Result.Output)"
     }
-    $message = @($Result.Output -split "`r?`n" | Where-Object { $_ -match $Pattern } | Select-Object -First 1)
-    Write-Output "${Label}: expected FAIL (exit $($Result.ExitCode)): $($message -join ' ')"
+    $compactOutput = ($Result.Output -replace '\s+', ' ').Trim()
+    $match = [regex]::Match($compactOutput, $Pattern)
+    $detail = if ($match.Success) { $match.Value } else { $compactOutput }
+    if ($detail.Length -gt 320) {
+        $detail = $detail.Substring(0, 320) + '...'
+    }
+    Write-Output "${Label}: expected FAIL (exit $($Result.ExitCode)): $detail"
 }
 
 function Assert-FunctionMeasured {
@@ -294,7 +299,7 @@ try {
     if ($caseGResult.Output -match 'PowerShell parser') {
         throw 'CASE G incorrectly fed unsupported Python into the PowerShell parser.'
     }
-    Assert-CheckerFailure $caseGResult 'CASE G unsupported executable language fails closed' 'Unsupported or unclassified executable path.*new_helper.py'
+    Assert-CheckerFailure $caseGResult 'CASE G unsupported executable language fails closed' '(?s)Unsupported or unclassified executable path.*new_helper.py'
 
     Write-Output 'Complexity checker self-test: PASS (cases A-H)'
 } finally {
