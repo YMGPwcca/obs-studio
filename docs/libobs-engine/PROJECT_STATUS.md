@@ -1,15 +1,17 @@
 # LibOBS Engine Protocol v2 — Project Status
 
-**Status snapshot date:** 2026-08-31
+**Status snapshot date:** 2026-09-01
 **Production branch:** `engine-protocol-v2`  
 **Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168`
 **Accepted Task-10 documentation checkpoint:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
 **Accepted Task-11 implementation:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
 **Task-11 acceptance record:** `TASK11_ACCEPTANCE.md`
 **Candidate branch:** `phase1-complexity-hardening`
+**Script-body hardening branch:** `phase1-scriptbody-hardening`
 **Task-11 status:** COMPLETE / ACCEPTED
 **Tasks 1-11:** ACCEPTED
 **Phase-1 complexity hardening:** COMPLETE / ACCEPTED
+**Phase-1 script-body hardening:** IN REVIEW
 
 The current Phase-1 review checkpoint hardens the complexity gate's moving
 post-Task-11 scope, adds exact function-identity continuity migrations, and
@@ -22,6 +24,12 @@ The final complexity snapshot was measured at pre-freeze checkpoint
 `5eb1e665bfee7c868c088bf306e770e814159c54` and contains 875 scoped
 functions. The runtime implementation reference remains `44243a501`; this
 complexity evidence is finalized separately and accepted for Phase-1.
+
+The separate pre-Phase-2 script-body cleanup is in review on
+`phase1-scriptbody-hardening`. It enforces PowerShell top-level script-body
+budgets and refactors only verification tooling; it does not change runtime
+behavior, the accepted named-function baseline, or Task-12 authorization. See
+`PHASE1_SCRIPTBODY_HARDENING.md` for the provisional before/after evidence.
 
 This file is the current status ledger for the LibOBS split-engine project. If an older roadmap says Task 8 is active or Task 9 is only proposed, that older status is stale. Verify this ledger against Git/source/CI whenever resuming work.
 

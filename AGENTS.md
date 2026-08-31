@@ -40,6 +40,7 @@ The current accepted implementation baseline is:
 - Task-11 (`filter.*`) implementation: `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
 - Tasks 1 through 11: complete and accepted.
 - Phase-1 cyclomatic-complexity hardening: complete and accepted at reviewed checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`; see `docs/libobs-engine/PHASE1_COMPLEXITY_ACCEPTANCE.md`.
+- Pre-Phase-2 PowerShell script-body hardening: IN REVIEW on `phase1-scriptbody-hardening`; see `docs/libobs-engine/PHASE1_SCRIPTBODY_HARDENING.md`. This cleanup does not alter runtime code or authorize Task 12.
 - Task 12: planned and not authorized.
 
 The acceptance-doc commit necessarily advances branch HEAD beyond the accepted

@@ -45,6 +45,11 @@ human approval and final frozen-baseline evidence are recorded in
 `44243a5013007a449c1d0b9903233929bd44a141`; Task 12 remains planned and
 unauthorized.
 
+The additional pre-Phase-2 PowerShell script-body cleanup is **IN REVIEW** on
+`phase1-scriptbody-hardening`; its provisional evidence is in
+`PHASE1_SCRIPTBODY_HARDENING.md`. It does not modify runtime code or authorize
+Task 12.
+
 ## Why multiple documents?
 
 The project has several kinds of knowledge that should not be collapsed into one giant ambiguous note:

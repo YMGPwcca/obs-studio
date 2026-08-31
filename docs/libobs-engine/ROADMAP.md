@@ -168,6 +168,11 @@ checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`. The final frozen
 complexity baseline and explicit human approval are recorded in
 `PHASE1_COMPLEXITY_ACCEPTANCE.md`. This acceptance does not authorize Task 12.
 
+The separate pre-Phase-2 PowerShell script-body hardening cleanup is currently
+IN REVIEW on `phase1-scriptbody-hardening`; see
+`PHASE1_SCRIPTBODY_HARDENING.md`. It is tooling-only and does not change the
+accepted runtime or named-function result.
+
 ---
 
 # Phase C — Full composition and canvas/frontend-equivalent scene behavior

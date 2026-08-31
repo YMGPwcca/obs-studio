@@ -89,6 +89,7 @@ Current status to verify:
 - Task 9 all seven `interaction.*` methods complete; same-SHA regression matrix green; physical Windows acceptance complete.
 - Task 10 `media.*` is accepted at `6a590c2985a99d186c8eecd0241acdc824d32168`; `engine/MEDIA_V1.md` and the media settlement limits are authoritative.
 - Phase-1 cyclomatic-complexity hardening is COMPLETE / ACCEPTED at reviewed checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`; see `PHASE1_COMPLEXITY_ACCEPTANCE.md` for the frozen baseline and approval evidence.
+- The separate pre-Phase-2 PowerShell script-body hardening cleanup is IN REVIEW on `phase1-scriptbody-hardening`; see `PHASE1_SCRIPTBODY_HARDENING.md`. Do not treat it as accepted or modify runtime code while it is under review.
 - Task 12 remains planned and NOT AUTHORIZED.
 
 **Do not begin Task 12.** Wait for explicit human authorization before any later roadmap implementation.
