@@ -50,6 +50,11 @@ The additional pre-Phase-2 PowerShell script-body cleanup is **IN REVIEW** on
 `PHASE1_SCRIPTBODY_HARDENING.md`. It does not modify runtime code or authorize
 Task 12.
 
+The final pre-Phase-2 workflow executable-code cleanup is **IN REVIEW** on
+`phase1-workflow-exec-hardening`; its inventory and policy evidence are in
+`PHASE1_WORKFLOW_EXEC_HARDENING.md`. It does not modify runtime code or
+authorize Task 12.
+
 ## Why multiple documents?
 
 The project has several kinds of knowledge that should not be collapsed into one giant ambiguous note:

@@ -173,6 +173,11 @@ IN REVIEW on `phase1-scriptbody-hardening`; see
 `PHASE1_SCRIPTBODY_HARDENING.md`. It is tooling-only and does not change the
 accepted runtime or named-function result.
 
+The final pre-Phase-2 workflow executable-code hardening cleanup is IN REVIEW
+on `phase1-workflow-exec-hardening`; see
+`PHASE1_WORKFLOW_EXEC_HARDENING.md`. It extracts substantial workflow `run:`
+logic into measured scripts and does not authorize Task 12.
+
 ---
 
 # Phase C — Full composition and canvas/frontend-equivalent scene behavior

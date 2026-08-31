@@ -3,8 +3,9 @@
 **Handoff date:** 2026-08-31
 **Repository:** `YMGPwcca/obs-studio`  
 **Production branch:** `engine-protocol-v2`
-**Candidate branch:** `phase1-complexity-hardening`
+**Candidate branch:** `phase1-workflow-exec-hardening`
 **Current script-body hardening branch:** `phase1-scriptbody-hardening`
+**Current workflow executable hardening branch:** `phase1-workflow-exec-hardening`
 **Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168` (`fix(engine): correlate media actions by source ticket`)
 **Accepted Task-10 documentation checkpoint:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
 **Accepted Task-11 implementation:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
@@ -16,6 +17,12 @@
 **Task 11 implementation status:** COMPLETE / ACCEPTED
 **Phase-1 complexity hardening status:** COMPLETE / ACCEPTED
 **Phase-1 script-body hardening status:** IN REVIEW
+**Phase-1 workflow executable hardening status:** IN REVIEW
+
+The workflow executable hardening cleanup is tooling-only and remains in review
+on `phase1-workflow-exec-hardening`; see
+`PHASE1_WORKFLOW_EXEC_HARDENING.md`. It extracts substantial GitHub Actions
+`run:` logic and does not change runtime code or authorize Task 12.
 
 This file exists so a local AI coding agent can continue the project without access to the previous ChatGPT conversation. It records project decisions, accepted behavior, verification evidence, known traps, and the required working process. **Verify everything against the checked-out source before changing it.**
 
