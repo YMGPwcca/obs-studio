@@ -1434,7 +1434,7 @@ function Get-UnmigratedIdentityViolations {
 
 function New-MetricKeyMap {
     param(
-        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $Metrics,
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [AllowNull()] [object[]] $Metrics,
         [Parameter(Mandatory = $true)] [string] $Label
     )
 
@@ -2135,7 +2135,7 @@ function Add-ComparisonMetricSection {
     param(
         [Parameter(Mandatory = $true)] [object] $Lines,
         [Parameter(Mandatory = $true)] [string] $Heading,
-        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $Metrics,
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [AllowNull()] [object[]] $Metrics,
         [Parameter(Mandatory = $true)] [hashtable] $BeforeExact,
         [Parameter(Mandatory = $true)] [hashtable] $ScopeByPath
     )
