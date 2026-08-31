@@ -163,6 +163,11 @@ The accepted implementation is `e7b34828cb9fbd55bae01f97148f1ec93a4ae015` on
 Task 1–11 regression matrix, package audit, physical Windows gate, independent
 review, and explicit human approval are recorded in `TASK11_ACCEPTANCE.md`.
 
+Phase-1 cyclomatic-complexity hardening is COMPLETE / ACCEPTED at reviewed
+checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`. The final frozen
+complexity baseline and explicit human approval are recorded in
+`PHASE1_COMPLEXITY_ACCEPTANCE.md`. This acceptance does not authorize Task 12.
+
 ---
 
 # Phase C — Full composition and canvas/frontend-equivalent scene behavior
@@ -484,6 +489,6 @@ After each accepted task:
 4. add any newly discovered architectural invariant/known debt to `HANDOFF.md`/`ARCHITECTURE.md`;
 5. do not mark a later task active until operator explicitly authorizes it.
 
-The current transition point is **Task 11 accepted -> Task 12 planned/not
+The current transition point is **Phase-1 accepted -> Task 12 planned/not
 authorized**. The advisor WIP and older unauthorized implementation remain
 quarantined reference branches only.

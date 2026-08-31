@@ -1,6 +1,7 @@
 # Phase-1 Cyclomatic Complexity Hardening
 
-Status: **IN REVIEW**. This record is not an acceptance of the hardening work.
+Status: **COMPLETE / ACCEPTED**. See `PHASE1_COMPLEXITY_ACCEPTANCE.md` for the
+explicit human approval record.
 
 ## Candidate and scope
 
@@ -10,6 +11,8 @@ Status: **IN REVIEW**. This record is not an acceptance of the hardening work.
 - Hardening branch: `phase1-complexity-hardening`
 - Runtime implementation/checkpoint used for hosted verification:
   `44243a5013007a449c1d0b9903233929bd44a141`
+- Final reviewed Phase-1 hardening checkpoint:
+  `1b2ddacbb36c39bb61fd645594f0746f106956bf`
 - Final complexity pre-freeze measurement checkpoint:
   `5eb1e665bfee7c868c088bf306e770e814159c54`
 - Final after-snapshot commit:
@@ -267,6 +270,7 @@ Further consolidation should be a separate, invariant-focused cleanup. The
 remaining upstream teardown exception and high-risk settlement functions are
 review items, not hidden exclusions.
 
-Independent advisor review was requested but could not run because the Codex
-workspace was out of credits. This hardening branch therefore remains pending
-independent advisor review and explicit human approval.
+Independent advisor final verdict was `LUNA REVIEW: ship` with zero confirmed
+blockers. Explicit human approval for the exact reviewed checkpoint is
+recorded in `PHASE1_COMPLEXITY_ACCEPTANCE.md`; Phase-1 complexity hardening is
+complete and accepted. Task 12 remains not started and not authorized.

@@ -16,6 +16,7 @@ For Codex/Claude Code/Aider or a human engineer, read:
 8. `TASK10_MEDIA_PLAN.md`
 9. `LOCAL_AGENT_START_PROMPT.md`
 10. `TASK11_ACCEPTANCE.md`
+11. `PHASE1_COMPLEXITY_ACCEPTANCE.md`
 
 ## What is authoritative?
 
@@ -37,6 +38,13 @@ the concrete contract in `engine/MEDIA_V1.md`. Task 11 `filter.*` is accepted at
 `TASK11_ACCEPTANCE.md`. Task 12 is the next planned roadmap task but is not
 authorized.
 
+Phase-1 cyclomatic-complexity hardening is also **COMPLETE / ACCEPTED** at
+reviewed checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`. Its explicit
+human approval and final frozen-baseline evidence are recorded in
+`PHASE1_COMPLEXITY_ACCEPTANCE.md`. The runtime implementation remains
+`44243a5013007a449c1d0b9903233929bd44a141`; Task 12 remains planned and
+unauthorized.
+
 ## Why multiple documents?
 
 The project has several kinds of knowledge that should not be collapsed into one giant ambiguous note:
@@ -49,5 +57,6 @@ The project has several kinds of knowledge that should not be collapsed into one
 - `TASK10_MEDIA_PLAN.md`: Task-10 implementation/research and acceptance record.
 - `LOCAL_AGENT_START_PROMPT.md`: ready-to-paste initial instruction for a fresh local AI session.
 - `TASK11_ACCEPTANCE.md`: final Task-11 approval and evidence record.
+- `PHASE1_COMPLEXITY_ACCEPTANCE.md`: explicit Phase-1 approval and frozen complexity evidence.
 
 Update these after each accepted task so future agents do not have to reconstruct project intent from chat history.

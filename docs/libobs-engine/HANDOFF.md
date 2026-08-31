@@ -1,16 +1,19 @@
 # LibOBS Engine Protocol v2 — Local AI Agent Handoff
 
-**Handoff date:** 2026-08-30
+**Handoff date:** 2026-08-31
 **Repository:** `YMGPwcca/obs-studio`  
 **Production branch:** `engine-protocol-v2`
-**Candidate branch:** `task11-codex`
+**Candidate branch:** `phase1-complexity-hardening`
 **Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168` (`fix(engine): correlate media actions by source ticket`)
 **Accepted Task-10 documentation checkpoint:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
 **Accepted Task-11 implementation:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
 **Task-11 acceptance record:** `TASK11_ACCEPTANCE.md`
+**Accepted Phase-1 complexity hardening:** `1b2ddacbb36c39bb61fd645594f0746f106956bf`
+**Phase-1 acceptance record:** `PHASE1_COMPLEXITY_ACCEPTANCE.md`
 **Next roadmap task:** Task 12 — planned, not authorized
 **Task 10 implementation status:** COMPLETE / ACCEPTED
 **Task 11 implementation status:** COMPLETE / ACCEPTED
+**Phase-1 complexity hardening status:** COMPLETE / ACCEPTED
 
 This file exists so a local AI coding agent can continue the project without access to the previous ChatGPT conversation. It records project decisions, accepted behavior, verification evidence, known traps, and the required working process. **Verify everything against the checked-out source before changing it.**
 

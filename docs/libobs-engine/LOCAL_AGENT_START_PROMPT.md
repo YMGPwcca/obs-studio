@@ -24,6 +24,7 @@ Read, in order:
 12. `docs/libobs-engine/ROADMAP.md`
 13. `docs/libobs-engine/TASK10_MEDIA_PLAN.md`
 14. `docs/libobs-engine/TASK11_ACCEPTANCE.md`
+15. `docs/libobs-engine/PHASE1_COMPLEXITY_ACCEPTANCE.md`
 
 Then inspect Git and source. At minimum run/check:
 
@@ -87,6 +88,7 @@ Current status to verify:
 - Task 8 deterministic A–F source concurrency + physical Windows acceptance complete.
 - Task 9 all seven `interaction.*` methods complete; same-SHA regression matrix green; physical Windows acceptance complete.
 - Task 10 `media.*` is accepted at `6a590c2985a99d186c8eecd0241acdc824d32168`; `engine/MEDIA_V1.md` and the media settlement limits are authoritative.
+- Phase-1 cyclomatic-complexity hardening is COMPLETE / ACCEPTED at reviewed checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`; see `PHASE1_COMPLEXITY_ACCEPTANCE.md` for the frozen baseline and approval evidence.
 - Task 12 remains planned and NOT AUTHORIZED.
 
 **Do not begin Task 12.** Wait for explicit human authorization before any later roadmap implementation.

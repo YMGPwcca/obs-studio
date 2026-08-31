@@ -13,6 +13,7 @@ This repository contains upstream OBS Studio plus a project-specific, headless `
 7. `docs/libobs-engine/TASK10_MEDIA_PLAN.md` — accepted Task-10 design/research record.
 8. `docs/libobs-engine/TASK11_ACCEPTANCE.md` — exact Task-11 acceptance evidence.
 9. `docs/libobs-engine/TASK11_FILTER_PLAN.md` and `TASK11_IMPLEMENTATION_AUDIT.md` — accepted filter contract and source audit.
+10. `docs/libobs-engine/PHASE1_COMPLEXITY_ACCEPTANCE.md` — explicit Phase-1 approval and frozen complexity evidence.
 
 ## Source-of-truth precedence
 
@@ -38,6 +39,7 @@ The current accepted implementation baseline is:
 - Task-10 (`media.*`) implementation: `6a590c2985a99d186c8eecd0241acdc824d32168`
 - Task-11 (`filter.*`) implementation: `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
 - Tasks 1 through 11: complete and accepted.
+- Phase-1 cyclomatic-complexity hardening: complete and accepted at reviewed checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`; see `docs/libobs-engine/PHASE1_COMPLEXITY_ACCEPTANCE.md`.
 - Task 12: planned and not authorized.
 
 The acceptance-doc commit necessarily advances branch HEAD beyond the accepted

@@ -1,6 +1,6 @@
 # LibOBS Engine Protocol v2 — Project Status
 
-**Status snapshot date:** 2026-08-30
+**Status snapshot date:** 2026-08-31
 **Production branch:** `engine-protocol-v2`  
 **Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168`
 **Accepted Task-10 documentation checkpoint:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
@@ -9,18 +9,19 @@
 **Candidate branch:** `phase1-complexity-hardening`
 **Task-11 status:** COMPLETE / ACCEPTED
 **Tasks 1-11:** ACCEPTED
-**Phase-1 complexity hardening:** IN REVIEW
+**Phase-1 complexity hardening:** COMPLETE / ACCEPTED
 
 The current Phase-1 review checkpoint hardens the complexity gate's moving
 post-Task-11 scope, adds exact function-identity continuity migrations, and
 extends deterministic checker self-tests through A–U. It does not change
-production engine/libobs behavior, does not accept Phase 1, and does not start
-Task 12.
+production engine/libobs behavior and does not start Task 12. Phase-1 is
+accepted at reviewed checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`;
+see `PHASE1_COMPLEXITY_ACCEPTANCE.md` for the explicit approval record.
 
 The final complexity snapshot was measured at pre-freeze checkpoint
 `5eb1e665bfee7c868c088bf306e770e814159c54` and contains 875 scoped
 functions. The runtime implementation reference remains `44243a501`; this
-complexity evidence is finalized separately and remains IN REVIEW.
+complexity evidence is finalized separately and accepted for Phase-1.
 
 This file is the current status ledger for the LibOBS split-engine project. If an older roadmap says Task 8 is active or Task 9 is only proposed, that older status is stale. Verify this ledger against Git/source/CI whenever resuming work.
 
@@ -447,7 +448,7 @@ Record exact final SHA and acceptance evidence in this file after each completed
 
 The next project state transition is:
 
-`Task 11 accepted` -> `Task 12 planned/not authorized`.
+`Phase-1 complexity hardening accepted` -> `Task 12 planned/not authorized`.
 
 Task 12 has not started and is not authorized. The advisor WIP is preserved on
 `wip/task11-advisor-handoff-137b2e5` locally and remotely; the older unauthorized
