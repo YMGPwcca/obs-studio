@@ -107,7 +107,8 @@ function Assert-CheckerFailure {
     )
 
     $normalizedOutput = $Result.Output -replace '\x1B\[[0-?]*[ -/]*[@-~]', ''
-    if ($Result.ExitCode -eq 0 -or $normalizedOutput -notmatch $Pattern) {
+    $matchOutput = $normalizedOutput -replace '\s+', ' '
+    if ($Result.ExitCode -eq 0 -or $matchOutput -notmatch $Pattern) {
         throw "$Label did not fail as expected (exit $($Result.ExitCode), pattern '$Pattern').`n$normalizedOutput"
     }
     $compactOutput = ($normalizedOutput -replace '\s+', ' ').Trim()
