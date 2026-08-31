@@ -2394,14 +2394,14 @@ function Get-ComparisonLabel {
     param([Parameter(Mandatory = $true)] [string] $Name)
 
     $labels = @{
-        scopedFunctionCount = 'Scoped functions'
-        averageCC           = 'Average CC'
-        medianCC            = 'Median CC'
-        p90CC               = '90th percentile CC'
-        maximumCC           = 'Maximum CC'
-        countCCGreater5     = 'Functions with CC > 5'
-        countCCGreater7     = 'Functions with CC > 7'
-        countCCGreater10    = 'Functions with CC > 10'
+        scopedFunctionCount = 'Named functions'
+        averageCC           = 'Average named-function CC'
+        medianCC            = 'Median named-function CC'
+        p90CC               = '90th percentile named-function CC'
+        maximumCC           = 'Maximum named-function CC'
+        countCCGreater5     = 'Named functions with CC > 5'
+        countCCGreater7     = 'Named functions with CC > 7'
+        countCCGreater10    = 'Named functions with CC > 10'
     }
     return $labels[$Name]
 }
@@ -2571,7 +2571,7 @@ function New-ComparisonMarkdown {
     $null = $lines.Add("Accepted starting SHA: ``$($Before.scope.acceptedRef)``")
     $null = $lines.Add("Candidate measurement HEAD: ``$($After.scope.measurementHead)``")
     $null = $lines.Add('')
-    $null = $lines.Add('## Before/after summary')
+    $null = $lines.Add('## Named-function before/after summary')
     $null = $lines.Add('')
     $null = $lines.Add('| Measure | Before | After |')
     $null = $lines.Add('|---|---:|---:|')
