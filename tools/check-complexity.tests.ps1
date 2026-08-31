@@ -153,6 +153,41 @@ function Assert-FunctionMeasured {
     Write-Output "${Label}: measured $Path::$Function CC $($metric.cyclomaticComplexity)"
 }
 
+function Get-ReportScriptBodyMetric {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Directory,
+        [Parameter(Mandatory = $true)] [string] $ReportName,
+        [Parameter(Mandatory = $true)] [string] $Path
+    )
+
+    $reportPath = Join-Path $Directory $ReportName
+    if (-not (Test-Path -LiteralPath $reportPath)) {
+        throw "Report '$ReportName' was not produced in '$Directory'."
+    }
+    $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
+    return @($report.functions | Where-Object {
+            $_.scopeKind -eq 'script-body' -and $_.file -eq $Path
+        }) | Select-Object -First 1
+}
+
+function Assert-ScriptBodyMeasured {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Result,
+        [Parameter(Mandatory = $true)] [string] $Path,
+        [Parameter(Mandatory = $true)] [string] $Label
+    )
+
+    $reportPath = Join-Path ([string] $Result.ReportDirectory) 'complexity-check.json'
+    if (-not (Test-Path -LiteralPath $reportPath)) {
+        throw "${Label}: script-body report was not produced.`n$($Result.Output)"
+    }
+    $metric = Get-ReportScriptBodyMetric ([string] $Result.ReportDirectory) 'complexity-check.json' $Path
+    if ($null -eq $metric) {
+        throw "${Label}: script-body '$Path' was not measured.`n$($Result.Output)"
+    }
+    Write-Output "${Label}: measured $Path::<script-body> CC $($metric.cyclomaticComplexity)"
+}
+
 function New-IfChain {
     param(
         [Parameter(Mandatory = $true)] [string] $Name,
@@ -169,6 +204,18 @@ function New-IfChain {
     }
     $lines.Add('    return result;')
     $lines.Add('}')
+    return $lines -join "`n"
+}
+
+function New-PowerShellTopLevelIfChain {
+    param([Parameter(Mandatory = $true)] [int] $Count)
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $lines.Add('$value = 0')
+    for ($index = 0; $index -lt $Count; $index++) {
+        $lines.Add("if (`$value -eq $index) { `$value++ }")
+    }
+    $lines.Add('$value')
     return $lines -join "`n"
 }
 
@@ -603,7 +650,52 @@ try {
     Assert-FunctionMeasured $caseUPass 'src/accepted.cpp' 'post_hardening_function' 'CASE U frozen function at baseline'
     Assert-CheckerPass $caseUPass 'CASE U frozen CC 2 remains passing'
 
-    Write-Output 'Complexity checker self-test: PASS (cases A-U)'
+    $caseV = New-Fixture 'case-v-new-script-body-bad'
+    Prepare-FixtureBaseline $caseV
+    Commit-FixtureFile $caseV 'tools/new-script-body-bad.ps1' (New-PowerShellTopLevelIfChain 11) 'fixture add bad script body'
+    $caseVResult = Invoke-ComplexityChecker $caseV 'Check'
+    Assert-ScriptBodyMeasured $caseVResult 'tools/new-script-body-bad.ps1' 'CASE V new PowerShell script-body'
+    Assert-CheckerFailure $caseVResult 'CASE V new script-body CC > 10' '(?s)script-body'
+
+    $caseW = New-Fixture 'case-w-new-script-body-good'
+    Prepare-FixtureBaseline $caseW
+    Commit-FixtureFile $caseW 'tools/new-script-body-good.ps1' (New-PowerShellTopLevelIfChain 4) 'fixture add acceptable script body'
+    $caseWResult = Invoke-ComplexityChecker $caseW 'Check'
+    Assert-ScriptBodyMeasured $caseWResult 'tools/new-script-body-good.ps1' 'CASE W new PowerShell script-body'
+    Assert-CheckerPass $caseWResult 'CASE W new script-body CC <= 5'
+
+    $caseX = New-Fixture 'case-x-frozen-script-body' 'tools/frozen-script.ps1' (New-PowerShellTopLevelIfChain 1)
+    Prepare-FixtureBaseline $caseX
+    Commit-FixtureFile $caseX 'tools/frozen-script.ps1' (New-PowerShellTopLevelIfChain 2) 'fixture regress frozen script body'
+    $caseXRegressed = Invoke-ComplexityChecker $caseX 'Check'
+    Assert-ScriptBodyMeasured $caseXRegressed 'tools/frozen-script.ps1' 'CASE X frozen script-body regression'
+    Assert-CheckerFailure $caseXRegressed 'CASE X frozen script-body CC 2 to CC 3 regression' 'baseline 2'
+    Commit-FixtureFile $caseX 'tools/frozen-script.ps1' (New-PowerShellTopLevelIfChain 1) 'fixture restore frozen script body'
+    $caseXPass = Invoke-ComplexityChecker $caseX 'Check'
+    Assert-ScriptBodyMeasured $caseXPass 'tools/frozen-script.ps1' 'CASE X frozen script-body at baseline'
+    Assert-CheckerPass $caseXPass 'CASE X frozen script-body CC 2 remains passing'
+
+    $caseY = New-Fixture 'case-y-script-file-rename' 'tools/old-script.ps1' (New-PowerShellTopLevelIfChain 1)
+    Prepare-FixtureBaseline $caseY
+    Commit-FixtureRename $caseY 'tools/old-script.ps1' 'tools/new-script.ps1' (New-PowerShellTopLevelIfChain 2) 'fixture rename script body and regress'
+    $caseYRegressed = Invoke-ComplexityChecker $caseY 'Check'
+    Assert-ScriptBodyMeasured $caseYRegressed 'tools/new-script.ps1' 'CASE Y renamed script-body regression'
+    Assert-CheckerFailure $caseYRegressed 'CASE Y renamed script-body inherits baseline' 'baseline 2'
+    Commit-FixtureFile $caseY 'tools/new-script.ps1' (New-PowerShellTopLevelIfChain 1) 'fixture restore renamed script body'
+    $caseYPass = Invoke-ComplexityChecker $caseY 'Check'
+    Assert-ScriptBodyMeasured $caseYPass 'tools/new-script.ps1' 'CASE Y renamed script-body at baseline'
+    Assert-CheckerPass $caseYPass 'CASE Y renamed script-body CC 2 remains passing'
+
+    $caseZ = New-Fixture 'case-z-recreated-script-body' 'tools/recreated-script.ps1' (New-PowerShellTopLevelIfChain 1)
+    Prepare-FixtureBaseline $caseZ
+    Invoke-FixtureGit $caseZ.Directory @('rm', '--', 'tools/recreated-script.ps1') | Out-Null
+    Invoke-FixtureGit $caseZ.Directory @('commit', '-m', 'fixture delete script body') | Out-Null
+    Commit-FixtureFile $caseZ 'tools/recreated-script.ps1' (New-PowerShellTopLevelIfChain 4) 'fixture recreate script body'
+    $caseZResult = Invoke-ComplexityChecker $caseZ 'Check'
+    Assert-ScriptBodyMeasured $caseZResult 'tools/recreated-script.ps1' 'CASE Z recreated script-body'
+    Assert-CheckerFailure $caseZResult 'CASE Z recreated script-body requires continuity' 'script-body'
+
+    Write-Output 'Complexity checker self-test: PASS (cases A-Z)'
 } finally {
     if (Test-Path -LiteralPath $testRoot) {
         Remove-Item -LiteralPath $testRoot -Recurse -Force

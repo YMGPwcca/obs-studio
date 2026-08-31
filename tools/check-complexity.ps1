@@ -771,7 +771,7 @@ function Get-AstCyclomaticComplexity {
 }
 
 function Get-FunctionRanges {
-    param([Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $Functions)
+    param([Parameter(Mandatory = $true)] [AllowEmptyCollection()] [AllowNull()] [object[]] $Functions)
 
     return @($Functions | ForEach-Object {
             [pscustomobject]@{
@@ -781,6 +781,15 @@ function Get-FunctionRanges {
                 EndLine     = $_.Extent.EndLineNumber
             }
         })
+}
+
+function ConvertTo-FunctionRangeArray {
+    param([Parameter(Mandatory = $true)] [AllowEmptyCollection()] [AllowNull()] [object[]] $FunctionRanges)
+
+    if ($null -eq $FunctionRanges) {
+        return [object[]]::new(0)
+    }
+    return [object[]] $FunctionRanges
 }
 
 function Get-RelatedBaselineMetrics {
@@ -867,7 +876,7 @@ function Get-ExactException {
         [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [AllowNull()] [object[]] $Allowlist
     )
 
-    $matches = @($Allowlist | Where-Object { Test-ExceptionIdentity $_ $Metric })
+    $matches = @($Allowlist | Where-Object { $null -ne $_ } | Where-Object { Test-ExceptionIdentity $_ $Metric })
     if (@($matches).Count -gt 1) {
         throw "Multiple complexity exceptions match $($Metric.file):$($Metric.startLine) $($Metric.function)."
     }
@@ -1329,6 +1338,30 @@ function New-AutomaticIdentityMaps {
     }
 }
 
+function Get-EnforcedScopeMetrics {
+    param([Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $Metrics)
+
+    return @($Metrics | Where-Object { $_.scopeKind -ceq 'function' -or $_.scopeKind -ceq 'script-body' })
+}
+
+function Get-EnforcedBaselineMetrics {
+    param([Parameter(Mandatory = $true)] [hashtable] $BaselineByKey)
+
+    return @($BaselineByKey.Values | Where-Object { $_.scopeKind -eq 'function' -or $_.scopeKind -eq 'script-body' })
+}
+
+function Test-BaselineMetricIdentity {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Metric,
+        [Parameter(Mandatory = $true)] [object] $BaselineMetric
+    )
+
+    return $Metric.scopeKind -ceq $BaselineMetric.scopeKind -and
+        $Metric.language -ceq $BaselineMetric.language -and
+        $Metric.function -ceq $BaselineMetric.function -and
+        $Metric.signature -ceq $BaselineMetric.signature
+}
+
 function Test-BaselineIdentityPresent {
     param(
         [Parameter(Mandatory = $true)] [object] $BaselineMetric,
@@ -1336,9 +1369,8 @@ function Test-BaselineIdentityPresent {
         [Parameter(Mandatory = $true)] [hashtable] $ScopeByPath
     )
 
-    foreach ($metric in @($CurrentMetrics | Where-Object { $_.scopeKind -eq 'function' })) {
-        if ($metric.language -cne $BaselineMetric.language -or $metric.function -cne $BaselineMetric.function -or
-            $metric.signature -cne $BaselineMetric.signature) {
+    foreach ($metric in (Get-EnforcedScopeMetrics $CurrentMetrics)) {
+        if (-not (Test-BaselineMetricIdentity $metric $BaselineMetric)) {
             continue
         }
         $scope = $ScopeByPath[[string] $metric.file]
@@ -1353,6 +1385,15 @@ function Test-BaselineIdentityPresent {
     return $false
 }
 
+function Get-IdentityDisappearanceMessage {
+    param([Parameter(Mandatory = $true)] [object] $BaselineMetric)
+
+    if ($BaselineMetric.scopeKind -ceq 'script-body') {
+        return "Accepted script-body identity disappeared without a reviewed migration: $($BaselineMetric.key). A replacement/new script body is present; add an exact identity migration."
+    }
+    return "Accepted function identity disappeared without a reviewed migration: $($BaselineMetric.key). A replacement/new function is present; add an exact identity migration."
+}
+
 function Get-UnmigratedIdentityViolations {
     param(
         [Parameter(Mandatory = $true)] [object[]] $CurrentMetrics,
@@ -1362,7 +1403,7 @@ function Get-UnmigratedIdentityViolations {
     )
 
     $missing = [System.Collections.Generic.List[object]]::new()
-    foreach ($baseline in @($BaselineByKey.Values | Where-Object { $_.scopeKind -eq 'function' })) {
+    foreach ($baseline in (Get-EnforcedBaselineMetrics $BaselineByKey)) {
         if ($Continuity.byBaselineKey.ContainsKey([string] $baseline.key)) {
             continue
         }
@@ -1374,7 +1415,7 @@ function Get-UnmigratedIdentityViolations {
         return @()
     }
     $newFunctions = [System.Collections.Generic.List[object]]::new()
-    foreach ($metric in @($CurrentMetrics | Where-Object { $_.scopeKind -eq 'function' })) {
+    foreach ($metric in (Get-EnforcedScopeMetrics $CurrentMetrics)) {
         $scope = $ScopeByPath[[string] $metric.file]
         $baseline = Find-BeforeMetric $metric $BaselineByKey $scope $Continuity.byCurrentKey
         if ($null -eq $baseline) {
@@ -1386,14 +1427,14 @@ function Get-UnmigratedIdentityViolations {
     }
     $violations = [System.Collections.Generic.List[string]]::new()
     foreach ($baseline in $missing) {
-        $violations.Add("Accepted function identity disappeared without a reviewed migration: $($baseline.key). A replacement/new function is present; add an exact identity migration.")
+        $violations.Add((Get-IdentityDisappearanceMessage $baseline))
     }
     return @($violations)
 }
 
 function New-MetricKeyMap {
     param(
-        [Parameter(Mandatory = $true)] [object[]] $Metrics,
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $Metrics,
         [Parameter(Mandatory = $true)] [string] $Label
     )
 
@@ -1411,7 +1452,7 @@ function New-MetricKeyMap {
 function Assert-UniqueFunctionIdentities {
     param([Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $Metrics)
 
-    $null = New-MetricKeyMap @($Metrics | Where-Object { $_.scopeKind -eq 'function' }) 'measured'
+    $null = New-MetricKeyMap (Get-EnforcedScopeMetrics $Metrics) 'measured'
 }
 
 function Test-MetricInScope {
@@ -1490,7 +1531,7 @@ function New-PowerShellScriptBodyMetric {
         [Parameter(Mandatory = $true)] $Ast,
         [Parameter(Mandatory = $true)] [string] $Path,
         [Parameter(Mandatory = $true)] [AllowEmptyString()] [string[]] $SourceLines,
-        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $FunctionRanges,
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [AllowNull()] [object[]] $FunctionRanges,
         [Parameter(Mandatory = $true)] [AllowNull()] [object] $OperatorLines,
         [Parameter(Mandatory = $true)] [string] $Mode,
         [Parameter(Mandatory = $true)] [hashtable] $Types
@@ -1499,9 +1540,10 @@ function New-PowerShellScriptBodyMetric {
     if ($null -eq $OperatorLines) {
         $OperatorLines = [System.Collections.Generic.HashSet[int]]::new()
     }
+    $functionRangeArray = ConvertTo-FunctionRangeArray -FunctionRanges $FunctionRanges
     $outside = [System.Collections.Generic.HashSet[int]]::new()
     foreach ($lineNumber in $OperatorLines) {
-        $inside = @($FunctionRanges | Where-Object {
+        $inside = @($functionRangeArray | Where-Object {
                 $lineNumber -ge $_.StartLine -and $lineNumber -le $_.EndLine
             }).Count -gt 0
         if (-not $inside) {
@@ -1520,8 +1562,8 @@ function New-PowerShellScriptBodyMetric {
         signature             = '<script-body>'
         startLine             = 1
         endLine               = $SourceLines.Count
-        nloc                  = Get-NonBlankLineCount $SourceLines 1 $SourceLines.Count $FunctionRanges
-        cyclomaticComplexity  = Get-AstCyclomaticComplexity $Ast $FunctionRanges $Types
+        nloc                  = Get-NonBlankLineCount $SourceLines 1 $SourceLines.Count $functionRangeArray
+        cyclomaticComplexity  = Get-AstCyclomaticComplexity $Ast $functionRangeArray $Types
         parameterCount        = 0
         analyzer              = 'PowerShell Language.Parser AST'
         nlocMethod            = 'nonblank non-comment source lines outside function definitions'
@@ -1563,8 +1605,9 @@ function Get-PowerShellFileMetrics {
         }
     }
     $operatorLines = if ($Mode -eq 'Baseline') { $Scope.AcceptedOperatorLines } else { $Scope.CurrentOperatorLines }
-    $body = New-PowerShellScriptBodyMetric $ast $Path $sourceLines $ranges $operatorLines $Mode $Types
+    $body = New-PowerShellScriptBodyMetric -Ast $ast -Path $Path -SourceLines $sourceLines -FunctionRanges $ranges -OperatorLines $operatorLines -Mode $Mode -Types $Types
     if ($null -ne $body) {
+        $AllMetrics.Add($body)
         $metrics.Add($body)
     }
     return @($metrics)
@@ -1637,10 +1680,25 @@ function Get-ScopedCppMetrics {
     return @($metrics)
 }
 
-function Get-Statistics {
-    param([Parameter(Mandatory = $true)] [object[]] $Metrics)
+function Get-StatisticsMetrics {
+    param(
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $Metrics,
+        [Parameter(Mandatory = $true)] [ValidateSet('function', 'script-body', 'enforced')] [string] $ScopeKind
+    )
 
-    $values = @($Metrics | Where-Object { $_.scopeKind -eq 'function' } |
+    if ($ScopeKind -eq 'enforced') {
+        return Get-EnforcedScopeMetrics $Metrics
+    }
+    return @($Metrics | Where-Object { $_.scopeKind -ceq $ScopeKind })
+}
+
+function Get-Statistics {
+    param(
+        [Parameter(Mandatory = $true)] [object[]] $Metrics,
+        [ValidateSet('function', 'script-body', 'enforced')] [string] $ScopeKind = 'function'
+    )
+
+    $values = @(Get-StatisticsMetrics $Metrics $ScopeKind |
         ForEach-Object { [int] $_.cyclomaticComplexity } | Sort-Object)
     if (@($values).Count -eq 0) {
         return [ordered]@{
@@ -1674,14 +1732,47 @@ function Get-Statistics {
     }
 }
 
-function Get-SortedFunctions {
-    param([Parameter(Mandatory = $true)] [object[]] $Metrics)
+function Get-SortedScopeMetrics {
+    param(
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $Metrics,
+        [Parameter(Mandatory = $true)] [ValidateSet('function', 'script-body', 'enforced')] [string] $ScopeKind
+    )
 
-    return @($Metrics | Where-Object { $_.scopeKind -eq 'function' } |
+    return @(Get-StatisticsMetrics $Metrics $ScopeKind |
         Sort-Object @{ Expression = { [int] $_.cyclomaticComplexity }; Descending = $true },
         @{ Expression = { [int] $_.nloc }; Descending = $true },
         @{ Expression = { [string] $_.file }; Descending = $false },
         @{ Expression = { [int] $_.startLine }; Descending = $false })
+}
+
+function Get-SortedFunctions {
+    param([Parameter(Mandatory = $true)] [object[]] $Metrics)
+
+    return Get-SortedScopeMetrics $Metrics 'function'
+}
+
+function Get-SortedScriptBodies {
+    param([Parameter(Mandatory = $true)] [object[]] $Metrics)
+
+    return Get-SortedScopeMetrics $Metrics 'script-body'
+}
+
+function Get-ReportStatistics {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Report,
+        [Parameter(Mandatory = $true)] [ValidateSet('function', 'script-body', 'enforced')] [string] $ScopeKind
+    )
+
+    $scopeSummary = $Report.PSObject.Properties['scopeSummary']
+    $propertyName = switch ($ScopeKind) {
+        'function' { 'namedFunctions' }
+        'script-body' { 'scriptBodies' }
+        'enforced' { 'enforcedScopes' }
+    }
+    if ($null -ne $scopeSummary -and $null -ne $scopeSummary.Value.PSObject.Properties[$propertyName]) {
+        return $scopeSummary.Value.PSObject.Properties[$propertyName].Value
+    }
+    return Get-Statistics @($Report.functions) $ScopeKind
 }
 
 function Format-StatTable {
@@ -1701,9 +1792,29 @@ function Format-StatTable {
     ) -join "`n"
 }
 
+function Format-ScopeStatTable {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Statistics,
+        [Parameter(Mandatory = $true)] [string] $Label
+    )
+
+    return @(
+        '| Measure | Value |',
+        '|---|---:|',
+        "| $Label | $($Statistics.scopedFunctionCount) |",
+        "| Average $Label CC | $($Statistics.averageCC) |",
+        "| Median $Label CC | $($Statistics.medianCC) |",
+        "| 90th percentile $Label CC (nearest rank) | $($Statistics.p90CC) |",
+        "| Maximum $Label CC | $($Statistics.maximumCC) |",
+        "| $Label with CC > 5 | $($Statistics.countCCGreater5) |",
+        "| $Label with CC > 7 | $($Statistics.countCCGreater7) |",
+        "| $Label with CC > 10 | $($Statistics.countCCGreater10) |"
+    ) -join "`n"
+}
+
 function Format-FunctionList {
     param(
-        [Parameter(Mandatory = $true)] [object[]] $Functions,
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $Functions,
         [Parameter(Mandatory = $true)] [int] $Threshold
     )
 
@@ -1716,6 +1827,45 @@ function Format-FunctionList {
         $lines.Add("- ``$($function.function)`` — ``$($function.file):$($function.startLine)-$($function.endLine)``, CC $($function.cyclomaticComplexity), NLOC $($function.nloc), params $($function.parameterCount)")
     }
     return $lines -join "`n"
+}
+
+function Add-ScopeMarkdown {
+    param(
+        [Parameter(Mandatory = $true)] [System.Collections.Generic.List[string]] $Lines,
+        [Parameter(Mandatory = $true)] [object] $Report,
+        [Parameter(Mandatory = $true)] [ValidateSet('script-body', 'enforced')] [string] $ScopeKind,
+        [Parameter(Mandatory = $true)] [string] $Heading,
+        [Parameter(Mandatory = $true)] [string] $Label
+    )
+
+    $metrics = @(Get-SortedScopeMetrics $Report.functions $ScopeKind)
+    $top = @($metrics | Select-Object -First 25)
+    $Lines.Add("## $Heading")
+    $Lines.Add('')
+    $Lines.Add((Format-ScopeStatTable (Get-ReportStatistics $Report $ScopeKind) $Label))
+    $Lines.Add('')
+    $Lines.Add("### $Label with CC > 5")
+    $Lines.Add('')
+    $Lines.Add((Format-FunctionList $metrics 5))
+    $Lines.Add('')
+    $Lines.Add("### $Label with CC > 7")
+    $Lines.Add('')
+    $Lines.Add((Format-FunctionList $metrics 7))
+    $Lines.Add('')
+    $Lines.Add("### $Label with CC > 10")
+    $Lines.Add('')
+    $Lines.Add((Format-FunctionList $metrics 10))
+    $Lines.Add('')
+    $Lines.Add("### Top 25 $($Label.ToLowerInvariant())")
+    $Lines.Add('')
+    $Lines.Add('| Rank | File | Lines | NLOC | CC |')
+    $Lines.Add('|---:|---|---:|---:|---:|')
+    $rank = 1
+    foreach ($metric in $top) {
+        $Lines.Add("| $rank | ``$($metric.file)`` | $($metric.startLine)-$($metric.endLine) | $($metric.nloc) | $($metric.cyclomaticComplexity) |")
+        $rank++
+    }
+    $Lines.Add('')
 }
 
 function New-BaselineMarkdown {
@@ -1774,17 +1924,11 @@ function New-BaselineMarkdown {
         $rank++
     }
     $lines.Add('')
-    $scriptBodies = @($Report.functions | Where-Object { $_.scopeKind -eq 'script-body' })
-    if (@($scriptBodies).Count -gt 0) {
-        $lines.Add('## PowerShell top-level script bodies (reported separately)')
-        $lines.Add('')
-        $lines.Add('| File | NLOC | CC |')
-        $lines.Add('|---|---:|---:|')
-        foreach ($body in $scriptBodies) {
-            $lines.Add("| ``$($body.file)`` | $($body.nloc) | $($body.cyclomaticComplexity) |")
-        }
-        $lines.Add('')
-    }
+    Add-ScopeMarkdown (,$lines) $Report 'script-body' 'PowerShell script-body complexity' 'Script bodies'
+    $lines.Add('## Combined enforced executable-scope summary')
+    $lines.Add('')
+    $lines.Add((Format-ScopeStatTable (Get-ReportStatistics $Report 'enforced') 'Enforced scopes'))
+    $lines.Add('')
     if (@($Report.limitations).Count -gt 0) {
         $lines.Add('## Measurement limitations')
         $lines.Add('')
@@ -1956,6 +2100,57 @@ function Add-ComparisonLimitations {
     $Lines.Add('')
 }
 
+function Add-ComparisonScopeSummary {
+    param(
+        [Parameter(Mandatory = $true)] [System.Collections.Generic.List[string]] $Lines,
+        [Parameter(Mandatory = $true)] [object] $Before,
+        [Parameter(Mandatory = $true)] [object] $After,
+        [Parameter(Mandatory = $true)] [ValidateSet('script-body', 'enforced')] [string] $ScopeKind,
+        [Parameter(Mandatory = $true)] [string] $Label
+    )
+
+    $beforeStats = Get-ReportStatistics $Before $ScopeKind
+    $afterStats = Get-ReportStatistics $After $ScopeKind
+    $labels = [ordered]@{
+        scopedFunctionCount = $Label
+        averageCC = "Average $Label CC"
+        medianCC = "Median $Label CC"
+        p90CC = "90th percentile $Label CC"
+        maximumCC = "Maximum $Label CC"
+        countCCGreater5 = "$Label with CC > 5"
+        countCCGreater7 = "$Label with CC > 7"
+        countCCGreater10 = "$Label with CC > 10"
+    }
+    $Lines.Add("## $Label before/after summary")
+    $Lines.Add('')
+    $Lines.Add('| Measure | Before | After |')
+    $Lines.Add('|---|---:|---:|')
+    foreach ($name in $labels.Keys) {
+        $Lines.Add("| $($labels[$name]) | $($beforeStats.$name) | $($afterStats.$name) |")
+    }
+    $Lines.Add('')
+}
+
+function Add-ComparisonMetricSection {
+    param(
+        [Parameter(Mandatory = $true)] [System.Collections.Generic.List[string]] $Lines,
+        [Parameter(Mandatory = $true)] [string] $Heading,
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $Metrics,
+        [Parameter(Mandatory = $true)] [hashtable] $BeforeExact,
+        [Parameter(Mandatory = $true)] [hashtable] $ScopeByPath
+    )
+
+    $Lines.Add("## $Heading")
+    $Lines.Add('')
+    $Lines.Add('| Function | File | Before CC | After CC | Before NLOC | After NLOC | Notes |')
+    $Lines.Add('|---|---|---:|---:|---:|---:|---|')
+    foreach ($afterMetric in $Metrics) {
+        $beforeMetric = Find-BeforeMetric $afterMetric $BeforeExact $ScopeByPath[$afterMetric.file]
+        $Lines.Add((Get-ComparisonMetricLine $afterMetric $beforeMetric))
+    }
+    $Lines.Add('')
+}
+
 function New-ComparisonMarkdown {
     param(
         [Parameter(Mandatory = $true)] [object] $Before,
@@ -1982,15 +2177,10 @@ function New-ComparisonMarkdown {
     $lines.Add('')
     $lines.Add('The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell top-level script bodies.')
     $lines.Add('')
-    $lines.Add('## Function-by-function comparison')
-    $lines.Add('')
-    $lines.Add('| Function | File | Before CC | After CC | Before NLOC | After NLOC | Notes |')
-    $lines.Add('|---|---|---:|---:|---:|---:|---|')
-    foreach ($afterMetric in $afterFunctions) {
-        $beforeMetric = Find-BeforeMetric $afterMetric $beforeExact $ScopeByPath[$afterMetric.file]
-        $lines.Add((Get-ComparisonMetricLine $afterMetric $beforeMetric))
-    }
-    $lines.Add('')
+    Add-ComparisonScopeSummary (,$lines) $Before $After 'script-body' 'Script bodies'
+    Add-ComparisonScopeSummary (,$lines) $Before $After 'enforced' 'Enforced scopes'
+    Add-ComparisonMetricSection (,$lines) 'Named function-by-function comparison' $afterFunctions $beforeExact $ScopeByPath
+    Add-ComparisonMetricSection (,$lines) 'PowerShell script-body comparison' @(Get-SortedScriptBodies $After.functions) $beforeExact $ScopeByPath
     $lines.Add('## Top remaining functions')
     $lines.Add('')
     $lines.Add((Format-FunctionList $afterFunctions 5))
@@ -2038,356 +2228,790 @@ function New-ReportObject {
             nloc       = 'lizard NLOC for C/C++; nonblank non-comment line count for PowerShell'
             p90        = 'nearest-rank ceil(0.90 * N)'
         }
-        summary       = Get-Statistics $Metrics
+        summary       = Get-Statistics $Metrics 'function'
+        scopeSummary  = [ordered]@{
+            namedFunctions = Get-Statistics $Metrics 'function'
+            scriptBodies   = Get-Statistics $Metrics 'script-body'
+            enforcedScopes = Get-Statistics $Metrics 'enforced'
+        }
         functions    = @($Metrics | Sort-Object @{ Expression = { [string] $_.file } }, @{ Expression = { [int] $_.startLine } }, @{ Expression = { [string] $_.function } })
         limitations  = @($limitations)
         lineage      = [ordered]@{ operatorAuthoredCommitCount = $LineageCommitCount }
     }
 }
 
-$acceptedResolved = Resolve-Commit $AcceptedRef
-if (-not $BaseRef) {
-    $BaseRef = (@(Invoke-GitLines @('merge-base', 'origin/master', $acceptedResolved)) | Select-Object -First 1).Trim()
-}
-$baseResolved = Resolve-Commit $BaseRef
-$range = "$baseResolved..$acceptedResolved"
-$measurementHead = (@(Invoke-GitLines @('rev-parse', 'HEAD')) | Select-Object -First 1).Trim()
+function Read-OptionalReport {
+    param([Parameter(Mandatory = $true)] [string] $Path)
 
-$history = @(Get-CommitRecords $range)
-$futureHistory = @(Get-CommitRecords "$acceptedResolved..$measurementHead")
-$identityHistory = @($history + $futureHistory)
-$discoveredAliases = @($identityHistory | Where-Object {
-        ([string] $_.Email) -match '(?i)ymgpwcca' -or [string] $_.Name -ceq $knownOperatorName
-    } | Select-Object Name, Email -Unique)
-$operatorEmails = @($knownOperatorEmails + @($discoveredAliases | ForEach-Object { $_.Email })) |
-    ForEach-Object { ([string] $_).ToLowerInvariant() } | Sort-Object -Unique
-$operatorEmailSet = New-ExactMap
-foreach ($email in $operatorEmails) {
-    $operatorEmailSet[$email] = $true
-}
-$operatorNames = @($knownOperatorName + @($discoveredAliases | ForEach-Object { $_.Name })) | Sort-Object -Unique
-$operatorNameSet = New-ExactMap
-foreach ($name in $operatorNames) {
-    $operatorNameSet[$name] = $true
-}
-$operatorPredicate = Get-OperatorPredicate $operatorEmailSet $operatorNameSet
-$operatorCommits = @($history | Where-Object { & $operatorPredicate $_ })
-if ($operatorCommits.Count -eq 0) {
-    throw 'No operator-authored commits were found in the accepted production lineage.'
-}
-$futureOperatorCommits = @($futureHistory | Where-Object { & $operatorPredicate $_ })
-$historicalOperatorRecords = @(Get-OperatorCommitPathRecords $history $operatorPredicate)
-$historicalOperatorPathSet = New-ExactMap
-foreach ($record in $historicalOperatorRecords) {
-    $historicalOperatorPathSet[[string] $record.Path] = $true
-    if ($record.OldPath) {
-        $historicalOperatorPathSet[[string] $record.OldPath] = $true
+    if (-not (Test-Path -LiteralPath (Get-RepoFilePath $Path))) {
+        return $null
+    }
+    try {
+        return Read-JsonFile $Path
+    } catch {
+        return $null
     }
 }
 
-$historicalRecords = @(Get-ChangedPathRecords $range)
-$historicalPathSet = New-ExactMap
-foreach ($record in $historicalRecords) {
-    if (Test-PathAtRef $acceptedResolved $record.Path) {
-        $historicalPathSet[[string] $record.Path] = $true
+function Read-CheckBaselineReport {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Mode,
+        [Parameter(Mandatory = $true)] [string] $Path,
+        [Parameter(Mandatory = $true)] [string] $BaseRef,
+        [Parameter(Mandatory = $true)] [string] $AcceptedRef
+    )
+
+    if ($Mode -ne 'Check' -or -not (Test-Path -LiteralPath (Get-RepoFilePath $Path))) {
+        return $null
+    }
+    return Read-TrustedAcceptedBaseline $Path $BaseRef $AcceptedRef
+}
+
+function Read-IdentityEntriesForMode {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Mode,
+        [Parameter(Mandatory = $true)] [string] $Path
+    )
+
+    if ($Mode -eq 'Check' -and (Test-Path -LiteralPath (Get-RepoFilePath $Path))) {
+        return Read-IdentityMigrationEntries $Path
+    }
+    return @()
+}
+
+function New-InclusionBaselineMap {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Mode,
+        [object] $AcceptedReport,
+        [object] $BeforeReport
+    )
+
+    if ($Mode -eq 'Check' -and $null -ne $AcceptedReport) {
+        $map = New-MetricKeyMap @($AcceptedReport.functions) 'accepted complexity baseline'
+        if ($null -ne $BeforeReport) {
+            foreach ($metric in $BeforeReport.functions) {
+                if (-not $map.ContainsKey([string] $metric.key)) {
+                    $map[[string] $metric.key] = $metric
+                }
+            }
+        }
+        return $map
+    }
+    if ($null -ne $BeforeReport) {
+        return New-MetricKeyMap @($BeforeReport.functions) 'scope baseline'
+    }
+    return New-ExactMap
+}
+
+function New-BaselineContext {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Mode,
+        [Parameter(Mandatory = $true)] [string] $BeforePath,
+        [Parameter(Mandatory = $true)] [string] $BaselinePath,
+        [Parameter(Mandatory = $true)] [string] $IdentityMigrationsPath,
+        [Parameter(Mandatory = $true)] [string] $BaseRef,
+        [Parameter(Mandatory = $true)] [string] $AcceptedRef
+    )
+
+    $beforeReport = Read-OptionalReport $BeforePath
+    $acceptedReport = Read-CheckBaselineReport $Mode $BaselinePath $BaseRef $AcceptedRef
+    $acceptedByKey = if ($null -ne $acceptedReport) {
+        New-MetricKeyMap @($acceptedReport.functions) 'accepted complexity baseline'
+    } else {
+        New-ExactMap
+    }
+    $identityEntries = Read-IdentityEntriesForMode $Mode $IdentityMigrationsPath
+    $explicitMaps = if ($Mode -eq 'Check') {
+        New-IdentityMigrationMaps $identityEntries $acceptedByKey
+    } else {
+        New-EmptyIdentityMaps
+    }
+    return [pscustomobject]@{
+        BeforeReport       = $beforeReport
+        AcceptedReport     = $acceptedReport
+        AcceptedByKey      = $acceptedByKey
+        ExplicitIdentity   = $explicitMaps
+        InclusionByKey     = New-InclusionBaselineMap $Mode $acceptedReport $beforeReport
     }
 }
-$historicalPaths = @($historicalPathSet.Keys | Sort-Object)
 
-$postCommitRecords = @(Get-ChangedPathRecords "$acceptedResolved..$measurementHead")
-$workingTreeRecords = @(Get-ChangedPathRecords $measurementHead)
-$untrackedRecords = @(Get-UntrackedPathRecords)
-$postRecords = @($postCommitRecords + $workingTreeRecords + $untrackedRecords)
-$futureOperatorPathSets = Get-PostAcceptedOperatorPathSets $futureHistory $operatorPredicate
-$futureOperatorPathSet = $futureOperatorPathSets.current
-$futureOperatorLineagePathSet = $futureOperatorPathSets.lineage
-$workingTreePathSet = New-ExactMap
-foreach ($record in $workingTreeRecords + $untrackedRecords) {
-    $workingTreePathSet[[string] $record.Path] = $true
+function New-HistoryContext {
+    param(
+        [Parameter(Mandatory = $true)] [AllowEmptyString()] [string] $BaseRef,
+        [Parameter(Mandatory = $true)] [string] $AcceptedRef
+    )
+
+    $acceptedResolved = Resolve-Commit $AcceptedRef
+    $baseInput = $BaseRef
+    if (-not $baseInput) {
+        $baseInput = (@(Invoke-GitLines @('merge-base', 'origin/master', $acceptedResolved)) | Select-Object -First 1).Trim()
+    }
+    $baseResolved = Resolve-Commit $baseInput
+    $range = "$baseResolved..$acceptedResolved"
+    $measurementHead = (@(Invoke-GitLines @('rev-parse', 'HEAD')) | Select-Object -First 1).Trim()
+    $history = @(Get-CommitRecords $range)
+    $futureHistory = @(Get-CommitRecords "$acceptedResolved..$measurementHead")
+    $identityHistory = @($history + $futureHistory)
+    $discoveredAliases = @($identityHistory | Where-Object {
+            ([string] $_.Email) -match '(?i)ymgpwcca' -or [string] $_.Name -ceq $knownOperatorName
+        } | Select-Object Name, Email -Unique)
+    $operatorEmails = @($knownOperatorEmails + @($discoveredAliases | ForEach-Object { $_.Email })) |
+        ForEach-Object { ([string] $_).ToLowerInvariant() } | Sort-Object -Unique
+    $operatorEmailSet = New-ExactMap
+    foreach ($email in $operatorEmails) {
+        $operatorEmailSet[$email] = $true
+    }
+    $operatorNames = @($knownOperatorName + @($discoveredAliases | ForEach-Object { $_.Name })) | Sort-Object -Unique
+    $operatorNameSet = New-ExactMap
+    foreach ($name in $operatorNames) {
+        $operatorNameSet[$name] = $true
+    }
+    $operatorPredicate = Get-OperatorPredicate $operatorEmailSet $operatorNameSet
+    $operatorCommits = @($history | Where-Object { & $operatorPredicate $_ })
+    if ($operatorCommits.Count -eq 0) {
+        throw 'No operator-authored commits were found in the accepted production lineage.'
+    }
+    return [pscustomobject]@{
+        AcceptedResolved       = $acceptedResolved
+        BaseResolved           = $baseResolved
+        Range                  = $range
+        MeasurementHead        = $measurementHead
+        History                = $history
+        FutureHistory          = $futureHistory
+        OperatorPredicate      = $operatorPredicate
+        OperatorCommits        = $operatorCommits
+        FutureOperatorCommits  = @($futureHistory | Where-Object { & $operatorPredicate $_ })
+        OperatorEmailSet       = $operatorEmailSet
+        OperatorNameSet        = $operatorNameSet
+    }
 }
-$recreatedPathSet = New-ExactMap
-$deletedPathSet = New-ExactMap
-foreach ($commit in $futureHistory) {
-    foreach ($record in (Get-CommitPathRecords ([string] $commit.Hash))) {
-        if ($record.Status -eq 'D') {
-            $deletedPathSet[[string] $record.Path] = $true
-        } elseif ($record.Status -eq 'A' -and $deletedPathSet.ContainsKey([string] $record.Path)) {
-            $recreatedPathSet[[string] $record.Path] = $true
-        } elseif ($record.Status -match '^R' -and $record.OldPath -and
-            ($deletedPathSet.ContainsKey([string] $record.OldPath) -or $deletedPathSet.ContainsKey([string] $record.Path))) {
-            $recreatedPathSet[[string] $record.Path] = $true
+
+function New-HistoricalPathContext {
+    param(
+        [Parameter(Mandatory = $true)] [object] $History,
+        [Parameter(Mandatory = $true)] [scriptblock] $OperatorPredicate,
+        [Parameter(Mandatory = $true)] [string] $AcceptedRef
+    )
+
+    $operatorRecords = @(Get-OperatorCommitPathRecords $History.History $OperatorPredicate)
+    $operatorPathSet = New-ExactMap
+    foreach ($record in $operatorRecords) {
+        $operatorPathSet[[string] $record.Path] = $true
+        if ($record.OldPath) {
+            $operatorPathSet[[string] $record.OldPath] = $true
         }
     }
-}
-$historicalAliases = Get-HistoricalPathAliases $historicalPaths $postRecords
-$currentPathSet = New-ExactMap
-foreach ($path in $historicalPaths) {
-    if (Test-CurrentPath $path) {
-        $currentPathSet[$path] = $true
+    $records = @(Get-ChangedPathRecords $History.Range)
+    $pathSet = New-ExactMap
+    foreach ($record in $records) {
+        if (Test-PathAtRef $AcceptedRef $record.Path) {
+            $pathSet[[string] $record.Path] = $true
+        }
     }
-}
-foreach ($record in $postRecords) {
-    if (Test-CurrentPath $record.Path) {
-        $currentPathSet[[string] $record.Path] = $true
+    return [pscustomobject]@{
+        Records             = $records
+        Paths               = @($pathSet.Keys | Sort-Object)
+        OperatorPathSet     = $operatorPathSet
+        OperatorRecords     = $operatorRecords
     }
-}
-$workingTreeRecreatedPathSet = Get-WorkingTreeRecreatedPaths $measurementHead
-foreach ($path in $workingTreeRecreatedPathSet.Keys) {
-    $recreatedPathSet[[string] $path] = $true
 }
 
-$beforePathResolved = if (Test-Path -LiteralPath (Get-RepoFilePath $BeforePath)) {
-    try { Read-JsonFile $BeforePath } catch { $null }
-} else { $null }
-$acceptedBaselineResolved = if ($Mode -eq 'Check' -and (Test-Path -LiteralPath (Get-RepoFilePath $BaselinePath))) {
-    Read-TrustedAcceptedBaseline $BaselinePath $baseResolved $acceptedResolved
-} else {
-    $null
-}
-$acceptedBaselineByKey = if ($null -ne $acceptedBaselineResolved) {
-    New-MetricKeyMap @($acceptedBaselineResolved.functions) 'accepted complexity baseline'
-} else {
-    New-ExactMap
-}
-$identityEntries = if ($Mode -eq 'Check' -and (Test-Path -LiteralPath (Get-RepoFilePath $IdentityMigrationsPath))) {
-    Read-IdentityMigrationEntries $IdentityMigrationsPath
-} else {
-    @()
-}
-if ($null -eq $identityEntries) {
-    $identityEntries = @()
-}
-$explicitIdentityMaps = if ($Mode -eq 'Check') {
-    New-IdentityMigrationMaps $identityEntries $acceptedBaselineByKey
-} else {
-    New-EmptyIdentityMaps
-}
-$inclusionBaselineByKey = New-ExactMap
-if ($Mode -eq 'Check' -and $null -ne $acceptedBaselineResolved) {
-    $inclusionBaselineByKey = $acceptedBaselineByKey
-    if ($null -ne $beforePathResolved) {
-        foreach ($metric in $beforePathResolved.functions) {
-            if (-not $inclusionBaselineByKey.ContainsKey([string] $metric.key)) {
-                $inclusionBaselineByKey[[string] $metric.key] = $metric
+function Get-PostHistoryRecreatedPaths {
+    param([Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $FutureHistory)
+
+    $recreated = New-ExactMap
+    $deleted = New-ExactMap
+    foreach ($commit in $FutureHistory) {
+        foreach ($record in (Get-CommitPathRecords ([string] $commit.Hash))) {
+            if ($record.Status -eq 'D') {
+                $deleted[[string] $record.Path] = $true
+            } elseif ($record.Status -eq 'A' -and $deleted.ContainsKey([string] $record.Path)) {
+                $recreated[[string] $record.Path] = $true
+            } elseif ($record.Status -match '^R' -and $record.OldPath -and
+                ($deleted.ContainsKey([string] $record.OldPath) -or $deleted.ContainsKey([string] $record.Path))) {
+                $recreated[[string] $record.Path] = $true
             }
         }
     }
-} elseif ($null -ne $beforePathResolved) {
-    $inclusionBaselineByKey = New-MetricKeyMap @($beforePathResolved.functions) 'scope baseline'
+    return [pscustomobject]@{ Recreated = $recreated; Deleted = $deleted }
 }
 
-$scopeByPath = New-ExactMap
-$scopedPathRecords = [System.Collections.Generic.List[object]]::new()
-$policyErrors = [System.Collections.Generic.List[string]]::new()
-$unscopedExecutablePaths = [System.Collections.Generic.List[string]]::new()
-foreach ($path in ($currentPathSet.Keys | Sort-Object)) {
-    $language = Get-PathLanguage $path
-    $pathRecords = @($postRecords | Where-Object { $_.Path -ceq $path })
-    $hasFutureOperatorChange = $futureOperatorPathSet.ContainsKey($path)
-    $hasWorkingTreeChange = $workingTreePathSet.ContainsKey($path)
-    $historicalPathAliases = if ($historicalAliases.ContainsKey($path)) {
-        @($historicalAliases[$path])
-    } elseif ($historicalPathSet.ContainsKey($path)) {
-        @($path)
+function New-PostPathContext {
+    param(
+        [Parameter(Mandatory = $true)] [object] $History,
+        [Parameter(Mandatory = $true)] [scriptblock] $OperatorPredicate,
+        [Parameter(Mandatory = $true)] [string] $AcceptedRef,
+        [Parameter(Mandatory = $true)] [string] $MeasurementHead
+    )
+
+    $postCommitRecords = @(Get-ChangedPathRecords "$AcceptedRef..$MeasurementHead")
+    $workingTreeRecords = @(Get-ChangedPathRecords $MeasurementHead)
+    $untrackedRecords = @(Get-UntrackedPathRecords)
+    $postRecords = @($postCommitRecords + $workingTreeRecords + $untrackedRecords)
+    $operatorPathSets = Get-PostAcceptedOperatorPathSets @($History.FutureHistory) $OperatorPredicate
+    $workingTreePathSet = New-ExactMap
+    foreach ($record in $workingTreeRecords + $untrackedRecords) {
+        $workingTreePathSet[[string] $record.Path] = $true
+    }
+    $recreatedPaths = Get-PostHistoryRecreatedPaths @($History.FutureHistory)
+    foreach ($path in (Get-WorkingTreeRecreatedPaths $MeasurementHead).Keys) {
+        $recreatedPaths.Recreated[[string] $path] = $true
+    }
+    return [pscustomobject]@{
+        PostRecords             = $postRecords
+        WorkingTreePathSet      = $workingTreePathSet
+        FutureOperatorPathSet   = $operatorPathSets.current
+        FutureOperatorLineage   = $operatorPathSets.lineage
+        RecreatedPathSet         = $recreatedPaths.Recreated
+        DeletedPathSet           = $recreatedPaths.Deleted
+    }
+}
+
+function New-CurrentPathSet {
+    param(
+        [Parameter(Mandatory = $true)] [string[]] $HistoricalPaths,
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $PostRecords
+    )
+
+    $paths = New-ExactMap
+    foreach ($path in $HistoricalPaths) {
+        if (Test-CurrentPath $path) {
+            $paths[$path] = $true
+        }
+    }
+    foreach ($record in $PostRecords) {
+        if (Test-CurrentPath ([string] $record.Path)) {
+            $paths[[string] $record.Path] = $true
+        }
+    }
+    return $paths
+}
+
+function Get-PathScopeState {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Path,
+        [Parameter(Mandatory = $true)] [string] $Mode,
+        [Parameter(Mandatory = $true)] [object] $History,
+        [Parameter(Mandatory = $true)] [object] $Post,
+        [Parameter(Mandatory = $true)] [object] $Historical,
+        [Parameter(Mandatory = $true)] [hashtable] $HistoricalAliases,
+        [Parameter(Mandatory = $true)] [string] $AcceptedRef
+    )
+
+    $language = Get-PathLanguage $Path
+    $pathRecords = @($Post.PostRecords | Where-Object { $_.Path -ceq $Path })
+    $hasFutureOperatorChange = $Post.FutureOperatorPathSet.ContainsKey($Path)
+    $hasWorkingTreeChange = $Post.WorkingTreePathSet.ContainsKey($Path)
+    $historicalPathAliases = if ($HistoricalAliases.ContainsKey($Path)) {
+        @($HistoricalAliases[$Path])
+    } elseif ($Historical.Paths -contains $Path) {
+        @($Path)
     } else {
         @()
     }
     $isHistorical = @($historicalPathAliases).Count -gt 0
-    $hasHistoricalOperatorChange = @($historicalPathAliases | Where-Object { $historicalOperatorPathSet.ContainsKey([string] $_) }).Count -gt 0
-    $isRecreated = $recreatedPathSet.ContainsKey($path)
-    $isNewAfterAccepted = -not $isHistorical -and -not (Test-PathAtRef $acceptedResolved $path) -and
+    $hasHistoricalOperatorChange = @($historicalPathAliases | Where-Object {
+            $Historical.OperatorPathSet.ContainsKey([string] $_)
+        }).Count -gt 0
+    $isRecreated = $Post.RecreatedPathSet.ContainsKey($Path)
+    $isNewAfterAccepted = -not $isHistorical -and -not (Test-PathAtRef $AcceptedRef $Path) -and
         ($hasFutureOperatorChange -or $hasWorkingTreeChange)
     $eligible = if ($Mode -eq 'Baseline') {
         $isHistorical
     } else {
         $isHistorical -or $hasFutureOperatorChange -or $hasWorkingTreeChange
     }
-    $projectExecutablePath = $hasHistoricalOperatorChange -or $hasFutureOperatorChange -or $hasWorkingTreeChange
-    if ($language -in @('unsupported', 'unknown') -and $eligible -and $projectExecutablePath) {
-        if ($Mode -eq 'Baseline' -or $hasFutureOperatorChange -or $hasWorkingTreeChange -or $hasHistoricalOperatorChange) {
-            $policyErrors.Add("Unsupported or unclassified executable path '$path'. Supported analyzers are C/C++ and PowerShell only; define a language policy/analyzer before adding this project file.")
-        }
-        continue
+    return [pscustomobject]@{
+        Path                    = $Path
+        Language                = $language
+        PathRecords             = $pathRecords
+        HistoricalPathAliases   = $historicalPathAliases
+        IsHistorical            = $isHistorical
+        HasHistoricalOperatorChange = $hasHistoricalOperatorChange
+        IsRecreated             = $isRecreated
+        IsNewAfterAccepted      = $isNewAfterAccepted
+        Eligible                = $eligible
+        HasFutureOperatorChange = $hasFutureOperatorChange
+        HasWorkingTreeChange    = $hasWorkingTreeChange
     }
-    if ($language -notin @('cpp', 'powershell') -or -not $eligible) {
-        if ($language -in @('cpp', 'powershell', 'unsupported', 'unknown') -and @($pathRecords).Count -gt 0 -and -not $eligible) {
-            $unscopedExecutablePaths.Add($path)
-        }
-        continue
-    }
+}
+
+function Get-PathScopeLines {
+    param(
+        [Parameter(Mandatory = $true)] [object] $State,
+        [Parameter(Mandatory = $true)] [object] $History,
+        [Parameter(Mandatory = $true)] [string] $AcceptedRef,
+        [Parameter(Mandatory = $true)] [string] $MeasurementHead
+    )
+
     $acceptedLines = [System.Collections.Generic.HashSet[int]]::new()
-    foreach ($historicalPath in $historicalPathAliases) {
-        if (Test-PathAtRef $acceptedResolved $historicalPath) {
-            foreach ($line in (Get-OperatorBlameLines $acceptedResolved $historicalPath $operatorEmailSet $operatorNameSet)) {
+    foreach ($historicalPath in $State.HistoricalPathAliases) {
+        if (Test-PathAtRef $AcceptedRef $historicalPath) {
+            foreach ($line in (Get-OperatorBlameLines $AcceptedRef $historicalPath $History.OperatorEmailSet $History.OperatorNameSet)) {
                 $null = $acceptedLines.Add($line)
             }
         }
     }
     $currentLines = [System.Collections.Generic.HashSet[int]]::new()
-    if (Test-PathAtRef $measurementHead $path) {
-        foreach ($line in (Get-OperatorBlameLines $measurementHead $path $operatorEmailSet $operatorNameSet)) {
+    if (Test-PathAtRef $MeasurementHead $State.Path) {
+        foreach ($line in (Get-OperatorBlameLines $MeasurementHead $State.Path $History.OperatorEmailSet $History.OperatorNameSet)) {
             $null = $currentLines.Add($line)
         }
     }
-    $candidateLines = if ($isNewAfterAccepted -or $isRecreated -or $hasWorkingTreeChange) {
-        Get-AllFileLines $path
+    $candidateLines = if ($State.IsNewAfterAccepted -or $State.IsRecreated -or $State.HasWorkingTreeChange) {
+        Get-AllFileLines $State.Path
     } else {
-        Get-CandidateChangedLines $acceptedResolved $path
+        Get-CandidateChangedLines $AcceptedRef $State.Path
     }
-    $scopeByPath[$path] = [pscustomobject]@{
-        path                    = $path
-        language                = $language
-            status                  = if (@($pathRecords).Count -gt 0) { $pathRecords[-1].Status } else { 'A' }
-        historicalPaths         = @($historicalPathAliases)
-        isNewAfterAccepted      = $isNewAfterAccepted
-        isRecreated             = $isRecreated
-        hasFutureOperatorChange = $hasFutureOperatorChange
-        acceptedOperatorLines   = $acceptedLines
-        currentOperatorLines    = $currentLines
-        candidateLines          = $candidateLines
+    return [pscustomobject]@{
+        Accepted = $acceptedLines
+        Current  = $currentLines
+        Candidate = $candidateLines
     }
-    $scopedPathRecords.Add($scopeByPath[$path])
 }
 
-foreach ($path in ($unscopedExecutablePaths | Sort-Object -Unique)) {
-    $limitations.Add([pscustomobject]@{
-            file   = $path
-            reason = 'Executable path changed after the accepted checkpoint but was not attributable to an operator commit; it remains outside the project-owned complexity universe.'
-        })
-}
-if ($policyErrors.Count -gt 0) {
-    throw "Complexity language policy failed:`n$($policyErrors -join "`n")"
+function Test-UnsupportedProjectPath {
+    param(
+        [Parameter(Mandatory = $true)] [object] $State
+    )
+
+    $projectExecutablePath = $state.HasHistoricalOperatorChange -or $state.HasFutureOperatorChange -or $state.HasWorkingTreeChange
+    return $state.Language -in @('unsupported', 'unknown') -and $state.Eligible -and $projectExecutablePath
 }
 
-$cppPaths = @($scopedPathRecords | Where-Object language -eq 'cpp' | ForEach-Object path | Sort-Object -Unique)
-$scriptPaths = @($scopedPathRecords | Where-Object language -eq 'powershell' | ForEach-Object path | Sort-Object -Unique)
-$codePathSet = New-ExactMap
-foreach ($path in $cppPaths + $scriptPaths) {
-    $codePathSet[$path] = $true
+function Test-AnalyzablePath {
+    param([Parameter(Mandatory = $true)] [object] $State)
+
+    return $state.Language -in @('cpp', 'powershell') -and $state.Eligible
 }
-$operatorAttributableCommits = @($operatorCommits + $futureOperatorCommits)
-$operatorCodeCommitRecords = [System.Collections.Generic.List[object]]::new()
-foreach ($commit in $operatorAttributableCommits) {
-    $commitRecords = @(Get-CommitPathRecords ([string] $commit.Hash))
-    $hits = @($commitRecords | ForEach-Object {
-            if ($codePathSet.ContainsKey([string] $_.Path) -or $futureOperatorLineagePathSet.ContainsKey([string] $_.Path)) { $_.Path }
-            if ($_.OldPath -and ($codePathSet.ContainsKey([string] $_.OldPath) -or $futureOperatorLineagePathSet.ContainsKey([string] $_.OldPath))) { $_.OldPath }
-        } | Sort-Object -Unique)
-    if ($hits.Count -gt 0) {
-        $operatorCodeCommitRecords.Add([pscustomobject]@{
-                hash    = $commit.Hash
-                name    = $commit.Name
-                email   = $commit.Email
-                subject = $commit.Subject
-                files   = $hits
+
+function Test-UnscopedExecutablePath {
+    param(
+        [Parameter(Mandatory = $true)] [object] $State
+    )
+
+    return $state.Language -in @('cpp', 'powershell', 'unsupported', 'unknown') -and
+        @($state.PathRecords).Count -gt 0 -and -not $state.Eligible
+}
+
+function New-PathExclusionResult {
+    param(
+        [string] $PolicyError,
+        [string] $Unscoped
+    )
+
+    return [pscustomobject]@{ Scope = $null; PolicyError = $PolicyError; Unscoped = $Unscoped }
+}
+
+function Get-PathScopeExclusion {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Path,
+        [Parameter(Mandatory = $true)] [object] $State
+    )
+
+    if (Test-UnsupportedProjectPath $State) {
+        return New-PathExclusionResult "Unsupported or unclassified executable path '$Path'. Supported analyzers are C/C++ and PowerShell only; define a language policy/analyzer before adding this project file." $null
+    }
+    if (-not (Test-AnalyzablePath $State)) {
+        $unscoped = if (Test-UnscopedExecutablePath $State) { $Path } else { $null }
+        return New-PathExclusionResult $null $unscoped
+    }
+    return $null
+}
+
+function New-PathScopeResult {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Path,
+        [Parameter(Mandatory = $true)] [string] $Mode,
+        [Parameter(Mandatory = $true)] [object] $History,
+        [Parameter(Mandatory = $true)] [object] $Post,
+        [Parameter(Mandatory = $true)] [object] $Historical,
+        [Parameter(Mandatory = $true)] [hashtable] $HistoricalAliases,
+        [Parameter(Mandatory = $true)] [string] $AcceptedRef,
+        [Parameter(Mandatory = $true)] [string] $MeasurementHead
+    )
+
+    $state = Get-PathScopeState $Path $Mode $History $Post $Historical $HistoricalAliases $AcceptedRef
+    $exclusion = Get-PathScopeExclusion $Path $state
+    if ($null -ne $exclusion) {
+        return $exclusion
+    }
+    $lines = Get-PathScopeLines $state $History $AcceptedRef $MeasurementHead
+    $scope = [pscustomobject]@{
+        path                    = $Path
+        language                = $state.Language
+        status                  = if (@($state.PathRecords).Count -gt 0) { $state.PathRecords[-1].Status } else { 'A' }
+        historicalPaths         = @($state.HistoricalPathAliases)
+        isNewAfterAccepted      = $state.IsNewAfterAccepted
+        isRecreated             = $state.IsRecreated
+        hasFutureOperatorChange = $state.HasFutureOperatorChange
+        acceptedOperatorLines   = $lines.Accepted
+        currentOperatorLines    = $lines.Current
+        candidateLines          = $lines.Candidate
+    }
+    return [pscustomobject]@{ Scope = $scope; PolicyError = $null; Unscoped = $null }
+}
+
+function New-ScopeContext {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Mode,
+        [Parameter(Mandatory = $true)] [object] $History,
+        [Parameter(Mandatory = $true)] [object] $Post,
+        [Parameter(Mandatory = $true)] [object] $Historical,
+        [Parameter(Mandatory = $true)] [string[]] $HistoricalPaths,
+        [Parameter(Mandatory = $true)] [hashtable] $HistoricalAliases,
+        [Parameter(Mandatory = $true)] [hashtable] $InclusionBaselineByKey,
+        [Parameter(Mandatory = $true)] [string] $AcceptedRef,
+        [Parameter(Mandatory = $true)] [string] $MeasurementHead
+    )
+
+    $scopeByPath = New-ExactMap
+    $scopedRecords = [System.Collections.Generic.List[object]]::new()
+    $policyErrors = [System.Collections.Generic.List[string]]::new()
+    $unscoped = [System.Collections.Generic.List[string]]::new()
+    foreach ($path in ((New-CurrentPathSet $HistoricalPaths $Post.PostRecords).Keys | Sort-Object)) {
+        $result = New-PathScopeResult $path $Mode $History $Post $Historical $HistoricalAliases $AcceptedRef $MeasurementHead
+        if ($result.PolicyError) {
+            $policyErrors.Add($result.PolicyError)
+        }
+        if ($result.Unscoped) {
+            $unscoped.Add($result.Unscoped)
+        }
+        if ($null -ne $result.Scope) {
+            $scopeByPath[$path] = $result.Scope
+            $scopedRecords.Add($result.Scope)
+        }
+    }
+    foreach ($path in ($unscoped | Sort-Object -Unique)) {
+        $limitations.Add([pscustomobject]@{
+                file   = $path
+                reason = 'Executable path changed after the accepted checkpoint but was not attributable to an operator commit; it remains outside the project-owned complexity universe.'
             })
     }
-}
-
-$python = Get-PythonExecutable
-$allCppMetrics = [System.Collections.Generic.List[object]]::new()
-$allScriptMetrics = [System.Collections.Generic.List[object]]::new()
-$cppMetrics = @(Get-ScopedCppMetrics $cppPaths $scopeByPath $Mode $inclusionBaselineByKey $python $explicitIdentityMaps.byCurrentKey $allCppMetrics)
-$scriptMetrics = @(Get-PowerShellMetrics $scriptPaths $scopeByPath $Mode $inclusionBaselineByKey $explicitIdentityMaps.byCurrentKey $allScriptMetrics)
-$metrics = @($cppMetrics + $scriptMetrics)
-if ($metrics.Count -eq 0) {
-    throw 'No scoped functions were measured.'
-}
-Assert-UniqueFunctionIdentities $metrics
-$allFunctionMetrics = @($allCppMetrics + $allScriptMetrics)
-Assert-UniqueFunctionIdentities $allFunctionMetrics
-$lizardVersion = Get-LizardVersion $python
-$automaticIdentityMaps = if ($Mode -eq 'Check') {
-    New-AutomaticIdentityMaps $allFunctionMetrics $acceptedBaselineByKey $scopeByPath $explicitIdentityMaps
-} else {
-    New-EmptyIdentityMaps
-}
-$continuityMaps = Merge-IdentityMigrationMaps $explicitIdentityMaps $automaticIdentityMaps
-
-$inventoryFiles = [System.Collections.Generic.List[object]]::new()
-foreach ($scope in $scopedPathRecords) {
-    $path = [string] $scope.path
-    $operatorFileCommits = @($operatorCodeCommitRecords | Where-Object { $_.files -contains $path })
-    $scopedCount = @($metrics | Where-Object { $_.file -eq $path -and $_.scopeKind -eq 'function' }).Count
-    $inventoryFiles.Add([ordered]@{
-            path                     = $path
-            language                 = if ($scope.language -eq 'cpp') { 'C/C++' } else { 'PowerShell' }
-            status                   = $scope.status
-            operatorCommitCount      = $operatorFileCommits.Count
-            operatorCommits          = @($operatorFileCommits | ForEach-Object { $_.hash })
-            operatorBlameLineCount   = $scope.acceptedOperatorLines.Count
-            scopedFunctionCount      = $scopedCount
-            currentFunctionKeys      = @($metrics | Where-Object { $_.file -eq $path -and $_.scopeKind -eq 'function' } | ForEach-Object { $_.key })
-        })
-}
-
-$nonCyclomatic = [System.Collections.Generic.List[object]]::new()
-foreach ($path in ($currentPathSet.Keys | Sort-Object)) {
-    if ($codePathSet.ContainsKey($path)) {
-        continue
+    if ($policyErrors.Count -gt 0) {
+        throw "Complexity language policy failed:`n$($policyErrors -join "`n")"
     }
-    $language = Get-PathLanguage $path
-    $extension = [IO.Path]::GetExtension($path).ToLowerInvariant()
-    $category = if ($language -eq 'non-executable') {
-        'Declaration/configuration/documentation path; excluded from cyclomatic targets.'
-    } elseif ($language -eq 'unsupported') {
-        'Executable language is known but has no analyzer policy; introduced project paths fail closed.'
-    } elseif ($language -eq 'unknown') {
-        'Unknown path language; introduced project paths fail closed.'
-    } elseif ([IO.Path]::GetFileName($path) -eq 'CMakeLists.txt' -or $extension -eq '.cmake') {
-        'CMake/control script; reviewed separately because lizard is not the chosen analyzer.'
-    } elseif ($extension -in @('.yaml', '.yml', '.json', '.md', '.txt')) {
-        'Static declaration/documentation; excluded from cyclomatic targets.'
-    } else {
-        'Non-target changed path; excluded from cyclomatic targets by explicit language policy.'
-    }
-    $nonCyclomatic.Add([ordered]@{ path = $path; status = 'current'; category = $category })
+    return [pscustomobject]@{ ByPath = $scopeByPath; Records = @($scopedRecords) }
 }
 
-$aliases = @($history | Where-Object { & $operatorPredicate $_ } |
-    Select-Object @{ Name = 'name'; Expression = { $_.Name } }, @{ Name = 'email'; Expression = { $_.Email } } -Unique)
-$inventory = [ordered]@{
-    schemaVersion                           = 2
-    githubAccount                           = 'YMGPwcca'
-    baseRef                                 = $baseResolved
-    acceptedRef                             = $acceptedResolved
-    discoveryMethod                         = 'historical git log BASE..accepted plus post-accepted operator commit paths and accepted/current git blame; upstream-only future executable paths are reported but excluded; no filename ownership inference'
-    operatorIdentityAliases                 = @($aliases)
-    operatorAuthoredCommitCountInLineage   = $operatorCommits.Count
-    operatorAuthoredCodeCommitCountInScope = $operatorCodeCommitRecords.Count
-    operatorAuthoredCommits                 = @($operatorCommits | ForEach-Object {
-            [ordered]@{ hash = $_.Hash; name = $_.Name; email = $_.Email; subject = $_.Subject }
-        })
-    cyclomaticTargetFiles                   = @($inventoryFiles)
-    nonCyclomaticChangedFiles               = @($nonCyclomatic)
-    scopeRules                              = @(
-        'Historical C/C++ scope is the complete current function when accepted-HEAD blame attributes at least one line in the function to an operator commit.',
-        'After and Check add every current C/C++ or PowerShell file added by operator work after acceptedRef, including descendants of later file renames, and add changed functions in operator-modified files by current blame or candidate diff lines.',
-        'A renamed historical file retains exact path aliases for baseline comparison; a deleted-and-recreated path is measured as a new file identity.',
-        'Only C/C++ and PowerShell are analyzable. Known unsupported or unknown executable paths introduced by project work fail closed instead of entering the wrong parser.',
-        'CMake/control files and static declarations are recorded for review but are not function-level CC targets.',
-        'Baseline measures the accepted checkout; After and Check measure the current working tree/HEAD.'
+function New-MeasurementContext {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Mode,
+        [Parameter(Mandatory = $true)] [object] $Baseline,
+        [Parameter(Mandatory = $true)] [object] $Scope,
+        [Parameter(Mandatory = $true)] [object] $History,
+        [Parameter(Mandatory = $true)] [object] $BaselineContext
     )
+
+    $cppPaths = @($Scope.Records | Where-Object language -eq 'cpp' | ForEach-Object path | Sort-Object -Unique)
+    $scriptPaths = @($Scope.Records | Where-Object language -eq 'powershell' | ForEach-Object path | Sort-Object -Unique)
+    $allCppMetrics = [System.Collections.Generic.List[object]]::new()
+    $allScriptMetrics = [System.Collections.Generic.List[object]]::new()
+    $python = Get-PythonExecutable
+    $cppMetrics = @(Get-ScopedCppMetrics $cppPaths $Scope.ByPath $Mode $Baseline.InclusionByKey $python $BaselineContext.ExplicitIdentity.byCurrentKey $allCppMetrics)
+    $scriptMetrics = @(Get-PowerShellMetrics $scriptPaths $Scope.ByPath $Mode $Baseline.InclusionByKey $BaselineContext.ExplicitIdentity.byCurrentKey $allScriptMetrics)
+    $metrics = @($cppMetrics + $scriptMetrics)
+    if ($metrics.Count -eq 0) {
+        throw 'No scoped functions were measured.'
+    }
+    Assert-UniqueFunctionIdentities $metrics
+    $allFunctionMetrics = @($allCppMetrics + $allScriptMetrics)
+    Assert-UniqueFunctionIdentities $allFunctionMetrics
+    $lizardVersion = Get-LizardVersion $python
+    $automatic = if ($Mode -eq 'Check') {
+        New-AutomaticIdentityMaps $allFunctionMetrics $BaselineContext.AcceptedByKey $Scope.ByPath $BaselineContext.ExplicitIdentity
+    } else {
+        New-EmptyIdentityMaps
+    }
+    return [pscustomobject]@{
+        CppPaths       = $cppPaths
+        ScriptPaths    = $scriptPaths
+        Metrics        = $metrics
+        AllFunctions   = $allFunctionMetrics
+        LizardVersion  = $lizardVersion
+        Continuity     = Merge-IdentityMigrationMaps $BaselineContext.ExplicitIdentity $automatic
+    }
 }
 
-$reportKind = switch ($Mode) {
-    'Baseline' { 'baseline' }
-    'After' { 'after' }
-    'Check' { 'check' }
-}
-$report = New-ReportObject $metrics $reportKind $baseResolved $acceptedResolved $measurementHead $operatorCommits.Count $lizardVersion
-if ($Mode -eq 'Check' -and $JsonPath) {
-    Write-Utf8File $JsonPath ($report | ConvertTo-Json -Depth 30)
+function New-CodePathContext {
+    param(
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [string[]] $CppPaths,
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [string[]] $ScriptPaths
+    )
+
+    $set = New-ExactMap
+    foreach ($path in $CppPaths + $ScriptPaths) {
+        $set[$path] = $true
+    }
+    return $set
 }
 
-if ($Mode -eq 'Baseline') {
+function New-OperatorCodeCommitRecords {
+    param(
+        [Parameter(Mandatory = $true)] [object[]] $Commits,
+        [Parameter(Mandatory = $true)] [hashtable] $CodePathSet,
+        [Parameter(Mandatory = $true)] [hashtable] $OperatorLineagePathSet
+    )
+
+    $records = [System.Collections.Generic.List[object]]::new()
+    foreach ($commit in $Commits) {
+        $commitRecords = @(Get-CommitPathRecords ([string] $commit.Hash))
+        $hits = @($commitRecords | ForEach-Object {
+                if ($CodePathSet.ContainsKey([string] $_.Path) -or $OperatorLineagePathSet.ContainsKey([string] $_.Path)) { $_.Path }
+                if ($_.OldPath -and ($CodePathSet.ContainsKey([string] $_.OldPath) -or $OperatorLineagePathSet.ContainsKey([string] $_.OldPath))) { $_.OldPath }
+            } | Sort-Object -Unique)
+        if ($hits.Count -gt 0) {
+            $records.Add([pscustomobject]@{
+                    hash    = $commit.Hash
+                    name    = $commit.Name
+                    email   = $commit.Email
+                    subject = $commit.Subject
+                    files   = $hits
+                })
+        }
+    }
+    return @($records)
+}
+
+function New-InventoryFileRecords {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Scope,
+        [Parameter(Mandatory = $true)] [object] $Measurement,
+        [Parameter(Mandatory = $true)] [object[]] $OperatorCodeRecords
+    )
+
+    $files = [System.Collections.Generic.List[object]]::new()
+    foreach ($scopeRecord in $Scope.Records) {
+        $path = [string] $scopeRecord.path
+        $operatorFileCommits = @($OperatorCodeRecords | Where-Object { $_.files -contains $path })
+        $scopedCount = @($Measurement.Metrics | Where-Object { $_.file -eq $path -and $_.scopeKind -eq 'function' }).Count
+        $files.Add([ordered]@{
+                path                   = $path
+                language               = if ($scopeRecord.language -eq 'cpp') { 'C/C++' } else { 'PowerShell' }
+                status                 = $scopeRecord.status
+                operatorCommitCount    = $operatorFileCommits.Count
+                operatorCommits        = @($operatorFileCommits | ForEach-Object { $_.hash })
+                operatorBlameLineCount = $scopeRecord.acceptedOperatorLines.Count
+                scopedFunctionCount    = $scopedCount
+                currentFunctionKeys    = @($Measurement.Metrics | Where-Object { $_.file -eq $path -and $_.scopeKind -eq 'function' } | ForEach-Object { $_.key })
+            })
+    }
+    return @($files)
+}
+
+function Get-NonCyclomaticCategory {
+    param([Parameter(Mandatory = $true)] [string] $Path)
+
+    $language = Get-PathLanguage $Path
+    $extension = [IO.Path]::GetExtension($Path).ToLowerInvariant()
+    if ($language -eq 'non-executable') {
+        return 'Declaration/configuration/documentation path; excluded from cyclomatic targets.'
+    }
+    if ($language -eq 'unsupported') {
+        return 'Executable language is known but has no analyzer policy; introduced project paths fail closed.'
+    }
+    if ($language -eq 'unknown') {
+        return 'Unknown path language; introduced project paths fail closed.'
+    }
+    if ([IO.Path]::GetFileName($Path) -eq 'CMakeLists.txt' -or $extension -eq '.cmake') {
+        return 'CMake/control script; reviewed separately because lizard is not the chosen analyzer.'
+    }
+    if ($extension -in @('.yaml', '.yml', '.json', '.md', '.txt')) {
+        return 'Static declaration/documentation; excluded from cyclomatic targets.'
+    }
+    return 'Non-target changed path; excluded from cyclomatic targets by explicit language policy.'
+}
+
+function New-NonCyclomaticRecords {
+    param(
+        [Parameter(Mandatory = $true)] [string[]] $HistoricalPaths,
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $PostRecords,
+        [Parameter(Mandatory = $true)] [hashtable] $CodePathSet
+    )
+
+    $nonCyclomatic = [System.Collections.Generic.List[object]]::new()
+    $currentPaths = New-CurrentPathSet $HistoricalPaths $PostRecords
+    foreach ($path in ($currentPaths.Keys | Sort-Object)) {
+        if ($CodePathSet.ContainsKey($path)) {
+            continue
+        }
+        $nonCyclomatic.Add([ordered]@{
+                path = $path
+                status = 'current'
+                category = Get-NonCyclomaticCategory $path
+            })
+    }
+    return @($nonCyclomatic)
+}
+
+function New-InventoryContext {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Scope,
+        [Parameter(Mandatory = $true)] [object] $Measurement,
+        [Parameter(Mandatory = $true)] [object] $History,
+        [Parameter(Mandatory = $true)] [object] $Post,
+        [Parameter(Mandatory = $true)] [object] $Historical
+    )
+
+    $codePathSet = New-CodePathContext $Measurement.CppPaths $Measurement.ScriptPaths
+    $operatorAttributableCommits = @($History.OperatorCommits + $History.FutureOperatorCommits)
+    $operatorCodeRecords = New-OperatorCodeCommitRecords $operatorAttributableCommits $codePathSet $Post.FutureOperatorLineage
+    $files = New-InventoryFileRecords $Scope $Measurement $operatorCodeRecords
+    $nonCyclomatic = New-NonCyclomaticRecords $Historical.Paths $Post.PostRecords $codePathSet
+    $aliases = @($History.History | Where-Object { & $History.OperatorPredicate $_ } |
+        Select-Object @{ Name = 'name'; Expression = { $_.Name } }, @{ Name = 'email'; Expression = { $_.Email } } -Unique)
+    return [ordered]@{
+        schemaVersion                           = 2
+        githubAccount                           = 'YMGPwcca'
+        baseRef                                 = $History.BaseResolved
+        acceptedRef                             = $History.AcceptedResolved
+        discoveryMethod                         = 'historical git log BASE..accepted plus post-accepted operator commit paths and accepted/current git blame; upstream-only future executable paths are reported but excluded; no filename ownership inference'
+        operatorIdentityAliases                 = @($aliases)
+        operatorAuthoredCommitCountInLineage   = $History.OperatorCommits.Count
+        operatorAuthoredCodeCommitCountInScope = $operatorCodeRecords.Count
+        operatorAuthoredCommits                 = @($History.OperatorCommits | ForEach-Object {
+                [ordered]@{ hash = $_.Hash; name = $_.Name; email = $_.Email; subject = $_.Subject }
+            })
+        cyclomaticTargetFiles                   = @($files)
+        nonCyclomaticChangedFiles               = @($nonCyclomatic)
+        scopeRules                              = @(
+            'Historical C/C++ scope is the complete current function when accepted-HEAD blame attributes at least one line in the function to an operator commit.',
+            'After and Check add every current C/C++ or PowerShell file added by operator work after acceptedRef, including descendants of later file renames, and add changed functions in operator-modified files by current blame or candidate diff lines.',
+            'A renamed historical file retains exact path aliases for baseline comparison; a deleted-and-recreated path is measured as a new file identity.',
+            'Only C/C++ and PowerShell are analyzable. Known unsupported or unknown executable paths introduced by project work fail closed instead of entering the wrong parser.',
+            'CMake/control files and static declarations are recorded for review but are not function-level CC targets.',
+            'Baseline measures the accepted checkout; After and Check measure the current working tree/HEAD.'
+        )
+    }
+}
+
+function New-ComplexityRunContext {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Mode,
+        [Parameter(Mandatory = $true)] [AllowEmptyString()] [string] $BaseRef,
+        [Parameter(Mandatory = $true)] [string] $AcceptedRef,
+        [Parameter(Mandatory = $true)] [string] $BeforePath,
+        [Parameter(Mandatory = $true)] [string] $BaselinePath,
+        [Parameter(Mandatory = $true)] [string] $IdentityMigrationsPath
+    )
+
+    $history = New-HistoryContext $BaseRef $AcceptedRef
+    $historical = New-HistoricalPathContext $history $history.OperatorPredicate $history.AcceptedResolved
+    $post = New-PostPathContext $history $history.OperatorPredicate $history.AcceptedResolved $history.MeasurementHead
+    $historicalAliases = Get-HistoricalPathAliases $historical.Paths $post.PostRecords
+    $baseline = New-BaselineContext $Mode $BeforePath $BaselinePath $IdentityMigrationsPath $history.BaseResolved $history.AcceptedResolved
+    $scope = New-ScopeContext $Mode $history $post $historical $historical.Paths $historicalAliases $baseline.InclusionByKey $history.AcceptedResolved $history.MeasurementHead
+    $measurement = New-MeasurementContext $Mode $baseline $scope $history $baseline
+    $inventory = New-InventoryContext $scope $measurement $history $post $historical
+    return [pscustomobject]@{
+        History        = $history
+        Historical     = $historical
+        Post           = $post
+        HistoricalAliases = $historicalAliases
+        Baseline       = $baseline
+        Scope          = $scope
+        Measurement    = $measurement
+        Inventory      = $inventory
+    }
+}
+
+function Get-ComplexityAllowlist {
+    param([Parameter(Mandatory = $true)] [string] $Path)
+
+    if (-not (Test-Path -LiteralPath (Get-RepoFilePath $Path))) {
+        return @()
+    }
+    $allowlist = @((Read-JsonFile $Path) | Where-Object { $null -ne $_ })
+    if ($null -eq $allowlist) {
+        return @()
+    }
+    return $allowlist
+}
+
+function Get-ExceptionMetricViolation {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Metric,
+        [object] $Exception,
+        [Parameter(Mandatory = $true)] [bool] $IsException
+    )
+
+    if ($Exception -and -not $IsException) {
+        return "Exception complexity mismatch: $($Metric.file):$($Metric.startLine) $($Metric.function) recorded $($Exception.measuredCC), current $($Metric.cyclomaticComplexity)."
+    }
+    return $null
+}
+
+function Get-CeilingMetricViolations {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Metric,
+        [Parameter(Mandatory = $true)] [AllowNull()] [object] $BaselineMetric,
+        [Parameter(Mandatory = $true)] [bool] $IsException
+    )
+
+    $violations = [System.Collections.Generic.List[string]]::new()
+    if ([int] $Metric.cyclomaticComplexity -gt 10 -and -not $IsException) {
+        $violations.Add("CC > 10: $($Metric.file):$($Metric.startLine) $($Metric.function) measured $($Metric.cyclomaticComplexity).")
+    }
+    if (-not $BaselineMetric -and [int] $Metric.cyclomaticComplexity -gt 10 -and -not $IsException) {
+        $scopeLabel = if ($Metric.scopeKind -ceq 'script-body') { 'script-body' } else { 'function' }
+        $violations.Add("New $scopeLabel exceeds CC 10: $($Metric.file):$($Metric.startLine) $($Metric.function) measured $($Metric.cyclomaticComplexity).")
+    }
+    return @($violations)
+}
+
+function Get-RegressionMetricViolation {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Metric,
+        [object] $BaselineMetric,
+        [Parameter(Mandatory = $true)] [bool] $IsException
+    )
+
+    if ($BaselineMetric -and [int] $Metric.cyclomaticComplexity -gt [int] $BaselineMetric.cyclomaticComplexity -and -not $IsException) {
+        return "Complexity increased: $($Metric.file):$($Metric.startLine) $($Metric.function) baseline $($BaselineMetric.cyclomaticComplexity), current $($Metric.cyclomaticComplexity)."
+    }
+    return $null
+}
+
+function Get-CheckMetricViolations {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Metric,
+        [object] $BaselineMetric,
+        [object] $Exception
+    )
+
+    $isException = $null -ne $Exception -and [int] $Exception.measuredCC -eq [int] $Metric.cyclomaticComplexity
+    $violations = [System.Collections.Generic.List[string]]::new()
+    foreach ($violation in @(
+            Get-ExceptionMetricViolation $Metric $Exception $isException
+            Get-CeilingMetricViolations $Metric $BaselineMetric $isException
+            Get-RegressionMetricViolation $Metric $BaselineMetric $isException
+        )) {
+        if ($null -ne $violation) {
+            $violations.Add($violation)
+        }
+    }
+    return @($violations)
+}
+
+function Get-ScriptBodyWarnings {
+    param([Parameter(Mandatory = $true)] [object[]] $Metrics)
+
+    return @(Get-SortedScriptBodies $Metrics | Where-Object { [int] $_.cyclomaticComplexity -gt 5 } | ForEach-Object {
+            "Complexity scope warning: script-body $($_.file):$($_.startLine)-$($_.endLine) CC $($_.cyclomaticComplexity)."
+        })
+}
+
+function Invoke-BaselineMode {
+    param([Parameter(Mandatory = $true)] [object] $Context)
+
+    $report = New-ReportObject $Context.Measurement.Metrics 'baseline' $Context.History.BaseResolved $Context.History.AcceptedResolved $Context.History.MeasurementHead $Context.History.OperatorCommits.Count $Context.Measurement.LizardVersion
     $jsonText = $report | ConvertTo-Json -Depth 30
-    Write-Utf8File $InventoryPath ($inventory | ConvertTo-Json -Depth 30)
-    Write-Utf8File ($InventoryPath -replace '\.json$', '.md') (New-InventoryMarkdown $inventory)
+    Write-Utf8File $InventoryPath ($Context.Inventory | ConvertTo-Json -Depth 30)
+    Write-Utf8File ($InventoryPath -replace '\.json$', '.md') (New-InventoryMarkdown $Context.Inventory)
     $baselineOutput = if ($JsonPath) { $JsonPath } else { 'complexity-baseline.json' }
     $baselineMarkdown = if ($MarkdownPath) { $MarkdownPath } else { 'complexity-baseline.md' }
     Write-Utf8File $baselineOutput $jsonText
-    Write-Utf8File $baselineMarkdown (New-BaselineMarkdown $report $inventory)
+    Write-Utf8File $baselineMarkdown (New-BaselineMarkdown $report $Context.Inventory)
     Write-Utf8File $BeforePath $jsonText
     Write-Output "Baseline written: $baselineOutput"
     Write-Output "Baseline markdown written: $baselineMarkdown"
@@ -2396,68 +3020,80 @@ if ($Mode -eq 'Baseline') {
     exit 0
 }
 
-if ($Mode -eq 'After') {
-    if ($null -eq $beforePathResolved) {
+function Invoke-AfterMode {
+    param([Parameter(Mandatory = $true)] [object] $Context)
+
+    if ($null -eq $Context.Baseline.BeforeReport) {
         throw "Before report '$BeforePath' was not found."
     }
-    $allowlist = if (Test-Path -LiteralPath (Get-RepoFilePath $AllowlistPath)) {
-        @((Read-JsonFile $AllowlistPath) | Where-Object { $null -ne $_ })
-    } else { @() }
-    if ($null -eq $allowlist) {
-        $allowlist = @()
-    }
-    $jsonText = $report | ConvertTo-Json -Depth 30
+    $allowlist = Get-ComplexityAllowlist $AllowlistPath
+    $report = New-ReportObject $Context.Measurement.Metrics 'after' $Context.History.BaseResolved $Context.History.AcceptedResolved $Context.History.MeasurementHead $Context.History.OperatorCommits.Count $Context.Measurement.LizardVersion
     $afterOutput = if ($JsonPath) { $JsonPath } else { 'complexity-after.json' }
     $afterMarkdown = if ($MarkdownPath) { $MarkdownPath } else { 'complexity-report.md' }
-    Write-Utf8File $afterOutput $jsonText
-    Write-Utf8File $afterMarkdown (New-ComparisonMarkdown $beforePathResolved $report $inventory $scopeByPath $allowlist)
+    Write-Utf8File $afterOutput ($report | ConvertTo-Json -Depth 30)
+    Write-Utf8File $afterMarkdown (New-ComparisonMarkdown $Context.Baseline.BeforeReport $report $Context.Inventory $Context.Scope.ByPath $allowlist)
     Write-Output "After report written: $afterOutput"
     Write-Output "Comparison report written: $afterMarkdown"
     Write-Output ((Format-StatTable $report.summary))
     exit 0
 }
 
-$baseline = if ($null -ne $acceptedBaselineResolved) {
-    $acceptedBaselineResolved
-} else {
-    throw "Accepted complexity baseline '$BaselinePath' was not found. Run After first or pass -BaselinePath."
-}
-$allowlist = if (Test-Path -LiteralPath (Get-RepoFilePath $AllowlistPath)) {
-    @((Read-JsonFile $AllowlistPath) | Where-Object { $null -ne $_ })
-} else { @() }
-if ($null -eq $allowlist) {
-    $allowlist = @()
-}
-$baselineByKey = New-MetricKeyMap @($baseline.functions) 'accepted complexity baseline'
-Validate-Allowlist $allowlist $baselineByKey
-Assert-IdentityMigrationTargets $continuityMaps $allFunctionMetrics $scopeByPath $baselineByKey
-$violations = [System.Collections.Generic.List[string]]::new()
-foreach ($identityViolation in (Get-UnmigratedIdentityViolations $allFunctionMetrics $baselineByKey $scopeByPath $continuityMaps)) {
-    $violations.Add($identityViolation)
-}
-foreach ($metric in @($report.functions | Where-Object { $_.scopeKind -eq 'function' })) {
-    $scope = $scopeByPath[[string] $metric.file]
-    $baselineMetric = Find-BeforeMetric $metric $baselineByKey $scope $continuityMaps.byCurrentKey
-    $exception = Get-ExactException $metric $baselineMetric $allowlist
-    $isException = $null -ne $exception -and [int] $exception.measuredCC -eq [int] $metric.cyclomaticComplexity
-    if ($exception -and -not $isException) {
-        $violations.Add("Exception complexity mismatch: $($metric.file):$($metric.startLine) $($metric.function) recorded $($exception.measuredCC), current $($metric.cyclomaticComplexity).")
+function Invoke-CheckMode {
+    param([Parameter(Mandatory = $true)] [object] $Context)
+
+    $baseline = if ($null -ne $Context.Baseline.AcceptedReport) { $Context.Baseline.AcceptedReport } else {
+        throw "Accepted complexity baseline '$BaselinePath' was not found. Run After first or pass -BaselinePath."
     }
-    if ([int] $metric.cyclomaticComplexity -gt 10 -and -not $isException) {
-        $violations.Add("CC > 10: $($metric.file):$($metric.startLine) $($metric.function) measured $($metric.cyclomaticComplexity).")
+    $allowlist = Get-ComplexityAllowlist $AllowlistPath
+    $baselineByKey = New-MetricKeyMap @($baseline.functions) 'accepted complexity baseline'
+    Assert-IdentityMigrationTargets $Context.Measurement.Continuity $Context.Measurement.AllFunctions $Context.Scope.ByPath $baselineByKey
+    $violations = [System.Collections.Generic.List[string]]::new()
+    foreach ($identityViolation in (Get-UnmigratedIdentityViolations $Context.Measurement.AllFunctions $baselineByKey $Context.Scope.ByPath $Context.Measurement.Continuity)) {
+        $violations.Add($identityViolation)
     }
-    if ($baselineMetric -and [int] $metric.cyclomaticComplexity -gt [int] $baselineMetric.cyclomaticComplexity -and -not $isException) {
-        $violations.Add("Complexity increased: $($metric.file):$($metric.startLine) $($metric.function) baseline $($baselineMetric.cyclomaticComplexity), current $($metric.cyclomaticComplexity).")
+    foreach ($metric in (Get-EnforcedScopeMetrics $Context.Measurement.Metrics)) {
+        $baselineMetric = Find-BeforeMetric $metric $baselineByKey $Context.Scope.ByPath[[string] $metric.file] $Context.Measurement.Continuity.byCurrentKey
+        $exception = Get-ExactException $metric $baselineMetric $allowlist
+        foreach ($violation in (Get-CheckMetricViolations $metric $baselineMetric $exception)) {
+            $violations.Add($violation)
+        }
     }
-    if (-not $baselineMetric -and [int] $metric.cyclomaticComplexity -gt 10 -and -not $isException) {
-        $violations.Add("New function exceeds CC 10: $($metric.file):$($metric.startLine) $($metric.function) measured $($metric.cyclomaticComplexity).")
+    Write-Output ((Format-StatTable (Get-Statistics $Context.Measurement.Metrics)))
+    Write-Output ((Format-ScopeStatTable (Get-Statistics $Context.Measurement.Metrics 'script-body') 'Script bodies'))
+    foreach ($warning in (Get-ScriptBodyWarnings $Context.Measurement.Metrics)) {
+        Write-Output $warning
     }
+    foreach ($note in ($limitations | Sort-Object file, reason)) {
+        Write-Output "Complexity scope note: $($note.file) — $($note.reason)"
+    }
+    if ($violations.Count -gt 0) {
+        throw "Complexity regression gate failed:`n$($violations -join "`n")"
+    }
+    Write-Output 'Complexity regression gate: PASS'
 }
-Write-Output ((Format-StatTable $report.summary))
-foreach ($note in ($limitations | Sort-Object file, reason)) {
-    Write-Output "Complexity scope note: $($note.file) — $($note.reason)"
+
+function Invoke-ComplexityMode {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Mode,
+        [Parameter(Mandatory = $true)] [object] $Context
+    )
+
+    if ($Mode -eq 'Baseline') {
+        Invoke-BaselineMode $Context
+    }
+    if ($Mode -eq 'After') {
+        Invoke-AfterMode $Context
+    }
+    Invoke-CheckMode $Context
 }
-if ($violations.Count -gt 0) {
-    throw "Complexity regression gate failed:`n$($violations -join "`n")"
+
+function Invoke-ComplexityRun {
+    $context = New-ComplexityRunContext $Mode $BaseRef $AcceptedRef $BeforePath $BaselinePath $IdentityMigrationsPath
+    if ($Mode -eq 'Check' -and $JsonPath) {
+        $report = New-ReportObject $context.Measurement.Metrics 'check' $context.History.BaseResolved $context.History.AcceptedResolved $context.History.MeasurementHead $context.History.OperatorCommits.Count $context.Measurement.LizardVersion
+        Write-Utf8File $JsonPath ($report | ConvertTo-Json -Depth 30)
+    }
+    Invoke-ComplexityMode $Mode $context
 }
-Write-Output 'Complexity regression gate: PASS'
+
+$null = Invoke-ComplexityRun
