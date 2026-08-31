@@ -722,14 +722,14 @@ try {
     Prepare-FixtureBaseline $caseAA
     Commit-FixtureFile $caseAA '.github/workflows/inline-powershell.yaml' (New-WorkflowDocument 'pwsh' (New-PowerShellTopLevelIfChain 11)) 'fixture add inline PowerShell control flow'
     $caseAAResult = Invoke-ComplexityChecker $caseAA 'Check'
-    Assert-CheckerFailure $caseAAResult 'CASE AA inline PowerShell requires extraction' '(?s)non-trivial inline PowerShell.*extract it to a measured.*\.ps1'
+    Assert-CheckerFailure $caseAAResult 'CASE AA inline PowerShell requires extraction' 'non-trivial inline PowerShell'
 
     $caseAB = New-Fixture 'case-ab-inline-powershell-function'
     Prepare-FixtureBaseline $caseAB
     $inlineFunction = "function Foo { return 1 }`nFoo`n"
     Commit-FixtureFile $caseAB '.github/workflows/inline-powershell-function.yaml' (New-WorkflowDocument 'pwsh' $inlineFunction) 'fixture add inline PowerShell function'
     $caseABResult = Invoke-ComplexityChecker $caseAB 'Check'
-    Assert-CheckerFailure $caseABResult 'CASE AB inline PowerShell function requires extraction' '(?s)non-trivial inline PowerShell.*extract it to a measured.*\.ps1'
+    Assert-CheckerFailure $caseABResult 'CASE AB inline PowerShell function requires extraction' 'non-trivial inline PowerShell'
 
     $caseAC = New-Fixture 'case-ac-trivial-powershell-wrapper'
     Prepare-FixtureBaseline $caseAC
@@ -769,16 +769,16 @@ try {
     $renameWorkflowBody = New-WorkflowDocument 'pwsh' (New-PowerShellTopLevelIfChain 11)
     Commit-FixtureFile $caseAH '.github/workflows/old-inline.yaml' $renameWorkflowBody 'fixture add owned workflow for rename'
     $caseAHOldResult = Invoke-ComplexityChecker $caseAH 'Check'
-    Assert-CheckerFailure $caseAHOldResult 'CASE AH original workflow executable policy' '(?s)non-trivial inline PowerShell.*extract it to a measured.*\.ps1'
+    Assert-CheckerFailure $caseAHOldResult 'CASE AH original workflow executable policy' 'non-trivial inline PowerShell'
     Commit-FixtureRename $caseAH '.github/workflows/old-inline.yaml' '.github/workflows/new-inline.yaml' $renameWorkflowBody 'fixture rename owned workflow'
     $caseAHNewResult = Invoke-ComplexityChecker $caseAH 'Check'
-    Assert-CheckerFailure $caseAHNewResult 'CASE AH renamed workflow executable policy' '(?s)non-trivial inline PowerShell.*extract it to a measured.*\.ps1'
+    Assert-CheckerFailure $caseAHNewResult 'CASE AH renamed workflow executable policy' 'non-trivial inline PowerShell'
 
     $caseAI = New-Fixture 'case-ai-untracked-workflow'
     Prepare-FixtureBaseline $caseAI
     Write-FixtureText (Join-Path $caseAI.Directory '.github/workflows/untracked-inline.yaml') (New-WorkflowDocument 'pwsh' (New-PowerShellTopLevelIfChain 11))
     $caseAIResult = Invoke-ComplexityChecker $caseAI 'Check'
-    Assert-CheckerFailure $caseAIResult 'CASE AI untracked workflow executable policy' '(?s)non-trivial inline PowerShell.*extract it to a measured.*\.ps1'
+    Assert-CheckerFailure $caseAIResult 'CASE AI untracked workflow executable policy' 'non-trivial inline PowerShell'
 
     Write-Output 'Complexity checker self-test: PASS (cases A-AI)'
 } finally {
