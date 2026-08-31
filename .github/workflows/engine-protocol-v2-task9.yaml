@@ -30,39 +30,17 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $InstallRoot = Resolve-Path 'build_x64/install'
-          $Unexpected = Get-ChildItem -Path $InstallRoot -Filter 'task9-interaction-source.dll' -File -Recurse
-          if (@($Unexpected).Count -ne 0) {
-            throw 'Task 9 CI-only interaction module leaked into the normal install tree.'
-          }
-
+          & .github/scripts/engine-protocol-v2-task9-package-audit.ps1
       - name: Build CI-only deterministic interaction source
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          cmake --build build_x64 --config RelWithDebInfo --target obs-engine-task9-interaction-plugin --parallel
-          if ($LASTEXITCODE -ne 0) {
-            throw "Task 9 interaction source build failed (exit=$LASTEXITCODE)."
-          }
-
+          & .github/scripts/engine-protocol-v2-task9-build-fixture.ps1
       - name: Stage CI-only interaction source
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $InstallRoot = Resolve-Path 'build_x64/install'
-          $Plugin = Get-ChildItem -Path 'build_x64' -Filter 'task9-interaction-source.dll' -File -Recurse |
-            Where-Object { $_.FullName -notlike "$InstallRoot*" } |
-            Select-Object -First 1
-          if ($null -eq $Plugin) {
-            throw 'Built Task 9 interaction source was not found.'
-          }
-          $RuntimeModule = Get-ChildItem -Path $InstallRoot -Filter 'image-source.dll' -File -Recurse |
-            Select-Object -First 1
-          if ($null -eq $RuntimeModule) {
-            throw 'Could not locate the installed OBS module directory.'
-          }
-          Copy-Item -LiteralPath $Plugin.FullName -Destination (Join-Path $RuntimeModule.Directory.FullName $Plugin.Name) -Force
-
+          & .github/scripts/engine-protocol-v2-task9-stage-fixture.ps1
       - name: Run Task 9 interaction integration regression
         shell: pwsh
         run: |
@@ -73,17 +51,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $InstallRoot = Resolve-Path 'build_x64/install'
-          $Installed = Get-ChildItem -Path $InstallRoot -Filter 'task9-interaction-source.dll' -File -Recurse
-          if (@($Installed).Count -ne 1) {
-            throw 'Expected exactly one explicitly staged Task 9 interaction module.'
-          }
-          Remove-Item -LiteralPath $Installed[0].FullName -Force
-          $Remaining = Get-ChildItem -Path $InstallRoot -Filter 'task9-interaction-source.dll' -File -Recurse
-          if (@($Remaining).Count -ne 0) {
-            throw 'Task 9 CI-only interaction module remained in the install tree after cleanup.'
-          }
-
+          & .github/scripts/engine-protocol-v2-task9-remove-fixture.ps1
       - name: Upload Task 9 Windows runtime
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

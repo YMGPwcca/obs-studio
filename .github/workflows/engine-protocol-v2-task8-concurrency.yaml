@@ -20,128 +20,12 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-
-          $TestDir = Join-Path $Env:RUNNER_TEMP 'source-event-capture-regression'
-          New-Item -ItemType Directory -Force -Path $TestDir | Out-Null
-          $TestSource = Join-Path $TestDir 'capture-routing.cpp'
-          $TestExe = Join-Path $TestDir 'capture-routing.exe'
-
-          @'
-          #include "engine/source_event_capture.hpp"
-
-          #include <atomic>
-          #include <thread>
-
-          int main()
-          {
-              using namespace obs_engine;
-
-              SourceEventCaptureGate gate;
-              if (gate.route_for_current_thread() != SourceEventCaptureRoute::Direct)
-                  return 1;
-
-              gate.begin();
-              if (!gate.active() || gate.route_for_current_thread() != SourceEventCaptureRoute::Capture)
-                  return 2;
-
-              std::atomic<int> worker_route{-1};
-              std::thread worker([&] {
-                  worker_route.store(static_cast<int>(gate.route_for_current_thread()), std::memory_order_release);
-              });
-              worker.join();
-
-              if (worker_route.load(std::memory_order_acquire) !=
-                  static_cast<int>(SourceEventCaptureRoute::Defer))
-                  return 3;
-
-              gate.end();
-              if (gate.active() || gate.route_for_current_thread() != SourceEventCaptureRoute::Direct)
-                  return 4;
-
-              return 0;
-          }
-          '@ | Set-Content -Path $TestSource -Encoding utf8
-
-          $VsWhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-          if (-not (Test-Path $VsWhere)) {
-              throw 'vswhere.exe was not found on the Windows runner.'
-          }
-          $VsInstall = (& $VsWhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1)
-          if ([string]::IsNullOrWhiteSpace($VsInstall)) {
-              throw 'A Visual Studio installation with the x64 C++ toolchain was not found.'
-          }
-          $VcVars = Join-Path $VsInstall 'VC\Auxiliary\Build\vcvars64.bat'
-          if (-not (Test-Path $VcVars)) {
-              throw 'vcvars64.bat was not found.'
-          }
-
-          $CompileCmd = Join-Path $TestDir 'compile.cmd'
-          @"
-          @echo off
-          call "$VcVars" >nul
-          if errorlevel 1 exit /b 1
-          cl /nologo /std:c++20 /EHsc /W4 /WX /I"$Env:GITHUB_WORKSPACE" "$TestSource" /Fe:"$TestExe"
-          exit /b %errorlevel%
-          "@ | Set-Content -Path $CompileCmd -Encoding ascii
-
-          & cmd.exe /d /c $CompileCmd
-          if ($LASTEXITCODE -ne 0) {
-              throw "Capture-routing regression did not compile (exit=$LASTEXITCODE)."
-          }
-
-          & $TestExe
-          if ($LASTEXITCODE -ne 0) {
-              throw "Capture-routing regression failed (exit=$LASTEXITCODE)."
-          }
-
+          & .github/scripts/engine-protocol-v2-task8-concurrency-capture-routing.ps1
       - name: Verify production bridge ordering and isolation invariants
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $Source = Get-Content 'engine/runtime_source_v2.cpp' -Raw
-          $Protocol = Get-Content 'engine/protocol_v2.cpp' -Raw
-
-          foreach ($Required in @(
-              'SourceEventCaptureRoute::Capture',
-              'SourceEventCaptureRoute::Defer',
-              'SourceCallbackScope',
-              'direct_callbacks_inflight',
-              'v2_drain_deferred_source_events',
-              'v2_flush_deferred_source_events',
-              'result_has_source_event(*state.capture, "source.removed", batch.handle)'
-          )) {
-              if (-not $Source.Contains($Required)) {
-                  throw "Production source bridge is missing required concurrency guard: $Required"
-              }
-          }
-
-          if ($Source.Contains('result_has_event(*state.capture') -or
-              $Source.Contains('result_has_event(*state->capture')) {
-              throw 'Global event-name-only source capture deduplication reappeared.'
-          }
-
-          $CaptureIndex = $Protocol.IndexOf('capture.emplace(engine, runtime_result);')
-          $GuardIndex = $Protocol.IndexOf('mutation_guard.emplace(revisions.lock_mutation());')
-          $DrainIndex = $Protocol.IndexOf('engine.v2_drain_deferred_source_events(*mutation_guard);')
-          $ValidateIndex = $Protocol.IndexOf('if (!validate_revision_guard(request, method, guarded_revision))')
-          if ($CaptureIndex -lt 0 -or $GuardIndex -lt 0 -or $CaptureIndex -gt $GuardIndex) {
-              throw 'Runtime source capture must be established before the revision mutation guard.'
-          }
-          if ($DrainIndex -lt 0 -or $ValidateIndex -lt 0 -or $DrainIndex -lt $GuardIndex -or $DrainIndex -gt $ValidateIndex) {
-              throw 'Pre-request deferred source events must drain after guard acquisition and before ifRevision validation.'
-          }
-
-          $SyncIndex = $Protocol.LastIndexOf('engine.v2_sync_source_observers();')
-          $ResponseIndex = $Protocol.LastIndexOf('send_v2_ok(request.id, result.data.get(), revision);')
-          $PublishIndex = $Protocol.LastIndexOf('publish_runtime_events(events, revision, result);')
-          $FlushIndex = $Protocol.LastIndexOf('capture->flush(*mutation_guard);')
-          if ($SyncIndex -lt 0 -or $ResponseIndex -lt 0 -or $PublishIndex -lt 0 -or $FlushIndex -lt 0) {
-              throw 'Runtime response/event/deferred-flush ordering markers were not found.'
-          }
-          if ($SyncIndex -gt $ResponseIndex -or $ResponseIndex -gt $PublishIndex -or $PublishIndex -gt $FlushIndex) {
-              throw 'Required ordering is observer sync -> response -> request events -> deferred async events.'
-          }
-
+          & .github/scripts/engine-protocol-v2-task8-concurrency-bridge-audit.ps1
   deterministic-source-concurrency-a-f:
     name: Verify deterministic source concurrency A-F
     runs-on: windows-2025-vs2026
@@ -162,50 +46,14 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          cmake --build build_x64 --config RelWithDebInfo --target obs-engine-task8-concurrency-plugin --parallel
-          if ($LASTEXITCODE -ne 0) {
-              throw "Task 8 concurrency test module build failed (exit=$LASTEXITCODE)."
-          }
-
+          & .github/scripts/engine-protocol-v2-task8-concurrency-build-fixture.ps1
       - name: Run deterministic A-F integration regression
         id: concurrency_regression
         continue-on-error: true
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $InstallRoot = Resolve-Path 'build_x64/install'
-          $DiagnosticDir = Join-Path $InstallRoot '_task8-concurrency-diagnostics'
-          New-Item -ItemType Directory -Force -Path $DiagnosticDir | Out-Null
-          $DiagnosticFile = Join-Path $DiagnosticDir 'a-f-regression.txt'
-
-          try {
-              $Plugin = Get-ChildItem -Path 'build_x64' -Filter 'task8-concurrency-source.dll' -File -Recurse |
-                Where-Object { $_.FullName -notlike "$InstallRoot*" } |
-                Select-Object -First 1
-              if ($null -eq $Plugin) {
-                  throw 'Built Task 8 concurrency module was not found.'
-              }
-
-              $RuntimeModule = Get-ChildItem -Path $InstallRoot -Filter 'image-source.dll' -File -Recurse |
-                Select-Object -First 1
-              if ($null -eq $RuntimeModule) {
-                  throw 'Could not locate the installed OBS module directory.'
-              }
-
-              $Destination = Join-Path $RuntimeModule.Directory.FullName $Plugin.Name
-              Copy-Item -LiteralPath $Plugin.FullName -Destination $Destination -Force
-              "Staged CI-only module: $Destination" | Tee-Object -FilePath $DiagnosticFile
-
-              & '.github/scripts/engine-protocol-v2-task8-concurrency.ps1' -InstallRoot $InstallRoot *>&1 |
-                Tee-Object -FilePath $DiagnosticFile -Append
-          }
-          catch {
-              $Failure = ($_ | Out-String)
-              @('', '=== workflow failure ===', $Failure) | Add-Content -Path $DiagnosticFile -Encoding utf8
-              Write-Error $Failure
-              throw
-          }
-
+          & .github/scripts/engine-protocol-v2-task8-concurrency-run.ps1
       - name: Upload Task 8 concurrency diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

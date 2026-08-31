@@ -30,47 +30,17 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $InstallRoot = Resolve-Path 'build_x64/install'
-          $Forbidden = Get-ChildItem -Path $InstallRoot -File -Recurse | Where-Object {
-            $_.Name -in @(
-              'task10-media-source.dll',
-              'obs64.exe',
-              'obs32.exe',
-              'obs-websocket.dll',
-              'obs-browser.dll'
-            )
-          }
-          if (@($Forbidden).Count -ne 0) {
-            throw "Forbidden or CI-only files leaked into the normal engine package:`n$($Forbidden.FullName -join "`n")"
-          }
-
+          & .github/scripts/engine-protocol-v2-task10-package-audit.ps1
       - name: Build CI-only deterministic media source
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          cmake --build build_x64 --config RelWithDebInfo --target obs-engine-task10-media-plugin --parallel
-          if ($LASTEXITCODE -ne 0) {
-            throw "Task 10 media source build failed (exit=$LASTEXITCODE)."
-          }
-
+          & .github/scripts/engine-protocol-v2-task10-build-fixture.ps1
       - name: Stage CI-only media source
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $InstallRoot = Resolve-Path 'build_x64/install'
-          $Plugin = Get-ChildItem -Path 'build_x64' -Filter 'task10-media-source.dll' -File -Recurse |
-            Where-Object { $_.FullName -notlike "$InstallRoot*" } |
-            Select-Object -First 1
-          if ($null -eq $Plugin) {
-            throw 'Built Task 10 media source was not found.'
-          }
-          $RuntimeModule = Get-ChildItem -Path $InstallRoot -Filter 'image-source.dll' -File -Recurse |
-            Select-Object -First 1
-          if ($null -eq $RuntimeModule) {
-            throw 'Could not locate the installed OBS module directory.'
-          }
-          Copy-Item -LiteralPath $Plugin.FullName -Destination (Join-Path $RuntimeModule.Directory.FullName $Plugin.Name) -Force
-
+          & .github/scripts/engine-protocol-v2-task10-stage-fixture.ps1
       - name: Run Task 10 media integration regression
         shell: pwsh
         run: |
@@ -81,17 +51,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $InstallRoot = Resolve-Path 'build_x64/install'
-          $Installed = Get-ChildItem -Path $InstallRoot -Filter 'task10-media-source.dll' -File -Recurse
-          if (@($Installed).Count -ne 1) {
-            throw 'Expected exactly one explicitly staged Task 10 media module.'
-          }
-          Remove-Item -LiteralPath $Installed[0].FullName -Force
-          $Remaining = Get-ChildItem -Path $InstallRoot -Filter 'task10-media-source.dll' -File -Recurse
-          if (@($Remaining).Count -ne 0) {
-            throw 'Task 10 CI-only media module remained in the install tree after cleanup.'
-          }
-
+          & .github/scripts/engine-protocol-v2-task10-remove-fixture.ps1
       - name: Upload Task 10 Windows runtime
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

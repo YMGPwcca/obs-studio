@@ -25,53 +25,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-
-          $CMake = Get-Content -Raw 'engine/CMakeLists.txt'
-          if (-not $CMake.Contains('handle_v2_request=handle_v2_request_core')) {
-            throw 'Task 11 router does not isolate the accepted Task 10 protocol core.'
-          }
-
-          $Core = Get-Content -Raw 'engine/protocol_v2.cpp'
-          if (-not $Core.Contains('bool handle_v2_request(Engine &engine')) {
-            throw 'The isolated Task 10 protocol core entry point is missing.'
-          }
-
-          $Router = Get-Content -Raw 'engine/protocol_filter_v2.cpp'
-          $Begin = $Router.IndexOf('engine_.v2_begin_event_capture(result);')
-          $Wait = $Router.IndexOf('engine_.v2_wait_for_event_capture_callbacks();')
-          $Capture = $Router.IndexOf('capture.emplace(engine, result);')
-          $Lock = $Router.IndexOf('guard.emplace(revisions.lock_mutation());')
-          $Drain = $Router.IndexOf('engine.v2_drain_deferred_source_events(*guard);')
-          if ($Begin -lt 0 -or $Wait -lt 0 -or $Capture -lt 0 -or $Lock -lt 0 -or $Drain -lt 0) {
-            throw 'Task 11 capture/wait/lock/deferred-drain markers are incomplete.'
-          }
-          if ($Begin -gt $Wait -or $Capture -gt $Lock -or $Lock -gt $Drain) {
-            throw 'Task 11 callback retirement and mutation ordering regressed.'
-          }
-
-          $Filter = Get-Content -Raw 'engine/runtime_filter_v2.cpp'
-          foreach ($Forbidden in @('FilterUpdateWaiter', 'filter_update_settle_cb')) {
-            if ($Filter.Contains($Forbidden)) {
-              throw "Per-request filter signal waiter leaked into Task 11: $Forbidden"
-            }
-          }
-          $PermanentConnect = ([regex]::Matches($Filter, 'signal_handler_connect\(handler, "update", filter_update_cb, &observer\)')).Count
-          if ($PermanentConnect -ne 1) {
-            throw "Expected exactly one permanent filter update observer connection in source; found $PermanentConnect."
-          }
-          foreach ($Forbidden in @('obs_filter_get_parent', 'obs_filter_get_target')) {
-            if ($Filter.Contains($Forbidden)) {
-              throw "Task 11 production code used a forbidden filter lifetime/waiter API: $Forbidden"
-            }
-          }
-
-          $PublicObs = Get-Content -Raw 'libobs/obs.h'
-          foreach ($PrivateApi in @('obs_source_update_tracked', 'obs_source_reset_settings_tracked')) {
-            if ($PublicObs.Contains($PrivateApi)) {
-              throw "Task 11 private update API leaked into the public obs.h header: $PrivateApi"
-            }
-          }
-
+          & .github/scripts/engine-protocol-v2-task11-core-audit.ps1
       - name: Build Windows minimal runtime
         uses: ./.github/actions/build-obs
         with:
@@ -82,48 +36,17 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $InstallRoot = Resolve-Path 'build_x64/install'
-          $ForbiddenNames = @(
-            'task8-concurrency-source.dll',
-            'task9-interaction-source.dll',
-            'task10-media-source.dll',
-            'task11-filter-source.dll',
-            'obs64.exe',
-            'obs32.exe',
-            'obs-websocket.dll',
-            'obs-browser.dll'
-          )
-          $Forbidden = Get-ChildItem -Path $InstallRoot -File -Recurse | Where-Object { $_.Name -in $ForbiddenNames }
-          if (@($Forbidden).Count -ne 0) {
-            throw "Forbidden or CI-only files leaked into the normal engine package:`n$($Forbidden.FullName -join "`n")"
-          }
-
+          & .github/scripts/engine-protocol-v2-task11-package-audit.ps1
       - name: Build CI-only deterministic filter source
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          cmake --build build_x64 --config RelWithDebInfo --target obs-engine-task11-filter-plugin --parallel
-          if ($LASTEXITCODE -ne 0) {
-            throw "Task 11 filter source build failed (exit=$LASTEXITCODE)."
-          }
-
+          & .github/scripts/engine-protocol-v2-task11-build-fixture.ps1
       - name: Stage CI-only filter source
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $InstallRoot = Resolve-Path 'build_x64/install'
-          $Plugin = Get-ChildItem -Path 'build_x64' -Filter 'task11-filter-source.dll' -File -Recurse |
-            Where-Object { $_.FullName -notlike "$InstallRoot*" } |
-            Select-Object -First 1
-          if ($null -eq $Plugin) {
-            throw 'Built Task 11 filter source was not found.'
-          }
-          $RuntimeModule = Get-ChildItem -Path $InstallRoot -Filter 'image-source.dll' -File -Recurse | Select-Object -First 1
-          if ($null -eq $RuntimeModule) {
-            throw 'Could not locate the installed OBS module directory.'
-          }
-          Copy-Item -LiteralPath $Plugin.FullName -Destination (Join-Path $RuntimeModule.Directory.FullName $Plugin.Name) -Force
-
+          & .github/scripts/engine-protocol-v2-task11-stage-fixture.ps1
       - name: Run Task 11 filter integration regression
         shell: pwsh
         run: |
@@ -141,15 +64,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $InstallRoot = Resolve-Path 'build_x64/install'
-          $Installed = Get-ChildItem -Path $InstallRoot -Filter 'task11-filter-source.dll' -File -Recurse
-          foreach ($File in @($Installed)) {
-            Remove-Item -LiteralPath $File.FullName -Force
-          }
-          if (@(Get-ChildItem -Path $InstallRoot -Filter 'task11-filter-source.dll' -File -Recurse).Count -ne 0) {
-            throw 'Task 11 CI-only filter module remained after cleanup.'
-          }
-
+          & .github/scripts/engine-protocol-v2-task11-remove-fixture.ps1
       - name: Upload Task 11 Windows runtime
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
