@@ -151,7 +151,7 @@ zero `EXECUTABLE_LOGIC`, zero `UNSUPPORTED_EXECUTABLE`, and zero
 | Workflow / job | Remaining inline step names | Why safe |
 |---|---|---|
 | `engine-complexity.yaml` / `complexity` | Install isolated complexity analyzer; Install pinned workflow YAML parser; Run complexity checker self-tests; Enforce complexity budget | One pinned package install or direct checker invocation; no control flow |
-| `engine-protocol-v2-task1.yaml` / `build-smoke-package-x64` | Enforce smoke result | Direct PowerShell launcher |
+| `engine-protocol-v2-task1.yaml` / `build-smoke-package-x64` | Verify headless runtime footprint; Smoke test obs-engine protocol v1; Enforce smoke result | Direct PowerShell launcher |
 | `engine-protocol-v2-task2.yaml` / `build-smoke-package-x64` | Smoke test protocol v2 framing; Enforce Task 2 smoke result | Direct script/launcher invocations |
 | `engine-protocol-v2-task3.yaml` / `build-smoke-package-x64` | Smoke test protocol v2 capabilities; Enforce Task 3 smoke result | Direct script/launcher invocations |
 | `engine-protocol-v2-task4.yaml` / `build-smoke-package-x64` | Smoke test protocol v2 revisions; Enforce Task 4 smoke result | Direct script/launcher invocations |
