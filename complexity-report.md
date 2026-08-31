@@ -1,7 +1,7 @@
 # Phase-1 Complexity Hardening Report
 
 Accepted starting SHA: `3fc2e678d10809a4dca8b28107710534160803ab`
-Candidate measurement HEAD: `e630ec8e1b80cd4ef4cd840df7485d430d162c83`
+Candidate measurement HEAD: `8c12beaf3d202be9e1cc6771f5c2ad23684a28b1`
 
 ## Named-function before/after summary
 

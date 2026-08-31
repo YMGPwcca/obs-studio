@@ -15,7 +15,7 @@
     }
   ],
   "operatorAuthoredCommitCountInLineage": 64,
-  "operatorAuthoredCodeCommitCountInScope": 94,
+  "operatorAuthoredCodeCommitCountInScope": 98,
   "operatorAuthoredCommits": [
     {
       "hash": "ffffcfd1a65677a16d9ec596103d99bde080deb8",
@@ -2414,7 +2414,7 @@
       "path": "tools/check-complexity.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 23,
+      "operatorCommitCount": 24,
       "operatorCommits": [
         "a6b2b65df6cbcb289e4b81af1ca898a5397c3992",
         "979148802c665938cd7532c4c50fedf9259d725e",
@@ -2438,7 +2438,8 @@
         "9485f3827fa0ce0abe13296fdfb95d297ccc79fd",
         "17d6cd6b61cfd515a9f4251e89249cdce10389e1",
         "52c70fa3a20f1bbd454b35680b39537abe2f7106",
-        "bedce2a35574b017abb9135e1b3d752e16223dc2"
+        "bedce2a35574b017abb9135e1b3d752e16223dc2",
+        "5d2f78f42f4b1c7d4fc939a2456e0fba89920b25"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 164,
@@ -2613,7 +2614,7 @@
       "path": "tools/check-complexity.tests.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 21,
+      "operatorCommitCount": 22,
       "operatorCommits": [
         "7acd77cf27d81c26ce4f9ef5ca065352a6a1dc46",
         "496ce5ae3f7b803e8affd882c51a8a8af429b100",
@@ -2635,7 +2636,8 @@
         "5db04a64189239b8400ed704e04e8e0ce56fb0a9",
         "a58d27981183690b6d43f548e1b73cde7f3a9210",
         "9e07d13f852360838293317cad14d92701ff851e",
-        "0e2ea6febe018072f7ad59d3ecc90c8837cd6d07"
+        "0e2ea6febe018072f7ad59d3ecc90c8837cd6d07",
+        "8c12beaf3d202be9e1cc6771f5c2ad23684a28b1"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 22,

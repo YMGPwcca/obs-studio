@@ -4,7 +4,7 @@
   "scope": {
     "baseRef": "bcd53e2914c68a62b2a9387a7e8ee3b59d1fd1df",
     "acceptedRef": "3fc2e678d10809a4dca8b28107710534160803ab",
-    "measurementHead": "e630ec8e1b80cd4ef4cd840df7485d430d162c83",
+    "measurementHead": "8c12beaf3d202be9e1cc6771f5c2ad23684a28b1",
     "currentScopeRule": "Historical operator-attributed functions plus current C/C++ and PowerShell files introduced by operator work after acceptedRef or descended through later file renames; changed functions in later operator-modified files are selected by exact baseline identity, current blame, or candidate diff lines. Unsupported executable languages fail closed."
   },
   "analyzer": {
