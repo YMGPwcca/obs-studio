@@ -17,6 +17,11 @@ extends deterministic checker self-tests through A–U. It does not change
 production engine/libobs behavior, does not accept Phase 1, and does not start
 Task 12.
 
+The final complexity snapshot was measured at pre-freeze checkpoint
+`5eb1e665bfee7c868c088bf306e770e814159c54` and contains 875 scoped
+functions. The runtime implementation reference remains `44243a501`; this
+complexity evidence is finalized separately and remains IN REVIEW.
+
 This file is the current status ledger for the LibOBS split-engine project. If an older roadmap says Task 8 is active or Task 9 is only proposed, that older status is stale. Verify this ledger against Git/source/CI whenever resuming work.
 
 ---

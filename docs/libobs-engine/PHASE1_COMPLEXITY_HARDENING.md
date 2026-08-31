@@ -8,8 +8,12 @@ Status: **IN REVIEW**. This record is not an acceptance of the hardening work.
 - Accepted starting checkpoint: `3fc2e678d10809a4dca8b28107710534160803ab`
 - Accepted Task-11 implementation ancestor: `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
 - Hardening branch: `phase1-complexity-hardening`
-- Candidate implementation/checkpoint used for hosted verification:
+- Runtime implementation/checkpoint used for hosted verification:
   `44243a5013007a449c1d0b9903233929bd44a141`
+- Final complexity pre-freeze measurement checkpoint:
+  `5eb1e665bfee7c868c088bf306e770e814159c54`
+- Final after-snapshot commit:
+  `7fdc7db7a54b55a21113fa54158fc7883c0cd10d`
 - Ownership merge-base: `bcd53e2914c68a62b2a9387a7e8ee3b59d1fd1df`
 - Task 12: **NOT STARTED / NOT AUTHORIZED**
 
@@ -46,17 +50,22 @@ separately. The machine-readable reports are:
 - `complexity-before.json`
 - `complexity-after.json` / `complexity-report.md`
 
+The final frozen accepted after snapshot is measured at
+`5eb1e665bfee7c868c088bf306e770e814159c54` and contains 875 scoped
+functions. The runtime implementation reference remains `44243a501`; the
+complexity hardening checkpoint is tracked separately on this branch.
+
 ## Before and after
 
 | Measure | Before | After |
 |---|---:|---:|
-| Scoped functions | 543 | 764 |
-| Average CC | 5.703 | 3.806 |
+| Scoped functions | 543 | 875 |
+| Average CC | 5.703 | 3.795 |
 | Median CC | 4 | 3 |
 | 90th percentile CC | 13 | 7 |
 | Maximum CC | 61 | 13 |
-| Functions with CC > 5 | 171 | 180 |
-| Functions with CC > 7 | 115 | 72 |
+| Functions with CC > 5 | 171 | 204 |
+| Functions with CC > 7 | 115 | 83 |
 | Functions with CC > 10 | 71 | 1 |
 
 The scoped function count increases because cohesive extracted helpers are
