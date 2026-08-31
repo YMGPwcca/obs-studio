@@ -25,8 +25,8 @@ The accepted named-function/script-body complexity snapshot was measured at
 pre-freeze checkpoint `5eb1e665bfee7c868c088bf306e770e814159c54` and contains
 875 named-function scopes. The current workflow executable-code review adds a
 complete 1,235-scope snapshot at pre-freeze checkpoint
-`e630ec8e1b80cd4ef4cd840df7485d430d162c83`, pinned by baseline blob
-`dc5cf9a0f54db7428f16050af3be02116cf28019`. The runtime implementation
+`8c12beaf3d202be9e1cc6771f5c2ad23684a28b1`, pinned by baseline blob
+`81e2f631d41e84b71569ea46ca9439da367dc567`. The runtime implementation
 reference remains `44243a501`; the workflow closure is still IN REVIEW.
 
 The separate pre-Phase-2 script-body cleanup is in review on

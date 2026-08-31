@@ -143,7 +143,7 @@ the mapped `.ps1` file and the workflow step is a direct launcher.
 ## After inventory and allowlist
 
 The final checker audit at pre-freeze SHA
-`e630ec8e1b80cd4ef4cd840df7485d430d162c83` found 45 project-owned workflow
+`8c12beaf3d202be9e1cc6771f5c2ad23684a28b1` found 45 project-owned workflow
 `run:` blocks: 44 PowerShell and one Bash. All are `TRIVIAL_WRAPPER`; there are
 zero `EXECUTABLE_LOGIC`, zero `UNSUPPORTED_EXECUTABLE`, and zero
 `DECLARATIVE_ONLY` run blocks. The exact remaining inline allowlist is:
@@ -183,9 +183,9 @@ project-attributable scope.
 ## Baseline and metrics
 
 The complete after snapshot was measured at
-`e630ec8e1b80cd4ef4cd840df7485d430d162c83`, committed separately, and pinned
+`8c12beaf3d202be9e1cc6771f5c2ad23684a28b1`, committed separately, and pinned
 by the subsequent checker-only literal change. Final snapshot blob and checker
-pin: `dc5cf9a0f54db7428f16050af3be02116cf28019`.
+pin: `81e2f631d41e84b71569ea46ca9439da367dc567`.
 
 | Enforced class | Count | Average | Median | p90 | Maximum | >5 | >7 | >10 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
