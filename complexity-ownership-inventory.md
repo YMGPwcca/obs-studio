@@ -9,7 +9,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 
 - GitHub account: **YMGPwcca**
 - Author-authored commits in accepted lineage: **64**
-- Author-authored commits touching current executable scope: **86**
+- Author-authored commits touching current executable scope: **89**
 
 | Author name | Author email |
 |---|---|
@@ -89,7 +89,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `libobs/obs-source-media-internal.h` | C/C++ | A | 1 | 34 | 0 |
 | `libobs/obs-source.c` | C/C++ | M | 4 | 164 | 22 |
 | `plugins/win-capture/plugin-main.c` | C/C++ | M | 2 | 42 | 6 |
-| `tools/check-complexity.ps1` | PowerShell | A | 20 | 0 | 164 |
+| `tools/check-complexity.ps1` | PowerShell | A | 22 | 0 | 164 |
 | `tools/check-complexity.tests.ps1` | PowerShell | A | 20 | 0 | 22 |
 
 ## Non-CC changed paths

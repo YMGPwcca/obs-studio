@@ -1,20 +1,20 @@
 # Phase-1 Complexity Hardening Report
 
 Accepted starting SHA: `3fc2e678d10809a4dca8b28107710534160803ab`
-Candidate measurement HEAD: `9485f3827fa0ce0abe13296fdfb95d297ccc79fd`
+Candidate measurement HEAD: `52c70fa3a20f1bbd454b35680b39537abe2f7106`
 
-## Before/after summary
+## Named-function before/after summary
 
 | Measure | Before | After |
 |---|---:|---:|
-| Scoped functions | 543 | 1200 |
-| Average CC | 5.703 | 3.841 |
-| Median CC | 4 | 3 |
-| 90th percentile CC | 13 | 7 |
-| Maximum CC | 61 | 13 |
-| Functions with CC > 5 | 171 | 275 |
-| Functions with CC > 7 | 115 | 116 |
-| Functions with CC > 10 | 71 | 1 |
+| Named functions | 543 | 1200 |
+| Average named-function CC | 5.703 | 3.841 |
+| Median named-function CC | 4 | 3 |
+| 90th percentile named-function CC | 13 | 7 |
+| Maximum named-function CC | 61 | 13 |
+| Named functions with CC > 5 | 171 | 275 |
+| Named functions with CC > 7 | 115 | 116 |
+| Named functions with CC > 10 | 71 | 1 |
 
 The p90 is nearest-rank `ceil(0.90 * N)`. The named-function summary excludes PowerShell top-level script bodies; script bodies are measured and enforced separately. GitHub Actions run blocks are parsed as executable policy targets: only trivial wrappers remain inline. The historical Before snapshot contains only bodies present in that accepted historical scope, while After includes the complete current project-owned script-body scope.
 
