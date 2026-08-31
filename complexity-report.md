@@ -1,20 +1,12 @@
 # Phase-1 Complexity Hardening Report
 
 Accepted starting SHA: `3fc2e678d10809a4dca8b28107710534160803ab`
-Candidate measurement HEAD: `44243a5013007a449c1d0b9903233929bd44a141`
+Candidate measurement HEAD: `5eb1e665bfee7c868c088bf306e770e814159c54`
 
 ## Before/after summary
 
 | Measure | Before | After |
 |---|---:|---:|
-| Scoped functions | 543 | 764 |
-| Average CC | 5.703 | 3.806 |
-| Median CC | 4 | 3 |
-| 90th percentile CC | 13 | 7 |
-| Maximum CC | 61 | 13 |
-| Functions with CC > 5 | 171 | 180 |
-| Functions with CC > 7 | 115 | 72 |
-| Functions with CC > 10 | 71 | 1 |
 
 The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell top-level script bodies.
 
@@ -23,6 +15,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | Function | File | Before CC | After CC | Before NLOC | After NLOC | Notes |
 |---|---|---:|---:|---:|---:|---|
 | `obs_source_destroy_defer` | `libobs/obs-source.c` | 13 | 13 | 65 | 65 | unchanged |
+| `Get-OperatorBlameLines` | `tools/check-complexity.ps1` | — | 10 | — | 41 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_scene_create` | `engine/runtime_v2.cpp` | 10 | 10 | 37 | 37 | unchanged |
 | `obs_engine::Engine::v2_sync_source_observers` | `engine/runtime_source_v2.cpp` | 15 | 10 | 58 | 35 | reduced by 5 |
 | `obs_engine::Engine::v2_source_duplicate` | `engine/runtime_source_v2.cpp` | 14 | 10 | 54 | 35 | reduced by 4 |
@@ -30,6 +23,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::Engine::v2_sync_filter_registry` | `engine/runtime_filter_v2.cpp` | — | 10 | — | 34 | new cohesive helper/function in scoped file |
 | `obs_engine::take_deferred_source_events` | `engine/runtime_source_v2.cpp` | 10 | 10 | 34 | 34 | unchanged |
 | `obs_engine::Engine::v2_item_set_transform` | `engine/runtime_v2.cpp` | 25 | 10 | 79 | 34 | reduced by 15 |
+| `Get-NonBlankLineCount` | `tools/check-complexity.ps1` | — | 10 | — | 34 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_settle_filter_mutation` | `engine/runtime_filter_v2.cpp` | 16 | 10 | 36 | 30 | reduced by 6 |
 | `initialize_source_mutexes` | `libobs/obs-source.c` | — | 10 | — | 30 | new cohesive helper/function in scoped file |
 | `obs_source_update_internal` | `libobs/obs-source.c` | 15 | 10 | 42 | 30 | reduced by 5 |
@@ -38,20 +32,27 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::read_line_limited` | `engine/protocol.cpp` | 10 | 10 | 26 | 26 | unchanged |
 | `obs_engine::read_mouse_button_input` | `engine/runtime_interaction_v2.cpp` | — | 10 | — | 18 | new cohesive helper/function in scoped file |
 | `obs_engine::filter_settings_event_matches` | `engine/runtime_filter_v2.cpp` | 10 | 10 | 17 | 17 | unchanged |
+| `New-AutomaticIdentity` | `tools/check-complexity.ps1` | — | 9 | — | 41 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_properties_invoke_button` | `engine/runtime_properties_v2.cpp` | 18 | 9 | 63 | 40 | reduced by 9 |
 | `obs_engine::Engine::v2_filter_prepare_parent_removal` | `engine/runtime_filter_v2.cpp` | 9 | 9 | 36 | 36 | unchanged |
+| `Get-UnmigratedIdentityViolations` | `tools/check-complexity.ps1` | — | 9 | — | 36 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_interaction_mouse_move` | `engine/runtime_interaction_v2.cpp` | 9 | 9 | 35 | 35 | unchanged |
 | `process_media_action` | `libobs/obs-source.c` | — | 9 | — | 34 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::command_source_create` | `engine/runtime.cpp` | 9 | 9 | 32 | 32 | unchanged |
 | `obs_source_media_action_enqueue` | `libobs/obs-source.c` | 20 | 9 | 64 | 32 | reduced by 11 |
 | `obs_engine::handle_filter_request` | `engine/protocol_filter_v2.cpp` | 17 | 9 | 51 | 30 | reduced by 8 |
 | `obs_engine::Engine::command_item_transform` | `engine/runtime.cpp` | 18 | 9 | 65 | 30 | reduced by 9 |
+| `Update-PostAcceptedPathProvenance` | `tools/check-complexity.ps1` | — | 9 | — | 30 | new cohesive helper/function in scoped file |
+| `Get-IdentityMigrationCurrent` | `tools/check-complexity.ps1` | — | 9 | — | 28 | new cohesive helper/function in scoped file |
 | `obs_engine::publish_deferred_source_snapshot` | `engine/runtime_source_v2.cpp` | 9 | 9 | 27 | 27 | unchanged |
 | `obs_engine::canonicalize_source_result` | `engine/runtime_source_settle_v2.cpp` | 9 | 9 | 26 | 26 | unchanged |
+| `Read-IdentityMigrationEntries` | `tools/check-complexity.ps1` | — | 9 | — | 26 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_settle_source_mutation` | `engine/runtime_source_settle_v2.cpp` | 9 | 9 | 25 | 25 | unchanged |
+| `Assert-TrustedBaselineScope` | `tools/check-complexity.ps1` | — | 9 | — | 25 | new cohesive helper/function in scoped file |
 | `check_dynamic_properties` | `engine/properties_test.cpp` | — | 9 | — | 21 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_media_toggle_pause` | `engine/runtime_media_v2.cpp` | 14 | 9 | 33 | 21 | reduced by 5 |
 | `obs_engine::strip_inline_list_items` | `engine/runtime_properties_v2.cpp` | 9 | 9 | 21 | 21 | unchanged |
+| `Assert-TrustedBaselineReportShape` | `tools/check-complexity.ps1` | — | 9 | — | 19 | new cohesive helper/function in scoped file |
 | `obs_engine::collect_sensitive_recursive` | `engine/properties_sensitive.cpp` | 9 | 9 | 17 | 17 | unchanged |
 | `obs_engine::Engine::v2_read_source_create_options` | `engine/runtime_v2.cpp` | — | 9 | — | 17 | new cohesive helper/function in scoped file |
 | `obs_engine::read_candidate_params` | `engine/runtime_properties_v2.cpp` | 9 | 9 | 15 | 15 | unchanged |
@@ -70,6 +71,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::parse_subscription_list` | `engine/protocol_v2.cpp` | 12 | 8 | 38 | 29 | reduced by 4 |
 | `obs_engine::Engine::v2_add_filter_observer` | `engine/runtime_filter_v2.cpp` | — | 8 | — | 28 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::command_scene_create` | `engine/runtime.cpp` | 8 | 8 | 27 | 27 | unchanged |
+| `Get-AstDecisionWeight` | `tools/check-complexity.ps1` | — | 8 | — | 27 | new cohesive helper/function in scoped file |
 | `obs_engine::decode_utf8_scalars` | `engine/runtime_interaction_v2.cpp` | 21 | 8 | 40 | 26 | reduced by 13 |
 | `Read-EngineMessage` | `.github/scripts/engine-protocol-v2-task11.ps1` | 8 | 8 | 25 | 25 | unchanged |
 | `test_state_overflow_requires_resync` | `engine/events_test.cpp` | 8 | 8 | 25 | 25 | unchanged |
@@ -79,6 +81,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::publish_media_batch` | `engine/runtime_media_v2.cpp` | — | 8 | — | 24 | new cohesive helper/function in scoped file |
 | `obs_engine::publish_source_events` | `engine/runtime_source_v2.cpp` | 16 | 8 | 50 | 24 | reduced by 8 |
 | `obs_engine::Engine::v2_source_rename` | `engine/runtime_source_v2.cpp` | 9 | 8 | 25 | 23 | reduced by 1 |
+| `Test-MetricInScope` | `tools/check-complexity.ps1` | — | 8 | — | 22 | new cohesive helper/function in scoped file |
 | `obs_engine::decode_utf8_lead` | `engine/runtime_interaction_v2.cpp` | — | 8 | — | 19 | new cohesive helper/function in scoped file |
 | `obs_engine::wait_for_media_action` | `engine/runtime_media_v2.cpp` | — | 8 | — | 19 | new cohesive helper/function in scoped file |
 | `check_frame_rate_schema` | `engine/properties_test.cpp` | — | 8 | — | 17 | new cohesive helper/function in scoped file |
@@ -95,13 +98,16 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::is_valid_utf8_scalar` | `engine/runtime_interaction_v2.cpp` | — | 8 | — | 12 | new cohesive helper/function in scoped file |
 | `obs_engine::batch_matches_filter_update` | `engine/runtime_filter_v2.cpp` | 8 | 8 | 10 | 10 | unchanged |
 | `obs_engine::Engine::handle` | `engine/runtime.cpp` | 18 | 7 | 46 | 44 | reduced by 11 |
+| `New-PowerShellScriptBodyMetric` | `tools/check-complexity.ps1` | — | 7 | — | 42 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_prepare_filter_shutdown` | `engine/runtime_filter_v2.cpp` | 7 | 7 | 36 | 36 | unchanged |
 | `dispatch_request` | `engine/host.cpp` | 7 | 7 | 35 | 35 | unchanged |
 | `obs_engine::Engine::v2_scene_remove` | `engine/runtime_v2.cpp` | 10 | 7 | 43 | 33 | reduced by 3 |
 | `obs_engine::Engine::command_scene_add` | `engine/runtime.cpp` | 7 | 7 | 33 | 33 | unchanged |
 | `obs_engine::EventDispatcher::subscribe` | `engine/events.cpp` | 7 | 7 | 31 | 31 | unchanged |
 | `obs_engine::settle_deferred_source_update` | `engine/runtime_source_settle_v2.cpp` | 7 | 7 | 31 | 31 | unchanged |
+| `Merge-IdentityMigrationMaps` | `tools/check-complexity.ps1` | — | 7 | — | 31 | new cohesive helper/function in scoped file |
 | `obs_engine::queue_deferred_media_events_locked` | `engine/runtime_media_v2.cpp` | — | 7 | — | 28 | new cohesive helper/function in scoped file |
+| `Find-BeforeMetric` | `tools/check-complexity.ps1` | — | 7 | — | 28 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_filter_set_enabled` | `engine/runtime_filter_v2.cpp` | 7 | 7 | 27 | 27 | unchanged |
 | `obs_engine::Engine::v2_end_event_capture` | `engine/runtime_source_v2.cpp` | 7 | 7 | 26 | 26 | unchanged |
 | `obs_engine::apply_transform_vector` | `engine/runtime_v2.cpp` | — | 7 | — | 26 | new cohesive helper/function in scoped file |
@@ -115,8 +121,10 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::wait_for_filter_update` | `engine/runtime_filter_v2.cpp` | — | 7 | — | 23 | new cohesive helper/function in scoped file |
 | `obs_source_init` | `libobs/obs-source.c` | 15 | 7 | 47 | 23 | reduced by 8 |
 | `obs_engine::Engine::load_runtime_modules` | `engine/runtime.cpp` | — | 7 | — | 22 | new cohesive helper/function in scoped file |
+| `Test-BaselineIdentityPresent` | `tools/check-complexity.ps1` | — | 7 | — | 22 | new cohesive helper/function in scoped file |
 | `obs_engine::collect_media_signal` | `engine/runtime_media_v2.cpp` | 24 | 7 | 57 | 21 | reduced by 17 |
 | `obs_engine::collect_source_signal` | `engine/runtime_source_v2.cpp` | 23 | 7 | 66 | 21 | reduced by 16 |
+| `Get-WorkingTreeRecreatedPaths` | `tools/check-complexity.ps1` | — | 7 | — | 21 | new cohesive helper/function in scoped file |
 | `obs_engine::resolve_property_schema` | `engine/properties.cpp` | 7 | 7 | 20 | 20 | unchanged |
 | `obs_engine::route_filter_payload_locked` | `engine/runtime_filter_v2.cpp` | — | 7 | — | 20 | new cohesive helper/function in scoped file |
 | `obs_engine::promote_deferred_filter_update` | `engine/runtime_filter_v2.cpp` | 7 | 7 | 20 | 20 | unchanged |
@@ -136,10 +144,13 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::read_text_input` | `engine/runtime_interaction_v2.cpp` | — | 7 | — | 12 | new cohesive helper/function in scoped file |
 | `check_eviction_output` | `engine/events_test.cpp` | — | 7 | — | 10 | new cohesive helper/function in scoped file |
 | `obs_engine::read_key_input` | `engine/runtime_interaction_v2.cpp` | — | 7 | — | 9 | new cohesive helper/function in scoped file |
+| `New-BaselineMarkdown` | `tools/check-complexity.ps1` | — | 6 | — | 76 | new cohesive helper/function in scoped file |
 | `Start-EngineCase` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 6 | 6 | 44 | 44 | unchanged |
+| `Get-PowerShellFileMetrics` | `tools/check-complexity.ps1` | — | 6 | — | 39 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_build_property_target` | `engine/runtime_properties_v2.cpp` | 27 | 6 | 86 | 37 | reduced by 21 |
 | `obs_engine::Engine::v2_source_create` | `engine/runtime_v2.cpp` | 13 | 6 | 47 | 37 | reduced by 7 |
 | `obs_engine::Engine::v2_properties_validate` | `engine/runtime_properties_v2.cpp` | 6 | 6 | 33 | 33 | unchanged |
+| `Get-LizardRows` | `tools/check-complexity.ps1` | — | 6 | — | 32 | new cohesive helper/function in scoped file |
 | `obs_engine::EventDispatcher::emit` | `engine/events.cpp` | 6 | 6 | 31 | 31 | unchanged |
 | `obs_engine::Engine::v2_filter_list` | `engine/runtime_filter_v2.cpp` | 7 | 6 | 33 | 31 | reduced by 1 |
 | `obs_engine::Engine::v2_prepare_media_shutdown` | `engine/runtime_media_v2.cpp` | 6 | 6 | 31 | 31 | unchanged |
@@ -156,14 +167,16 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::Engine::v2_add_media_observer` | `engine/runtime_media_v2.cpp` | — | 6 | — | 26 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_source_kind_list` | `engine/runtime_v2.cpp` | 6 | 6 | 26 | 26 | unchanged |
 | `obs_engine::handle_runtime_method` | `engine/protocol_v2.cpp` | — | 6 | — | 25 | new cohesive helper/function in scoped file |
-| `obs_engine::Engine::command_source_types` | `engine/runtime.cpp` | 6 | 6 | 25 | 25 | unchanged |
+| `obs_engine::Engine::command_source_types` | `engine/runtime.cpp` | — | 6 | — | 25 | new cohesive helper/function in scoped file |
 | `obs_engine::parse_args` | `engine/config.cpp` | 15 | 6 | 48 | 24 | reduced by 9 |
 | `test_ordered_resync_preserves_queued_event` | `engine/events_test.cpp` | 6 | 6 | 24 | 24 | unchanged |
 | `obs_engine::Engine::v2_filter_order_data` | `engine/runtime_filter_v2.cpp` | 6 | 6 | 24 | 24 | unchanged |
+| `Validate-Allowlist` | `tools/check-complexity.ps1` | — | 6 | — | 24 | new cohesive helper/function in scoped file |
 | `Run-CaseE` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 6 | 6 | 23 | 23 | unchanged |
 | `test_telemetry_policy` | `engine/events_test.cpp` | 18 | 6 | 40 | 22 | reduced by 12 |
 | `obs_engine::Engine::v2_register_attached_filter` | `engine/runtime_filter_v2.cpp` | — | 6 | — | 22 | new cohesive helper/function in scoped file |
 | `obs_source_deferred_update` | `libobs/obs-source.c` | 6 | 6 | 22 | 22 | unchanged |
+| `Get-HistoricalPathAliases` | `tools/check-complexity.ps1` | — | 6 | — | 22 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_build_source_kind_property_target` | `engine/runtime_properties_v2.cpp` | — | 6 | — | 21 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_build_filter_kind_property_target` | `engine/runtime_properties_v2.cpp` | — | 6 | — | 21 | new cohesive helper/function in scoped file |
 | `obs_engine::read_settings_json` | `engine/runtime_source_settle_v2.cpp` | 6 | 6 | 21 | 21 | unchanged |
@@ -171,11 +184,14 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::read_finite_double` | `engine/protocol.cpp` | 6 | 6 | 20 | 20 | unchanged |
 | `obs_engine::Engine::v2_register_filter` | `engine/runtime_filter_v2.cpp` | — | 6 | — | 20 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_prepare_property_button` | `engine/runtime_properties_v2.cpp` | — | 6 | — | 20 | new cohesive helper/function in scoped file |
+| `Assert-JsonUniqueProperties` | `tools/check-complexity.ps1` | — | 6 | — | 20 | new cohesive helper/function in scoped file |
 | `obs_engine::collect_filter_ref` | `engine/runtime_filter_v2.cpp` | 6 | 6 | 19 | 19 | unchanged |
 | `obs_engine::collect_filter_state_events` | `engine/runtime_filter_v2.cpp` | — | 6 | — | 19 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_source_kind_defaults` | `engine/runtime_v2.cpp` | 6 | 6 | 19 | 19 | unchanged |
 | `obs_engine::apply_legacy_transform_alignment` | `engine/runtime.cpp` | — | 6 | — | 19 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_sync_media_observers` | `engine/runtime_media_v2.cpp` | 17 | 6 | 59 | 18 | reduced by 11 |
+| `Get-PathLanguage` | `tools/check-complexity.ps1` | — | 6 | — | 18 | new cohesive helper/function in scoped file |
+| `Assert-IdentityMigrationFunctionIdentity` | `tools/check-complexity.ps1` | — | 6 | — | 18 | new cohesive helper/function in scoped file |
 | `obs_engine::apply_transform_alignment` | `engine/runtime_v2.cpp` | — | 6 | — | 17 | new cohesive helper/function in scoped file |
 | `obs_engine::read_subscription_entry` | `engine/protocol_v2.cpp` | — | 6 | — | 16 | new cohesive helper/function in scoped file |
 | `register_capture_sources` | `plugins/win-capture/plugin-main.c` | — | 6 | — | 16 | new cohesive helper/function in scoped file |
@@ -202,10 +218,14 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `check_url_button` | `engine/properties_test.cpp` | — | 6 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::point_inside_source` | `engine/runtime_interaction_v2.cpp` | 6 | 6 | 8 | 8 | unchanged |
 | `obs_engine::key_matches` | `engine/runtime_interaction_v2.cpp` | 6 | 6 | 6 | 6 | unchanged |
+| `New-InventoryMarkdown` | `tools/check-complexity.ps1` | — | 5 | — | 46 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_interaction_reset` | `engine/runtime_interaction_v2.cpp` | 10 | 5 | 62 | 35 | reduced by 5 |
+| `New-IdentityMigrationEntry` | `tools/check-complexity.ps1` | — | 5 | — | 30 | new cohesive helper/function in scoped file |
+| `New-AutomaticIdentityMaps` | `tools/check-complexity.ps1` | — | 5 | — | 29 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_interaction_mouse_button` | `engine/runtime_interaction_v2.cpp` | 22 | 5 | 60 | 27 | reduced by 17 |
 | `obs_engine::Engine::v2_source_patch_settings` | `engine/runtime_v2.cpp` | 6 | 5 | 28 | 26 | reduced by 1 |
 | `obs_engine::Engine::v2_properties_resolve` | `engine/runtime_properties_v2.cpp` | 5 | 5 | 25 | 25 | unchanged |
+| `Get-RelatedBaselineMetrics` | `tools/check-complexity.ps1` | — | 5 | — | 23 | new cohesive helper/function in scoped file |
 | `obs_engine::disconnect_filter_observer` | `engine/runtime_filter_v2.cpp` | 5 | 5 | 22 | 22 | unchanged |
 | `obs_engine::Engine::v2_move_filter` | `engine/runtime_filter_v2.cpp` | — | 5 | — | 22 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_source_replace_settings` | `engine/runtime_source_v2.cpp` | 6 | 5 | 24 | 22 | reduced by 1 |
@@ -213,7 +233,9 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `test_state_prefers_telemetry_eviction` | `engine/events_test.cpp` | 11 | 5 | 27 | 21 | reduced by 6 |
 | `obs_engine::queue_deferred_filter_events_locked` | `engine/runtime_filter_v2.cpp` | — | 5 | — | 21 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_create_filter_object` | `engine/runtime_filter_v2.cpp` | — | 5 | — | 21 | new cohesive helper/function in scoped file |
+| `Assert-IdentityMigrationUniqueName` | `tools/check-complexity.ps1` | — | 5 | — | 21 | new cohesive helper/function in scoped file |
 | `obs_engine::publish_filter_batch` | `engine/runtime_filter_v2.cpp` | — | 5 | — | 20 | new cohesive helper/function in scoped file |
+| `Get-ReportFunctionMetric` | `tools/check-complexity.tests.ps1` | — | 5 | — | 20 | new cohesive helper/function in scoped file |
 | `obs_engine::ProtocolWriter::run` | `engine/protocol.cpp` | 5 | 5 | 19 | 19 | unchanged |
 | `obs_engine::update_key_tracking` | `engine/runtime_interaction_v2.cpp` | — | 5 | — | 19 | new cohesive helper/function in scoped file |
 | `obs_engine::make_kind_metadata` | `engine/runtime_source_v2.cpp` | 5 | 5 | 19 | 19 | unchanged |
@@ -221,6 +243,9 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `Send-V2Request` | `.github/scripts/engine-protocol-v2-task11.ps1` | 5 | 5 | 18 | 18 | unchanged |
 | `obs_engine::Engine::v2_get_interaction_source` | `engine/runtime_interaction_v2.cpp` | 5 | 5 | 18 | 18 | unchanged |
 | `obs_engine::promote_deferred_source_update` | `engine/runtime_source_settle_v2.cpp` | 5 | 5 | 18 | 18 | unchanged |
+| `Get-CandidateChangedLines` | `tools/check-complexity.ps1` | — | 5 | — | 18 | new cohesive helper/function in scoped file |
+| `Get-ExactException` | `tools/check-complexity.ps1` | — | 5 | — | 18 | new cohesive helper/function in scoped file |
+| `Assert-CheckerFailure` | `tools/check-complexity.tests.ps1` | — | 5 | — | 18 | new cohesive helper/function in scoped file |
 | `Send-V2Request` | `.github/scripts/engine-protocol-v2-task10.ps1` | 5 | 5 | 17 | 17 | unchanged |
 | `Stop-RaceEngine` | `.github/scripts/engine-protocol-v2-task11-timeout-race.ps1` | 5 | 5 | 17 | 17 | unchanged |
 | `Send-V2Request` | `.github/scripts/engine-protocol-v2-task11-timeout-race.ps1` | 5 | 5 | 17 | 17 | unchanged |
@@ -253,6 +278,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::validate_float_property` | `engine/properties.cpp` | — | 5 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::read_int32_required` | `engine/runtime_interaction_v2.cpp` | 5 | 5 | 11 | 11 | unchanged |
 | `obs_engine::run_media_action` | `engine/runtime_media_v2.cpp` | — | 5 | — | 11 | new cohesive helper/function in scoped file |
+| `Test-ExceptionIdentity` | `tools/check-complexity.ps1` | — | 5 | — | 11 | new cohesive helper/function in scoped file |
 | `Assert-AEvents` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 5 | 5 | 10 | 10 | unchanged |
 | `obs_engine::EventDispatcher::matches_locked` | `engine/events.cpp` | 5 | 5 | 10 | 10 | unchanged |
 | `obs_engine::read_filter_kind` | `engine/runtime_filter_v2.cpp` | — | 5 | — | 10 | new cohesive helper/function in scoped file |
@@ -269,7 +295,10 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::execute_filter_request` | `engine/protocol_filter_v2.cpp` | — | 5 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::parse_v2_request` | `engine/protocol_v2.cpp` | 18 | 5 | 39 | 8 | reduced by 13 |
 | `obs_engine::read_source_state_name` | `engine/runtime_source_v2.cpp` | — | 5 | — | 8 | new cohesive helper/function in scoped file |
+| `New-PowerShellFunctionMetric` | `tools/check-complexity.ps1` | — | 4 | — | 45 | new cohesive helper/function in scoped file |
+| `Get-ScopedCppMetrics` | `tools/check-complexity.ps1` | — | 4 | — | 42 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_interaction_key` | `engine/runtime_interaction_v2.cpp` | 22 | 4 | 64 | 27 | reduced by 18 |
+| `New-IdentityMigrationMaps` | `tools/check-complexity.ps1` | — | 4 | — | 26 | new cohesive helper/function in scoped file |
 | `main` | `engine/properties_test.cpp` | 54 | 4 | 156 | 25 | reduced by 50 |
 | `Start-RaceEngine` | `.github/scripts/engine-protocol-v2-task11-timeout-race.ps1` | 4 | 4 | 23 | 23 | unchanged |
 | `obs_engine::Engine::v2_interaction_text` | `engine/runtime_interaction_v2.cpp` | 10 | 4 | 30 | 23 | reduced by 6 |
@@ -284,6 +313,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::Engine::v2_source_list` | `engine/runtime_source_v2.cpp` | 4 | 4 | 21 | 21 | unchanged |
 | `obs_engine::Engine::v2_source_reset_settings` | `engine/runtime_source_v2.cpp` | 5 | 4 | 23 | 21 | reduced by 1 |
 | `obs_engine::Engine::command_source_update` | `engine/runtime.cpp` | 4 | 4 | 21 | 21 | unchanged |
+| `Get-PowerShellMetrics` | `tools/check-complexity.ps1` | — | 4 | — | 21 | new cohesive helper/function in scoped file |
 | `obs_engine::prepare_filter_mutation` | `engine/protocol_filter_v2.cpp` | — | 4 | — | 20 | new cohesive helper/function in scoped file |
 | `obs_engine::send_v2_error` | `engine/protocol_v2.cpp` | 4 | 4 | 20 | 20 | unchanged |
 | `obs_engine::Engine::v2_filter_record_update_baseline` | `engine/runtime_filter_v2.cpp` | 4 | 4 | 20 | 20 | unchanged |
@@ -304,6 +334,8 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::read_string_field` | `engine/runtime_source_v2.cpp` | 4 | 4 | 17 | 17 | unchanged |
 | `obs_engine::read_string_field` | `engine/runtime_v2.cpp` | 4 | 4 | 17 | 17 | unchanged |
 | `process_media_actions` | `libobs/obs-source.c` | 11 | 4 | 45 | 17 | reduced by 7 |
+| `Get-LizardVersion` | `tools/check-complexity.ps1` | — | 4 | — | 17 | new cohesive helper/function in scoped file |
+| `Get-ComparisonMetricLine` | `tools/check-complexity.ps1` | — | 4 | — | 17 | new cohesive helper/function in scoped file |
 | `Read-NextEvent` | `.github/scripts/engine-protocol-v2-task11-timeout-race.ps1` | 4 | 4 | 16 | 16 | unchanged |
 | `obs_engine::read_integer_field` | `engine/runtime_filter_v2.cpp` | 4 | 4 | 16 | 16 | unchanged |
 | `obs_engine::commit_direct_filter_event_locked` | `engine/runtime_filter_v2.cpp` | — | 4 | — | 16 | new cohesive helper/function in scoped file |
@@ -314,6 +346,8 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::read_integer_field` | `engine/runtime_source_v2.cpp` | 4 | 4 | 16 | 16 | unchanged |
 | `obs_engine::queue_deferred_source_events_locked` | `engine/runtime_source_v2.cpp` | — | 4 | — | 16 | new cohesive helper/function in scoped file |
 | `obs_engine::commit_direct_source_event_locked` | `engine/runtime_source_v2.cpp` | — | 4 | — | 16 | new cohesive helper/function in scoped file |
+| `Test-LineIntersection` | `tools/check-complexity.ps1` | — | 4 | — | 16 | new cohesive helper/function in scoped file |
+| `Get-OperatorCommitPathRecords` | `tools/check-complexity.ps1` | — | 4 | — | 16 | new cohesive helper/function in scoped file |
 | `obs_engine::ProtocolWriter::start` | `engine/protocol.cpp` | 4 | 4 | 15 | 15 | unchanged |
 | `obs_engine::read_integer` | `engine/protocol.cpp` | 4 | 4 | 15 | 15 | unchanged |
 | `record_source_update_range_locked` | `libobs/obs-source.c` | — | 4 | — | 15 | new cohesive helper/function in scoped file |
@@ -332,7 +366,11 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::mouse_button_flag` | `engine/runtime_interaction_v2.cpp` | 4 | 4 | 13 | 13 | unchanged |
 | `obs_engine::Engine::v2_get_media_source` | `engine/runtime_media_v2.cpp` | — | 4 | — | 13 | new cohesive helper/function in scoped file |
 | `obs_engine::apply_candidate` | `engine/runtime_properties_v2.cpp` | 4 | 4 | 13 | 13 | unchanged |
+| `Test-AstInsideRange` | `tools/check-complexity.ps1` | — | 4 | — | 13 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_filter_observers_to_add` | `engine/runtime_filter_v2.cpp` | — | 4 | — | 12 | new cohesive helper/function in scoped file |
+| `Read-TrustedBaselineDocument` | `tools/check-complexity.ps1` | — | 4 | — | 12 | new cohesive helper/function in scoped file |
+| `Get-IdentityStringField` | `tools/check-complexity.ps1` | — | 4 | — | 12 | new cohesive helper/function in scoped file |
+| `Get-SameNameBaselineCandidates` | `tools/check-complexity.ps1` | — | 4 | — | 12 | new cohesive helper/function in scoped file |
 | `Assert-Order` | `.github/scripts/engine-protocol-v2-task11.ps1` | 4 | 4 | 11 | 11 | unchanged |
 | `obs_engine::parse_numeric_argument` | `engine/config.cpp` | — | 4 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::validate_list_property` | `engine/properties.cpp` | — | 4 | — | 11 | new cohesive helper/function in scoped file |
@@ -381,6 +419,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `looks_like_v2_request` | `engine/host.cpp` | 4 | 4 | 6 | 6 | unchanged |
 | `Assert-ErrorAtRevision` | `.github/scripts/engine-protocol-v2-task9.ps1` | 4 | 4 | 5 | 5 | unchanged |
 | `obs_engine::filter_update_event_covers_serial` | `engine/runtime_filter_v2.cpp` | 4 | 4 | 5 | 5 | unchanged |
+| `Get-Statistics` | `tools/check-complexity.ps1` | — | 3 | — | 35 | new cohesive helper/function in scoped file |
 | `obs_engine::property_type_name` | `engine/properties.cpp` | 14 | 3 | 33 | 27 | reduced by 11 |
 | `obs_engine::handle_capability_request` | `engine/protocol_filter_v2.cpp` | 3 | 3 | 27 | 27 | unchanged |
 | `obs_engine::Engine::v2_filter_remove` | `engine/runtime_filter_v2.cpp` | 5 | 3 | 28 | 23 | reduced by 2 |
@@ -390,6 +429,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::EventDispatcher::enqueue_state_locked` | `engine/events.cpp` | — | 3 | — | 21 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_source_get_state` | `engine/runtime_source_v2.cpp` | 4 | 3 | 23 | 21 | reduced by 1 |
 | `obs_engine::remove_filter_observer` | `engine/runtime_filter_v2.cpp` | 3 | 3 | 20 | 20 | unchanged |
+| `Assert-IdentityMigrationTargets` | `tools/check-complexity.ps1` | — | 3 | — | 19 | new cohesive helper/function in scoped file |
 | `run_engine` | `engine/host.cpp` | — | 3 | — | 18 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_media_play` | `engine/runtime_media_v2.cpp` | 8 | 3 | 31 | 18 | reduced by 5 |
 | `obs_engine::Engine::v2_media_pause` | `engine/runtime_media_v2.cpp` | 8 | 3 | 31 | 18 | reduced by 5 |
@@ -397,9 +437,12 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::make_properties_document` | `engine/runtime_properties_v2.cpp` | 3 | 3 | 18 | 18 | unchanged |
 | `obs_engine::Engine::command_source_destroy` | `engine/runtime.cpp` | 3 | 3 | 18 | 18 | unchanged |
 | `initialize_compatibility_updater` | `plugins/win-capture/plugin-main.c` | — | 3 | — | 18 | new cohesive helper/function in scoped file |
+| `Get-PostAcceptedOperatorPathSets` | `tools/check-complexity.ps1` | — | 3 | — | 18 | new cohesive helper/function in scoped file |
 | `New-TestFilter` | `.github/scripts/engine-protocol-v2-task11.ps1` | 3 | 3 | 17 | 17 | unchanged |
 | `obs_engine::Engine::v2_filter_get_enabled` | `engine/runtime_filter_v2.cpp` | 3 | 3 | 17 | 17 | unchanged |
 | `obs_engine::Engine::v2_item_remove` | `engine/runtime_v2.cpp` | 3 | 3 | 17 | 17 | unchanged |
+| `Get-CommitRecords` | `tools/check-complexity.ps1` | — | 3 | — | 17 | new cohesive helper/function in scoped file |
+| `Get-AstTypeMap` | `tools/check-complexity.ps1` | — | 3 | — | 17 | new cohesive helper/function in scoped file |
 | `obs_engine::serialize_property` | `engine/properties.cpp` | 21 | 3 | 104 | 16 | reduced by 18 |
 | `obs_engine::read_bool_field` | `engine/protocol_v2.cpp` | 3 | 3 | 16 | 16 | unchanged |
 | `obs_engine::read_object_field` | `engine/protocol_v2.cpp` | 3 | 3 | 16 | 16 | unchanged |
@@ -413,14 +456,22 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::read_object_field` | `engine/runtime_v2.cpp` | 3 | 3 | 16 | 16 | unchanged |
 | `obs_engine::Engine::v2_source_get_settings` | `engine/runtime_v2.cpp` | 4 | 3 | 18 | 16 | reduced by 1 |
 | `obs_engine::Engine::command_item_remove` | `engine/runtime.cpp` | 3 | 3 | 16 | 16 | unchanged |
+| `Assert-IdentityMigrationLineage` | `tools/check-complexity.ps1` | — | 3 | — | 16 | new cohesive helper/function in scoped file |
 | `obs_engine::EventDispatcher::stop_and_drain` | `engine/events.cpp` | 3 | 3 | 15 | 15 | unchanged |
 | `obs_engine::Engine::v2_filter_kind_defaults` | `engine/runtime_filter_v2.cpp` | 6 | 3 | 19 | 15 | reduced by 3 |
 | `obs_engine::remember_timed_out_media_action` | `engine/runtime_media_v2.cpp` | — | 3 | — | 15 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::command_source_defaults` | `engine/runtime.cpp` | 3 | 3 | 15 | 15 | unchanged |
 | `start_game_capture` | `plugins/win-capture/plugin-main.c` | — | 3 | — | 15 | new cohesive helper/function in scoped file |
 | `obs_module_load` | `plugins/win-capture/plugin-main.c` | 12 | 3 | 53 | 15 | reduced by 9 |
+| `New-MetricKeyMap` | `tools/check-complexity.ps1` | — | 3 | — | 15 | new cohesive helper/function in scoped file |
+| `Format-FunctionList` | `tools/check-complexity.ps1` | — | 3 | — | 15 | new cohesive helper/function in scoped file |
+| `Add-ComparisonExceptions` | `tools/check-complexity.ps1` | — | 3 | — | 15 | new cohesive helper/function in scoped file |
+| `Add-ComparisonLimitations` | `tools/check-complexity.ps1` | — | 3 | — | 15 | new cohesive helper/function in scoped file |
 | `obs_engine::validate_mutation_guard` | `engine/protocol_filter_v2.cpp` | 3 | 3 | 14 | 14 | unchanged |
 | `obs_engine::ProtocolWriter::stop` | `engine/protocol.cpp` | 3 | 3 | 14 | 14 | unchanged |
+| `Get-AstCyclomaticComplexity` | `tools/check-complexity.ps1` | — | 3 | — | 14 | new cohesive helper/function in scoped file |
+| `Get-ExactJsonPropertyValue` | `tools/check-complexity.ps1` | — | 3 | — | 14 | new cohesive helper/function in scoped file |
+| `Get-IdentityMigrationBaseline` | `tools/check-complexity.ps1` | — | 3 | — | 14 | new cohesive helper/function in scoped file |
 | `Read-Event` | `.github/scripts/engine-protocol-v2-task11.ps1` | 13 | 3 | 34 | 13 | reduced by 10 |
 | `obs_engine::parse_plugin_argument` | `engine/config.cpp` | — | 3 | — | 13 | new cohesive helper/function in scoped file |
 | `obs_engine::EventDispatcher::require_resync_due_to_overflow` | `engine/events.cpp` | 4 | 3 | 18 | 13 | reduced by 1 |
@@ -428,6 +479,8 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::Engine::v2_bind_source_events` | `engine/runtime_source_v2.cpp` | 3 | 3 | 13 | 13 | unchanged |
 | `obs_engine::apply_legacy_transform_scalar` | `engine/runtime.cpp` | — | 3 | — | 13 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::validate_source_type` | `engine/runtime.cpp` | 3 | 3 | 13 | 13 | unchanged |
+| `New-PathRecord` | `tools/check-complexity.ps1` | — | 3 | — | 13 | new cohesive helper/function in scoped file |
+| `Get-UntrackedPathRecords` | `tools/check-complexity.ps1` | — | 3 | — | 13 | new cohesive helper/function in scoped file |
 | `Read-SafeSettingsEvent` | `.github/scripts/engine-protocol-v2-task11.ps1` | 13 | 3 | 32 | 12 | reduced by 10 |
 | `obs_engine::parse_locale_argument` | `engine/config.cpp` | — | 3 | — | 12 | new cohesive helper/function in scoped file |
 | `obs_engine::report_filter_resync` | `engine/runtime_filter_v2.cpp` | — | 3 | — | 12 | new cohesive helper/function in scoped file |
@@ -435,6 +488,9 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::append_source_settings_event` | `engine/runtime_source_v2.cpp` | — | 3 | — | 12 | new cohesive helper/function in scoped file |
 | `obs_engine::apply_transform_rotation` | `engine/runtime_v2.cpp` | — | 3 | — | 12 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_append_item_removal_events` | `engine/runtime_v2.cpp` | — | 3 | — | 12 | new cohesive helper/function in scoped file |
+| `Test-ExactStringInList` | `tools/check-complexity.ps1` | — | 3 | — | 12 | new cohesive helper/function in scoped file |
+| `Write-Utf8File` | `tools/check-complexity.ps1` | — | 3 | — | 12 | new cohesive helper/function in scoped file |
+| `Get-ChangedPathRecords` | `tools/check-complexity.ps1` | — | 3 | — | 12 | new cohesive helper/function in scoped file |
 | `Send-V2Request` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 3 | 3 | 11 | 11 | unchanged |
 | `Send-V2Request` | `.github/scripts/engine-protocol-v2-task9.ps1` | 3 | 3 | 11 | 11 | unchanged |
 | `obs_engine::text_info_type_name` | `engine/properties.cpp` | 3 | 3 | 11 | 11 | unchanged |
@@ -452,6 +508,10 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::forget_uncertain_filter_updates_locked` | `engine/runtime_filter_v2.cpp` | 3 | 3 | 11 | 11 | unchanged |
 | `obs_engine::Engine::v2_get_source` | `engine/runtime_source_v2.cpp` | — | 3 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_wait_for_event_capture_callbacks` | `engine/runtime_source_v2.cpp` | 3 | 3 | 11 | 11 | unchanged |
+| `Get-StagedPathRecords` | `tools/check-complexity.ps1` | — | 3 | — | 11 | new cohesive helper/function in scoped file |
+| `Get-CommitPathRecords` | `tools/check-complexity.ps1` | — | 3 | — | 11 | new cohesive helper/function in scoped file |
+| `Get-PythonExecutable` | `tools/check-complexity.ps1` | — | 3 | — | 11 | new cohesive helper/function in scoped file |
+| `Write-FixtureText` | `tools/check-complexity.tests.ps1` | — | 3 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::parse_value_argument` | `engine/config.cpp` | — | 3 | — | 10 | new cohesive helper/function in scoped file |
 | `toggle_modified` | `engine/properties_test.cpp` | 3 | 3 | 10 | 10 | unchanged |
 | `obs_engine::validate_property_item` | `engine/properties.cpp` | 38 | 3 | 91 | 10 | reduced by 35 |
@@ -460,6 +520,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::Engine::v2_begin_media_event_capture` | `engine/runtime_media_v2.cpp` | 3 | 3 | 10 | 10 | unchanged |
 | `obs_engine::append_source_rename_event` | `engine/runtime_source_v2.cpp` | — | 3 | — | 10 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_item_handles_for_scene` | `engine/runtime_v2.cpp` | — | 3 | — | 10 | new cohesive helper/function in scoped file |
+| `Get-SameNameCurrentCandidates` | `tools/check-complexity.ps1` | — | 3 | — | 10 | new cohesive helper/function in scoped file |
 | `Assert-EventSequence` | `.github/scripts/engine-protocol-v2-task10.ps1` | — | 3 | — | 9 | new cohesive helper/function in scoped file |
 | `Assert-EventSequence` | `.github/scripts/engine-protocol-v2-task11.ps1` | — | 3 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::FilterCallbackScope::~FilterCallbackScope` | `engine/runtime_filter_v2.cpp` | 3 | 3 | 9 | 9 | unchanged |
@@ -516,14 +577,19 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::should_discard_filter_batch` | `engine/runtime_filter_v2.cpp` | — | 3 | — | 4 | new cohesive helper/function in scoped file |
 | `obs_engine::should_discard_media_batch` | `engine/runtime_media_v2.cpp` | — | 3 | — | 4 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::start` | `engine/runtime.cpp` | 14 | 3 | 63 | 4 | reduced by 11 |
+| `New-ComparisonMarkdown` | `tools/check-complexity.ps1` | — | 2 | — | 54 | new cohesive helper/function in scoped file |
 | `setup_fixture` | `engine/properties_test.cpp` | — | 2 | — | 49 | new cohesive helper/function in scoped file |
+| `New-Fixture` | `tools/check-complexity.tests.ps1` | — | 2 | — | 37 | new cohesive helper/function in scoped file |
+| `Invoke-ComplexityChecker` | `tools/check-complexity.tests.ps1` | — | 2 | — | 27 | new cohesive helper/function in scoped file |
 | `obs_engine::collect_source_state_events` | `engine/runtime_source_v2.cpp` | — | 2 | — | 24 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::reset_video` | `engine/runtime.cpp` | — | 2 | — | 23 | new cohesive helper/function in scoped file |
-| `obs_engine::Engine::command_hello` | `engine/runtime.cpp` | 2 | 2 | 23 | 23 | unchanged |
+| `obs_engine::Engine::command_hello` | `engine/runtime.cpp` | — | 2 | — | 23 | new cohesive helper/function in scoped file |
 | `Run-CaseD` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 2 | 2 | 20 | 20 | unchanged |
 | `obs_engine::advance_filter_update_generation` | `engine/runtime_filter_v2.cpp` | — | 2 | — | 19 | new cohesive helper/function in scoped file |
 | `New-TestSource` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 2 | 2 | 18 | 18 | unchanged |
 | `obs_engine::send_v2_ok` | `engine/protocol_v2.cpp` | 2 | 2 | 17 | 17 | unchanged |
+| `Read-TrustedAcceptedBaseline` | `tools/check-complexity.ps1` | — | 2 | — | 17 | new cohesive helper/function in scoped file |
+| `New-IfChain` | `tools/check-complexity.tests.ps1` | — | 2 | — | 17 | new cohesive helper/function in scoped file |
 | `Run-CaseF` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 2 | 2 | 16 | 16 | unchanged |
 | `New-TestSource` | `.github/scripts/engine-protocol-v2-task11.ps1` | 2 | 2 | 15 | 15 | unchanged |
 | `Run-CaseB` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 2 | 2 | 15 | 15 | unchanged |
@@ -542,12 +608,20 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::Engine::v2_properties_get` | `engine/runtime_properties_v2.cpp` | 2 | 2 | 13 | 13 | unchanged |
 | `obs_engine::Engine::v2_source_get_active` | `engine/runtime_source_v2.cpp` | 3 | 2 | 15 | 13 | reduced by 1 |
 | `obs_engine::Engine::v2_source_get_showing` | `engine/runtime_source_v2.cpp` | 3 | 2 | 15 | 13 | reduced by 1 |
+| `Assert-ExactJsonShape` | `tools/check-complexity.ps1` | — | 2 | — | 13 | new cohesive helper/function in scoped file |
+| `Trust-FixtureBaseline` | `tools/check-complexity.tests.ps1` | — | 2 | — | 13 | new cohesive helper/function in scoped file |
 | `obs_engine::release_interaction_keys` | `engine/runtime_interaction_v2.cpp` | — | 2 | — | 12 | new cohesive helper/function in scoped file |
 | `obs_source_dosignal_update` | `libobs/obs-internal.h` | 2 | 2 | 12 | 12 | unchanged |
+| `Get-OperatorPredicate` | `tools/check-complexity.ps1` | — | 2 | — | 12 | new cohesive helper/function in scoped file |
+| `Invoke-FixtureGit` | `tools/check-complexity.tests.ps1` | — | 2 | — | 12 | new cohesive helper/function in scoped file |
+| `Write-MigrationDocument` | `tools/check-complexity.tests.ps1` | — | 2 | — | 12 | new cohesive helper/function in scoped file |
 | `obs_engine::make_capabilities_array` | `engine/protocol_filter_v2.cpp` | 2 | 2 | 11 | 11 | unchanged |
 | `obs_engine::make_capabilities_array` | `engine/protocol_v2.cpp` | 2 | 2 | 11 | 11 | unchanged |
 | `obs_engine::set_subscriptions` | `engine/protocol_v2.cpp` | 2 | 2 | 11 | 11 | unchanged |
 | `obs_engine::Engine::v2_filter_get` | `engine/runtime_filter_v2.cpp` | 4 | 2 | 16 | 11 | reduced by 2 |
+| `Get-ObjectPropertyValue` | `tools/check-complexity.ps1` | — | 2 | — | 11 | new cohesive helper/function in scoped file |
+| `Get-IdentityMigrationTargetMetric` | `tools/check-complexity.ps1` | — | 2 | — | 11 | new cohesive helper/function in scoped file |
+| `Add-ComparisonSummary` | `tools/check-complexity.ps1` | — | 2 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::append_filter_rename_event` | `engine/runtime_filter_v2.cpp` | — | 2 | — | 10 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_media_get_state` | `engine/runtime_media_v2.cpp` | 4 | 2 | 16 | 10 | reduced by 2 |
 | `obs_engine::finalize_property_target` | `engine/runtime_properties_v2.cpp` | — | 2 | — | 10 | new cohesive helper/function in scoped file |
@@ -557,6 +631,10 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::Engine::v2_source_get_flags` | `engine/runtime_source_v2.cpp` | 3 | 2 | 12 | 10 | reduced by 1 |
 | `obs_engine::Engine::v2_source_get_dimensions` | `engine/runtime_source_v2.cpp` | 3 | 2 | 12 | 10 | reduced by 1 |
 | `obs_engine::Engine::v2_source_save_state` | `engine/runtime_source_v2.cpp` | 3 | 2 | 12 | 10 | reduced by 1 |
+| `Assert-TrustedBaselineBlob` | `tools/check-complexity.ps1` | — | 2 | — | 10 | new cohesive helper/function in scoped file |
+| `Normalize-RepoPath` | `tools/check-complexity.ps1` | — | 2 | — | 10 | new cohesive helper/function in scoped file |
+| `Assert-IdentityMigrationNotStale` | `tools/check-complexity.ps1` | — | 2 | — | 10 | new cohesive helper/function in scoped file |
+| `Assert-CheckerPass` | `tools/check-complexity.tests.ps1` | — | 2 | — | 10 | new cohesive helper/function in scoped file |
 | `Read-PendingEvent` | `.github/scripts/engine-protocol-v2-task10.ps1` | — | 2 | — | 9 | new cohesive helper/function in scoped file |
 | `Read-PendingEvent` | `.github/scripts/engine-protocol-v2-task11.ps1` | — | 2 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::EventDispatcher::start` | `engine/events.cpp` | 2 | 2 | 9 | 9 | unchanged |
@@ -574,6 +652,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::append_source_showing_event` | `engine/runtime_source_v2.cpp` | — | 2 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_drain_deferred_source_events` | `engine/runtime_source_v2.cpp` | 2 | 2 | 9 | 9 | unchanged |
 | `obs_engine::Engine::v2_flush_deferred_source_events` | `engine/runtime_source_v2.cpp` | 2 | 2 | 9 | 9 | unchanged |
+| `Get-AllFileLines` | `tools/check-complexity.ps1` | — | 2 | — | 9 | new cohesive helper/function in scoped file |
 | `has_field` | `engine/host.cpp` | 2 | 2 | 8 | 8 | unchanged |
 | `check_property` | `engine/properties_test.cpp` | — | 2 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::schema_fingerprint` | `engine/properties.cpp` | 2 | 2 | 8 | 8 | unchanged |
@@ -594,6 +673,9 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::source_active_cb` | `engine/runtime_source_v2.cpp` | 2 | 2 | 8 | 8 | unchanged |
 | `obs_engine::source_showing_cb` | `engine/runtime_source_v2.cpp` | 2 | 2 | 8 | 8 | unchanged |
 | `obs_engine::source_flags_cb` | `engine/runtime_source_v2.cpp` | 2 | 2 | 8 | 8 | unchanged |
+| `Invoke-GitLines` | `tools/check-complexity.ps1` | — | 2 | — | 8 | new cohesive helper/function in scoped file |
+| `Resolve-Commit` | `tools/check-complexity.ps1` | — | 2 | — | 8 | new cohesive helper/function in scoped file |
+| `Test-AstType` | `tools/check-complexity.ps1` | — | 2 | — | 8 | new cohesive helper/function in scoped file |
 | `require` | `engine/events_test.cpp` | 2 | 2 | 7 | 7 | unchanged |
 | `harden_dll_search_path` | `engine/host.cpp` | 2 | 2 | 7 | 7 | unchanged |
 | `button_clicked` | `engine/properties_test.cpp` | 2 | 2 | 7 | 7 | unchanged |
@@ -604,6 +686,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::media_state_name` | `engine/runtime_media_v2.cpp` | 9 | 2 | 23 | 7 | reduced by 7 |
 | `obs_engine::Engine::v2_drain_deferred_media_events` | `engine/runtime_media_v2.cpp` | 2 | 2 | 7 | 7 | unchanged |
 | `obs_engine::Engine::v2_flush_deferred_media_events` | `engine/runtime_media_v2.cpp` | 2 | 2 | 7 | 7 | unchanged |
+| `Get-RepoFilePath` | `tools/check-complexity.ps1` | — | 2 | — | 7 | new cohesive helper/function in scoped file |
 | `Assert-NoQueuedEvents` | `.github/scripts/engine-protocol-v2-task11.ps1` | 2 | 2 | 6 | 6 | unchanged |
 | `obs_engine::EventDispatcher::enqueue_event_locked` | `engine/events.cpp` | — | 2 | — | 6 | new cohesive helper/function in scoped file |
 | `check_sanitized_settings` | `engine/properties_test.cpp` | — | 2 | — | 6 | new cohesive helper/function in scoped file |
@@ -647,24 +730,35 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::commit_media_resync_revision` | `engine/runtime_media_v2.cpp` | — | 2 | — | 4 | new cohesive helper/function in scoped file |
 | `obs_engine::is_bounded_string` | `engine/runtime_properties_v2.cpp` | 2 | 2 | 4 | 4 | unchanged |
 | `obs_source_media_play_pause` | `libobs/obs-source.c` | 2 | 2 | 4 | 4 | unchanged |
+| `New-ReportObject` | `tools/check-complexity.ps1` | — | 1 | — | 31 | new cohesive helper/function in scoped file |
 | `obs_module_load` | `engine/task8_concurrency_source.cpp` | 1 | 1 | 27 | 27 | unchanged |
 | `Initialize-RaceScenario` | `.github/scripts/engine-protocol-v2-task11-timeout-race.ps1` | — | 1 | — | 22 | new cohesive helper/function in scoped file |
+| `New-DuplicateMigrationDocument` | `tools/check-complexity.tests.ps1` | — | 1 | — | 21 | new cohesive helper/function in scoped file |
 | `obs_engine::set_semantic_source_flags` | `engine/runtime_source_settle_v2.cpp` | 1 | 1 | 20 | 20 | unchanged |
 | `obs_engine::set_semantic_source_flags` | `engine/runtime_source_v2.cpp` | 1 | 1 | 20 | 20 | unchanged |
+| `New-MigrationRecordValues` | `tools/check-complexity.tests.ps1` | — | 1 | — | 20 | new cohesive helper/function in scoped file |
 | `obs_engine::send_session_hello` | `engine/protocol_v2.cpp` | — | 1 | — | 18 | new cohesive helper/function in scoped file |
 | `obs_engine::make_transform_data` | `engine/runtime_v2.cpp` | 1 | 1 | 18 | 18 | unchanged |
 | `Run-CaseC` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 1 | 1 | 16 | 16 | unchanged |
+| `New-MigrationRecord` | `tools/check-complexity.tests.ps1` | — | 1 | — | 16 | new cohesive helper/function in scoped file |
+| `Format-StatTable` | `tools/check-complexity.ps1` | — | 1 | — | 15 | new cohesive helper/function in scoped file |
 | `obs_engine::print_help` | `engine/config.cpp` | 1 | 1 | 14 | 14 | unchanged |
 | `obs_engine::make_source_summary` | `engine/runtime_source_v2.cpp` | 1 | 1 | 14 | 14 | unchanged |
+| `Get-ComparisonLabel` | `tools/check-complexity.ps1` | — | 1 | — | 14 | new cohesive helper/function in scoped file |
 | `Invoke-RaceTimeout` | `.github/scripts/engine-protocol-v2-task11-timeout-race.ps1` | — | 1 | — | 13 | new cohesive helper/function in scoped file |
 | `send_ready_event` | `engine/host.cpp` | 1 | 1 | 13 | 13 | unchanged |
 | `obs_engine::make_filter_summary` | `engine/runtime_filter_v2.cpp` | 1 | 1 | 13 | 13 | unchanged |
 | `obs_engine::connect_media_observer` | `engine/runtime_media_v2.cpp` | 1 | 1 | 13 | 13 | unchanged |
+| `Commit-FixtureRename` | `tools/check-complexity.tests.ps1` | — | 1 | — | 13 | new cohesive helper/function in scoped file |
 | `Run-CaseA` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 1 | 1 | 12 | 12 | unchanged |
 | `obs_engine::connect_observer` | `engine/runtime_source_v2.cpp` | 1 | 1 | 11 | 11 | unchanged |
+| `Get-FunctionRanges` | `tools/check-complexity.ps1` | — | 1 | — | 11 | new cohesive helper/function in scoped file |
+| `Commit-FixtureFile` | `tools/check-complexity.tests.ps1` | — | 1 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::handle_session_close` | `engine/protocol_v2.cpp` | — | 1 | — | 10 | new cohesive helper/function in scoped file |
 | `obs_module_load` | `engine/task10_media_source.cpp` | 1 | 1 | 10 | 10 | unchanged |
 | `obs_source_dosignal_media_action` | `libobs/obs-internal.h` | 1 | 1 | 10 | 10 | unchanged |
+| `Get-FunctionKey` | `tools/check-complexity.ps1` | — | 1 | — | 10 | new cohesive helper/function in scoped file |
+| `Assert-FunctionMeasured` | `tools/check-complexity.tests.ps1` | — | 1 | — | 10 | new cohesive helper/function in scoped file |
 | `obs_engine::EventDispatcher::emit_resync_required` | `engine/events.cpp` | 1 | 1 | 9 | 9 | unchanged |
 | `obs_engine::send_error` | `engine/protocol.cpp` | 1 | 1 | 9 | 9 | unchanged |
 | `obs_engine::source_update_settle_cb` | `engine/runtime_source_settle_v2.cpp` | 1 | 1 | 9 | 9 | unchanged |
@@ -676,6 +770,8 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::make_filter_settings_result` | `engine/runtime_filter_v2.cpp` | — | 1 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::make_dimensions_data` | `engine/runtime_source_v2.cpp` | 1 | 1 | 8 | 8 | unchanged |
 | `obs_engine::make_item_identity` | `engine/runtime_v2.cpp` | 1 | 1 | 8 | 8 | unchanged |
+| `Test-PathAtRef` | `tools/check-complexity.ps1` | — | 1 | — | 8 | new cohesive helper/function in scoped file |
+| `Get-SortedFunctions` | `tools/check-complexity.ps1` | — | 1 | — | 8 | new cohesive helper/function in scoped file |
 | `SourceEventBridgeScope::SourceEventBridgeScope` | `engine/host.cpp` | 1 | 1 | 7 | 7 | unchanged |
 | `obs_log_handler` | `engine/host.cpp` | 1 | 1 | 7 | 7 | unchanged |
 | `obs_engine::set_frame_rate` | `engine/properties.cpp` | 1 | 1 | 7 | 7 | unchanged |
@@ -690,6 +786,8 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::append_event` | `engine/runtime_v2.cpp` | 1 | 1 | 7 | 7 | unchanged |
 | `obs_module_load` | `engine/task11_filter_source.cpp` | 1 | 1 | 7 | 7 | unchanged |
 | `obs_module_unload` | `plugins/win-capture/plugin-main.c` | 1 | 1 | 7 | 7 | unchanged |
+| `New-EmptyIdentityMaps` | `tools/check-complexity.ps1` | — | 1 | — | 7 | new cohesive helper/function in scoped file |
+| `Prepare-FixtureBaseline` | `tools/check-complexity.tests.ps1` | — | 1 | — | 7 | new cohesive helper/function in scoped file |
 | `Assert-Ping` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 1 | 1 | 6 | 6 | unchanged |
 | `obs_engine::collect_sensitive_property_names` | `engine/properties_sensitive.cpp` | 1 | 1 | 6 | 6 | unchanged |
 | `obs_engine::serialize_path_property` | `engine/properties.cpp` | — | 1 | — | 6 | new cohesive helper/function in scoped file |
@@ -738,6 +836,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_engine::SourceEventCaptureGate::end` | `engine/source_event_capture.hpp` | 1 | 1 | 5 | 5 | unchanged |
 | `obs_module_load` | `engine/task9_interaction_source.cpp` | 1 | 1 | 5 | 5 | unchanged |
 | `obs_engine::is_safe_identifier_character` | `engine/validation.hpp` | — | 1 | — | 5 | new cohesive helper/function in scoped file |
+| `Read-JsonFile` | `tools/check-complexity.ps1` | — | 1 | — | 5 | new cohesive helper/function in scoped file |
 | `contains` | `engine/events_test.cpp` | 1 | 1 | 4 | 4 | unchanged |
 | `obs_engine::EventDispatcher::~EventDispatcher` | `engine/events.cpp` | 1 | 1 | 4 | 4 | unchanged |
 | `SourceEventBridgeScope::~SourceEventBridgeScope` | `engine/host.cpp` | 1 | 1 | 4 | 4 | unchanged |
@@ -779,10 +878,14 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 | `obs_source_media_next` | `libobs/obs-source.c` | 1 | 1 | 4 | 4 | unchanged |
 | `obs_source_media_previous` | `libobs/obs-source.c` | 1 | 1 | 4 | 4 | unchanged |
 | `obs_source_media_set_time` | `libobs/obs-source.c` | 1 | 1 | 4 | 4 | unchanged |
+| `Test-CurrentPath` | `tools/check-complexity.ps1` | — | 1 | — | 4 | new cohesive helper/function in scoped file |
+| `Assert-UniqueFunctionIdentities` | `tools/check-complexity.ps1` | — | 1 | — | 4 | new cohesive helper/function in scoped file |
+| `Get-FixtureHead` | `tools/check-complexity.tests.ps1` | — | 1 | — | 4 | new cohesive helper/function in scoped file |
 | `Fail` | `.github/scripts/engine-protocol-v2-task10.ps1` | 1 | 1 | 3 | 3 | unchanged |
 | `Fail` | `.github/scripts/engine-protocol-v2-task11-timeout-race.ps1` | 1 | 1 | 3 | 3 | unchanged |
 | `Fail` | `.github/scripts/engine-protocol-v2-task11.ps1` | 1 | 1 | 3 | 3 | unchanged |
 | `Fail` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 1 | 1 | 3 | 3 | unchanged |
+| `New-ExactMap` | `tools/check-complexity.ps1` | — | 1 | — | 3 | new cohesive helper/function in scoped file |
 | `obs_engine::EventDispatcher::EventDispatcher` | `engine/events.cpp` | 1 | 1 | 1 | 1 | unchanged |
 | `obs_engine::RevisionState::MutationGuard::MutationGuard` | `engine/revision.hpp` | 1 | 1 | 1 | 1 | unchanged |
 | `obs_engine::Engine::Engine` | `engine/runtime.cpp` | 1 | 1 | 1 | 1 | unchanged |
@@ -790,6 +893,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 ## Top remaining functions
 
 - `obs_source_destroy_defer` — `libobs/obs-source.c:813-893`, CC 13, NLOC 65, params 1
+- `Get-OperatorBlameLines` — `tools/check-complexity.ps1:355-396`, CC 10, NLOC 41, params 1
 - `obs_engine::Engine::v2_scene_create` — `engine/runtime_v2.cpp:457-499`, CC 10, NLOC 37, params 3
 - `obs_engine::Engine::v2_sync_source_observers` — `engine/runtime_source_v2.cpp:931-968`, CC 10, NLOC 35, params 0
 - `obs_engine::Engine::v2_source_duplicate` — `engine/runtime_source_v2.cpp:1071-1109`, CC 10, NLOC 35, params 3
@@ -797,6 +901,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 - `obs_engine::Engine::v2_sync_filter_registry` — `engine/runtime_filter_v2.cpp:1428-1461`, CC 10, NLOC 34, params 1
 - `obs_engine::take_deferred_source_events` — `engine/runtime_source_v2.cpp:441-478`, CC 10, NLOC 34, params 3
 - `obs_engine::Engine::v2_item_set_transform` — `engine/runtime_v2.cpp:604-643`, CC 10, NLOC 34, params 3
+- `Get-NonBlankLineCount` — `tools/check-complexity.ps1:649-683`, CC 10, NLOC 34, params 1
 - `obs_engine::Engine::v2_settle_filter_mutation` — `engine/runtime_filter_v2.cpp:1599-1630`, CC 10, NLOC 30, params 3
 - `initialize_source_mutexes` — `libobs/obs-source.c:217-247`, CC 10, NLOC 30, params 1
 - `obs_source_update_internal` — `libobs/obs-source.c:1132-1165`, CC 10, NLOC 30, params 5
@@ -805,20 +910,27 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 - `obs_engine::read_line_limited` — `engine/protocol.cpp:116-145`, CC 10, NLOC 26, params 1
 - `obs_engine::read_mouse_button_input` — `engine/runtime_interaction_v2.cpp:559-577`, CC 10, NLOC 18, params 4
 - `obs_engine::filter_settings_event_matches` — `engine/runtime_filter_v2.cpp:1061-1077`, CC 10, NLOC 17, params 4
+- `New-AutomaticIdentity` — `tools/check-complexity.ps1:1258-1299`, CC 9, NLOC 41, params 1
 - `obs_engine::Engine::v2_properties_invoke_button` — `engine/runtime_properties_v2.cpp:539-586`, CC 9, NLOC 40, params 3
 - `obs_engine::Engine::v2_filter_prepare_parent_removal` — `engine/runtime_filter_v2.cpp:1544-1581`, CC 9, NLOC 36, params 2
+- `Get-UnmigratedIdentityViolations` — `tools/check-complexity.ps1:1356-1392`, CC 9, NLOC 36, params 1
 - `obs_engine::Engine::v2_interaction_mouse_move` — `engine/runtime_interaction_v2.cpp:466-501`, CC 9, NLOC 35, params 3
 - `process_media_action` — `libobs/obs-source.c:1398-1431`, CC 9, NLOC 34, params 2
 - `obs_engine::Engine::command_source_create` — `engine/runtime.cpp:311-346`, CC 9, NLOC 32, params 2
 - `obs_source_media_action_enqueue` — `libobs/obs-source.c:5924-5958`, CC 9, NLOC 32, params 4
 - `obs_engine::handle_filter_request` — `engine/protocol_filter_v2.cpp:412-450`, CC 9, NLOC 30, params 5
 - `obs_engine::Engine::command_item_transform` — `engine/runtime.cpp:547-578`, CC 9, NLOC 30, params 2
+- `Update-PostAcceptedPathProvenance` — `tools/check-complexity.ps1:494-524`, CC 9, NLOC 30, params 1
+- `Get-IdentityMigrationCurrent` — `tools/check-complexity.ps1:1002-1030`, CC 9, NLOC 28, params 1
 - `obs_engine::publish_deferred_source_snapshot` — `engine/runtime_source_v2.cpp:480-508`, CC 9, NLOC 27, params 2
 - `obs_engine::canonicalize_source_result` — `engine/runtime_source_settle_v2.cpp:228-256`, CC 9, NLOC 26, params 2
+- `Read-IdentityMigrationEntries` — `tools/check-complexity.ps1:936-962`, CC 9, NLOC 26, params 1
 - `obs_engine::Engine::v2_settle_source_mutation` — `engine/runtime_source_settle_v2.cpp:314-340`, CC 9, NLOC 25, params 2
+- `Assert-TrustedBaselineScope` — `tools/check-complexity.ps1:145-170`, CC 9, NLOC 25, params 1
 - `check_dynamic_properties` — `engine/properties_test.cpp:217-239`, CC 9, NLOC 21, params 1
 - `obs_engine::Engine::v2_media_toggle_pause` — `engine/runtime_media_v2.cpp:1114-1135`, CC 9, NLOC 21, params 3
 - `obs_engine::strip_inline_list_items` — `engine/runtime_properties_v2.cpp:124-145`, CC 9, NLOC 21, params 1
+- `Assert-TrustedBaselineReportShape` — `tools/check-complexity.ps1:124-143`, CC 9, NLOC 19, params 1
 - `obs_engine::collect_sensitive_recursive` — `engine/properties_sensitive.cpp:6-22`, CC 9, NLOC 17, params 2
 - `obs_engine::Engine::v2_read_source_create_options` — `engine/runtime_v2.cpp:240-256`, CC 9, NLOC 17, params 5
 - `obs_engine::read_candidate_params` — `engine/runtime_properties_v2.cpp:169-183`, CC 9, NLOC 15, params 7
@@ -837,6 +949,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 - `obs_engine::parse_subscription_list` — `engine/protocol_v2.cpp:493-521`, CC 8, NLOC 29, params 3
 - `obs_engine::Engine::v2_add_filter_observer` — `engine/runtime_filter_v2.cpp:1312-1341`, CC 8, NLOC 28, params 1
 - `obs_engine::Engine::command_scene_create` — `engine/runtime.cpp:439-468`, CC 8, NLOC 27, params 2
+- `Get-AstDecisionWeight` — `tools/check-complexity.ps1:728-755`, CC 8, NLOC 27, params 1
 - `obs_engine::decode_utf8_scalars` — `engine/runtime_interaction_v2.cpp:266-291`, CC 8, NLOC 26, params 3
 - `Read-EngineMessage` — `.github/scripts/engine-protocol-v2-task11.ps1:40-64`, CC 8, NLOC 25, params 1
 - `test_state_overflow_requires_resync` — `engine/events_test.cpp:94-119`, CC 8, NLOC 25, params 0
@@ -846,6 +959,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 - `obs_engine::publish_media_batch` — `engine/runtime_media_v2.cpp:368-391`, CC 8, NLOC 24, params 3
 - `obs_engine::publish_source_events` — `engine/runtime_source_v2.cpp:563-590`, CC 8, NLOC 24, params 3
 - `obs_engine::Engine::v2_source_rename` — `engine/runtime_source_v2.cpp:1111-1136`, CC 8, NLOC 23, params 3
+- `Test-MetricInScope` — `tools/check-complexity.ps1:1417-1439`, CC 8, NLOC 22, params 1
 - `obs_engine::decode_utf8_lead` — `engine/runtime_interaction_v2.cpp:233-251`, CC 8, NLOC 19, params 3
 - `obs_engine::wait_for_media_action` — `engine/runtime_media_v2.cpp:605-623`, CC 8, NLOC 19, params 5
 - `check_frame_rate_schema` — `engine/properties_test.cpp:179-195`, CC 8, NLOC 17, params 1
@@ -862,13 +976,16 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 - `obs_engine::is_valid_utf8_scalar` — `engine/runtime_interaction_v2.cpp:253-264`, CC 8, NLOC 12, params 2
 - `obs_engine::batch_matches_filter_update` — `engine/runtime_filter_v2.cpp:1087-1096`, CC 8, NLOC 10, params 5
 - `obs_engine::Engine::handle` — `engine/runtime.cpp:165-211`, CC 7, NLOC 44, params 1
+- `New-PowerShellScriptBodyMetric` — `tools/check-complexity.ps1:1488-1530`, CC 7, NLOC 42, params 1
 - `obs_engine::Engine::v2_prepare_filter_shutdown` — `engine/runtime_filter_v2.cpp:1506-1542`, CC 7, NLOC 36, params 0
 - `dispatch_request` — `engine/host.cpp:156-191`, CC 7, NLOC 35, params 5
 - `obs_engine::Engine::v2_scene_remove` — `engine/runtime_v2.cpp:501-540`, CC 7, NLOC 33, params 3
 - `obs_engine::Engine::command_scene_add` — `engine/runtime.cpp:493-528`, CC 7, NLOC 33, params 2
 - `obs_engine::EventDispatcher::subscribe` — `engine/events.cpp:102-134`, CC 7, NLOC 31, params 2
 - `obs_engine::settle_deferred_source_update` — `engine/runtime_source_settle_v2.cpp:181-226`, CC 7, NLOC 31, params 5
+- `Merge-IdentityMigrationMaps` — `tools/check-complexity.ps1:1092-1123`, CC 7, NLOC 31, params 1
 - `obs_engine::queue_deferred_media_events_locked` — `engine/runtime_media_v2.cpp:412-439`, CC 7, NLOC 28, params 6
+- `Find-BeforeMetric` — `tools/check-complexity.ps1:1847-1875`, CC 7, NLOC 28, params 1
 - `obs_engine::Engine::v2_filter_set_enabled` — `engine/runtime_filter_v2.cpp:1944-1970`, CC 7, NLOC 27, params 3
 - `obs_engine::Engine::v2_end_event_capture` — `engine/runtime_source_v2.cpp:883-909`, CC 7, NLOC 26, params 0
 - `obs_engine::apply_transform_vector` — `engine/runtime_v2.cpp:154-180`, CC 7, NLOC 26, params 10
@@ -882,8 +999,10 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 - `obs_engine::wait_for_filter_update` — `engine/runtime_filter_v2.cpp:1146-1168`, CC 7, NLOC 23, params 8
 - `obs_source_init` — `libobs/obs-source.c:250-277`, CC 7, NLOC 23, params 1
 - `obs_engine::Engine::load_runtime_modules` — `engine/runtime.cpp:135-158`, CC 7, NLOC 22, params 0
+- `Test-BaselineIdentityPresent` — `tools/check-complexity.ps1:1332-1354`, CC 7, NLOC 22, params 1
 - `obs_engine::collect_media_signal` — `engine/runtime_media_v2.cpp:718-742`, CC 7, NLOC 21, params 3
 - `obs_engine::collect_source_signal` — `engine/runtime_source_v2.cpp:684-708`, CC 7, NLOC 21, params 2
+- `Get-WorkingTreeRecreatedPaths` — `tools/check-complexity.ps1:442-463`, CC 7, NLOC 21, params 1
 - `obs_engine::resolve_property_schema` — `engine/properties.cpp:633-653`, CC 7, NLOC 20, params 4
 - `obs_engine::route_filter_payload_locked` — `engine/runtime_filter_v2.cpp:677-696`, CC 7, NLOC 20, params 1
 - `obs_engine::promote_deferred_filter_update` — `engine/runtime_filter_v2.cpp:1098-1117`, CC 7, NLOC 20, params 6
@@ -903,10 +1022,13 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 - `obs_engine::read_text_input` — `engine/runtime_interaction_v2.cpp:710-721`, CC 7, NLOC 12, params 5
 - `check_eviction_output` — `engine/events_test.cpp:59-68`, CC 7, NLOC 10, params 1
 - `obs_engine::read_key_input` — `engine/runtime_interaction_v2.cpp:700-708`, CC 7, NLOC 9, params 3
+- `New-BaselineMarkdown` — `tools/check-complexity.ps1:1721-1797`, CC 6, NLOC 76, params 1
 - `Start-EngineCase` — `.github/scripts/engine-protocol-v2-task8-concurrency.ps1:71-121`, CC 6, NLOC 44, params 1
+- `Get-PowerShellFileMetrics` — `tools/check-complexity.ps1:1532-1571`, CC 6, NLOC 39, params 1
 - `obs_engine::Engine::v2_build_property_target` — `engine/runtime_properties_v2.cpp:358-398`, CC 6, NLOC 37, params 6
 - `obs_engine::Engine::v2_source_create` — `engine/runtime_v2.cpp:311-353`, CC 6, NLOC 37, params 3
 - `obs_engine::Engine::v2_properties_validate` — `engine/runtime_properties_v2.cpp:484-522`, CC 6, NLOC 33, params 3
+- `Get-LizardRows` — `tools/check-complexity.ps1:582-616`, CC 6, NLOC 32, params 1
 - `obs_engine::EventDispatcher::emit` — `engine/events.cpp:335-367`, CC 6, NLOC 31, params 1
 - `obs_engine::Engine::v2_filter_list` — `engine/runtime_filter_v2.cpp:1712-1743`, CC 6, NLOC 31, params 3
 - `obs_engine::Engine::v2_prepare_media_shutdown` — `engine/runtime_media_v2.cpp:1029-1061`, CC 6, NLOC 31, params 0
@@ -927,10 +1049,12 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 - `obs_engine::parse_args` — `engine/config.cpp:100-125`, CC 6, NLOC 24, params 3
 - `test_ordered_resync_preserves_queued_event` — `engine/events_test.cpp:144-167`, CC 6, NLOC 24, params 0
 - `obs_engine::Engine::v2_filter_order_data` — `engine/runtime_filter_v2.cpp:802-826`, CC 6, NLOC 24, params 3
+- `Validate-Allowlist` — `tools/check-complexity.ps1:837-861`, CC 6, NLOC 24, params 1
 - `Run-CaseE` — `.github/scripts/engine-protocol-v2-task8-concurrency.ps1:251-276`, CC 6, NLOC 23, params 1
 - `test_telemetry_policy` — `engine/events_test.cpp:198-221`, CC 6, NLOC 22, params 0
 - `obs_engine::Engine::v2_register_attached_filter` — `engine/runtime_filter_v2.cpp:779-800`, CC 6, NLOC 22, params 4
 - `obs_source_deferred_update` — `libobs/obs-source.c:1167-1190`, CC 6, NLOC 22, params 1
+- `Get-HistoricalPathAliases` — `tools/check-complexity.ps1:546-568`, CC 6, NLOC 22, params 1
 - `obs_engine::Engine::v2_build_source_kind_property_target` — `engine/runtime_properties_v2.cpp:270-290`, CC 6, NLOC 21, params 6
 - `obs_engine::Engine::v2_build_filter_kind_property_target` — `engine/runtime_properties_v2.cpp:314-334`, CC 6, NLOC 21, params 6
 - `obs_engine::read_settings_json` — `engine/runtime_source_settle_v2.cpp:88-108`, CC 6, NLOC 21, params 2
@@ -938,11 +1062,14 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 - `obs_engine::read_finite_double` — `engine/protocol.cpp:216-235`, CC 6, NLOC 20, params 6
 - `obs_engine::Engine::v2_register_filter` — `engine/runtime_filter_v2.cpp:758-777`, CC 6, NLOC 20, params 3
 - `obs_engine::Engine::v2_prepare_property_button` — `engine/runtime_properties_v2.cpp:336-356`, CC 6, NLOC 20, params 3
+- `Assert-JsonUniqueProperties` — `tools/check-complexity.ps1:964-984`, CC 6, NLOC 20, params 1
 - `obs_engine::collect_filter_ref` — `engine/runtime_filter_v2.cpp:833-851`, CC 6, NLOC 19, params 2
 - `obs_engine::collect_filter_state_events` — `engine/runtime_filter_v2.cpp:913-933`, CC 6, NLOC 19, params 4
 - `obs_engine::Engine::v2_source_kind_defaults` — `engine/runtime_v2.cpp:288-309`, CC 6, NLOC 19, params 3
 - `obs_engine::apply_legacy_transform_alignment` — `engine/runtime.cpp:51-69`, CC 6, NLOC 19, params 3
 - `obs_engine::Engine::v2_sync_media_observers` — `engine/runtime_media_v2.cpp:1007-1027`, CC 6, NLOC 18, params 0
+- `Get-PathLanguage` — `tools/check-complexity.ps1:223-241`, CC 6, NLOC 18, params 1
+- `Assert-IdentityMigrationFunctionIdentity` — `tools/check-complexity.ps1:1179-1197`, CC 6, NLOC 18, params 1
 - `obs_engine::apply_transform_alignment` — `engine/runtime_v2.cpp:195-212`, CC 6, NLOC 17, params 4
 - `obs_engine::read_subscription_entry` — `engine/protocol_v2.cpp:476-491`, CC 6, NLOC 16, params 3
 - `register_capture_sources` — `plugins/win-capture/plugin-main.c:132-151`, CC 6, NLOC 16, params 1
@@ -973,6 +1100,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 ## Remaining functions with CC > 7
 
 - `obs_source_destroy_defer` — `libobs/obs-source.c:813-893`, CC 13, NLOC 65, params 1
+- `Get-OperatorBlameLines` — `tools/check-complexity.ps1:355-396`, CC 10, NLOC 41, params 1
 - `obs_engine::Engine::v2_scene_create` — `engine/runtime_v2.cpp:457-499`, CC 10, NLOC 37, params 3
 - `obs_engine::Engine::v2_sync_source_observers` — `engine/runtime_source_v2.cpp:931-968`, CC 10, NLOC 35, params 0
 - `obs_engine::Engine::v2_source_duplicate` — `engine/runtime_source_v2.cpp:1071-1109`, CC 10, NLOC 35, params 3
@@ -980,6 +1108,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 - `obs_engine::Engine::v2_sync_filter_registry` — `engine/runtime_filter_v2.cpp:1428-1461`, CC 10, NLOC 34, params 1
 - `obs_engine::take_deferred_source_events` — `engine/runtime_source_v2.cpp:441-478`, CC 10, NLOC 34, params 3
 - `obs_engine::Engine::v2_item_set_transform` — `engine/runtime_v2.cpp:604-643`, CC 10, NLOC 34, params 3
+- `Get-NonBlankLineCount` — `tools/check-complexity.ps1:649-683`, CC 10, NLOC 34, params 1
 - `obs_engine::Engine::v2_settle_filter_mutation` — `engine/runtime_filter_v2.cpp:1599-1630`, CC 10, NLOC 30, params 3
 - `initialize_source_mutexes` — `libobs/obs-source.c:217-247`, CC 10, NLOC 30, params 1
 - `obs_source_update_internal` — `libobs/obs-source.c:1132-1165`, CC 10, NLOC 30, params 5
@@ -988,20 +1117,27 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 - `obs_engine::read_line_limited` — `engine/protocol.cpp:116-145`, CC 10, NLOC 26, params 1
 - `obs_engine::read_mouse_button_input` — `engine/runtime_interaction_v2.cpp:559-577`, CC 10, NLOC 18, params 4
 - `obs_engine::filter_settings_event_matches` — `engine/runtime_filter_v2.cpp:1061-1077`, CC 10, NLOC 17, params 4
+- `New-AutomaticIdentity` — `tools/check-complexity.ps1:1258-1299`, CC 9, NLOC 41, params 1
 - `obs_engine::Engine::v2_properties_invoke_button` — `engine/runtime_properties_v2.cpp:539-586`, CC 9, NLOC 40, params 3
 - `obs_engine::Engine::v2_filter_prepare_parent_removal` — `engine/runtime_filter_v2.cpp:1544-1581`, CC 9, NLOC 36, params 2
+- `Get-UnmigratedIdentityViolations` — `tools/check-complexity.ps1:1356-1392`, CC 9, NLOC 36, params 1
 - `obs_engine::Engine::v2_interaction_mouse_move` — `engine/runtime_interaction_v2.cpp:466-501`, CC 9, NLOC 35, params 3
 - `process_media_action` — `libobs/obs-source.c:1398-1431`, CC 9, NLOC 34, params 2
 - `obs_engine::Engine::command_source_create` — `engine/runtime.cpp:311-346`, CC 9, NLOC 32, params 2
 - `obs_source_media_action_enqueue` — `libobs/obs-source.c:5924-5958`, CC 9, NLOC 32, params 4
 - `obs_engine::handle_filter_request` — `engine/protocol_filter_v2.cpp:412-450`, CC 9, NLOC 30, params 5
 - `obs_engine::Engine::command_item_transform` — `engine/runtime.cpp:547-578`, CC 9, NLOC 30, params 2
+- `Update-PostAcceptedPathProvenance` — `tools/check-complexity.ps1:494-524`, CC 9, NLOC 30, params 1
+- `Get-IdentityMigrationCurrent` — `tools/check-complexity.ps1:1002-1030`, CC 9, NLOC 28, params 1
 - `obs_engine::publish_deferred_source_snapshot` — `engine/runtime_source_v2.cpp:480-508`, CC 9, NLOC 27, params 2
 - `obs_engine::canonicalize_source_result` — `engine/runtime_source_settle_v2.cpp:228-256`, CC 9, NLOC 26, params 2
+- `Read-IdentityMigrationEntries` — `tools/check-complexity.ps1:936-962`, CC 9, NLOC 26, params 1
 - `obs_engine::Engine::v2_settle_source_mutation` — `engine/runtime_source_settle_v2.cpp:314-340`, CC 9, NLOC 25, params 2
+- `Assert-TrustedBaselineScope` — `tools/check-complexity.ps1:145-170`, CC 9, NLOC 25, params 1
 - `check_dynamic_properties` — `engine/properties_test.cpp:217-239`, CC 9, NLOC 21, params 1
 - `obs_engine::Engine::v2_media_toggle_pause` — `engine/runtime_media_v2.cpp:1114-1135`, CC 9, NLOC 21, params 3
 - `obs_engine::strip_inline_list_items` — `engine/runtime_properties_v2.cpp:124-145`, CC 9, NLOC 21, params 1
+- `Assert-TrustedBaselineReportShape` — `tools/check-complexity.ps1:124-143`, CC 9, NLOC 19, params 1
 - `obs_engine::collect_sensitive_recursive` — `engine/properties_sensitive.cpp:6-22`, CC 9, NLOC 17, params 2
 - `obs_engine::Engine::v2_read_source_create_options` — `engine/runtime_v2.cpp:240-256`, CC 9, NLOC 17, params 5
 - `obs_engine::read_candidate_params` — `engine/runtime_properties_v2.cpp:169-183`, CC 9, NLOC 15, params 7
@@ -1020,6 +1156,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 - `obs_engine::parse_subscription_list` — `engine/protocol_v2.cpp:493-521`, CC 8, NLOC 29, params 3
 - `obs_engine::Engine::v2_add_filter_observer` — `engine/runtime_filter_v2.cpp:1312-1341`, CC 8, NLOC 28, params 1
 - `obs_engine::Engine::command_scene_create` — `engine/runtime.cpp:439-468`, CC 8, NLOC 27, params 2
+- `Get-AstDecisionWeight` — `tools/check-complexity.ps1:728-755`, CC 8, NLOC 27, params 1
 - `obs_engine::decode_utf8_scalars` — `engine/runtime_interaction_v2.cpp:266-291`, CC 8, NLOC 26, params 3
 - `Read-EngineMessage` — `.github/scripts/engine-protocol-v2-task11.ps1:40-64`, CC 8, NLOC 25, params 1
 - `test_state_overflow_requires_resync` — `engine/events_test.cpp:94-119`, CC 8, NLOC 25, params 0
@@ -1029,6 +1166,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 - `obs_engine::publish_media_batch` — `engine/runtime_media_v2.cpp:368-391`, CC 8, NLOC 24, params 3
 - `obs_engine::publish_source_events` — `engine/runtime_source_v2.cpp:563-590`, CC 8, NLOC 24, params 3
 - `obs_engine::Engine::v2_source_rename` — `engine/runtime_source_v2.cpp:1111-1136`, CC 8, NLOC 23, params 3
+- `Test-MetricInScope` — `tools/check-complexity.ps1:1417-1439`, CC 8, NLOC 22, params 1
 - `obs_engine::decode_utf8_lead` — `engine/runtime_interaction_v2.cpp:233-251`, CC 8, NLOC 19, params 3
 - `obs_engine::wait_for_media_action` — `engine/runtime_media_v2.cpp:605-623`, CC 8, NLOC 19, params 5
 - `check_frame_rate_schema` — `engine/properties_test.cpp:179-195`, CC 8, NLOC 17, params 1
@@ -1051,8 +1189,5 @@ The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell
 
 ## Intentional exceptions
 
-| File | Function | Measured CC | Reason | Date/task | Reviewer note |
-|---|---|---:|---|---|---|
-| `libobs/obs-source.c` | `obs_source_destroy_defer` | 13 | Upstream source destruction pipeline; the operator-attributed change is only the accepted deferred_update_mutex destruction line. Further extraction would rewrite lifetime/resource/mutex teardown ordering and create metric-only risk. | 2026-08-30 Phase-1 complexity hardening | Review item: preserve exact libobs teardown order; no metric-only rewrite. |
 
 See `complexity-ownership-inventory.md` for the complete Git-derived attribution scope.
