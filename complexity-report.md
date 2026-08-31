@@ -1,7 +1,7 @@
 # Phase-1 Complexity Hardening Report
 
 Accepted starting SHA: `3fc2e678d10809a4dca8b28107710534160803ab`
-Candidate measurement HEAD: `52c70fa3a20f1bbd454b35680b39537abe2f7106`
+Candidate measurement HEAD: `e630ec8e1b80cd4ef4cd840df7485d430d162c83`
 
 ## Named-function before/after summary
 
@@ -417,13 +417,13 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::update_key_tracking` | `engine/runtime_interaction_v2.cpp` | — | 5 | — | 19 | new cohesive helper/function in scoped file |
 | `obs_engine::make_kind_metadata` | `engine/runtime_source_v2.cpp` | 5 | 5 | 19 | 19 | unchanged |
 | `obs_engine::Engine::shutdown` | `engine/runtime.cpp` | 5 | 5 | 19 | 19 | unchanged |
+| `Assert-CheckerFailure` | `tools/check-complexity.tests.ps1` | — | 5 | — | 19 | new cohesive helper/function in scoped file |
 | `Send-V2Request` | `.github/scripts/engine-protocol-v2-task11.ps1` | 5 | 5 | 18 | 18 | unchanged |
 | `obs_engine::Engine::v2_get_interaction_source` | `engine/runtime_interaction_v2.cpp` | 5 | 5 | 18 | 18 | unchanged |
 | `obs_engine::promote_deferred_source_update` | `engine/runtime_source_settle_v2.cpp` | 5 | 5 | 18 | 18 | unchanged |
 | `Get-CandidateChangedLines` | `tools/check-complexity.ps1` | — | 5 | — | 18 | new cohesive helper/function in scoped file |
 | `Get-ExactException` | `tools/check-complexity.ps1` | — | 5 | — | 18 | new cohesive helper/function in scoped file |
 | `New-CurrentPathSet` | `tools/check-complexity.ps1` | — | 5 | — | 18 | new cohesive helper/function in scoped file |
-| `Assert-CheckerFailure` | `tools/check-complexity.tests.ps1` | — | 5 | — | 18 | new cohesive helper/function in scoped file |
 | `Send-V2Request` | `.github/scripts/engine-protocol-v2-task10.ps1` | 5 | 5 | 17 | 17 | unchanged |
 | `Stop-RaceEngine` | `.github/scripts/engine-protocol-v2-task11-timeout-race.ps1` | 5 | 5 | 17 | 17 | unchanged |
 | `Send-V2Request` | `.github/scripts/engine-protocol-v2-task11-timeout-race.ps1` | 5 | 5 | 17 | 17 | unchanged |
@@ -1314,13 +1314,13 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 9 | 2 | 32 | 17 | reduced by 7 |
 | `<script-body>` | `tools/check-complexity.ps1` | — | 1 | — | 46 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task9.ps1` | 26 | 1 | 265 | 14 | reduced by 25 |
-| `<script-body>` | `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1` | — | 1 | — | 10 | new cohesive helper/function in scoped file |
-| `<script-body>` | `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1` | — | 1 | — | 10 | new cohesive helper/function in scoped file |
-| `<script-body>` | `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1` | — | 1 | — | 9 | new cohesive helper/function in scoped file |
+| `<script-body>` | `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1` | — | 1 | — | 9 | new cohesive helper/function in scoped file |
+| `<script-body>` | `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1` | — | 1 | — | 9 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task2-framing.ps1` | — | 1 | — | 8 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task3-capabilities.ps1` | — | 1 | — | 8 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task4-revisions.ps1` | — | 1 | — | 8 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task5-subscriptions.ps1` | — | 1 | — | 8 | new cohesive helper/function in scoped file |
+| `<script-body>` | `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1` | — | 1 | — | 8 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task1-protocol-v1.ps1` | — | 1 | — | 7 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task11-core-audit.ps1` | — | 1 | — | 3 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task8-concurrency-bridge-audit.ps1` | — | 1 | — | 3 | new cohesive helper/function in scoped file |
@@ -1364,9 +1364,9 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::v2_filter_set_order` — `engine/runtime_filter_v2.cpp:1990-2018`, CC 10, NLOC 29, params 3
 - `obs_engine::prepare_v2_request` — `engine/protocol_v2.cpp:809-836`, CC 10, NLOC 27, params 7
 - `obs_engine::read_line_limited` — `engine/protocol.cpp:116-145`, CC 10, NLOC 26, params 1
-- `Invoke-Task7LiveRead` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:200-225`, CC 10, NLOC 24, params 1
+- `Invoke-Task7LiveRead` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:199-224`, CC 10, NLOC 24, params 1
 - `Invoke-Task5InitialSubscriptionChecks` — `.github/scripts/engine-protocol-v2-task5-subscriptions.ps1:96-120`, CC 10, NLOC 23, params 1
-- `Invoke-Task6SettingsPatch` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:354-376`, CC 10, NLOC 23, params 1
+- `Invoke-Task6SettingsPatch` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:353-375`, CC 10, NLOC 23, params 1
 - `obs_engine::read_mouse_button_input` — `engine/runtime_interaction_v2.cpp:559-577`, CC 10, NLOC 18, params 4
 - `Get-PostHistoryRecreatedPaths` — `tools/check-complexity.ps1:2851-2869`, CC 10, NLOC 18, params 1
 - `Assert-Task2Hello` — `.github/scripts/engine-protocol-v2-task2-framing.ps1:62-78`, CC 10, NLOC 17, params 1
@@ -1385,7 +1385,7 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::command_source_create` — `engine/runtime.cpp:311-346`, CC 9, NLOC 32, params 2
 - `obs_source_media_action_enqueue` — `libobs/obs-source.c:5924-5958`, CC 9, NLOC 32, params 4
 - `Get-PathScopeLines` — `tools/check-complexity.ps1:2971-3003`, CC 9, NLOC 32, params 1
-- `Invoke-Task6Transform` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:290-319`, CC 9, NLOC 30, params 1
+- `Invoke-Task6Transform` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:289-318`, CC 9, NLOC 30, params 1
 - `obs_engine::handle_filter_request` — `engine/protocol_filter_v2.cpp:412-450`, CC 9, NLOC 30, params 5
 - `obs_engine::Engine::command_item_transform` — `engine/runtime.cpp:547-578`, CC 9, NLOC 30, params 2
 - `Update-PostAcceptedPathProvenance` — `tools/check-complexity.ps1:866-896`, CC 9, NLOC 30, params 1
@@ -1401,12 +1401,12 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `Assert-TrustedBaselineReportShape` — `tools/check-complexity.ps1:124-143`, CC 9, NLOC 19, params 1
 - `obs_engine::collect_sensitive_recursive` — `engine/properties_sensitive.cpp:6-22`, CC 9, NLOC 17, params 2
 - `obs_engine::Engine::v2_read_source_create_options` — `engine/runtime_v2.cpp:240-256`, CC 9, NLOC 17, params 5
-- `Invoke-Task8LoadState` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:264-279`, CC 9, NLOC 16, params 2
+- `Invoke-Task8LoadState` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:263-278`, CC 9, NLOC 16, params 2
 - `obs_engine::read_candidate_params` — `engine/runtime_properties_v2.cpp:169-183`, CC 9, NLOC 15, params 7
 - `Assert-Task11Ordering` — `.github/scripts/engine-protocol-v2-task11-core-audit.ps1:15-28`, CC 9, NLOC 14, params 1
-- `Invoke-Task8SourceRemoval` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:286-299`, CC 9, NLOC 12, params 2
+- `Invoke-Task8SourceRemoval` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:285-298`, CC 9, NLOC 12, params 2
 - `obs_engine::parse_u32` — `engine/config.cpp:18-31`, CC 9, NLOC 12, params 4
-- `Invoke-Task8SourceIdentity` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:168-177`, CC 9, NLOC 10, params 2
+- `Invoke-Task8SourceIdentity` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:167-176`, CC 9, NLOC 10, params 2
 - `Initialize-Task10Sources` — `.github/scripts/engine-protocol-v2-task10.ps1:210-268`, CC 8, NLOC 56, params 1
 - `obs_engine::Engine::v2_source_remove` — `engine/runtime_v2.cpp:411-455`, CC 8, NLOC 39, params 3
 - `main` — `engine/host.cpp:241-283`, CC 8, NLOC 38, params 2
@@ -1423,7 +1423,7 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `Invoke-CheckMode` — `tools/check-complexity.ps1:3477-3509`, CC 8, NLOC 32, params 1
 - `obs_engine::serialize_property_list_items` — `engine/properties.cpp:581-612`, CC 8, NLOC 31, params 1
 - `obs_engine::parse_subscription_list` — `engine/protocol_v2.cpp:493-521`, CC 8, NLOC 29, params 3
-- `Invoke-Task6SourceRemoval` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:426-454`, CC 8, NLOC 28, params 2
+- `Invoke-Task6SourceRemoval` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:425-453`, CC 8, NLOC 28, params 2
 - `obs_engine::Engine::v2_add_filter_observer` — `engine/runtime_filter_v2.cpp:1312-1341`, CC 8, NLOC 28, params 1
 - `obs_engine::Engine::command_scene_create` — `engine/runtime.cpp:439-468`, CC 8, NLOC 27, params 2
 - `Get-AstDecisionWeight` — `tools/check-complexity.ps1:1100-1127`, CC 8, NLOC 27, params 1
@@ -1440,11 +1440,11 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `Test-MetricInScope` — `tools/check-complexity.ps1:1830-1852`, CC 8, NLOC 22, params 1
 - `obs_engine::decode_utf8_lead` — `engine/runtime_interaction_v2.cpp:233-251`, CC 8, NLOC 19, params 3
 - `obs_engine::wait_for_media_action` — `engine/runtime_media_v2.cpp:605-623`, CC 8, NLOC 19, params 5
-- `Invoke-Task7LiveRefresh` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:227-244`, CC 8, NLOC 17, params 1
+- `Invoke-Task7LiveRefresh` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:226-243`, CC 8, NLOC 17, params 1
 - `check_frame_rate_schema` — `engine/properties_test.cpp:179-195`, CC 8, NLOC 17, params 1
 - `Stop-Task11AfterFailure` — `.github/scripts/engine-protocol-v2-task11.ps1:930-944`, CC 8, NLOC 15, params 1
 - `obs_engine::Engine::v2_prepare_filter_settlement` — `engine/runtime_filter_v2.cpp:1583-1597`, CC 8, NLOC 15, params 5
-- `Invoke-Task8Rename` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:199-212`, CC 8, NLOC 14, params 1
+- `Invoke-Task8Rename` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:198-211`, CC 8, NLOC 14, params 1
 - `obs_engine::parse_handle_text` — `engine/runtime_filter_v2.cpp:180-193`, CC 8, NLOC 14, params 2
 - `obs_engine::parse_handle_text` — `engine/runtime_interaction_v2.cpp:149-162`, CC 8, NLOC 14, params 2
 - `obs_engine::parse_handle_text` — `engine/runtime_media_v2.cpp:145-160`, CC 8, NLOC 14, params 2
@@ -1468,7 +1468,7 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `New-ScopeContext` — `tools/check-complexity.ps1:3087-3127`, CC 7, NLOC 40, params 1
 - `obs_engine::Engine::v2_prepare_filter_shutdown` — `engine/runtime_filter_v2.cpp:1506-1542`, CC 7, NLOC 36, params 0
 - `dispatch_request` — `engine/host.cpp:156-191`, CC 7, NLOC 35, params 5
-- `Invoke-Task6SourceCreation` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:227-260`, CC 7, NLOC 33, params 1
+- `Invoke-Task6SourceCreation` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:226-259`, CC 7, NLOC 33, params 1
 - `obs_engine::Engine::v2_scene_remove` — `engine/runtime_v2.cpp:501-540`, CC 7, NLOC 33, params 3
 - `obs_engine::Engine::command_scene_add` — `engine/runtime.cpp:493-528`, CC 7, NLOC 33, params 2
 - `obs_engine::EventDispatcher::subscribe` — `engine/events.cpp:102-134`, CC 7, NLOC 31, params 2
@@ -1512,15 +1512,15 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `Get-CeilingMetricViolations` — `tools/check-complexity.ps1:3378-3394`, CC 7, NLOC 16, params 1
 - `check_list_schema` — `engine/properties_test.cpp:157-171`, CC 7, NLOC 15, params 1
 - `obs_engine::batch_matches_source_update` — `engine/runtime_source_settle_v2.cpp:120-134`, CC 7, NLOC 15, params 3
-- `Invoke-Task8Duplicate` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:214-226`, CC 7, NLOC 13, params 1
+- `Invoke-Task8Duplicate` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:213-225`, CC 7, NLOC 13, params 1
 - `obs_engine::parse_v2_request_options` — `engine/protocol_v2.cpp:795-807`, CC 7, NLOC 13, params 3
 - `obs_engine::read_text_input` — `engine/runtime_interaction_v2.cpp:710-721`, CC 7, NLOC 12, params 5
-- `Assert-Task7SchemaProperties` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:109-119`, CC 7, NLOC 11, params 1
+- `Assert-Task7SchemaProperties` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:108-118`, CC 7, NLOC 11, params 1
 - `Assert-Task5StoppingEvent` — `.github/scripts/engine-protocol-v2-task5-subscriptions.ps1:174-183`, CC 7, NLOC 10, params 1
-- `Invoke-Task8ReplaceSettings` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:233-242`, CC 7, NLOC 10, params 1
+- `Invoke-Task8ReplaceSettings` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:232-241`, CC 7, NLOC 10, params 1
 - `check_eviction_output` — `engine/events_test.cpp:59-68`, CC 7, NLOC 10, params 1
 - `obs_engine::read_key_input` — `engine/runtime_interaction_v2.cpp:700-708`, CC 7, NLOC 9, params 3
-- `Invoke-Task8SaveState` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:244-250`, CC 7, NLOC 7, params 2
+- `Invoke-Task8SaveState` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:243-249`, CC 7, NLOC 7, params 2
 - `Invoke-Task8CaptureRouting` — `.github/scripts/engine-protocol-v2-task8-concurrency-capture-routing.ps1:3-79`, CC 6, NLOC 59, params 1
 - `New-HistoryContext` — `tools/check-complexity.ps1:2770-2819`, CC 6, NLOC 49, params 1
 - `Start-EngineCase` — `.github/scripts/engine-protocol-v2-task8-concurrency.ps1:71-121`, CC 6, NLOC 44, params 1
@@ -1541,15 +1541,15 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::v2_media_set_position` — `engine/runtime_media_v2.cpp:1243-1272`, CC 6, NLOC 29, params 3
 - `obs_engine::Engine::v2_source_load_state` — `engine/runtime_source_v2.cpp:1343-1374`, CC 6, NLOC 29, params 3
 - `obs_engine::Engine::v2_add_source_observer` — `engine/runtime_source_v2.cpp:816-844`, CC 6, NLOC 28, params 3
-- `Invoke-Task7PropertiesSmoke` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:287-313`, CC 6, NLOC 27, params 1
+- `Invoke-Task7PropertiesSmoke` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:286-312`, CC 6, NLOC 27, params 1
 - `obs_engine::Engine::v2_filter_kind_list` — `engine/runtime_filter_v2.cpp:1632-1658`, CC 6, NLOC 27, params 2
 - `obs_engine::Engine::v2_filter_create` — `engine/runtime_filter_v2.cpp:1757-1787`, CC 6, NLOC 27, params 3
 - `Invoke-RaceAction` — `.github/scripts/engine-protocol-v2-task11-timeout-race.ps1:190-218`, CC 6, NLOC 26, params 3
 - `obs_engine::handle_v2_request` — `engine/protocol_v2.cpp:888-919`, CC 6, NLOC 26, params 4
 - `obs_engine::Engine::v2_add_media_observer` — `engine/runtime_media_v2.cpp:879-905`, CC 6, NLOC 26, params 3
 - `obs_engine::Engine::v2_source_kind_list` — `engine/runtime_v2.cpp:258-286`, CC 6, NLOC 26, params 2
-- `Complete-Task6Session` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:473-497`, CC 6, NLOC 25, params 1
-- `Invoke-Task6RuntimeSmoke` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:541-565`, CC 6, NLOC 25, params 1
+- `Complete-Task6Session` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:472-496`, CC 6, NLOC 25, params 1
+- `Invoke-Task6RuntimeSmoke` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:540-564`, CC 6, NLOC 25, params 1
 - `obs_engine::handle_runtime_method` — `engine/protocol_v2.cpp:721-750`, CC 6, NLOC 25, params 8
 - `obs_engine::Engine::command_source_types` — `engine/runtime.cpp:269-293`, CC 6, NLOC 25, params 1
 - `obs_engine::parse_args` — `engine/config.cpp:100-125`, CC 6, NLOC 24, params 3
@@ -1562,7 +1562,7 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::v2_register_attached_filter` — `engine/runtime_filter_v2.cpp:779-800`, CC 6, NLOC 22, params 4
 - `obs_source_deferred_update` — `libobs/obs-source.c:1167-1190`, CC 6, NLOC 22, params 1
 - `Get-HistoricalPathAliases` — `tools/check-complexity.ps1:918-940`, CC 6, NLOC 22, params 1
-- `Invoke-Task6ItemCreation` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:268-288`, CC 6, NLOC 21, params 1
+- `Invoke-Task6ItemCreation` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:267-287`, CC 6, NLOC 21, params 1
 - `obs_engine::Engine::v2_build_source_kind_property_target` — `engine/runtime_properties_v2.cpp:270-290`, CC 6, NLOC 21, params 6
 - `obs_engine::Engine::v2_build_filter_kind_property_target` — `engine/runtime_properties_v2.cpp:314-334`, CC 6, NLOC 21, params 6
 - `obs_engine::read_settings_json` — `engine/runtime_source_settle_v2.cpp:88-108`, CC 6, NLOC 21, params 2
@@ -1582,11 +1582,11 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `Assert-Task11FilterObserver` — `.github/scripts/engine-protocol-v2-task11-core-audit.ps1:30-46`, CC 6, NLOC 17, params 1
 - `Assert-Task3HelloCapabilities` — `.github/scripts/engine-protocol-v2-task3-capabilities.ps1:77-93`, CC 6, NLOC 17, params 2
 - `Complete-Task4Session` — `.github/scripts/engine-protocol-v2-task4-revisions.ps1:128-144`, CC 6, NLOC 17, params 1
-- `Read-Task6StateEvent` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:67-83`, CC 6, NLOC 17, params 2
+- `Read-Task6StateEvent` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:66-82`, CC 6, NLOC 17, params 2
 - `obs_engine::apply_transform_alignment` — `engine/runtime_v2.cpp:195-212`, CC 6, NLOC 17, params 4
 - `Get-WorkflowLexicalFeatures` — `tools/check-complexity.ps1:479-496`, CC 6, NLOC 17, params 1
-- `Invoke-Task7ListItems` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:121-136`, CC 6, NLOC 16, params 1
-- `Invoke-Task8SourceSmoke` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:341-356`, CC 6, NLOC 16, params 1
+- `Invoke-Task7ListItems` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:120-135`, CC 6, NLOC 16, params 1
+- `Invoke-Task8SourceSmoke` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:340-355`, CC 6, NLOC 16, params 1
 - `obs_engine::read_subscription_entry` — `engine/protocol_v2.cpp:476-491`, CC 6, NLOC 16, params 3
 - `register_capture_sources` — `plugins/win-capture/plugin-main.c:132-151`, CC 6, NLOC 16, params 1
 - `Get-ReportStatistics` — `tools/check-complexity.ps1:2132-2148`, CC 6, NLOC 16, params 1
@@ -1595,7 +1595,7 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::MediaCallbackScope::MediaCallbackScope` — `engine/runtime_media_v2.cpp:238-253`, CC 6, NLOC 15, params 2
 - `obs_engine::collect_media_state_events` — `engine/runtime_media_v2.cpp:699-716`, CC 6, NLOC 15, params 4
 - `obs_engine::SourceCallbackScope::SourceCallbackScope` — `engine/runtime_source_v2.cpp:385-399`, CC 6, NLOC 15, params 2
-- `Invoke-Task7Validate` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:149-162`, CC 6, NLOC 14, params 1
+- `Invoke-Task7Validate` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:148-161`, CC 6, NLOC 14, params 1
 - `obs_engine::read_key_text` — `engine/runtime_interaction_v2.cpp:674-687`, CC 6, NLOC 14, params 3
 - `obs_engine::erase_password_settings` — `engine/properties.cpp:154-166`, CC 6, NLOC 13, params 2
 - `obs_engine::is_safe_identifier` — `engine/validation.hpp:14-27`, CC 6, NLOC 13, params 2
@@ -1616,9 +1616,9 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `check_default_button` — `engine/properties_test.cpp:241-249`, CC 6, NLOC 9, params 1
 - `check_url_button` — `engine/properties_test.cpp:251-258`, CC 6, NLOC 8, params 1
 - `obs_engine::point_inside_source` — `engine/runtime_interaction_v2.cpp:314-321`, CC 6, NLOC 8, params 3
-- `Invoke-Task8KindGet` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:129-135`, CC 6, NLOC 7, params 1
-- `Invoke-Task8ActivityState` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:184-190`, CC 6, NLOC 7, params 1
-- `Invoke-Task8LiveProperties` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:192-197`, CC 6, NLOC 6, params 1
+- `Invoke-Task8KindGet` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:128-134`, CC 6, NLOC 7, params 1
+- `Invoke-Task8ActivityState` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:183-189`, CC 6, NLOC 7, params 1
+- `Invoke-Task8LiveProperties` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:191-196`, CC 6, NLOC 6, params 1
 - `obs_engine::key_matches` — `engine/runtime_interaction_v2.cpp:293-298`, CC 6, NLOC 6, params 4
 
 ## Remaining functions with CC > 7
@@ -1642,9 +1642,9 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::v2_filter_set_order` — `engine/runtime_filter_v2.cpp:1990-2018`, CC 10, NLOC 29, params 3
 - `obs_engine::prepare_v2_request` — `engine/protocol_v2.cpp:809-836`, CC 10, NLOC 27, params 7
 - `obs_engine::read_line_limited` — `engine/protocol.cpp:116-145`, CC 10, NLOC 26, params 1
-- `Invoke-Task7LiveRead` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:200-225`, CC 10, NLOC 24, params 1
+- `Invoke-Task7LiveRead` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:199-224`, CC 10, NLOC 24, params 1
 - `Invoke-Task5InitialSubscriptionChecks` — `.github/scripts/engine-protocol-v2-task5-subscriptions.ps1:96-120`, CC 10, NLOC 23, params 1
-- `Invoke-Task6SettingsPatch` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:354-376`, CC 10, NLOC 23, params 1
+- `Invoke-Task6SettingsPatch` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:353-375`, CC 10, NLOC 23, params 1
 - `obs_engine::read_mouse_button_input` — `engine/runtime_interaction_v2.cpp:559-577`, CC 10, NLOC 18, params 4
 - `Get-PostHistoryRecreatedPaths` — `tools/check-complexity.ps1:2851-2869`, CC 10, NLOC 18, params 1
 - `Assert-Task2Hello` — `.github/scripts/engine-protocol-v2-task2-framing.ps1:62-78`, CC 10, NLOC 17, params 1
@@ -1663,7 +1663,7 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::command_source_create` — `engine/runtime.cpp:311-346`, CC 9, NLOC 32, params 2
 - `obs_source_media_action_enqueue` — `libobs/obs-source.c:5924-5958`, CC 9, NLOC 32, params 4
 - `Get-PathScopeLines` — `tools/check-complexity.ps1:2971-3003`, CC 9, NLOC 32, params 1
-- `Invoke-Task6Transform` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:290-319`, CC 9, NLOC 30, params 1
+- `Invoke-Task6Transform` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:289-318`, CC 9, NLOC 30, params 1
 - `obs_engine::handle_filter_request` — `engine/protocol_filter_v2.cpp:412-450`, CC 9, NLOC 30, params 5
 - `obs_engine::Engine::command_item_transform` — `engine/runtime.cpp:547-578`, CC 9, NLOC 30, params 2
 - `Update-PostAcceptedPathProvenance` — `tools/check-complexity.ps1:866-896`, CC 9, NLOC 30, params 1
@@ -1679,12 +1679,12 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `Assert-TrustedBaselineReportShape` — `tools/check-complexity.ps1:124-143`, CC 9, NLOC 19, params 1
 - `obs_engine::collect_sensitive_recursive` — `engine/properties_sensitive.cpp:6-22`, CC 9, NLOC 17, params 2
 - `obs_engine::Engine::v2_read_source_create_options` — `engine/runtime_v2.cpp:240-256`, CC 9, NLOC 17, params 5
-- `Invoke-Task8LoadState` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:264-279`, CC 9, NLOC 16, params 2
+- `Invoke-Task8LoadState` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:263-278`, CC 9, NLOC 16, params 2
 - `obs_engine::read_candidate_params` — `engine/runtime_properties_v2.cpp:169-183`, CC 9, NLOC 15, params 7
 - `Assert-Task11Ordering` — `.github/scripts/engine-protocol-v2-task11-core-audit.ps1:15-28`, CC 9, NLOC 14, params 1
-- `Invoke-Task8SourceRemoval` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:286-299`, CC 9, NLOC 12, params 2
+- `Invoke-Task8SourceRemoval` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:285-298`, CC 9, NLOC 12, params 2
 - `obs_engine::parse_u32` — `engine/config.cpp:18-31`, CC 9, NLOC 12, params 4
-- `Invoke-Task8SourceIdentity` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:168-177`, CC 9, NLOC 10, params 2
+- `Invoke-Task8SourceIdentity` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:167-176`, CC 9, NLOC 10, params 2
 - `Initialize-Task10Sources` — `.github/scripts/engine-protocol-v2-task10.ps1:210-268`, CC 8, NLOC 56, params 1
 - `obs_engine::Engine::v2_source_remove` — `engine/runtime_v2.cpp:411-455`, CC 8, NLOC 39, params 3
 - `main` — `engine/host.cpp:241-283`, CC 8, NLOC 38, params 2
@@ -1701,7 +1701,7 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `Invoke-CheckMode` — `tools/check-complexity.ps1:3477-3509`, CC 8, NLOC 32, params 1
 - `obs_engine::serialize_property_list_items` — `engine/properties.cpp:581-612`, CC 8, NLOC 31, params 1
 - `obs_engine::parse_subscription_list` — `engine/protocol_v2.cpp:493-521`, CC 8, NLOC 29, params 3
-- `Invoke-Task6SourceRemoval` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:426-454`, CC 8, NLOC 28, params 2
+- `Invoke-Task6SourceRemoval` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:425-453`, CC 8, NLOC 28, params 2
 - `obs_engine::Engine::v2_add_filter_observer` — `engine/runtime_filter_v2.cpp:1312-1341`, CC 8, NLOC 28, params 1
 - `obs_engine::Engine::command_scene_create` — `engine/runtime.cpp:439-468`, CC 8, NLOC 27, params 2
 - `Get-AstDecisionWeight` — `tools/check-complexity.ps1:1100-1127`, CC 8, NLOC 27, params 1
@@ -1718,11 +1718,11 @@ Owned run blocks: 45; substantial inline PowerShell: 0; unsupported substantial 
 - `Test-MetricInScope` — `tools/check-complexity.ps1:1830-1852`, CC 8, NLOC 22, params 1
 - `obs_engine::decode_utf8_lead` — `engine/runtime_interaction_v2.cpp:233-251`, CC 8, NLOC 19, params 3
 - `obs_engine::wait_for_media_action` — `engine/runtime_media_v2.cpp:605-623`, CC 8, NLOC 19, params 5
-- `Invoke-Task7LiveRefresh` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:227-244`, CC 8, NLOC 17, params 1
+- `Invoke-Task7LiveRefresh` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:226-243`, CC 8, NLOC 17, params 1
 - `check_frame_rate_schema` — `engine/properties_test.cpp:179-195`, CC 8, NLOC 17, params 1
 - `Stop-Task11AfterFailure` — `.github/scripts/engine-protocol-v2-task11.ps1:930-944`, CC 8, NLOC 15, params 1
 - `obs_engine::Engine::v2_prepare_filter_settlement` — `engine/runtime_filter_v2.cpp:1583-1597`, CC 8, NLOC 15, params 5
-- `Invoke-Task8Rename` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:199-212`, CC 8, NLOC 14, params 1
+- `Invoke-Task8Rename` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:198-211`, CC 8, NLOC 14, params 1
 - `obs_engine::parse_handle_text` — `engine/runtime_filter_v2.cpp:180-193`, CC 8, NLOC 14, params 2
 - `obs_engine::parse_handle_text` — `engine/runtime_interaction_v2.cpp:149-162`, CC 8, NLOC 14, params 2
 - `obs_engine::parse_handle_text` — `engine/runtime_media_v2.cpp:145-160`, CC 8, NLOC 14, params 2

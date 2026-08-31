@@ -9,7 +9,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 
 - GitHub account: **YMGPwcca**
 - Author-authored commits in accepted lineage: **64**
-- Author-authored commits touching current executable scope: **89**
+- Author-authored commits touching current executable scope: **94**
 
 | Author name | Author email |
 |---|---|
@@ -39,15 +39,15 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `.github/scripts/engine-protocol-v2-task4-revisions.ps1` | PowerShell | A | 1 | 0 | 15 |
 | `.github/scripts/engine-protocol-v2-task5-event-queue-policy.ps1` | PowerShell | A | 1 | 0 | 1 |
 | `.github/scripts/engine-protocol-v2-task5-subscriptions.ps1` | PowerShell | A | 1 | 0 | 18 |
-| `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1` | PowerShell | A | 1 | 0 | 31 |
+| `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1` | PowerShell | A | 2 | 0 | 31 |
 | `.github/scripts/engine-protocol-v2-task7-properties-bridge.ps1` | PowerShell | A | 1 | 0 | 1 |
-| `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1` | PowerShell | A | 1 | 0 | 19 |
+| `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1` | PowerShell | A | 2 | 0 | 19 |
 | `.github/scripts/engine-protocol-v2-task8-concurrency-bridge-audit.ps1` | PowerShell | A | 1 | 0 | 4 |
 | `.github/scripts/engine-protocol-v2-task8-concurrency-build-fixture.ps1` | PowerShell | A | 1 | 0 | 1 |
 | `.github/scripts/engine-protocol-v2-task8-concurrency-capture-routing.ps1` | PowerShell | A | 1 | 0 | 1 |
 | `.github/scripts/engine-protocol-v2-task8-concurrency-run.ps1` | PowerShell | A | 1 | 0 | 1 |
 | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | PowerShell | M | 2 | 318 | 18 |
-| `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1` | PowerShell | A | 1 | 0 | 34 |
+| `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1` | PowerShell | A | 2 | 0 | 34 |
 | `.github/scripts/engine-protocol-v2-task9-build-fixture.ps1` | PowerShell | A | 1 | 0 | 1 |
 | `.github/scripts/engine-protocol-v2-task9-package-audit.ps1` | PowerShell | A | 1 | 0 | 1 |
 | `.github/scripts/engine-protocol-v2-task9-remove-fixture.ps1` | PowerShell | A | 1 | 0 | 1 |
@@ -89,8 +89,8 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `libobs/obs-source-media-internal.h` | C/C++ | A | 1 | 34 | 0 |
 | `libobs/obs-source.c` | C/C++ | M | 4 | 164 | 22 |
 | `plugins/win-capture/plugin-main.c` | C/C++ | M | 2 | 42 | 6 |
-| `tools/check-complexity.ps1` | PowerShell | A | 22 | 0 | 164 |
-| `tools/check-complexity.tests.ps1` | PowerShell | A | 20 | 0 | 22 |
+| `tools/check-complexity.ps1` | PowerShell | A | 23 | 0 | 164 |
+| `tools/check-complexity.tests.ps1` | PowerShell | A | 21 | 0 | 22 |
 
 ## Non-CC changed paths
 
