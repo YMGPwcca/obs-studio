@@ -2533,12 +2533,12 @@ function Add-WorkflowExecutableSection {
     $null = $Lines.Add('')
     $null = $Lines.Add('Workflow YAML is parsed structurally. Trivial launcher/setup wrappers remain inline; substantial PowerShell must be extracted into measured `.ps1` code, and substantial unsupported shell/interpreter code fails closed.')
     $null = $Lines.Add('')
-    $policy = $Report.PSObject.Properties['workflowExecutablePolicy']
+    $policy = $Report.workflowExecutablePolicy
     if ($null -ne $policy) {
-        $null = $Lines.Add("Owned run blocks: $($policy.Value.projectOwnedBlockCount); substantial inline PowerShell: $($policy.Value.substantialPowerShell); unsupported substantial blocks: $($policy.Value.unsupportedSubstantial)")
+        $null = $Lines.Add("Owned run blocks: $($policy.projectOwnedBlockCount); substantial inline PowerShell: $($policy.substantialPowerShell); unsupported substantial blocks: $($policy.unsupportedSubstantial)")
         $null = $Lines.Add('')
     }
-    $blocks = @($Report.PSObject.Properties['workflowExecutableBlocks'].Value)
+    $blocks = @($Report.workflowExecutableBlocks)
     if (@($blocks).Count -eq 0) {
         $null = $Lines.Add('_No project-owned workflow run blocks were found._')
         $null = $Lines.Add('')
