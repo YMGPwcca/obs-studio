@@ -3466,6 +3466,8 @@ function Invoke-AfterMode {
     $afterMarkdown = if ($MarkdownPath) { $MarkdownPath } else { 'complexity-report.md' }
     Write-Utf8File $afterOutput ($report | ConvertTo-Json -Depth 30)
     Write-Utf8File $afterMarkdown (New-ComparisonMarkdown $Context.Baseline.BeforeReport $report $Context.Inventory $Context.Scope.ByPath $allowlist)
+    Write-Utf8File $InventoryPath ($Context.Inventory | ConvertTo-Json -Depth 30)
+    Write-Utf8File ($InventoryPath -replace '\.json$', '.md') (New-InventoryMarkdown $Context.Inventory)
     Write-Output "After report written: $afterOutput"
     Write-Output "Comparison report written: $afterMarkdown"
     Write-Output ((Format-StatTable $report.summary))
