@@ -223,12 +223,30 @@ rename, and AI rejects a new untracked workflow before commit. The exact AA,
 AB, AE, AF, AG, and AI failure text requires extraction or reports unsupported
 inline executable code as applicable.
 
-The final exact-SHA hosted matrix is to be run against the final pushed review
-HEAD; its run IDs are recorded in the final handoff. Because only workflow
-wrappers and test tooling changed, the accepted physical Task 8/10/11 smoke
-result remains applicable; no runtime binary was rebuilt. Hosted Windows lanes
-execute the extracted scripts, and the underlying physically accepted harness
-scripts were not changed.
+The final exact-SHA hosted matrix completed successfully at
+`42d362014e52f6cb29b463cbb83922ca3224132e` (the documentation-only update that
+records this result follows that tested SHA). The run IDs were:
+
+| Lane | Run ID | Conclusion |
+|---|---:|---|
+| Task 1 / 1.1 | 33445702150 | success |
+| Task 2 | 33445704661 | success |
+| Task 3 | 33445707119 | success |
+| Task 4 | 33445709413 | success |
+| Task 5 | 33445711833 | success |
+| Task 6 | 33445715323 | success |
+| Task 7 | 33445719655 | success |
+| Task 8 | 33445722636 | success |
+| Task 8 concurrency | 33445725591 | success |
+| Task 9 | 33445729922 | success |
+| Task 10 | 33445732837 | success |
+| Task 11 | 33445736076 | success |
+| Complexity Regression Gate (A–AI) | 33445739056 | success |
+
+Because only workflow wrappers and test tooling changed, the accepted physical
+Task 8/10/11 smoke result remains applicable; no runtime binary was rebuilt.
+Hosted Windows lanes execute the extracted scripts, and the underlying
+physically accepted harness scripts were not changed.
 
 Runtime immutability proof target:
 `git diff 44243a5013007a449c1d0b9903233929bd44a141 <final> -- engine libobs plugins`
