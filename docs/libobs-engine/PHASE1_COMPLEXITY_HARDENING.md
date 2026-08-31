@@ -177,7 +177,8 @@ automatic same-name continuity, including a rename into a previously deleted
 destination; Q proves a migration cannot override an existing file-lineage
 baseline binding; R proves operator provenance follows a later non-operator
 file rename; S validates the pinned accepted-baseline artifact; T covers a
-staged working-tree delete/recreate.
+staged working-tree delete/recreate; U proves a function added before the
+final freeze is protected by the frozen baseline afterward.
 
 ## Refactoring and semantic review
 

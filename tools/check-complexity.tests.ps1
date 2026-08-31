@@ -589,7 +589,21 @@ try {
     Assert-FunctionMeasured $caseTResult 'src/recreated.cpp' 'calculate' 'CASE T staged working-tree recreation'
     Assert-CheckerFailure $caseTResult 'CASE T staged recreation requires continuity migration' 'calculate\( int value\)'
 
-    Write-Output 'Complexity checker self-test: PASS (cases A-T)'
+    $caseU = New-Fixture 'case-u-frozen-post-hardening-function'
+    Prepare-FixtureBaseline $caseU
+    Commit-FixtureFile $caseU 'src/accepted.cpp' (New-IfChain 'post_hardening_function' 'int' 1) 'fixture add post-hardening function'
+    Assert-CheckerPass (Invoke-ComplexityChecker $caseU 'After') 'CASE U freeze after snapshot'
+    Trust-FixtureBaseline $caseU
+    Commit-FixtureFile $caseU 'src/accepted.cpp' (New-IfChain 'post_hardening_function' 'int' 2) 'fixture regress frozen post-hardening function'
+    $caseURegressed = Invoke-ComplexityChecker $caseU 'Check'
+    Assert-FunctionMeasured $caseURegressed 'src/accepted.cpp' 'post_hardening_function' 'CASE U frozen function regression'
+    Assert-CheckerFailure $caseURegressed 'CASE U frozen CC 2 to CC 3 regression' 'baseline 2'
+    Commit-FixtureFile $caseU 'src/accepted.cpp' (New-IfChain 'post_hardening_function' 'int' 1) 'fixture restore frozen post-hardening function'
+    $caseUPass = Invoke-ComplexityChecker $caseU 'Check'
+    Assert-FunctionMeasured $caseUPass 'src/accepted.cpp' 'post_hardening_function' 'CASE U frozen function at baseline'
+    Assert-CheckerPass $caseUPass 'CASE U frozen CC 2 remains passing'
+
+    Write-Output 'Complexity checker self-test: PASS (cases A-U)'
 } finally {
     if (Test-Path -LiteralPath $testRoot) {
         Remove-Item -LiteralPath $testRoot -Recurse -Force
