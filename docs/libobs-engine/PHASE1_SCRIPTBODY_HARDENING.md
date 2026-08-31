@@ -187,8 +187,36 @@ suite reports **A–Z PASS**, including:
 - CASE Z: a delete/recreated script path at CC 5 fails continuity rather than
   receiving a fresh budget.
 
-The final hosted Task 1–11 matrix, physical Windows smoke availability, and
-the hosted complexity-gate run are recorded here when the same final candidate
-SHA has completed those checks.
+## Physical Windows smoke
+
+The physical smoke used the previously accepted runtime package
+`obs-engine-windows-x64-phase1-complexity-hardening-44243a501.zip`, whose
+SHA-256 is `90BCC1E736D090EA358C4C2E993E973749EB537E3D160FCDF02D9C8EB416A79F`.
+The extracted runtime hashes were `obs-engine.exe`
+`3E0A4EA8379AE626F10B5E93A934DE316FAC35C45D5E8903999DCC8B66636DE7` and
+`obs.dll`
+`3E63A5344EB4129DF305A2827E06996BC22A8019F6037FDF120EB15093A1630D`.
+
+The cached fixture DLLs were stale, so only the three CI-only fixture targets
+were rebuilt from the unchanged repository sources; `obs-engine.exe`,
+`obs.dll`, and the accepted package were not rebuilt or replaced. Fresh
+isolated package copies were used for each run. Results on the physical
+Windows host were:
+
+| Smoke | Result |
+|---|---|
+| Task 8 concurrency A–F | PASS, exit 0 |
+| Task 10 media | PASS, exit 0 |
+| Task 11 filter integration | PASS, exit 0 |
+| Task 11 timeout ownership race | PASS, exit 0 |
+
+The Task 11 fixture hash was
+`C9789BB6674F2A57D342FF29083E96F941A1DA9C92ECAF9CFE7CC23E14E0EB80`.
+The initial stale-fixture Task 10/Task 11 attempts failed identically with
+the accepted pre-refactor harnesses and were discarded as environmental
+fixture mismatch, not used as acceptance evidence.
+
+The exact-SHA hosted Task 1–11 matrix and hosted complexity-gate run are
+reported in the final handoff for the final candidate SHA.
 
 Task 12: **NOT STARTED / NOT AUTHORIZED**
