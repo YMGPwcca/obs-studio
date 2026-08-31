@@ -6,32 +6,41 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$InstallRoot = (Resolve-Path $InstallRoot).Path
-$Engine = Get-ChildItem -Path $InstallRoot -Filter 'obs-engine.exe' -File -Recurse | Select-Object -First 1
-if ($null -eq $Engine) {
-    throw 'obs-engine.exe was not found in the runtime root.'
-}
-
-$StartInfo = [System.Diagnostics.ProcessStartInfo]::new()
-$StartInfo.FileName = $Engine.FullName
-$StartInfo.WorkingDirectory = $Engine.Directory.FullName
-$StartInfo.ArgumentList.Add('--plugin=task11-filter-source')
-$StartInfo.UseShellExecute = $false
-$StartInfo.RedirectStandardInput = $true
-$StartInfo.RedirectStandardOutput = $true
-$StartInfo.RedirectStandardError = $true
-$StartInfo.CreateNoWindow = $true
-
-$Process = [System.Diagnostics.Process]::new()
-$Process.StartInfo = $StartInfo
-if (-not $Process.Start()) {
-    throw 'Failed to start obs-engine.exe.'
-}
-$ErrorTask = $Process.StandardError.ReadToEndAsync()
+$script:Process = $null
+$script:ErrorTask = $null
 $script:Events = [System.Collections.Generic.List[object]]::new()
 $script:WireLog = [System.Collections.Generic.List[object]]::new()
 $script:LastResponseWireIndex = -1
 $script:NextSeq = [uint64]1
+
+function Start-Task11Engine([string] $Root) {
+    $resolvedRoot = (Resolve-Path $Root).Path
+    $engine = Get-ChildItem -Path $resolvedRoot -Filter 'obs-engine.exe' -File -Recurse | Select-Object -First 1
+    if ($null -eq $engine) {
+        throw 'obs-engine.exe was not found in the runtime root.'
+    }
+
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $engine.FullName
+    $startInfo.WorkingDirectory = $engine.Directory.FullName
+    $startInfo.ArgumentList.Add('--plugin=task11-filter-source')
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardInput = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+
+    $script:Process = [System.Diagnostics.Process]::new()
+    $script:Process.StartInfo = $startInfo
+    if (-not $script:Process.Start()) {
+        throw 'Failed to start obs-engine.exe.'
+    }
+    $script:ErrorTask = $script:Process.StandardError.ReadToEndAsync()
+    $script:Events = [System.Collections.Generic.List[object]]::new()
+    $script:WireLog = [System.Collections.Generic.List[object]]::new()
+    $script:LastResponseWireIndex = -1
+    $script:NextSeq = [uint64]1
+}
 
 function Fail([string] $Message) {
     throw "Task 11: $Message"
@@ -263,16 +272,46 @@ function New-TestFilter([string] $Id, [string] $Source, [string] $Name, [int64] 
     return [pscustomobject]@{ Handle = $Handle; Revision = $Revision + 1 }
 }
 
-try {
-    $Ready = Read-EngineMessage
-    if ($Ready.event -ne 'ready' -or [int]$Ready.protocol -ne 1) {
+function Assert-Task11CapabilitySet([object[]] $Values, [object[]] $Required, [string] $Label) {
+    foreach ($requiredName in $Required) {
+        if ($Values -notcontains $requiredName) {
+            Fail "$Label is missing capability '$requiredName'."
+        }
+    }
+    if (@($Values | Where-Object { $_ -eq 'filter.v1' }).Count -ne 1) {
+        Fail "$Label advertised filter.v1 more than once."
+    }
+}
+
+function Assert-Task11KindContract($Kinds) {
+    $kindEntry = @($Kinds.data.kinds | Where-Object { [string]$_.id -eq 'task11_filter' })
+    if ($kindEntry.Count -ne 1) {
+        Fail 'deterministic Task 11 filter kind was not discovered exactly once.'
+    }
+    if (-not [bool]$kindEntry[0].moduleLoadState) {
+        Fail 'deterministic Task 11 filter kind did not report a loaded module.'
+    }
+}
+
+function Assert-Task11PropertyContract($KindProperties) {
+    if ([string]$KindProperties.data.target.type -ne 'filterKind' -or
+        [string]$KindProperties.data.target.kind -ne 'task11_filter') {
+        Fail 'filter.kindProperties returned the wrong target.'
+    }
+    $propertyNames = @($KindProperties.data.properties | ForEach-Object { [string]$_.name })
+    foreach ($propertyName in @('value', 'blockMs', 'triggerOther', 'burst')) {
+        if ($propertyNames -notcontains $propertyName) {
+            Fail "filter.kindProperties is missing '$propertyName'."
+        }
+    }
+}
+
+function Initialize-Task11Session {
+    $ready = Read-EngineMessage
+    if ($ready.event -ne 'ready' -or [int]$ready.protocol -ne 1) {
         Fail 'migration bootstrap ready event changed unexpectedly.'
     }
-
-    $Hello = Send-V2Request @{ op = 'request'; id = 'task11.hello'; method = 'session.hello'; params = @{} }
-    Assert-Ok $Hello 0 'session.hello'
-    $Capabilities = @($Hello.data.capabilities | ForEach-Object { [string]$_.name })
-    $RequiredFilterCapabilities = @(
+    $required = @(
         'filter.v1', 'filter.kindList.v1', 'filter.kindDefaults.v1', 'filter.kindProperties.v1',
         'filter.list.v1', 'filter.get.v1', 'filter.create.v1', 'filter.remove.v1',
         'filter.rename.v1', 'filter.duplicate.v1', 'filter.getSettings.v1',
@@ -280,30 +319,19 @@ try {
         'filter.getEnabled.v1', 'filter.setOrder.v1', 'filter.moveUp.v1',
         'filter.moveDown.v1', 'filter.moveTop.v1', 'filter.moveBottom.v1'
     )
-    foreach ($Required in $RequiredFilterCapabilities) {
-        if ($Capabilities -notcontains $Required) {
-            Fail "session.hello is missing capability '$Required'."
-        }
-    }
-    if (@($Capabilities | Where-Object { $_ -eq 'filter.v1' }).Count -ne 1) {
-        Fail 'session.hello advertised filter.v1 more than once.'
-    }
+    $hello = Send-V2Request @{ op = 'request'; id = 'task11.hello'; method = 'session.hello'; params = @{} }
+    Assert-Ok $hello 0 'session.hello'
+    $capabilities = @($hello.data.capabilities | ForEach-Object { [string]$_.name })
+    Assert-Task11CapabilitySet $capabilities $required 'session.hello'
 
-    $CapabilitiesQuery = Send-V2Request @{
+    $capabilitiesQuery = Send-V2Request @{
         op = 'request'; id = 'task11.capabilities'; method = 'engine.getCapabilities'; params = @{}
     }
-    Assert-Ok $CapabilitiesQuery 0 'engine.getCapabilities'
-    $CapabilityQueryNames = @($CapabilitiesQuery.data.capabilities | ForEach-Object { [string]$_.name })
-    foreach ($Required in $RequiredFilterCapabilities) {
-        if ($CapabilityQueryNames -notcontains $Required) {
-            Fail "engine.getCapabilities is missing capability '$Required'."
-        }
-    }
-    if (@($CapabilityQueryNames | Where-Object { $_ -eq 'filter.v1' }).Count -ne 1) {
-        Fail 'engine.getCapabilities advertised filter.v1 more than once.'
-    }
+    Assert-Ok $capabilitiesQuery 0 'engine.getCapabilities'
+    $capabilityQueryNames = @($capabilitiesQuery.data.capabilities | ForEach-Object { [string]$_.name })
+    Assert-Task11CapabilitySet $capabilityQueryNames $required 'engine.getCapabilities'
 
-    $Subscribe = Send-V2Request @{
+    $subscribe = Send-V2Request @{
         op = 'request'; id = 'task11.subscribe'; method = 'session.subscribe'
         params = @{
             subscriptions = @(
@@ -313,596 +341,629 @@ try {
             )
         }
     }
-    Assert-Ok $Subscribe 0 'session.subscribe'
+    Assert-Ok $subscribe 0 'session.subscribe'
 
-    $Kinds = Send-V2Request @{ op = 'request'; id = 'task11.kindList'; method = 'filter.kindList'; params = @{} }
-    Assert-Ok $Kinds 0 'filter.kindList'
-    $KindEntry = @($Kinds.data.kinds | Where-Object { [string]$_.id -eq 'task11_filter' })
-    if ($KindEntry.Count -ne 1) {
-        Fail 'deterministic Task 11 filter kind was not discovered exactly once.'
-    }
-    if (-not [bool]$KindEntry[0].moduleLoadState) {
-        Fail 'deterministic Task 11 filter kind did not report a loaded module.'
-    }
-
-    $Defaults = Send-V2Request @{
+    $kinds = Send-V2Request @{ op = 'request'; id = 'task11.kindList'; method = 'filter.kindList'; params = @{} }
+    Assert-Ok $kinds 0 'filter.kindList'
+    Assert-Task11KindContract $kinds
+    $defaults = Send-V2Request @{
         op = 'request'; id = 'task11.defaults'; method = 'filter.kindDefaults'
         params = @{ kind = 'task11_filter' }
     }
-    Assert-Ok $Defaults 0 'filter.kindDefaults'
-    if ($null -eq $Defaults.data.settings) {
+    Assert-Ok $defaults 0 'filter.kindDefaults'
+    if ($null -eq $defaults.data.settings) {
         Fail 'filter.kindDefaults did not return a settings object.'
     }
-
-    $KindProperties = Send-V2Request @{
+    $kindProperties = Send-V2Request @{
         op = 'request'; id = 'task11.kindProperties'; method = 'filter.kindProperties'
         params = @{ kind = 'task11_filter' }
     }
-    Assert-Ok $KindProperties 0 'filter.kindProperties'
-    if ([string]$KindProperties.data.target.type -ne 'filterKind' -or
-        [string]$KindProperties.data.target.kind -ne 'task11_filter') {
-        Fail 'filter.kindProperties returned the wrong target.'
-    }
-    $KindPropertyNames = @($KindProperties.data.properties | ForEach-Object { [string]$_.name })
-    foreach ($PropertyName in @('value', 'blockMs', 'triggerOther', 'burst')) {
-        if ($KindPropertyNames -notcontains $PropertyName) {
-            Fail "filter.kindProperties is missing '$PropertyName'."
-        }
-    }
+    Assert-Ok $kindProperties 0 'filter.kindProperties'
+    Assert-Task11PropertyContract $kindProperties
+}
 
-    $Revision = [int64]0
-    $Parent = New-TestSource 'task11.source' 'task11_filter_source' 'task11-parent' $null $Revision
-    $Revision = $Parent.Revision
-    if ($Parent.Handle -ne '1') {
-        Fail "fresh Task 11 engine expected source handle 1, got $($Parent.Handle)."
+function New-Task11State {
+    return [pscustomobject]@{
+        Revision = [int64]0
+        Parent = $null
+        FilterA = $null
+        FilterB = $null
+        FilterC = $null
+        FilterD = $null
+        DuplicateSource = ''
+        InheritedHandles = @()
+        OriginalHandles = @()
     }
+}
 
-    $Empty = Send-V2Request @{
+function Initialize-Task11FilterGraph([object] $State) {
+    $State.Parent = New-TestSource 'task11.source' 'task11_filter_source' 'task11-parent' $null $State.Revision
+    $State.Revision = $State.Parent.Revision
+    if ($State.Parent.Handle -ne '1') {
+        Fail "fresh Task 11 engine expected source handle 1, got $($State.Parent.Handle)."
+    }
+    $empty = Send-V2Request @{
         op = 'request'; id = 'task11.empty'; method = 'filter.list'
-        params = @{ source = $Parent.Handle }
+        params = @{ source = $State.Parent.Handle }
     }
-    Assert-Ok $Empty $Revision 'empty filter.list'
-    if ([int]$Empty.data.count -ne 0) {
+    Assert-Ok $empty $State.Revision 'empty filter.list'
+    if ([int]$empty.data.count -ne 0) {
         Fail 'new parent unexpectedly contained filters.'
     }
+    $State.FilterA = New-TestFilter 'task11.filter-a' $State.Parent.Handle 'first-filter' 10 $State.Revision
+    $State.Revision = $State.FilterA.Revision
+    if ($State.FilterA.Handle -ne '2') {
+        Fail "fresh Task 11 engine expected first filter handle 2, got $($State.FilterA.Handle)."
+    }
+    $State.FilterB = New-TestFilter 'task11.filter-b' $State.Parent.Handle 'second-filter' 11 $State.Revision
+    $State.Revision = $State.FilterB.Revision
+    if ($State.FilterB.Handle -ne '3') {
+        Fail "fresh Task 11 engine expected second filter handle 3, got $($State.FilterB.Handle)."
+    }
+    $State.FilterC = New-TestFilter 'task11.filter-c' $State.Parent.Handle 'third-filter' 12 $State.Revision
+    $State.Revision = $State.FilterC.Revision
+    if ($State.FilterC.Handle -ne '4') {
+        Fail "fresh Task 11 engine expected third filter handle 4, got $($State.FilterC.Handle)."
+    }
+}
 
-    $FilterA = New-TestFilter 'task11.filter-a' $Parent.Handle 'first-filter' 10 $Revision
-    $Revision = $FilterA.Revision
-    if ($FilterA.Handle -ne '2') {
-        Fail "fresh Task 11 engine expected first filter handle 2, got $($FilterA.Handle)."
-    }
-    $FilterB = New-TestFilter 'task11.filter-b' $Parent.Handle 'second-filter' 11 $Revision
-    $Revision = $FilterB.Revision
-    if ($FilterB.Handle -ne '3') {
-        Fail "fresh Task 11 engine expected second filter handle 3, got $($FilterB.Handle)."
-    }
-    $FilterC = New-TestFilter 'task11.filter-c' $Parent.Handle 'third-filter' 12 $Revision
-    $Revision = $FilterC.Revision
-    if ($FilterC.Handle -ne '4') {
-        Fail "fresh Task 11 engine expected third filter handle 4, got $($FilterC.Handle)."
-    }
-
-    $BadHandle = Send-V2Request @{
+function Assert-Task11LiveFilterReads([object] $State) {
+    $badHandle = Send-V2Request @{
         op = 'request'; id = 'task11.bad-handle'; method = 'filter.get'
         params = @{ filter = '01' }
     }
-    Assert-Error $BadHandle 'bad_request' $Revision 'non-canonical filter handle'
-    $NumericHandle = Send-V2Request @{
+    Assert-Error $badHandle 'bad_request' $State.Revision 'non-canonical filter handle'
+    $numericHandle = Send-V2Request @{
         op = 'request'; id = 'task11.numeric-handle'; method = 'filter.get'
         params = @{ filter = 2 }
     }
-    Assert-Error $NumericHandle 'bad_request' $Revision 'numeric filter handle'
-    $MissingFilter = Send-V2Request @{
+    Assert-Error $numericHandle 'bad_request' $State.Revision 'numeric filter handle'
+    $missingFilter = Send-V2Request @{
         op = 'request'; id = 'task11.missing-filter'; method = 'filter.get'
         params = @{ filter = '999' }
     }
-    Assert-Error $MissingFilter 'not_found' $Revision 'unknown filter handle'
-
-    $Get = Send-V2Request @{
+    Assert-Error $missingFilter 'not_found' $State.Revision 'unknown filter handle'
+    $get = Send-V2Request @{
         op = 'request'; id = 'task11.get'; method = 'filter.get'
-        params = @{ filter = $FilterA.Handle }
+        params = @{ filter = $State.FilterA.Handle }
     }
-    Assert-Ok $Get $Revision 'filter.get'
-    if ([string]$Get.data.kind -ne 'task11_filter' -or [string]$Get.data.name -ne 'first-filter' -or
-        [string]$Get.data.source -ne $Parent.Handle -or -not [bool]$Get.data.enabled) {
+    Assert-Ok $get $State.Revision 'filter.get'
+    if ([string]$get.data.kind -ne 'task11_filter' -or [string]$get.data.name -ne 'first-filter' -or
+        [string]$get.data.source -ne $State.Parent.Handle -or -not [bool]$get.data.enabled) {
         Fail 'filter.get returned an incorrect summary.'
     }
-
-    $FilterSettings = Send-V2Request @{
+    $filterSettings = Send-V2Request @{
         op = 'request'; id = 'task11.get-settings'; method = 'filter.getSettings'
-        params = @{ filter = $FilterA.Handle }
+        params = @{ filter = $State.FilterA.Handle }
     }
-    Assert-Ok $FilterSettings $Revision 'filter.getSettings'
-    if ([int64]$FilterSettings.data.settings.value -ne 10) {
+    Assert-Ok $filterSettings $State.Revision 'filter.getSettings'
+    if ([int64]$filterSettings.data.settings.value -ne 10) {
         Fail 'filter.getSettings did not return the creation settings.'
     }
-
-    $FilterProperties = Send-V2Request @{
+    $filterProperties = Send-V2Request @{
         op = 'request'; id = 'task11.properties-live'; method = 'properties.get'
-        params = @{ target = @{ type = 'filter'; filter = $FilterA.Handle } }
+        params = @{ target = @{ type = 'filter'; filter = $State.FilterA.Handle } }
     }
-    Assert-Ok $FilterProperties $Revision 'properties.get(filter)'
-    if ([string]$FilterProperties.data.target.type -ne 'filter' -or
-        [string]$FilterProperties.data.target.filter -ne $FilterA.Handle -or
-        [string]$FilterProperties.data.target.source -ne $Parent.Handle -or
-        [int64]$FilterProperties.data.settings.value -ne 10) {
+    Assert-Ok $filterProperties $State.Revision 'properties.get(filter)'
+    if ([string]$filterProperties.data.target.type -ne 'filter' -or
+        [string]$filterProperties.data.target.filter -ne $State.FilterA.Handle -or
+        [string]$filterProperties.data.target.source -ne $State.Parent.Handle -or
+        [int64]$filterProperties.data.settings.value -ne 10) {
         Fail 'generic property bridge did not resolve the live filter.'
     }
-
-    $GuardedRead = Send-V2Request @{
+    $guardedRead = Send-V2Request @{
         op = 'request'; id = 'task11.guarded-read'; method = 'filter.get'
-        ifRevision = $Revision; params = @{ filter = $FilterA.Handle }
+        ifRevision = $State.Revision; params = @{ filter = $State.FilterA.Handle }
     }
-    Assert-Error $GuardedRead 'bad_request' $Revision 'ifRevision on filter.get'
+    Assert-Error $guardedRead 'bad_request' $State.Revision 'ifRevision on filter.get'
+}
 
-    $Patch = Send-V2Request @{
-        op = 'request'; id = 'task11.patch'; method = 'filter.patchSettings'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; settings = @{ value = 20 } }
+function Invoke-Task11FilterMutations([object] $State) {
+    $patch = Send-V2Request @{
+        op = 'request'; id = 'task11.patch'; method = 'filter.patchSettings'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle; settings = @{ value = 20 } }
     }
-    Assert-Ok $Patch ($Revision + 1) 'filter.patchSettings'
-    $Revision++
-    if ([int64]$Patch.data.settings.value -ne 20) {
+    Assert-Ok $patch ($State.Revision + 1) 'filter.patchSettings'
+    $State.Revision++
+    if ([int64]$patch.data.settings.value -ne 20) {
         Fail 'filter.patchSettings did not settle at value 20.'
     }
-    $PatchEvent = Read-Event 'filter.settingsChanged' $Revision $FilterA.Handle $Parent.Handle
-    if ([int64]$PatchEvent.data.settings.value -ne 20) {
+    $patchEvent = Read-Event 'filter.settingsChanged' $State.Revision $State.FilterA.Handle $State.Parent.Handle
+    if ([int64]$patchEvent.data.settings.value -ne 20) {
         Fail 'filter.patchSettings event did not contain value 20.'
     }
-
-    $PatchNoop = Send-V2Request @{
-        op = 'request'; id = 'task11.patch-noop'; method = 'filter.patchSettings'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; settings = @{ value = 20 } }
+    $patchNoop = Send-V2Request @{
+        op = 'request'; id = 'task11.patch-noop'; method = 'filter.patchSettings'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle; settings = @{ value = 20 } }
     }
-    Assert-Ok $PatchNoop $Revision 'idempotent filter.patchSettings'
+    Assert-Ok $patchNoop $State.Revision 'idempotent filter.patchSettings'
     Assert-NoQueuedEvents 'idempotent filter.patchSettings'
 
-    $Replace = Send-V2Request @{
-        op = 'request'; id = 'task11.replace'; method = 'filter.replaceSettings'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; settings = @{ value = 30 } }
+    $replace = Send-V2Request @{
+        op = 'request'; id = 'task11.replace'; method = 'filter.replaceSettings'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle; settings = @{ value = 30 } }
     }
-    Assert-Ok $Replace ($Revision + 1) 'filter.replaceSettings'
-    $Revision++
-    if ([int64]$Replace.data.settings.value -ne 30) {
+    Assert-Ok $replace ($State.Revision + 1) 'filter.replaceSettings'
+    $State.Revision++
+    if ([int64]$replace.data.settings.value -ne 30) {
         Fail 'filter.replaceSettings did not settle at value 30.'
     }
-    $ReplaceEvent = Read-Event 'filter.settingsChanged' $Revision $FilterA.Handle $Parent.Handle
-    if ([int64]$ReplaceEvent.data.settings.value -ne 30) {
+    $replaceEvent = Read-Event 'filter.settingsChanged' $State.Revision $State.FilterA.Handle $State.Parent.Handle
+    if ([int64]$replaceEvent.data.settings.value -ne 30) {
         Fail 'filter.replaceSettings event did not contain value 30.'
     }
 
-    $Disable = Send-V2Request @{
-        op = 'request'; id = 'task11.disable'; method = 'filter.setEnabled'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; enabled = $false }
+    $disable = Send-V2Request @{
+        op = 'request'; id = 'task11.disable'; method = 'filter.setEnabled'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle; enabled = $false }
     }
-    Assert-Ok $Disable ($Revision + 1) 'filter.setEnabled(false)'
-    $Revision++
-    if ($Disable.data.enabled) {
+    Assert-Ok $disable ($State.Revision + 1) 'filter.setEnabled(false)'
+    $State.Revision++
+    if ($disable.data.enabled) {
         Fail 'filter.setEnabled(false) returned enabled=true.'
     }
-    $null = Read-Event 'filter.enabledChanged' $Revision $FilterA.Handle $Parent.Handle
-
-    $DisableNoop = Send-V2Request @{
-        op = 'request'; id = 'task11.disable-noop'; method = 'filter.setEnabled'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; enabled = $false }
+    $null = Read-Event 'filter.enabledChanged' $State.Revision $State.FilterA.Handle $State.Parent.Handle
+    $disableNoop = Send-V2Request @{
+        op = 'request'; id = 'task11.disable-noop'; method = 'filter.setEnabled'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle; enabled = $false }
     }
-    Assert-Ok $DisableNoop $Revision 'idempotent filter.setEnabled(false)'
+    Assert-Ok $disableNoop $State.Revision 'idempotent filter.setEnabled(false)'
     Assert-NoQueuedEvents 'idempotent filter.setEnabled'
-
-    $Enabled = Send-V2Request @{
+    $enabled = Send-V2Request @{
         op = 'request'; id = 'task11.enabled'; method = 'filter.getEnabled'
-        params = @{ filter = $FilterA.Handle }
+        params = @{ filter = $State.FilterA.Handle }
     }
-    Assert-Ok $Enabled $Revision 'filter.getEnabled'
-    if ($Enabled.data.enabled) {
+    Assert-Ok $enabled $State.Revision 'filter.getEnabled'
+    if ($enabled.data.enabled) {
         Fail 'filter.getEnabled reported enabled after disable.'
     }
 
-    $Rename = Send-V2Request @{
-        op = 'request'; id = 'task11.rename'; method = 'filter.rename'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; name = 'renamed-filter' }
+    $rename = Send-V2Request @{
+        op = 'request'; id = 'task11.rename'; method = 'filter.rename'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle; name = 'renamed-filter' }
     }
-    Assert-Ok $Rename ($Revision + 1) 'filter.rename'
-    $Revision++
-    $RenameEvent = Read-Event 'filter.renamed' $Revision $FilterA.Handle $Parent.Handle
-    if ([string]$RenameEvent.data.name -ne 'renamed-filter' -or
-        [string]$RenameEvent.data.previousName -ne 'first-filter') {
+    Assert-Ok $rename ($State.Revision + 1) 'filter.rename'
+    $State.Revision++
+    $renameEvent = Read-Event 'filter.renamed' $State.Revision $State.FilterA.Handle $State.Parent.Handle
+    if ([string]$renameEvent.data.name -ne 'renamed-filter' -or
+        [string]$renameEvent.data.previousName -ne 'first-filter') {
         Fail 'filter.rename event did not contain both names.'
     }
-
-    $RenameNoop = Send-V2Request @{
-        op = 'request'; id = 'task11.rename-noop'; method = 'filter.rename'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; name = 'renamed-filter' }
+    $renameNoop = Send-V2Request @{
+        op = 'request'; id = 'task11.rename-noop'; method = 'filter.rename'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle; name = 'renamed-filter' }
     }
-    Assert-Ok $RenameNoop $Revision 'idempotent filter.rename'
+    Assert-Ok $renameNoop $State.Revision 'idempotent filter.rename'
     Assert-NoQueuedEvents 'idempotent filter.rename'
+}
 
-    $List = Send-V2Request @{
+function Assert-Task11InitialOrder([object] $State) {
+    $list = Send-V2Request @{
         op = 'request'; id = 'task11.list'; method = 'filter.list'
-        params = @{ source = $Parent.Handle }
+        params = @{ source = $State.Parent.Handle }
     }
-    Assert-Ok $List $Revision 'filter.list after creates'
-    Assert-Order $List.data @($FilterC.Handle, $FilterB.Handle, $FilterA.Handle) 'initial filter order'
+    Assert-Ok $list $State.Revision 'filter.list after creates'
+    Assert-Order $list.data @($State.FilterC.Handle, $State.FilterB.Handle, $State.FilterA.Handle) 'initial filter order'
+}
 
-    $SetOrder = Send-V2Request @{
-        op = 'request'; id = 'task11.set-order'; method = 'filter.setOrder'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; index = 0 }
+function Invoke-Task11OrderMutations([object] $State) {
+    $setOrder = Send-V2Request @{
+        op = 'request'; id = 'task11.set-order'; method = 'filter.setOrder'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle; index = 0 }
     }
-    Assert-Ok $SetOrder ($Revision + 1) 'filter.setOrder'
-    $Revision++
-    Assert-Order $SetOrder.data @($FilterA.Handle, $FilterC.Handle, $FilterB.Handle) 'filter.setOrder result'
-    $null = Read-Event 'filter.orderChanged' $Revision '' $Parent.Handle
-
-    $SetOrderNoop = Send-V2Request @{
-        op = 'request'; id = 'task11.set-order-noop'; method = 'filter.setOrder'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; index = 0 }
+    Assert-Ok $setOrder ($State.Revision + 1) 'filter.setOrder'
+    $State.Revision++
+    Assert-Order $setOrder.data @($State.FilterA.Handle, $State.FilterC.Handle, $State.FilterB.Handle) 'filter.setOrder result'
+    $null = Read-Event 'filter.orderChanged' $State.Revision '' $State.Parent.Handle
+    $setOrderNoop = Send-V2Request @{
+        op = 'request'; id = 'task11.set-order-noop'; method = 'filter.setOrder'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle; index = 0 }
     }
-    Assert-Ok $SetOrderNoop $Revision 'idempotent filter.setOrder'
-    Assert-Order $SetOrderNoop.data @($FilterA.Handle, $FilterC.Handle, $FilterB.Handle) 'filter.setOrder no-op result'
+    Assert-Ok $setOrderNoop $State.Revision 'idempotent filter.setOrder'
+    Assert-Order $setOrderNoop.data @($State.FilterA.Handle, $State.FilterC.Handle, $State.FilterB.Handle) 'filter.setOrder no-op result'
     Assert-NoQueuedEvents 'idempotent filter.setOrder'
 
-    $MoveUp = Send-V2Request @{
-        op = 'request'; id = 'task11.move-up'; method = 'filter.moveUp'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle }
+    $moveUp = Send-V2Request @{
+        op = 'request'; id = 'task11.move-up'; method = 'filter.moveUp'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle }
     }
-    Assert-Ok $MoveUp ($Revision + 1) 'filter.moveUp'
-    $Revision++
-    Assert-Order $MoveUp.data @($FilterC.Handle, $FilterA.Handle, $FilterB.Handle) 'filter.moveUp result'
-    $null = Read-Event 'filter.orderChanged' $Revision '' $Parent.Handle
+    Assert-Ok $moveUp ($State.Revision + 1) 'filter.moveUp'
+    $State.Revision++
+    Assert-Order $moveUp.data @($State.FilterC.Handle, $State.FilterA.Handle, $State.FilterB.Handle) 'filter.moveUp result'
+    $null = Read-Event 'filter.orderChanged' $State.Revision '' $State.Parent.Handle
+    $moveDown = Send-V2Request @{
+        op = 'request'; id = 'task11.move-down'; method = 'filter.moveDown'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle }
+    }
+    Assert-Ok $moveDown ($State.Revision + 1) 'filter.moveDown'
+    $State.Revision++
+    Assert-Order $moveDown.data @($State.FilterA.Handle, $State.FilterC.Handle, $State.FilterB.Handle) 'filter.moveDown result'
+    $null = Read-Event 'filter.orderChanged' $State.Revision '' $State.Parent.Handle
+    $moveTop = Send-V2Request @{
+        op = 'request'; id = 'task11.move-top'; method = 'filter.moveTop'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle }
+    }
+    Assert-Ok $moveTop ($State.Revision + 1) 'filter.moveTop'
+    $State.Revision++
+    Assert-Order $moveTop.data @($State.FilterC.Handle, $State.FilterB.Handle, $State.FilterA.Handle) 'filter.moveTop result'
+    $null = Read-Event 'filter.orderChanged' $State.Revision '' $State.Parent.Handle
+    $moveBottom = Send-V2Request @{
+        op = 'request'; id = 'task11.move-bottom'; method = 'filter.moveBottom'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle }
+    }
+    Assert-Ok $moveBottom ($State.Revision + 1) 'filter.moveBottom'
+    $State.Revision++
+    Assert-Order $moveBottom.data @($State.FilterA.Handle, $State.FilterC.Handle, $State.FilterB.Handle) 'filter.moveBottom result'
+    $null = Read-Event 'filter.orderChanged' $State.Revision '' $State.Parent.Handle
+}
 
-    $MoveDown = Send-V2Request @{
-        op = 'request'; id = 'task11.move-down'; method = 'filter.moveDown'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle }
+function Invoke-Task11OrderValidation([object] $State) {
+    foreach ($case in @(
+        @{ Id = 'task11.order-out-of-range'; Index = 3; Code = 'bad_request'; Label = 'out-of-range filter index' },
+        @{ Id = 'task11.order-negative'; Index = -1; Code = 'bad_request'; Label = 'negative filter index' },
+        @{ Id = 'task11.order-string'; Index = '0'; Code = 'bad_request'; Label = 'string filter index' }
+    )) {
+        $response = Send-V2Request @{
+            op = 'request'; id = $case.Id; method = 'filter.setOrder'; ifRevision = $State.Revision
+            params = @{ filter = $State.FilterA.Handle; index = $case.Index }
+        }
+        Assert-Error $response $case.Code $State.Revision $case.Label
     }
-    Assert-Ok $MoveDown ($Revision + 1) 'filter.moveDown'
-    $Revision++
-    Assert-Order $MoveDown.data @($FilterA.Handle, $FilterC.Handle, $FilterB.Handle) 'filter.moveDown result'
-    $null = Read-Event 'filter.orderChanged' $Revision '' $Parent.Handle
-
-    $MoveTop = Send-V2Request @{
-        op = 'request'; id = 'task11.move-top'; method = 'filter.moveTop'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle }
+    $stale = Send-V2Request @{
+        op = 'request'; id = 'task11.stale'; method = 'filter.rename'; ifRevision = ($State.Revision - 1)
+        params = @{ filter = $State.FilterA.Handle; name = 'must-not-apply' }
     }
-    Assert-Ok $MoveTop ($Revision + 1) 'filter.moveTop'
-    $Revision++
-    Assert-Order $MoveTop.data @($FilterC.Handle, $FilterB.Handle, $FilterA.Handle) 'filter.moveTop result'
-    $null = Read-Event 'filter.orderChanged' $Revision '' $Parent.Handle
-
-    $MoveBottom = Send-V2Request @{
-        op = 'request'; id = 'task11.move-bottom'; method = 'filter.moveBottom'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle }
-    }
-    Assert-Ok $MoveBottom ($Revision + 1) 'filter.moveBottom'
-    $Revision++
-    Assert-Order $MoveBottom.data @($FilterA.Handle, $FilterC.Handle, $FilterB.Handle) 'filter.moveBottom result'
-    $null = Read-Event 'filter.orderChanged' $Revision '' $Parent.Handle
-
-    $OutOfRange = Send-V2Request @{
-        op = 'request'; id = 'task11.order-out-of-range'; method = 'filter.setOrder'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; index = 3 }
-    }
-    Assert-Error $OutOfRange 'bad_request' $Revision 'out-of-range filter index'
-    $NegativeIndex = Send-V2Request @{
-        op = 'request'; id = 'task11.order-negative'; method = 'filter.setOrder'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; index = -1 }
-    }
-    Assert-Error $NegativeIndex 'bad_request' $Revision 'negative filter index'
-    $StringIndex = Send-V2Request @{
-        op = 'request'; id = 'task11.order-string'; method = 'filter.setOrder'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; index = '0' }
-    }
-    Assert-Error $StringIndex 'bad_request' $Revision 'string filter index'
-
-    $Stale = Send-V2Request @{
-        op = 'request'; id = 'task11.stale'; method = 'filter.rename'; ifRevision = ($Revision - 1)
-        params = @{ filter = $FilterA.Handle; name = 'must-not-apply' }
-    }
-    Assert-Error $Stale 'revision_conflict' $Revision 'stale filter guard'
-    $AfterStale = Send-V2Request @{
+    Assert-Error $stale 'revision_conflict' $State.Revision 'stale filter guard'
+    $afterStale = Send-V2Request @{
         op = 'request'; id = 'task11.after-stale'; method = 'filter.get'
-        params = @{ filter = $FilterA.Handle }
+        params = @{ filter = $State.FilterA.Handle }
     }
-    Assert-Ok $AfterStale $Revision 'filter.get after stale guard'
-    if ([string]$AfterStale.data.name -ne 'renamed-filter') {
+    Assert-Ok $afterStale $State.Revision 'filter.get after stale guard'
+    if ([string]$afterStale.data.name -ne 'renamed-filter') {
         Fail 'stale filter.rename changed the filter name.'
     }
     Assert-NoQueuedEvents 'stale filter guard'
+}
 
-    $Duplicate = Send-V2Request @{
-        op = 'request'; id = 'task11.filter-duplicate'; method = 'filter.duplicate'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; name = 'duplicated-filter' }
+function Invoke-Task11DuplicateAndRemove([object] $State) {
+    $duplicate = Send-V2Request @{
+        op = 'request'; id = 'task11.filter-duplicate'; method = 'filter.duplicate'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle; name = 'duplicated-filter' }
     }
-    Assert-Ok $Duplicate ($Revision + 1) 'filter.duplicate'
-    $Revision++
-    $FilterD = [pscustomobject]@{ Handle = [string]$Duplicate.data.filter }
-    Assert-CanonicalHandle $FilterD.Handle 'filter.duplicate'
-    if ([string]$Duplicate.data.duplicateOf -ne $FilterA.Handle -or
-        [string]$Duplicate.data.source -ne $Parent.Handle -or [bool]$Duplicate.data.enabled) {
+    Assert-Ok $duplicate ($State.Revision + 1) 'filter.duplicate'
+    $State.Revision++
+    $State.FilterD = [pscustomobject]@{ Handle = [string]$duplicate.data.filter }
+    Assert-CanonicalHandle $State.FilterD.Handle 'filter.duplicate'
+    if ([string]$duplicate.data.duplicateOf -ne $State.FilterA.Handle -or
+        [string]$duplicate.data.source -ne $State.Parent.Handle -or [bool]$duplicate.data.enabled) {
         Fail 'filter.duplicate did not preserve identity or disabled state.'
     }
-    $null = Read-Event 'filter.created' $Revision $FilterD.Handle $Parent.Handle
-    $DuplicateSettings = Send-V2Request @{
+    $null = Read-Event 'filter.created' $State.Revision $State.FilterD.Handle $State.Parent.Handle
+    $duplicateSettings = Send-V2Request @{
         op = 'request'; id = 'task11.duplicate-settings'; method = 'filter.getSettings'
-        params = @{ filter = $FilterD.Handle }
+        params = @{ filter = $State.FilterD.Handle }
     }
-    Assert-Ok $DuplicateSettings $Revision 'duplicated filter settings'
-    if ([int64]$DuplicateSettings.data.settings.value -ne 30) {
+    Assert-Ok $duplicateSettings $State.Revision 'duplicated filter settings'
+    if ([int64]$duplicateSettings.data.settings.value -ne 30) {
         Fail 'filter.duplicate did not copy settings.'
     }
 
-    $RemoveB = Send-V2Request @{
-        op = 'request'; id = 'task11.filter-remove'; method = 'filter.remove'; ifRevision = $Revision
-        params = @{ filter = $FilterB.Handle }
+    $removeB = Send-V2Request @{
+        op = 'request'; id = 'task11.filter-remove'; method = 'filter.remove'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterB.Handle }
     }
-    Assert-Ok $RemoveB ($Revision + 1) 'filter.remove'
-    $Revision++
-    $null = Read-Event 'filter.removed' $Revision $FilterB.Handle $Parent.Handle
-    $RemovedB = Send-V2Request @{
+    Assert-Ok $removeB ($State.Revision + 1) 'filter.remove'
+    $State.Revision++
+    $null = Read-Event 'filter.removed' $State.Revision $State.FilterB.Handle $State.Parent.Handle
+    $removedB = Send-V2Request @{
         op = 'request'; id = 'task11.removed-filter-get'; method = 'filter.get'
-        params = @{ filter = $FilterB.Handle }
+        params = @{ filter = $State.FilterB.Handle }
     }
-    Assert-Error $RemovedB 'not_found' $Revision 'removed filter handle'
+    Assert-Error $removedB 'not_found' $State.Revision 'removed filter handle'
     Assert-NoQueuedEvents 'filter.remove'
+}
 
-    $SourceDuplicate = Send-V2Request @{
-        op = 'request'; id = 'task11.source-duplicate'; method = 'source.duplicate'; ifRevision = $Revision
-        params = @{ source = $Parent.Handle; name = 'task11-parent-copy' }
+function Invoke-Task11SourceDuplicate([object] $State) {
+    $sourceDuplicate = Send-V2Request @{
+        op = 'request'; id = 'task11.source-duplicate'; method = 'source.duplicate'; ifRevision = $State.Revision
+        params = @{ source = $State.Parent.Handle; name = 'task11-parent-copy' }
     }
-    Assert-Ok $SourceDuplicate ($Revision + 1) 'source.duplicate with filters'
-    $Revision++
-    $DuplicateSource = [string]$SourceDuplicate.data.source
-    Assert-CanonicalHandle $DuplicateSource 'source.duplicate'
-    if ($DuplicateSource -eq $Parent.Handle) {
+    Assert-Ok $sourceDuplicate ($State.Revision + 1) 'source.duplicate with filters'
+    $State.Revision++
+    $State.DuplicateSource = [string]$sourceDuplicate.data.source
+    Assert-CanonicalHandle $State.DuplicateSource 'source.duplicate'
+    if ($State.DuplicateSource -eq $State.Parent.Handle) {
         Fail 'source.duplicate reused the parent source handle.'
     }
-    $null = Read-Event 'source.created' $Revision '' $DuplicateSource
+    $null = Read-Event 'source.created' $State.Revision '' $State.DuplicateSource
     Assert-NoQueuedEvents 'source.duplicate synthesized filter events'
-
-    $Inherited = Send-V2Request @{
+    $inherited = Send-V2Request @{
         op = 'request'; id = 'task11.inherited-list'; method = 'filter.list'
-        params = @{ source = $DuplicateSource }
+        params = @{ source = $State.DuplicateSource }
     }
-    Assert-Ok $Inherited $Revision 'filter.list on duplicated source'
-    $InheritedEntries = @($Inherited.data.filters)
-    if ($InheritedEntries.Count -ne 3) {
-        Fail "duplicated source inherited $($InheritedEntries.Count) filters, expected 3."
+    Assert-Ok $inherited $State.Revision 'filter.list on duplicated source'
+    $inheritedEntries = @($inherited.data.filters)
+    if ($inheritedEntries.Count -ne 3) {
+        Fail "duplicated source inherited $($inheritedEntries.Count) filters, expected 3."
     }
-    $OriginalHandles = @($FilterA.Handle, $FilterC.Handle, $FilterD.Handle)
-    $InheritedHandles = @($InheritedEntries | ForEach-Object { [string]$_.filter })
-    foreach ($InheritedHandle in $InheritedHandles) {
-        Assert-CanonicalHandle $InheritedHandle 'inherited filter'
-        if ($OriginalHandles -contains $InheritedHandle -or $InheritedHandle -eq $FilterB.Handle) {
+    $State.OriginalHandles = @($State.FilterA.Handle, $State.FilterC.Handle, $State.FilterD.Handle)
+    $State.InheritedHandles = @($inheritedEntries | ForEach-Object { [string]$_.filter })
+    foreach ($inheritedHandle in $State.InheritedHandles) {
+        Assert-CanonicalHandle $inheritedHandle 'inherited filter'
+        if ($State.OriginalHandles -contains $inheritedHandle -or $inheritedHandle -eq $State.FilterB.Handle) {
             Fail 'source.duplicate reused an existing filter handle.'
         }
     }
-    $InheritedGet = Send-V2Request @{
+    $inheritedGet = Send-V2Request @{
         op = 'request'; id = 'task11.inherited-get'; method = 'filter.get'
-        params = @{ filter = $InheritedHandles[0] }
+        params = @{ filter = $State.InheritedHandles[0] }
     }
-    Assert-Ok $InheritedGet $Revision 'filter.get inherited filter'
-    if ([string]$InheritedGet.data.source -ne $DuplicateSource) {
+    Assert-Ok $inheritedGet $State.Revision 'filter.get inherited filter'
+    if ([string]$inheritedGet.data.source -ne $State.DuplicateSource) {
         Fail 'inherited filter has the wrong parent source handle.'
     }
+}
 
+function Invoke-Task11UnrelatedUpdate([object] $State) {
     # The fixture asks a peer filter to update while A is settling. The peer
     # callback must remain an independent deferred batch/revision.
-    $Concurrent = Send-V2Request @{
-        op = 'request'; id = 'task11.unrelated-update'; method = 'filter.patchSettings'; ifRevision = $Revision
-        params = @{
-            filter = $FilterA.Handle
-            settings = @{ value = 40; triggerOther = $true }
-        }
+    $concurrent = Send-V2Request @{
+        op = 'request'; id = 'task11.unrelated-update'; method = 'filter.patchSettings'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle; settings = @{ value = 40; triggerOther = $true } }
     }
-    Assert-Ok $Concurrent ($Revision + 1) 'filter.patchSettings with unrelated peer callback'
-    $Revision++
-    $null = Read-Event 'filter.settingsChanged' $Revision $FilterA.Handle $Parent.Handle
-    $PeerEvent = Read-Event 'filter.settingsChanged' ($Revision + 1) $FilterC.Handle $Parent.Handle
-    $Revision = [int64]$PeerEvent.revision
-    if ([int64]$PeerEvent.data.settings.value -ne 777) {
+    Assert-Ok $concurrent ($State.Revision + 1) 'filter.patchSettings with unrelated peer callback'
+    $State.Revision++
+    $null = Read-Event 'filter.settingsChanged' $State.Revision $State.FilterA.Handle $State.Parent.Handle
+    $peerEvent = Read-Event 'filter.settingsChanged' ($State.Revision + 1) $State.FilterC.Handle $State.Parent.Handle
+    $State.Revision = [int64]$peerEvent.revision
+    if ([int64]$peerEvent.data.settings.value -ne 777) {
         Fail 'unrelated peer callback did not preserve its own settings.'
     }
-    $PeerSettings = Send-V2Request @{
+    $peerSettings = Send-V2Request @{
         op = 'request'; id = 'task11.peer-settings'; method = 'filter.getSettings'
-        params = @{ filter = $FilterC.Handle }
+        params = @{ filter = $State.FilterC.Handle }
     }
-    Assert-Ok $PeerSettings $Revision 'peer filter settings after unrelated callback'
-    if ([int64]$PeerSettings.data.settings.value -ne 777) {
+    Assert-Ok $peerSettings $State.Revision 'peer filter settings after unrelated callback'
+    if ([int64]$peerSettings.data.settings.value -ne 777) {
         Fail 'unrelated peer callback was not committed to the peer filter.'
     }
-
-    $ResetA = Send-V2Request @{
-        op = 'request'; id = 'task11.reset-a'; method = 'filter.replaceSettings'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; settings = @{ value = 50 } }
+    $resetA = Send-V2Request @{
+        op = 'request'; id = 'task11.reset-a'; method = 'filter.replaceSettings'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle; settings = @{ value = 50 } }
     }
-    Assert-Ok $ResetA ($Revision + 1) 'filter.replaceSettings after unrelated callback'
-    $Revision++
-    $null = Read-Event 'filter.settingsChanged' $Revision $FilterA.Handle $Parent.Handle
+    Assert-Ok $resetA ($State.Revision + 1) 'filter.replaceSettings after unrelated callback'
+    $State.Revision++
+    $null = Read-Event 'filter.settingsChanged' $State.Revision $State.FilterA.Handle $State.Parent.Handle
+}
 
+function Invoke-Task11BlockingUpdate([object] $State) {
     # A deliberately bounded blocking callback must settle through the
     # permanent observer without a temporary connect/disconnect waiter.
-    $Blocking = [System.Diagnostics.Stopwatch]::StartNew()
-    $BlockResponse = Send-V2Request @{
-        op = 'request'; id = 'task11.blocking-update'; method = 'filter.patchSettings'; ifRevision = $Revision
-        params = @{ filter = $FilterC.Handle; settings = @{ value = 60; blockMs = 1000 } }
+    $blocking = [System.Diagnostics.Stopwatch]::StartNew()
+    $blockResponse = Send-V2Request @{
+        op = 'request'; id = 'task11.blocking-update'; method = 'filter.patchSettings'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterC.Handle; settings = @{ value = 60; blockMs = 1000 } }
     }
-    $Blocking.Stop()
-    Assert-Ok $BlockResponse ($Revision + 1) 'blocking filter update'
-    $Revision++
-    if ($Blocking.Elapsed.TotalSeconds -ge 5.0) {
-        Fail "blocking filter callback did not settle before the bounded deadline ($($Blocking.Elapsed.TotalSeconds) seconds)."
+    $blocking.Stop()
+    Assert-Ok $blockResponse ($State.Revision + 1) 'blocking filter update'
+    $State.Revision++
+    if ($blocking.Elapsed.TotalSeconds -ge 5.0) {
+        Fail "blocking filter callback did not settle before the bounded deadline ($($blocking.Elapsed.TotalSeconds) seconds)."
     }
-    $null = Read-Event 'filter.settingsChanged' $Revision $FilterC.Handle $Parent.Handle
+    $null = Read-Event 'filter.settingsChanged' $State.Revision $State.FilterC.Handle $State.Parent.Handle
+}
 
+function Invoke-Task11TimeoutStart([object] $State) {
     # The first timeout leaves the A handle uncertain. The following request
     # changes the settings while the old callback is still blocked; it must
     # not be settled by that late callback.
-    $TimeoutWatch = [System.Diagnostics.Stopwatch]::StartNew()
-    $TimeoutResponse = Send-V2Request @{
-        op = 'request'; id = 'task11.timeout'; method = 'filter.patchSettings'; ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; settings = @{ value = 99; blockMs = 12000 } }
+    $timeoutWatch = [System.Diagnostics.Stopwatch]::StartNew()
+    $timeoutResponse = Send-V2Request @{
+        op = 'request'; id = 'task11.timeout'; method = 'filter.patchSettings'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle; settings = @{ value = 99; blockMs = 12000 } }
     }
-    $TimeoutWatch.Stop()
-    Write-Host "initial timeout elapsed=$($TimeoutWatch.Elapsed.TotalSeconds) seconds"
-    Assert-Error $TimeoutResponse 'timeout' $Revision 'timed-out filter update'
-    $FirstResync = Read-Until-Resync ($Revision + 1)
-    $Revision = [int64]$FirstResync.revision
-
-    $AfterTimeoutSettings = Send-V2Request @{
+    $timeoutWatch.Stop()
+    Write-Host "initial timeout elapsed=$($timeoutWatch.Elapsed.TotalSeconds) seconds"
+    Assert-Error $timeoutResponse 'timeout' $State.Revision 'timed-out filter update'
+    $firstResync = Read-Until-Resync ($State.Revision + 1)
+    $State.Revision = [int64]$firstResync.revision
+    $afterTimeoutSettings = Send-V2Request @{
         op = 'request'; id = 'task11.after-timeout-settings'; method = 'filter.getSettings'
-        params = @{ filter = $FilterA.Handle }
+        params = @{ filter = $State.FilterA.Handle }
     }
-    Assert-Ok $AfterTimeoutSettings $Revision 'filter.getSettings after timeout'
-    if ([int64]$AfterTimeoutSettings.data.settings.value -ne 99 -or
-        [int64]$AfterTimeoutSettings.data.settings.blockMs -ne 12000) {
+    Assert-Ok $afterTimeoutSettings $State.Revision 'filter.getSettings after timeout'
+    if ([int64]$afterTimeoutSettings.data.settings.value -ne 99 -or
+        [int64]$afterTimeoutSettings.data.settings.blockMs -ne 12000) {
         Fail 'timed-out filter update did not apply the canonical settings object.'
     }
+}
 
-    $NewerWatch = [System.Diagnostics.Stopwatch]::StartNew()
-    $NewerDuringLate = Send-V2Request @{
+function Invoke-Task11LateTimeouts([object] $State) {
+    $newerWatch = [System.Diagnostics.Stopwatch]::StartNew()
+    $newerDuringLate = Send-V2Request @{
         op = 'request'; id = 'task11.newer-during-late'; method = 'filter.patchSettings'
-        ifRevision = $Revision
-        params = @{ filter = $FilterA.Handle; settings = @{ value = 100; blockMs = 0 } }
+        ifRevision = $State.Revision
+        params = @{ filter = $State.FilterA.Handle; settings = @{ value = 100; blockMs = 0 } }
     }
-    $NewerWatch.Stop()
-    Write-Host "newer timeout elapsed=$($NewerWatch.Elapsed.TotalSeconds) seconds"
-    Assert-Error $NewerDuringLate 'timeout' $Revision 'new filter update during late completion'
-    $SecondResync = Read-Until-Resync ($Revision + 1)
-    $Revision = [int64]$SecondResync.revision
+    $newerWatch.Stop()
+    Write-Host "newer timeout elapsed=$($newerWatch.Elapsed.TotalSeconds) seconds"
+    Assert-Error $newerDuringLate 'timeout' $State.Revision 'new filter update during late completion'
+    $secondResync = Read-Until-Resync ($State.Revision + 1)
+    $State.Revision = [int64]$secondResync.revision
+    $lateResync = Read-Until-Resync ($State.Revision + 1)
+    Assert-NoLateSettingsEvent $State.FilterA.Handle 'late completion'
+    $State.Revision = [int64]$lateResync.revision
+}
 
-    # A and the newer timed-out request each have an independent private
-    # deferred-update identity. Their eventual completions must produce
-    # resynchronization boundaries and no normal settings event before a later
-    # request is allowed to settle normally.
-    $LateResync = Read-Until-Resync ($Revision + 1)
-    Assert-NoLateSettingsEvent $FilterA.Handle 'late completion'
-    $Revision = [int64]$LateResync.revision
-
+function Invoke-Task11SafeAfterLate([object] $State) {
     # A timed-out newer request may still have its own late callback after A's
     # boundary. The safe follow-up deliberately omits ifRevision and retries
     # only across an observed resync, so an asynchronous boundary cannot turn
     # into a false revision conflict.
-    $SafeAfterLate = $null
-    for ($Attempt = 1; $Attempt -le 3 -and $null -eq $SafeAfterLate; $Attempt++) {
-        $SafeWatch = [System.Diagnostics.Stopwatch]::StartNew()
-        $SafeCandidate = Send-V2Request @{
-            op = 'request'; id = "task11.safe-after-late.$Attempt"; method = 'filter.patchSettings'
-            params = @{ filter = $FilterA.Handle; settings = @{ value = 101; blockMs = 0 } }
+    $safeAfterLate = $null
+    for ($attempt = 1; $attempt -le 3 -and $null -eq $safeAfterLate; $attempt++) {
+        $safeWatch = [System.Diagnostics.Stopwatch]::StartNew()
+        $safeCandidate = Send-V2Request @{
+            op = 'request'; id = "task11.safe-after-late.$attempt"; method = 'filter.patchSettings'
+            params = @{ filter = $State.FilterA.Handle; settings = @{ value = 101; blockMs = 0 } }
         }
-        $SafeWatch.Stop()
-        Write-Host "safe update attempt=$Attempt elapsed=$($SafeWatch.Elapsed.TotalSeconds) seconds"
-        if ($SafeCandidate.status.ok) {
-            $SafeAfterLate = $SafeCandidate
+        $safeWatch.Stop()
+        Write-Host "safe update attempt=$attempt elapsed=$($safeWatch.Elapsed.TotalSeconds) seconds"
+        if ($safeCandidate.status.ok) {
+            $safeAfterLate = $safeCandidate
             break
         }
-        Assert-Error $SafeCandidate 'timeout' $Revision "filter update after late uncertainty attempt $Attempt"
-        $SafeRetryBatch = [System.Collections.Generic.List[object]]::new()
-        $SafeRetryResync = Read-Until-Resync ($Revision + 1) $SafeRetryBatch
-        $Revision = [int64]$SafeRetryResync.revision
+        Assert-Error $safeCandidate 'timeout' $State.Revision "filter update after late uncertainty attempt $attempt"
+        $safeRetryBatch = [System.Collections.Generic.List[object]]::new()
+        $safeRetryResync = Read-Until-Resync ($State.Revision + 1) $safeRetryBatch
+        $State.Revision = [int64]$safeRetryResync.revision
     }
-    if ($null -eq $SafeAfterLate) {
+    if ($null -eq $safeAfterLate) {
         Fail 'filter update after late uncertainty did not recover within three bounded attempts.'
     }
-    $Revision = [int64]$SafeAfterLate.revision
-    $null = Read-SafeSettingsEvent $FilterA.Handle 101 $Revision
+    $State.Revision = [int64]$safeAfterLate.revision
+    $null = Read-SafeSettingsEvent $State.FilterA.Handle 101 $State.Revision
+}
 
+function Invoke-Task11Overflow([object] $State) {
     # The fixture emits 1100 peer update observations during D's update,
     # exceeding the bounded deferred bridge and forcing a resync.
-    $Burst = Send-V2Request @{
-        op = 'request'; id = 'task11.overflow'; method = 'filter.patchSettings'; ifRevision = $Revision
-        params = @{ filter = $FilterD.Handle; settings = @{ value = 102; burst = $true } }
+    $burst = Send-V2Request @{
+        op = 'request'; id = 'task11.overflow'; method = 'filter.patchSettings'; ifRevision = $State.Revision
+        params = @{ filter = $State.FilterD.Handle; settings = @{ value = 102; burst = $true } }
     }
-    Assert-Error $Burst 'timeout' $Revision 'deferred filter queue overflow'
-    $OverflowResync = Read-Until-Resync ($Revision + 1)
-    Assert-NoLateSettingsEvent $FilterD.Handle 'overflow'
-    $Revision = [int64]$OverflowResync.revision
-
-    $OriginalList = Send-V2Request @{
+    Assert-Error $burst 'timeout' $State.Revision 'deferred filter queue overflow'
+    $overflowResync = Read-Until-Resync ($State.Revision + 1)
+    Assert-NoLateSettingsEvent $State.FilterD.Handle 'overflow'
+    $State.Revision = [int64]$overflowResync.revision
+    $originalList = Send-V2Request @{
         op = 'request'; id = 'task11.parent-list-before-remove'; method = 'filter.list'
-        params = @{ source = $Parent.Handle }
+        params = @{ source = $State.Parent.Handle }
     }
-    Assert-Ok $OriginalList $Revision 'parent filter list before source removal'
-    $OriginalHandles = @($OriginalList.data.filters | ForEach-Object { [string]$_.filter })
-    if ($OriginalHandles.Count -ne 3) {
+    Assert-Ok $originalList $State.Revision 'parent filter list before source removal'
+    $State.OriginalHandles = @($originalList.data.filters | ForEach-Object { [string]$_.filter })
+    if ($State.OriginalHandles.Count -ne 3) {
         Fail 'parent filter list changed unexpectedly before source removal.'
     }
+}
 
-    $SourceRemove = Send-V2Request @{
-        op = 'request'; id = 'task11.source-remove'; method = 'source.remove'; ifRevision = $Revision
-        params = @{ source = $Parent.Handle }
+function Remove-Task11ParentSource([object] $State) {
+    $sourceRemove = Send-V2Request @{
+        op = 'request'; id = 'task11.source-remove'; method = 'source.remove'; ifRevision = $State.Revision
+        params = @{ source = $State.Parent.Handle }
     }
-    Assert-Ok $SourceRemove ($Revision + 1) 'source.remove with filters'
-    $Revision++
-    foreach ($Handle in $OriginalHandles) {
-        $null = Read-Event 'filter.removed' $Revision $Handle $Parent.Handle
+    Assert-Ok $sourceRemove ($State.Revision + 1) 'source.remove with filters'
+    $State.Revision++
+    foreach ($handle in $State.OriginalHandles) {
+        $null = Read-Event 'filter.removed' $State.Revision $handle $State.Parent.Handle
     }
-    $null = Read-Event 'source.removed' $Revision '' $Parent.Handle
-
-    foreach ($Handle in $OriginalHandles) {
-        $StaleFilter = Send-V2Request @{
-            op = 'request'; id = "task11.stale.$Handle"; method = 'filter.get'
-            params = @{ filter = $Handle }
+    $null = Read-Event 'source.removed' $State.Revision '' $State.Parent.Handle
+    foreach ($handle in $State.OriginalHandles) {
+        $staleFilter = Send-V2Request @{
+            op = 'request'; id = "task11.stale.$handle"; method = 'filter.get'
+            params = @{ filter = $handle }
         }
-        Assert-Error $StaleFilter 'not_found' $Revision "stale removed filter $Handle"
+        Assert-Error $staleFilter 'not_found' $State.Revision "stale removed filter $handle"
     }
+}
 
-    $DuplicateSourceRemove = Send-V2Request @{
+function Remove-Task11DuplicateSource([object] $State) {
+    $duplicateSourceRemove = Send-V2Request @{
         op = 'request'; id = 'task11.duplicate-source-remove'; method = 'source.remove'
-        ifRevision = $Revision; params = @{ source = $DuplicateSource }
+        ifRevision = $State.Revision; params = @{ source = $State.DuplicateSource }
     }
-    Assert-Ok $DuplicateSourceRemove ($Revision + 1) 'source.remove duplicated source'
-    $Revision++
-    foreach ($Handle in $InheritedHandles) {
-        $null = Read-Event 'filter.removed' $Revision $Handle $DuplicateSource
+    Assert-Ok $duplicateSourceRemove ($State.Revision + 1) 'source.remove duplicated source'
+    $State.Revision++
+    foreach ($handle in $State.InheritedHandles) {
+        $null = Read-Event 'filter.removed' $State.Revision $handle $State.DuplicateSource
     }
-    $null = Read-Event 'source.removed' $Revision '' $DuplicateSource
-
-    $InheritedStale = Send-V2Request @{
+    $null = Read-Event 'source.removed' $State.Revision '' $State.DuplicateSource
+    $inheritedStale = Send-V2Request @{
         op = 'request'; id = 'task11.inherited-stale'; method = 'filter.get'
-        params = @{ filter = $InheritedHandles[0] }
+        params = @{ filter = $State.InheritedHandles[0] }
     }
-    Assert-Error $InheritedStale 'not_found' $Revision 'stale inherited filter handle'
-
+    Assert-Error $inheritedStale 'not_found' $State.Revision 'stale inherited filter handle'
     Assert-NoQueuedEvents 'final filter event queue'
+}
 
-    $Close = Send-V2Request @{
-        op = 'request'; id = 'task11.close'; method = 'session.close'; ifRevision = $Revision; params = @{}
+function Complete-Task11Scenario([object] $State) {
+    Invoke-Task11Overflow $State
+    Remove-Task11ParentSource $State
+    Remove-Task11DuplicateSource $State
+    $close = Send-V2Request @{
+        op = 'request'; id = 'task11.close'; method = 'session.close'; ifRevision = $State.Revision; params = @{}
     }
-    Assert-Ok $Close ($Revision + 1) 'session.close'
-    $Process.StandardInput.Close()
-    if (-not $Process.WaitForExit(30000)) {
+    Assert-Ok $close ($State.Revision + 1) 'session.close'
+    $script:Process.StandardInput.Close()
+    if (-not $script:Process.WaitForExit(30000)) {
         Fail 'obs-engine did not exit after session.close.'
     }
-    if ($Process.ExitCode -ne 0) {
-        Fail "obs-engine exited with code $($Process.ExitCode)."
+    if ($script:Process.ExitCode -ne 0) {
+        Fail "obs-engine exited with code $($script:Process.ExitCode)."
     }
-    $Stderr = $ErrorTask.GetAwaiter().GetResult()
-    if ($Stderr -notmatch '\[task11-filter\] deterministic parent/filter module loaded') {
+    $stderr = $script:ErrorTask.GetAwaiter().GetResult()
+    if ($stderr -notmatch '\[task11-filter\] deterministic parent/filter module loaded') {
         Fail 'deterministic Task 11 module-load evidence was missing from stderr.'
     }
     Write-Host 'Task 11 filter integration: PASS' -ForegroundColor Green
 }
-catch {
-    if ($null -ne $Process -and -not $Process.HasExited) {
-        try { $Process.Kill($true) } catch {}
-        try { $Process.WaitForExit(5000) | Out-Null } catch {}
+
+function Invoke-Task11Scenario {
+    Initialize-Task11Session
+    $state = New-Task11State
+    Initialize-Task11FilterGraph $state
+    Assert-Task11LiveFilterReads $state
+    Invoke-Task11FilterMutations $state
+    Assert-Task11InitialOrder $state
+    Invoke-Task11OrderMutations $state
+    Invoke-Task11OrderValidation $state
+    Invoke-Task11DuplicateAndRemove $state
+    Invoke-Task11SourceDuplicate $state
+    Invoke-Task11UnrelatedUpdate $state
+    Invoke-Task11BlockingUpdate $state
+    Invoke-Task11TimeoutStart $state
+    Invoke-Task11LateTimeouts $state
+    Invoke-Task11SafeAfterLate $state
+    Complete-Task11Scenario $state
+}
+
+function Stop-Task11AfterFailure {
+    if ($null -ne $script:Process -and -not $script:Process.HasExited) {
+        try { $script:Process.Kill($true) } catch {}
+        try { $script:Process.WaitForExit(5000) | Out-Null } catch {}
     }
-    if ($null -ne $ErrorTask) {
+    if ($null -ne $script:ErrorTask) {
         try {
-            $Stderr = $ErrorTask.GetAwaiter().GetResult()
-            if ($Stderr) {
+            $stderr = $script:ErrorTask.GetAwaiter().GetResult()
+            if ($stderr) {
                 Write-Host '=== obs-engine stderr ==='
-                Write-Host $Stderr
+                Write-Host $stderr
             }
         } catch {}
     }
+}
+
+function Stop-Task11Engine {
+    if ($null -eq $script:Process) {
+        return
+    }
+    if (-not $script:Process.HasExited) {
+        try { $script:Process.StandardInput.Close() } catch {}
+        try { $script:Process.Kill($true) } catch {}
+        try { $script:Process.WaitForExit(5000) | Out-Null } catch {}
+    }
+    $script:Process.Dispose()
+    $script:Process = $null
+}
+
+try {
+    Start-Task11Engine $InstallRoot
+    Invoke-Task11Scenario
+}
+catch {
+    Stop-Task11AfterFailure
     throw
 }
 finally {
-    if ($null -ne $Process) {
-        if (-not $Process.HasExited) {
-            try { $Process.StandardInput.Close() } catch {}
-            try { $Process.Kill($true) } catch {}
-            try { $Process.WaitForExit(5000) | Out-Null } catch {}
-        }
-        $Process.Dispose()
-    }
+    Stop-Task11Engine
 }
