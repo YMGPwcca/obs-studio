@@ -1824,14 +1824,14 @@ function Format-FunctionList {
     }
     $lines = [System.Collections.Generic.List[string]]::new()
     foreach ($function in $selected) {
-        $lines.Add("- ``$($function.function)`` — ``$($function.file):$($function.startLine)-$($function.endLine)``, CC $($function.cyclomaticComplexity), NLOC $($function.nloc), params $($function.parameterCount)")
+        $null = $lines.Add("- ``$($function.function)`` — ``$($function.file):$($function.startLine)-$($function.endLine)``, CC $($function.cyclomaticComplexity), NLOC $($function.nloc), params $($function.parameterCount)")
     }
     return $lines -join "`n"
 }
 
 function Add-ScopeMarkdown {
     param(
-        [Parameter(Mandatory = $true)] [System.Collections.Generic.List[string]] $Lines,
+        [Parameter(Mandatory = $true)] [object] $Lines,
         [Parameter(Mandatory = $true)] [object] $Report,
         [Parameter(Mandatory = $true)] [ValidateSet('script-body', 'enforced')] [string] $ScopeKind,
         [Parameter(Mandatory = $true)] [string] $Heading,
@@ -1840,32 +1840,32 @@ function Add-ScopeMarkdown {
 
     $metrics = @(Get-SortedScopeMetrics $Report.functions $ScopeKind)
     $top = @($metrics | Select-Object -First 25)
-    $Lines.Add("## $Heading")
-    $Lines.Add('')
-    $Lines.Add((Format-ScopeStatTable (Get-ReportStatistics $Report $ScopeKind) $Label))
-    $Lines.Add('')
-    $Lines.Add("### $Label with CC > 5")
-    $Lines.Add('')
-    $Lines.Add((Format-FunctionList $metrics 5))
-    $Lines.Add('')
-    $Lines.Add("### $Label with CC > 7")
-    $Lines.Add('')
-    $Lines.Add((Format-FunctionList $metrics 7))
-    $Lines.Add('')
-    $Lines.Add("### $Label with CC > 10")
-    $Lines.Add('')
-    $Lines.Add((Format-FunctionList $metrics 10))
-    $Lines.Add('')
-    $Lines.Add("### Top 25 $($Label.ToLowerInvariant())")
-    $Lines.Add('')
-    $Lines.Add('| Rank | File | Lines | NLOC | CC |')
-    $Lines.Add('|---:|---|---:|---:|---:|')
+    $null = $Lines.Add("## $Heading")
+    $null = $Lines.Add('')
+    $null = $Lines.Add((Format-ScopeStatTable (Get-ReportStatistics $Report $ScopeKind) $Label))
+    $null = $Lines.Add('')
+    $null = $Lines.Add("### $Label with CC > 5")
+    $null = $Lines.Add('')
+    $null = $Lines.Add((Format-FunctionList $metrics 5))
+    $null = $Lines.Add('')
+    $null = $Lines.Add("### $Label with CC > 7")
+    $null = $Lines.Add('')
+    $null = $Lines.Add((Format-FunctionList $metrics 7))
+    $null = $Lines.Add('')
+    $null = $Lines.Add("### $Label with CC > 10")
+    $null = $Lines.Add('')
+    $null = $Lines.Add((Format-FunctionList $metrics 10))
+    $null = $Lines.Add('')
+    $null = $Lines.Add("### Top 25 $($Label.ToLowerInvariant())")
+    $null = $Lines.Add('')
+    $null = $Lines.Add('| Rank | File | Lines | NLOC | CC |')
+    $null = $Lines.Add('|---:|---|---:|---:|---:|')
     $rank = 1
     foreach ($metric in $top) {
-        $Lines.Add("| $rank | ``$($metric.file)`` | $($metric.startLine)-$($metric.endLine) | $($metric.nloc) | $($metric.cyclomaticComplexity) |")
+        $null = $Lines.Add("| $rank | ``$($metric.file)`` | $($metric.startLine)-$($metric.endLine) | $($metric.nloc) | $($metric.cyclomaticComplexity) |")
         $rank++
     }
-    $Lines.Add('')
+    $null = $Lines.Add('')
 }
 
 function New-BaselineMarkdown {
@@ -1877,65 +1877,65 @@ function New-BaselineMarkdown {
     $functions = @(Get-SortedFunctions $Report.functions)
     $top = @($functions | Select-Object -First 25)
     $lines = [System.Collections.Generic.List[string]]::new()
-    $lines.Add('# Phase-1 Cyclomatic Complexity Baseline')
-    $lines.Add('')
-    $lines.Add("Accepted production checkpoint: ``$($Report.scope.acceptedRef)``")
-    $lines.Add("Ownership base: ``$($Report.scope.baseRef)`` (merge-base of ``origin/master`` and accepted HEAD)")
-    $lines.Add('')
-    $lines.Add('## Ownership and measurement scope')
-    $lines.Add('')
-    $lines.Add("Operator-authored commits in lineage: **$($Inventory.operatorAuthoredCommitCountInLineage)**")
-    $lines.Add("Operator-authored commits touching scoped executable code: **$($Inventory.operatorAuthoredCodeCommitCountInScope)**")
-    $lines.Add("Current executable files in scope: **$($Inventory.cyclomaticTargetFiles.Count)**")
-    $lines.Add('')
-    $lines.Add('The complete authorship and file inventory is in `complexity-ownership-inventory.json` and `.md`. Scope was derived from Git history and current `git blame`; it was not inferred from filenames alone.')
-    $lines.Add('')
-    $lines.Add('## Analyzer')
-    $lines.Add('')
-    $lines.Add("- C/C++: $($Report.analyzer.cpp)")
-    $lines.Add("- PowerShell: $($Report.analyzer.powershell)")
-    $lines.Add('- CMake/YAML/JSON/Markdown/license files are recorded for review but are not included in function-level CC statistics.')
-    $lines.Add('')
-    $lines.Add('## Baseline summary')
-    $lines.Add('')
-    $lines.Add((Format-StatTable $Report.summary))
-    $lines.Add('')
-    $lines.Add('The p90 uses nearest-rank: `ceil(0.90 * N)`. Statistics exclude PowerShell top-level script bodies, which are reported separately because cyclomatic complexity is a function-level metric.')
-    $lines.Add('')
-    $lines.Add('## Functions with CC > 5')
-    $lines.Add('')
-    $lines.Add((Format-FunctionList $functions 5))
-    $lines.Add('')
-    $lines.Add('## Functions with CC > 7')
-    $lines.Add('')
-    $lines.Add((Format-FunctionList $functions 7))
-    $lines.Add('')
-    $lines.Add('## Functions with CC > 10')
-    $lines.Add('')
-    $lines.Add((Format-FunctionList $functions 10))
-    $lines.Add('')
-    $lines.Add('## Top 25 scoped functions')
-    $lines.Add('')
-    $lines.Add('| Rank | Function | File | Lines | NLOC | CC | Params |')
-    $lines.Add('|---:|---|---|---:|---:|---:|---:|')
+    $null = $lines.Add('# Phase-1 Cyclomatic Complexity Baseline')
+    $null = $lines.Add('')
+    $null = $lines.Add("Accepted production checkpoint: ``$($Report.scope.acceptedRef)``")
+    $null = $lines.Add("Ownership base: ``$($Report.scope.baseRef)`` (merge-base of ``origin/master`` and accepted HEAD)")
+    $null = $lines.Add('')
+    $null = $lines.Add('## Ownership and measurement scope')
+    $null = $lines.Add('')
+    $null = $lines.Add("Operator-authored commits in lineage: **$($Inventory.operatorAuthoredCommitCountInLineage)**")
+    $null = $lines.Add("Operator-authored commits touching scoped executable code: **$($Inventory.operatorAuthoredCodeCommitCountInScope)**")
+    $null = $lines.Add("Current executable files in scope: **$($Inventory.cyclomaticTargetFiles.Count)**")
+    $null = $lines.Add('')
+    $null = $lines.Add('The complete authorship and file inventory is in `complexity-ownership-inventory.json` and `.md`. Scope was derived from Git history and current `git blame`; it was not inferred from filenames alone.')
+    $null = $lines.Add('')
+    $null = $lines.Add('## Analyzer')
+    $null = $lines.Add('')
+    $null = $lines.Add("- C/C++: $($Report.analyzer.cpp)")
+    $null = $lines.Add("- PowerShell: $($Report.analyzer.powershell)")
+    $null = $lines.Add('- CMake/YAML/JSON/Markdown/license files are recorded for review but are not included in function-level CC statistics.')
+    $null = $lines.Add('')
+    $null = $lines.Add('## Baseline summary')
+    $null = $lines.Add('')
+    $null = $lines.Add((Format-StatTable $Report.summary))
+    $null = $lines.Add('')
+    $null = $lines.Add('The p90 uses nearest-rank: `ceil(0.90 * N)`. The named-function summary excludes PowerShell top-level script bodies; script bodies are measured and enforced separately below. The historical Before snapshot contains only bodies present in that accepted historical scope, while After includes the complete current project-owned script-body scope.')
+    $null = $lines.Add('')
+    $null = $lines.Add('## Functions with CC > 5')
+    $null = $lines.Add('')
+    $null = $lines.Add((Format-FunctionList $functions 5))
+    $null = $lines.Add('')
+    $null = $lines.Add('## Functions with CC > 7')
+    $null = $lines.Add('')
+    $null = $lines.Add((Format-FunctionList $functions 7))
+    $null = $lines.Add('')
+    $null = $lines.Add('## Functions with CC > 10')
+    $null = $lines.Add('')
+    $null = $lines.Add((Format-FunctionList $functions 10))
+    $null = $lines.Add('')
+    $null = $lines.Add('## Top 25 scoped functions')
+    $null = $lines.Add('')
+    $null = $lines.Add('| Rank | Function | File | Lines | NLOC | CC | Params |')
+    $null = $lines.Add('|---:|---|---|---:|---:|---:|---:|')
     $rank = 1
     foreach ($function in $top) {
-        $lines.Add("| $rank | ``$($function.function)`` | ``$($function.file)`` | $($function.startLine)-$($function.endLine) | $($function.nloc) | $($function.cyclomaticComplexity) | $($function.parameterCount) |")
+        $null = $lines.Add("| $rank | ``$($function.function)`` | ``$($function.file)`` | $($function.startLine)-$($function.endLine) | $($function.nloc) | $($function.cyclomaticComplexity) | $($function.parameterCount) |")
         $rank++
     }
-    $lines.Add('')
-    Add-ScopeMarkdown (,$lines) $Report 'script-body' 'PowerShell script-body complexity' 'Script bodies'
-    $lines.Add('## Combined enforced executable-scope summary')
-    $lines.Add('')
-    $lines.Add((Format-ScopeStatTable (Get-ReportStatistics $Report 'enforced') 'Enforced scopes'))
-    $lines.Add('')
+    $null = $lines.Add('')
+    Add-ScopeMarkdown -Lines $lines -Report $Report -ScopeKind 'script-body' -Heading 'PowerShell script-body complexity' -Label 'Script bodies'
+    $null = $lines.Add('## Combined enforced executable-scope summary')
+    $null = $lines.Add('')
+    $null = $lines.Add((Format-ScopeStatTable (Get-ReportStatistics $Report 'enforced') 'Enforced scopes'))
+    $null = $lines.Add('')
     if (@($Report.limitations).Count -gt 0) {
-        $lines.Add('## Measurement limitations')
-        $lines.Add('')
+        $null = $lines.Add('## Measurement limitations')
+        $null = $lines.Add('')
         foreach ($limitation in $Report.limitations) {
-            $lines.Add("- ``$($limitation.file)``: $($limitation.reason)")
+            $null = $lines.Add("- ``$($limitation.file)``: $($limitation.reason)")
         }
-        $lines.Add('')
+        $null = $lines.Add('')
     }
     return $lines -join "`n"
 }
@@ -1944,47 +1944,47 @@ function New-InventoryMarkdown {
     param([Parameter(Mandatory = $true)] [object] $Inventory)
 
     $lines = [System.Collections.Generic.List[string]]::new()
-    $lines.Add('# Phase-1 Complexity Ownership Inventory')
-    $lines.Add('')
-    $lines.Add("Accepted HEAD: ``$($Inventory.acceptedRef)``")
-    $lines.Add("Ownership base: ``$($Inventory.baseRef)``")
-    $lines.Add('')
-    $lines.Add('## Discovery')
-    $lines.Add('')
-    $lines.Add('Ownership was derived from `git log BASE..accepted` author metadata, then file/function attribution was checked with current accepted-HEAD `git blame`. Archived WIP branches were not traversed.')
-    $lines.Add('')
-    $lines.Add("- GitHub account: **$($Inventory.githubAccount)**")
-    $lines.Add("- Author-authored commits in accepted lineage: **$($Inventory.operatorAuthoredCommitCountInLineage)**")
-    $lines.Add("- Author-authored commits touching current executable scope: **$($Inventory.operatorAuthoredCodeCommitCountInScope)**")
-    $lines.Add('')
-    $lines.Add('| Author name | Author email |')
-    $lines.Add('|---|---|')
+    $null = $lines.Add('# Phase-1 Complexity Ownership Inventory')
+    $null = $lines.Add('')
+    $null = $lines.Add("Accepted HEAD: ``$($Inventory.acceptedRef)``")
+    $null = $lines.Add("Ownership base: ``$($Inventory.baseRef)``")
+    $null = $lines.Add('')
+    $null = $lines.Add('## Discovery')
+    $null = $lines.Add('')
+    $null = $lines.Add('Ownership was derived from `git log BASE..accepted` author metadata, then file/function attribution was checked with current accepted-HEAD `git blame`. Archived WIP branches were not traversed.')
+    $null = $lines.Add('')
+    $null = $lines.Add("- GitHub account: **$($Inventory.githubAccount)**")
+    $null = $lines.Add("- Author-authored commits in accepted lineage: **$($Inventory.operatorAuthoredCommitCountInLineage)**")
+    $null = $lines.Add("- Author-authored commits touching current executable scope: **$($Inventory.operatorAuthoredCodeCommitCountInScope)**")
+    $null = $lines.Add('')
+    $null = $lines.Add('| Author name | Author email |')
+    $null = $lines.Add('|---|---|')
     foreach ($alias in $Inventory.operatorIdentityAliases) {
-        $lines.Add("| $($alias.name) | ``$($alias.email)`` |")
+        $null = $lines.Add("| $($alias.name) | ``$($alias.email)`` |")
     }
-    $lines.Add('')
-    $lines.Add('## Current executable files')
-    $lines.Add('')
-    $lines.Add('| File | Language | Status | Operator commits | Blame lines | Scoped functions |')
-    $lines.Add('|---|---|---|---:|---:|---:|')
+    $null = $lines.Add('')
+    $null = $lines.Add('## Current executable files')
+    $null = $lines.Add('')
+    $null = $lines.Add('| File | Language | Status | Operator commits | Blame lines | Scoped functions |')
+    $null = $lines.Add('|---|---|---|---:|---:|---:|')
     foreach ($file in $Inventory.cyclomaticTargetFiles) {
-        $lines.Add("| ``$($file.path)`` | $($file.language) | $($file.status) | $($file.operatorCommitCount) | $($file.operatorBlameLineCount) | $($file.scopedFunctionCount) |")
+        $null = $lines.Add("| ``$($file.path)`` | $($file.language) | $($file.status) | $($file.operatorCommitCount) | $($file.operatorBlameLineCount) | $($file.scopedFunctionCount) |")
     }
-    $lines.Add('')
-    $lines.Add('## Non-CC changed paths')
-    $lines.Add('')
-    $lines.Add('These paths remain part of the authorship audit but are not function-level cyclomatic targets:')
-    $lines.Add('')
+    $null = $lines.Add('')
+    $null = $lines.Add('## Non-CC changed paths')
+    $null = $lines.Add('')
+    $null = $lines.Add('These paths remain part of the authorship audit but are not function-level cyclomatic targets:')
+    $null = $lines.Add('')
     foreach ($file in $Inventory.nonCyclomaticChangedFiles) {
-        $lines.Add("- ``$($file.path)`` — $($file.category)")
+        $null = $lines.Add("- ``$($file.path)`` — $($file.category)")
     }
-    $lines.Add('')
-    $lines.Add('## Scope rules')
-    $lines.Add('')
+    $null = $lines.Add('')
+    $null = $lines.Add('## Scope rules')
+    $null = $lines.Add('')
     foreach ($rule in $Inventory.scopeRules) {
-        $lines.Add("- $rule")
+        $null = $lines.Add("- $rule")
     }
-    $lines.Add('')
+    $null = $lines.Add('')
     return $lines -join "`n"
 }
 
@@ -2055,54 +2055,54 @@ function Get-ComparisonMetricLine {
 
 function Add-ComparisonSummary {
     param(
-        [Parameter(Mandatory = $true)] [System.Collections.Generic.List[string]] $Lines,
+        [Parameter(Mandatory = $true)] [object] $Lines,
         [Parameter(Mandatory = $true)] [object] $Before,
         [Parameter(Mandatory = $true)] [object] $After
     )
 
     foreach ($name in @('scopedFunctionCount', 'averageCC', 'medianCC', 'p90CC', 'maximumCC', 'countCCGreater5', 'countCCGreater7', 'countCCGreater10')) {
         $label = Get-ComparisonLabel $name
-        $Lines.Add("| $label | $($Before.summary.$name) | $($After.summary.$name) |")
+        $null = $Lines.Add("| $label | $($Before.summary.$name) | $($After.summary.$name) |")
     }
 }
 
 function Add-ComparisonExceptions {
     param(
-        [Parameter(Mandatory = $true)] [System.Collections.Generic.List[string]] $Lines,
+        [Parameter(Mandatory = $true)] [object] $Lines,
         [object[]] $Exceptions
     )
 
     if (@($Exceptions).Count -eq 0) {
-        $Lines.Add('_Empty._')
+        $null = $Lines.Add('_Empty._')
         return
     }
-    $Lines.Add('| File | Function | Measured CC | Reason | Date/task | Reviewer note |')
-    $Lines.Add('|---|---|---:|---|---|---|')
+    $null = $Lines.Add('| File | Function | Measured CC | Reason | Date/task | Reviewer note |')
+    $null = $Lines.Add('|---|---|---:|---|---|---|')
     foreach ($exception in $Exceptions) {
-        $Lines.Add("| ``$($exception.file)`` | ``$($exception.function)`` | $($exception.measuredCC) | $($exception.reason) | $($exception.dateTask) | $($exception.reviewerNote) |")
+        $null = $Lines.Add("| ``$($exception.file)`` | ``$($exception.function)`` | $($exception.measuredCC) | $($exception.reason) | $($exception.dateTask) | $($exception.reviewerNote) |")
     }
 }
 
 function Add-ComparisonLimitations {
     param(
-        [Parameter(Mandatory = $true)] [System.Collections.Generic.List[string]] $Lines,
+        [Parameter(Mandatory = $true)] [object] $Lines,
         [Parameter(Mandatory = $true)] [object] $After
     )
 
     if (@($After.limitations).Count -eq 0) {
         return
     }
-    $Lines.Add('## Measurement limitations')
-    $Lines.Add('')
+    $null = $Lines.Add('## Measurement limitations')
+    $null = $Lines.Add('')
     foreach ($limitation in $After.limitations) {
-        $Lines.Add("- ``$($limitation.file)``: $($limitation.reason)")
+        $null = $Lines.Add("- ``$($limitation.file)``: $($limitation.reason)")
     }
-    $Lines.Add('')
+    $null = $Lines.Add('')
 }
 
 function Add-ComparisonScopeSummary {
     param(
-        [Parameter(Mandatory = $true)] [System.Collections.Generic.List[string]] $Lines,
+        [Parameter(Mandatory = $true)] [object] $Lines,
         [Parameter(Mandatory = $true)] [object] $Before,
         [Parameter(Mandatory = $true)] [object] $After,
         [Parameter(Mandatory = $true)] [ValidateSet('script-body', 'enforced')] [string] $ScopeKind,
@@ -2121,34 +2121,34 @@ function Add-ComparisonScopeSummary {
         countCCGreater7 = "$Label with CC > 7"
         countCCGreater10 = "$Label with CC > 10"
     }
-    $Lines.Add("## $Label before/after summary")
-    $Lines.Add('')
-    $Lines.Add('| Measure | Before | After |')
-    $Lines.Add('|---|---:|---:|')
+    $null = $Lines.Add("## $Label before/after summary")
+    $null = $Lines.Add('')
+    $null = $Lines.Add('| Measure | Before | After |')
+    $null = $Lines.Add('|---|---:|---:|')
     foreach ($name in $labels.Keys) {
-        $Lines.Add("| $($labels[$name]) | $($beforeStats.$name) | $($afterStats.$name) |")
+        $null = $Lines.Add("| $($labels[$name]) | $($beforeStats.$name) | $($afterStats.$name) |")
     }
-    $Lines.Add('')
+    $null = $Lines.Add('')
 }
 
 function Add-ComparisonMetricSection {
     param(
-        [Parameter(Mandatory = $true)] [System.Collections.Generic.List[string]] $Lines,
+        [Parameter(Mandatory = $true)] [object] $Lines,
         [Parameter(Mandatory = $true)] [string] $Heading,
         [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [object[]] $Metrics,
         [Parameter(Mandatory = $true)] [hashtable] $BeforeExact,
         [Parameter(Mandatory = $true)] [hashtable] $ScopeByPath
     )
 
-    $Lines.Add("## $Heading")
-    $Lines.Add('')
-    $Lines.Add('| Function | File | Before CC | After CC | Before NLOC | After NLOC | Notes |')
-    $Lines.Add('|---|---|---:|---:|---:|---:|---|')
+    $null = $Lines.Add("## $Heading")
+    $null = $Lines.Add('')
+    $null = $Lines.Add('| Function | File | Before CC | After CC | Before NLOC | After NLOC | Notes |')
+    $null = $Lines.Add('|---|---|---:|---:|---:|---:|---|')
     foreach ($afterMetric in $Metrics) {
         $beforeMetric = Find-BeforeMetric $afterMetric $BeforeExact $ScopeByPath[$afterMetric.file]
-        $Lines.Add((Get-ComparisonMetricLine $afterMetric $beforeMetric))
+        $null = $Lines.Add((Get-ComparisonMetricLine $afterMetric $beforeMetric))
     }
-    $Lines.Add('')
+    $null = $Lines.Add('')
 }
 
 function New-ComparisonMarkdown {
@@ -2164,41 +2164,41 @@ function New-ComparisonMarkdown {
     $beforeExact = New-MetricKeyMap @($Before.functions) 'comparison baseline'
     $afterFunctions = @(Get-SortedFunctions $After.functions)
     $lines = [System.Collections.Generic.List[string]]::new()
-    $lines.Add('# Phase-1 Complexity Hardening Report')
-    $lines.Add('')
-    $lines.Add("Accepted starting SHA: ``$($Before.scope.acceptedRef)``")
-    $lines.Add("Candidate measurement HEAD: ``$($After.scope.measurementHead)``")
-    $lines.Add('')
-    $lines.Add('## Before/after summary')
-    $lines.Add('')
-    $lines.Add('| Measure | Before | After |')
-    $lines.Add('|---|---:|---:|')
-    Add-ComparisonSummary (,$lines) $Before $After
-    $lines.Add('')
-    $lines.Add('The p90 is nearest-rank `ceil(0.90 * N)`. Function statistics exclude PowerShell top-level script bodies.')
-    $lines.Add('')
-    Add-ComparisonScopeSummary (,$lines) $Before $After 'script-body' 'Script bodies'
-    Add-ComparisonScopeSummary (,$lines) $Before $After 'enforced' 'Enforced scopes'
-    Add-ComparisonMetricSection (,$lines) 'Named function-by-function comparison' $afterFunctions $beforeExact $ScopeByPath
-    Add-ComparisonMetricSection (,$lines) 'PowerShell script-body comparison' @(Get-SortedScriptBodies $After.functions) $beforeExact $ScopeByPath
-    $lines.Add('## Top remaining functions')
-    $lines.Add('')
-    $lines.Add((Format-FunctionList $afterFunctions 5))
-    $lines.Add('')
-    $lines.Add('## Remaining functions with CC > 7')
-    $lines.Add('')
-    $lines.Add((Format-FunctionList $afterFunctions 7))
-    $lines.Add('')
-    $lines.Add('## Remaining functions with CC > 10')
-    $lines.Add('')
-    $lines.Add((Format-FunctionList $afterFunctions 10))
-    $lines.Add('')
-    $lines.Add('## Intentional exceptions')
-    $lines.Add('')
-    Add-ComparisonExceptions (,$lines) $exceptions
-    $lines.Add('')
-    Add-ComparisonLimitations (,$lines) $After
-    $lines.Add('See `complexity-ownership-inventory.md` for the complete Git-derived attribution scope.')
+    $null = $lines.Add('# Phase-1 Complexity Hardening Report')
+    $null = $lines.Add('')
+    $null = $lines.Add("Accepted starting SHA: ``$($Before.scope.acceptedRef)``")
+    $null = $lines.Add("Candidate measurement HEAD: ``$($After.scope.measurementHead)``")
+    $null = $lines.Add('')
+    $null = $lines.Add('## Before/after summary')
+    $null = $lines.Add('')
+    $null = $lines.Add('| Measure | Before | After |')
+    $null = $lines.Add('|---|---:|---:|')
+    Add-ComparisonSummary -Lines $lines -Before $Before -After $After
+    $null = $lines.Add('')
+    $null = $lines.Add('The p90 is nearest-rank `ceil(0.90 * N)`. The named-function summary excludes PowerShell top-level script bodies; script bodies are measured and enforced separately. The historical Before snapshot contains only bodies present in that accepted historical scope, while After includes the complete current project-owned script-body scope.')
+    $null = $lines.Add('')
+    Add-ComparisonScopeSummary -Lines $lines -Before $Before -After $After -ScopeKind 'script-body' -Label 'Script bodies'
+    Add-ComparisonScopeSummary -Lines $lines -Before $Before -After $After -ScopeKind 'enforced' -Label 'Enforced scopes'
+    Add-ComparisonMetricSection -Lines $lines -Heading 'Named function-by-function comparison' -Metrics $afterFunctions -BeforeExact $beforeExact -ScopeByPath $ScopeByPath
+    Add-ComparisonMetricSection -Lines $lines -Heading 'PowerShell script-body comparison' -Metrics (Get-SortedScriptBodies $After.functions) -BeforeExact $beforeExact -ScopeByPath $ScopeByPath
+    $null = $lines.Add('## Top remaining functions')
+    $null = $lines.Add('')
+    $null = $lines.Add((Format-FunctionList $afterFunctions 5))
+    $null = $lines.Add('')
+    $null = $lines.Add('## Remaining functions with CC > 7')
+    $null = $lines.Add('')
+    $null = $lines.Add((Format-FunctionList $afterFunctions 7))
+    $null = $lines.Add('')
+    $null = $lines.Add('## Remaining functions with CC > 10')
+    $null = $lines.Add('')
+    $null = $lines.Add((Format-FunctionList $afterFunctions 10))
+    $null = $lines.Add('')
+    $null = $lines.Add('## Intentional exceptions')
+    $null = $lines.Add('')
+    Add-ComparisonExceptions -Lines $lines -Exceptions $exceptions
+    $null = $lines.Add('')
+    Add-ComparisonLimitations -Lines $lines -After $After
+    $null = $lines.Add('See `complexity-ownership-inventory.md` for the complete Git-derived attribution scope.')
     return $lines -join "`n"
 }
 
