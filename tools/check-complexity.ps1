@@ -325,6 +325,10 @@ function New-WorkflowRunBlockRecord {
     if ($RunNode.GetType().Name -cne 'YamlScalarNode') {
         throw "workflow '$Path' job '$Job' step '$stepName' has a non-scalar run value."
     }
+    $endLine = [int] $RunNode.End.Line
+    if ([int] $RunNode.End.Column -eq 1 -and $endLine -gt [int] $RunNode.Start.Line) {
+        $endLine--
+    }
     return [pscustomobject]@{
         path      = $Path
         job       = $Job
@@ -332,7 +336,7 @@ function New-WorkflowRunBlockRecord {
         shell     = $shell
         source    = [string] $RunNode.Value
         startLine = [int] $RunNode.Start.Line
-        endLine   = [int] $RunNode.End.Line
+        endLine   = $endLine
     }
 }
 
@@ -2519,6 +2523,36 @@ function Add-ComparisonMetricSection {
     $null = $Lines.Add('')
 }
 
+function Add-WorkflowExecutableSection {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Lines,
+        [Parameter(Mandatory = $true)] [object] $Report
+    )
+
+    $null = $Lines.Add('## GitHub Actions executable-block policy')
+    $null = $Lines.Add('')
+    $null = $Lines.Add('Workflow YAML is parsed structurally. Trivial launcher/setup wrappers remain inline; substantial PowerShell must be extracted into measured `.ps1` code, and substantial unsupported shell/interpreter code fails closed.')
+    $null = $Lines.Add('')
+    $policy = $Report.PSObject.Properties['workflowExecutablePolicy']
+    if ($null -ne $policy) {
+        $null = $Lines.Add("Owned run blocks: $($policy.Value.projectOwnedBlockCount); substantial inline PowerShell: $($policy.Value.substantialPowerShell); unsupported substantial blocks: $($policy.Value.unsupportedSubstantial)")
+        $null = $Lines.Add('')
+    }
+    $blocks = @($Report.PSObject.Properties['workflowExecutableBlocks'].Value)
+    if (@($blocks).Count -eq 0) {
+        $null = $Lines.Add('_No project-owned workflow run blocks were found._')
+        $null = $Lines.Add('')
+        return
+    }
+    $null = $Lines.Add('| Workflow | Job | Step | Shell | Lines | NLOC | Classification | Features |')
+    $null = $Lines.Add('|---|---|---|---|---:|---:|---|---|')
+    foreach ($block in $blocks) {
+        $features = if (@($block.features).Count -gt 0) { @($block.features) -join ', ' } else { '—' }
+        $null = $Lines.Add("| ``$($block.path)`` | ``$($block.job)`` | $($block.step) | ``$($block.shell)`` | $($block.startLine)-$($block.endLine) | $($block.approximateExecutableNloc) | $($block.classification) | $features |")
+    }
+    $null = $Lines.Add('')
+}
+
 function New-ComparisonMarkdown {
     param(
         [Parameter(Mandatory = $true)] [object] $Before,
@@ -2543,10 +2577,11 @@ function New-ComparisonMarkdown {
     $null = $lines.Add('|---|---:|---:|')
     Add-ComparisonSummary -Lines $lines -Before $Before -After $After
     $null = $lines.Add('')
-    $null = $lines.Add('The p90 is nearest-rank `ceil(0.90 * N)`. The named-function summary excludes PowerShell top-level script bodies; script bodies are measured and enforced separately. The historical Before snapshot contains only bodies present in that accepted historical scope, while After includes the complete current project-owned script-body scope.')
+    $null = $lines.Add('The p90 is nearest-rank `ceil(0.90 * N)`. The named-function summary excludes PowerShell top-level script bodies; script bodies are measured and enforced separately. GitHub Actions run blocks are parsed as executable policy targets: only trivial wrappers remain inline. The historical Before snapshot contains only bodies present in that accepted historical scope, while After includes the complete current project-owned script-body scope.')
     $null = $lines.Add('')
     Add-ComparisonScopeSummary -Lines $lines -Before $Before -After $After -ScopeKind 'script-body' -Label 'Script bodies'
     Add-ComparisonScopeSummary -Lines $lines -Before $Before -After $After -ScopeKind 'enforced' -Label 'Enforced scopes'
+    Add-WorkflowExecutableSection -Lines $lines -Report $After
     Add-ComparisonMetricSection -Lines $lines -Heading 'Named function-by-function comparison' -Metrics $afterFunctions -BeforeExact $beforeExact -ScopeByPath $ScopeByPath
     Add-ComparisonMetricSection -Lines $lines -Heading 'PowerShell script-body comparison' -Metrics (Get-SortedScriptBodies $After.functions) -BeforeExact $beforeExact -ScopeByPath $ScopeByPath
     $null = $lines.Add('## Top remaining functions')
