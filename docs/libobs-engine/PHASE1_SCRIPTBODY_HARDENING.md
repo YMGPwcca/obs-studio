@@ -9,6 +9,10 @@ Phase-1 result.
 - Accepted starting production checkpoint: `636e5914f6e8d69853ab4ce83d80ef944e6835dc`
 - Runtime hardening implementation: `44243a5013007a449c1d0b9903233929bd44a141`
 - Accepted named-function baseline blob: `3b800743af516c02cc90966ab233c9ace6745f43`
+- Final pre-freeze measurement checkpoint: `3251102af1e62192d22a35cb5a39ce0fb6add98d`
+- Final frozen after-snapshot commit: `a571bc852`
+- Final frozen `complexity-after.json` blob: `6484fa71b27c917bffdbabd09fa170a2e8a4820b`
+- Checker pin commit: `af9a290a`; the checker remains pinned to the blob above.
 - Scope source: the existing checker’s Git ownership/provenance rules; upstream
   repository-wide PowerShell is not included.
 - Analyzer: PowerShell `System.Management.Automation.Language.Parser` AST.
@@ -161,8 +165,30 @@ remain fail-closed.
 
 The deterministic suite now reports **A–Z PASS**. Cases V–Z cover new bad and
 acceptable script bodies, frozen-body regression, file rename continuity, and
-delete/recreate continuity. The final frozen baseline will include all 986
-named functions and all seven script bodies, for 993 enforced scopes, with no
-currently scoped enforced scope left as an unbaselined new scope.
+delete/recreate continuity. The final frozen baseline contains all 986 named
+functions and all seven script bodies, for 993 enforced scopes. A final
+coverage audit matched 993 current enforced scopes to 993 accepted baseline
+identities/continuity relationships; zero current enforced scopes remain
+ordinary unbaselined new scopes. The identity migration document remains
+exactly `[]`.
+
+## Final freeze verification
+
+The final local checker run passes with the pinned baseline. The deterministic
+suite reports **A–Z PASS**, including:
+
+- CASE V: a new PowerShell script body at CC 12 fails specifically as a
+  script-body scope;
+- CASE W: a new script body at CC 5 passes;
+- CASE X: frozen script-body CC 2 → CC 3 fails with baseline 2, and restored
+  CC 2 passes;
+- CASE Y: a renamed script body at CC 3 fails against inherited baseline 2,
+  and restored CC 2 passes; and
+- CASE Z: a delete/recreated script path at CC 5 fails continuity rather than
+  receiving a fresh budget.
+
+The final hosted Task 1–11 matrix, physical Windows smoke availability, and
+the hosted complexity-gate run are recorded here when the same final candidate
+SHA has completed those checks.
 
 Task 12: **NOT STARTED / NOT AUTHORIZED**
