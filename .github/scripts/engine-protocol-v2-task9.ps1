@@ -5,28 +5,33 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$InstallRoot = (Resolve-Path $InstallRoot).Path
-$Engine = Get-ChildItem -Path $InstallRoot -Filter 'obs-engine.exe' -File -Recurse | Select-Object -First 1
-if ($null -eq $Engine) {
-    throw 'obs-engine.exe was not found in the installed runtime.'
-}
+$script:Process = $null
+$script:ErrorTask = $null
 
-$StartInfo = [System.Diagnostics.ProcessStartInfo]::new()
-$StartInfo.FileName = $Engine.FullName
-$StartInfo.WorkingDirectory = $Engine.Directory.FullName
-$StartInfo.Arguments = '--plugin=task9-interaction-source'
-$StartInfo.UseShellExecute = $false
-$StartInfo.RedirectStandardInput = $true
-$StartInfo.RedirectStandardOutput = $true
-$StartInfo.RedirectStandardError = $true
-$StartInfo.CreateNoWindow = $true
+function Start-Task9Engine([string] $Root) {
+    $resolvedRoot = (Resolve-Path $Root).Path
+    $engine = Get-ChildItem -Path $resolvedRoot -Filter 'obs-engine.exe' -File -Recurse | Select-Object -First 1
+    if ($null -eq $engine) {
+        throw 'obs-engine.exe was not found in the installed runtime.'
+    }
 
-$Process = [System.Diagnostics.Process]::new()
-$Process.StartInfo = $StartInfo
-if (-not $Process.Start()) {
-    throw 'Failed to start obs-engine.exe.'
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $engine.FullName
+    $startInfo.WorkingDirectory = $engine.Directory.FullName
+    $startInfo.Arguments = '--plugin=task9-interaction-source'
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardInput = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+
+    $script:Process = [System.Diagnostics.Process]::new()
+    $script:Process.StartInfo = $startInfo
+    if (-not $script:Process.Start()) {
+        throw 'Failed to start obs-engine.exe.'
+    }
+    $script:ErrorTask = $script:Process.StandardError.ReadToEndAsync()
 }
-$ErrorTask = $Process.StandardError.ReadToEndAsync()
 
 function Read-EngineMessage {
     $ReadTask = $Process.StandardOutput.ReadLineAsync()
@@ -66,16 +71,9 @@ function Assert-ErrorAtRevision($Response, [string] $Code, [int64] $Revision, [s
     }
 }
 
-try {
-    $Ready = Read-EngineMessage
-    if ($Ready.event -ne 'ready' -or [int]$Ready.protocol -ne 1) {
-        throw 'Migration bootstrap ready event changed unexpectedly.'
-    }
-
-    $Hello = Send-V2Request @{ op = 'request'; id = 'task9.hello'; method = 'session.hello'; params = @{} }
-    Assert-OkAtRevision $Hello 0 'session.hello'
-    $CapabilityNames = @($Hello.data.capabilities | ForEach-Object { [string]$_.name })
-    foreach ($Required in @(
+function Assert-Task9Capabilities($Hello) {
+    $capabilityNames = @($Hello.data.capabilities | ForEach-Object { [string]$_.name })
+    foreach ($required in @(
         'interaction.v1',
         'interaction.focus.v1',
         'interaction.mouseMove.v1',
@@ -85,226 +83,233 @@ try {
         'interaction.text.v1',
         'interaction.reset.v1'
     )) {
-        if ($CapabilityNames -notcontains $Required) {
-            throw "Task 9 capability was not advertised: $Required"
+        if ($capabilityNames -notcontains $required) {
+            throw "Task 9 capability was not advertised: $required"
         }
     }
+}
 
-    $Create = Send-V2Request @{
+function Initialize-Task9Session {
+    $ready = Read-EngineMessage
+    if ($ready.event -ne 'ready' -or [int]$ready.protocol -ne 1) {
+        throw 'Migration bootstrap ready event changed unexpectedly.'
+    }
+
+    $hello = Send-V2Request @{ op = 'request'; id = 'task9.hello'; method = 'session.hello'; params = @{} }
+    Assert-OkAtRevision $hello 0 'session.hello'
+    Assert-Task9Capabilities $hello
+}
+
+function Invoke-Task9InitialInteraction {
+    $create = Send-V2Request @{
         op = 'request'; id = 'task9.create'; method = 'source.create'; ifRevision = 0
         params = @{ kind = 'task9_interaction_source'; name = 'task9-interactive' }
     }
-    Assert-OkAtRevision $Create 1 'Task 9 interaction source.create'
-    if ([string]$Create.data.source -ne '1') {
-        throw "Fresh Task 9 engine expected interaction source handle '1', got '$($Create.data.source)'."
+    Assert-OkAtRevision $create 1 'Task 9 interaction source.create'
+    if ([string]$create.data.source -ne '1') {
+        throw "Fresh Task 9 engine expected interaction source handle '1', got '$($create.data.source)'."
     }
 
-    $Focus = Send-V2Request @{
+    $focus = Send-V2Request @{
         op = 'request'; id = 'task9.focus'; method = 'interaction.focus'
         params = @{ source = '1'; focused = $true }
     }
-    Assert-OkAtRevision $Focus 1 'interaction.focus'
+    Assert-OkAtRevision $focus 1 'interaction.focus'
 
-    $Move = Send-V2Request @{
+    $move = Send-V2Request @{
         op = 'request'; id = 'task9.move'; method = 'interaction.mouseMove'
         params = @{
             source = '1'; x = 100; y = 50; leave = $false
             modifiers = @{ shift = $true; mouseLeft = $true }
         }
     }
-    Assert-OkAtRevision $Move 1 'interaction.mouseMove'
+    Assert-OkAtRevision $move 1 'interaction.mouseMove'
 
-    $Button = Send-V2Request @{
+    $button = Send-V2Request @{
         op = 'request'; id = 'task9.button'; method = 'interaction.mouseButton'
         params = @{
             source = '1'; x = 100; y = 50; button = 'left'; state = 'down'; clickCount = 1
             modifiers = @{ mouseLeft = $true }
         }
     }
-    Assert-OkAtRevision $Button 1 'interaction.mouseButton left down'
+    Assert-OkAtRevision $button 1 'interaction.mouseButton left down'
 
-    $RightButton = Send-V2Request @{
+    $rightButton = Send-V2Request @{
         op = 'request'; id = 'task9.button-right'; method = 'interaction.mouseButton'
         params = @{
             source = '1'; x = 100; y = 50; button = 'right'; state = 'down'; clickCount = 1
             modifiers = @{ mouseLeft = $true; mouseRight = $true }
         }
     }
-    Assert-OkAtRevision $RightButton 1 'interaction.mouseButton right down'
+    Assert-OkAtRevision $rightButton 1 'interaction.mouseButton right down'
 
     # OBS wheel events carry keyboard modifiers, not mouse-button bits. Keeping
     # both buttons held across this wheel forces reset to reconstruct the button
     # mask from tracked state instead of trusting this latest modifier snapshot.
-    $Wheel = Send-V2Request @{
+    $wheel = Send-V2Request @{
         op = 'request'; id = 'task9.wheel'; method = 'interaction.mouseWheel'
         params = @{
             source = '1'; x = 100; y = 50; deltaX = 0; deltaY = 120
             modifiers = @{ control = $true }
         }
     }
-    Assert-OkAtRevision $Wheel 1 'interaction.mouseWheel'
+    Assert-OkAtRevision $wheel 1 'interaction.mouseWheel'
 
-    $Key = Send-V2Request @{
+    $key = Send-V2Request @{
         op = 'request'; id = 'task9.key'; method = 'interaction.key'
         params = @{
             source = '1'; state = 'down'; text = 'a'; nativeModifiers = 0; nativeScanCode = 30; nativeVirtualKey = 65
             modifiers = @{ shift = $true }
         }
     }
-    Assert-OkAtRevision $Key 1 'interaction.key'
+    Assert-OkAtRevision $key 1 'interaction.key'
 
-    $Text = Send-V2Request @{
+    $textRequest = Send-V2Request @{
         op = 'request'; id = 'task9.text'; method = 'interaction.text'
         params = @{ source = '1'; text = 'Hi'; modifiers = @{} }
     }
-    Assert-OkAtRevision $Text 1 'interaction.text'
+    Assert-OkAtRevision $textRequest 1 'interaction.text'
 
-    $Reset = Send-V2Request @{
+    $reset = Send-V2Request @{
         op = 'request'; id = 'task9.reset'; method = 'interaction.reset'; params = @{ source = '1' }
     }
-    Assert-OkAtRevision $Reset 1 'interaction.reset'
-    if ([int]$Reset.data.releasedButtons -ne 2 -or [int]$Reset.data.releasedKeys -ne 1) {
-        throw "interaction.reset releasedButtons=$($Reset.data.releasedButtons), releasedKeys=$($Reset.data.releasedKeys); expected 2 and 1."
+    Assert-OkAtRevision $reset 1 'interaction.reset'
+    if ([int]$reset.data.releasedButtons -ne 2 -or [int]$reset.data.releasedKeys -ne 1) {
+        throw "interaction.reset releasedButtons=$($reset.data.releasedButtons), releasedKeys=$($reset.data.releasedKeys); expected 2 and 1."
     }
+    return [int64]1
+}
 
+function Invoke-Task9PruneScenario([int64] $Revision) {
     # Seed live interaction state on source 1, then deliberately leave a large
     # held-key state behind on a removed source. The next interaction on source
     # 1 executes the bounded stale-state pruning path.
-    $PruneSeed = Send-V2Request @{
+    $pruneSeed = Send-V2Request @{
         op = 'request'; id = 'task9.prune-seed'; method = 'interaction.focus'
         params = @{ source = '1'; focused = $true }
     }
-    Assert-OkAtRevision $PruneSeed 1 'interaction prune seed'
+    Assert-OkAtRevision $pruneSeed $Revision 'interaction prune seed'
 
-    $TempCreate = Send-V2Request @{
-        op = 'request'; id = 'task9.temp-create'; method = 'source.create'; ifRevision = 1
+    $tempCreate = Send-V2Request @{
+        op = 'request'; id = 'task9.temp-create'; method = 'source.create'; ifRevision = $Revision
         params = @{ kind = 'task9_interaction_source'; name = 'task9-held-key-bound' }
     }
-    Assert-OkAtRevision $TempCreate 2 'held-key bound source.create'
-    if ([string]$TempCreate.data.source -ne '2') {
-        throw "Fresh Task 9 engine expected temporary interaction source handle '2', got '$($TempCreate.data.source)'."
+    Assert-OkAtRevision $tempCreate ($Revision + 1) 'held-key bound source.create'
+    if ([string]$tempCreate.data.source -ne '2') {
+        throw "Fresh Task 9 engine expected temporary interaction source handle '2', got '$($tempCreate.data.source)'."
     }
 
-    for ($KeyIndex = 1; $KeyIndex -le 256; $KeyIndex++) {
-        $HeldKey = Send-V2Request @{
-            op = 'request'; id = "task9.held-key.$KeyIndex"; method = 'interaction.key'
+    for ($keyIndex = 1; $keyIndex -le 256; $keyIndex++) {
+        $heldKey = Send-V2Request @{
+            op = 'request'; id = "task9.held-key.$keyIndex"; method = 'interaction.key'
             params = @{
-                source = '2'; state = 'down'; nativeModifiers = 0; nativeScanCode = 0; nativeVirtualKey = $KeyIndex
+                source = '2'; state = 'down'; nativeModifiers = 0; nativeScanCode = 0; nativeVirtualKey = $keyIndex
                 modifiers = @{}
             }
         }
-        Assert-OkAtRevision $HeldKey 2 "interaction.key held-key bound entry $KeyIndex"
+        Assert-OkAtRevision $heldKey ($Revision + 1) "interaction.key held-key bound entry $keyIndex"
     }
 
-    $HeldKeyOverflow = Send-V2Request @{
+    $heldKeyOverflow = Send-V2Request @{
         op = 'request'; id = 'task9.held-key.overflow'; method = 'interaction.key'
         params = @{
             source = '2'; state = 'down'; nativeModifiers = 0; nativeScanCode = 0; nativeVirtualKey = 257
             modifiers = @{}
         }
     }
-    Assert-ErrorAtRevision $HeldKeyOverflow 'busy' 2 'interaction.key held-key overflow'
+    Assert-ErrorAtRevision $heldKeyOverflow 'busy' ($Revision + 1) 'interaction.key held-key overflow'
 
-    $TempRemove = Send-V2Request @{
-        op = 'request'; id = 'task9.temp-remove'; method = 'source.remove'; ifRevision = 2
+    $tempRemove = Send-V2Request @{
+        op = 'request'; id = 'task9.temp-remove'; method = 'source.remove'; ifRevision = ($Revision + 1)
         params = @{ source = '2' }
     }
-    Assert-OkAtRevision $TempRemove 3 'remove held-key bound source'
+    Assert-OkAtRevision $tempRemove ($Revision + 2) 'remove held-key bound source'
 
-    $PruneTrigger = Send-V2Request @{
+    $pruneTrigger = Send-V2Request @{
         op = 'request'; id = 'task9.prune-trigger'; method = 'interaction.mouseMove'
         params = @{ source = '1'; x = 1; y = 1; leave = $false; modifiers = @{} }
     }
-    Assert-OkAtRevision $PruneTrigger 3 'interaction stale-state prune trigger'
+    Assert-OkAtRevision $pruneTrigger ($Revision + 2) 'interaction stale-state prune trigger'
 
-    $PruneReset = Send-V2Request @{
+    $pruneReset = Send-V2Request @{
         op = 'request'; id = 'task9.prune-reset'; method = 'interaction.reset'; params = @{ source = '1' }
     }
-    Assert-OkAtRevision $PruneReset 3 'interaction reset after stale-state prune'
-    if ([int]$PruneReset.data.releasedButtons -ne 0 -or [int]$PruneReset.data.releasedKeys -ne 0) {
+    Assert-OkAtRevision $pruneReset ($Revision + 2) 'interaction reset after stale-state prune'
+    if ([int]$pruneReset.data.releasedButtons -ne 0 -or [int]$pruneReset.data.releasedKeys -ne 0) {
         throw 'Stale-source input state leaked into the live source reset state.'
     }
+    return [int64]($Revision + 2)
+}
 
-    $BadCoordinates = Send-V2Request @{
+function Invoke-Task9ValidationScenario([int64] $Revision) {
+    $badCoordinates = Send-V2Request @{
         op = 'request'; id = 'task9.bad-coordinates'; method = 'interaction.mouseMove'
         params = @{ source = '1'; x = 5000; y = 5000; leave = $false }
     }
-    Assert-ErrorAtRevision $BadCoordinates 'bad_request' 3 'out-of-bounds interaction.mouseMove'
+    Assert-ErrorAtRevision $badCoordinates 'bad_request' $Revision 'out-of-bounds interaction.mouseMove'
 
-    $MalformedHandle = Send-V2Request @{
+    $malformedHandle = Send-V2Request @{
         op = 'request'; id = 'task9.malformed-handle'; method = 'interaction.focus'
         params = @{ source = '01'; focused = $true }
     }
-    Assert-ErrorAtRevision $MalformedHandle 'bad_request' 3 'non-canonical interaction source handle'
+    Assert-ErrorAtRevision $malformedHandle 'bad_request' $Revision 'non-canonical interaction source handle'
 
-    $MissingHandle = Send-V2Request @{
+    $missingHandle = Send-V2Request @{
         op = 'request'; id = 'task9.missing-handle'; method = 'interaction.focus'
         params = @{ source = '999'; focused = $true }
     }
-    Assert-ErrorAtRevision $MissingHandle 'not_found' 3 'missing interaction source handle'
+    Assert-ErrorAtRevision $missingHandle 'not_found' $Revision 'missing interaction source handle'
 
-    $BadRevision = Send-V2Request @{
-        op = 'request'; id = 'task9.bad-revision'; method = 'interaction.focus'; ifRevision = 3
+    $badRevision = Send-V2Request @{
+        op = 'request'; id = 'task9.bad-revision'; method = 'interaction.focus'; ifRevision = $Revision
         params = @{ source = '1'; focused = $true }
     }
-    Assert-ErrorAtRevision $BadRevision 'bad_request' 3 'interaction ifRevision guard'
+    Assert-ErrorAtRevision $badRevision 'bad_request' $Revision 'interaction ifRevision guard'
 
-    $Kinds = Send-V2Request @{ op = 'request'; id = 'task9.kinds'; method = 'source.kindList'; params = @{} }
-    Assert-OkAtRevision $Kinds 3 'source.kindList after interactions'
-    $ColorKind = $Kinds.data.kinds | Where-Object { $_.id -eq 'color_source_v3' } | Select-Object -First 1
-    if ($null -eq $ColorKind) {
-        $ColorKind = $Kinds.data.kinds | Where-Object { $_.id -eq 'color_source' } | Select-Object -First 1
+    $kinds = Send-V2Request @{ op = 'request'; id = 'task9.kinds'; method = 'source.kindList'; params = @{} }
+    Assert-OkAtRevision $kinds $Revision 'source.kindList after interactions'
+    $colorKind = $kinds.data.kinds | Where-Object { $_.id -eq 'color_source_v3' } | Select-Object -First 1
+    if ($null -eq $colorKind) {
+        $colorKind = $kinds.data.kinds | Where-Object { $_.id -eq 'color_source' } | Select-Object -First 1
     }
-    if ($null -eq $ColorKind) {
+    if ($null -eq $colorKind) {
         throw 'No Color Source kind was registered for unsupported-capability coverage.'
     }
+    return $colorKind
+}
 
-    $UnsupportedCreate = Send-V2Request @{
-        op = 'request'; id = 'task9.unsupported-create'; method = 'source.create'; ifRevision = 3
+function Invoke-Task9UnsupportedCapability([object] $ColorKind, [int64] $Revision) {
+    $unsupportedCreate = Send-V2Request @{
+        op = 'request'; id = 'task9.unsupported-create'; method = 'source.create'; ifRevision = $Revision
         params = @{ kind = [string]$ColorKind.id; name = 'task9-noninteractive'; settings = @{ width = 320; height = 180 } }
     }
-    Assert-OkAtRevision $UnsupportedCreate 4 'non-interactive source.create'
-    if ([string]$UnsupportedCreate.data.source -ne '3') {
-        throw "Fresh Task 9 engine expected non-interactive source handle '3', got '$($UnsupportedCreate.data.source)'."
+    Assert-OkAtRevision $unsupportedCreate ($Revision + 1) 'non-interactive source.create'
+    if ([string]$unsupportedCreate.data.source -ne '3') {
+        throw "Fresh Task 9 engine expected non-interactive source handle '3', got '$($unsupportedCreate.data.source)'."
     }
 
-    $Unsupported = Send-V2Request @{
+    $unsupported = Send-V2Request @{
         op = 'request'; id = 'task9.unsupported'; method = 'interaction.focus'
         params = @{ source = '3'; focused = $true }
     }
-    Assert-ErrorAtRevision $Unsupported 'unsupported_capability' 4 'non-interactive source interaction'
+    Assert-ErrorAtRevision $unsupported 'unsupported_capability' ($Revision + 1) 'non-interactive source interaction'
 
-    $RemoveUnsupported = Send-V2Request @{
-        op = 'request'; id = 'task9.remove-unsupported'; method = 'source.remove'; ifRevision = 4
+    $removeUnsupported = Send-V2Request @{
+        op = 'request'; id = 'task9.remove-unsupported'; method = 'source.remove'; ifRevision = ($Revision + 1)
         params = @{ source = '3' }
     }
-    Assert-OkAtRevision $RemoveUnsupported 5 'remove non-interactive source'
+    Assert-OkAtRevision $removeUnsupported ($Revision + 2) 'remove non-interactive source'
 
-    $RemoveInteractive = Send-V2Request @{
-        op = 'request'; id = 'task9.remove-interactive'; method = 'source.remove'; ifRevision = 5
+    $removeInteractive = Send-V2Request @{
+        op = 'request'; id = 'task9.remove-interactive'; method = 'source.remove'; ifRevision = ($Revision + 2)
         params = @{ source = '1' }
     }
-    Assert-OkAtRevision $RemoveInteractive 6 'remove interaction source'
+    Assert-OkAtRevision $removeInteractive ($Revision + 3) 'remove interaction source'
+    return [int64]($Revision + 3)
+}
 
-    $Close = Send-V2Request @{
-        op = 'request'; id = 'task9.close'; method = 'session.close'; ifRevision = 6; params = @{}
-    }
-    Assert-OkAtRevision $Close 7 'session.close'
-
-    $Process.StandardInput.Close()
-    if (-not $Process.WaitForExit(30000)) {
-        $Process.Kill($true)
-        throw 'obs-engine did not exit within 30 seconds after session.close.'
-    }
-    if ($Process.ExitCode -ne 0) {
-        throw "obs-engine exited with code $($Process.ExitCode)."
-    }
-
-    $Stderr = $ErrorTask.Result
-    Write-Host '=== obs-engine stderr ==='
-    Write-Host $Stderr
-
-    $ExpectedLogs = @(
+function Assert-Task9ExpectedLogs([string] $Stderr) {
+    $expectedLogs = @(
         '[task9-interaction] focus focused=1',
         '[task9-interaction] mouseMove x=100 y=50 modifiers=18 leave=0',
         '[task9-interaction] mouseButton x=100 y=50 modifiers=16 button=0 up=0 clickCount=1',
@@ -323,24 +328,66 @@ try {
         '[task9-interaction] key up=0 modifiers=0 text= nativeModifiers=0 nativeScanCode=0 nativeVirtualKey=256',
         '[task9-interaction] mouseMove x=1 y=1 modifiers=0 leave=0'
     )
-    foreach ($Expected in $ExpectedLogs) {
-        if (-not $Stderr.Contains($Expected)) {
-            throw "Task 9 source did not receive expected libobs callback: $Expected"
+    foreach ($expected in $expectedLogs) {
+        if (-not $Stderr.Contains($expected)) {
+            throw "Task 9 source did not receive expected libobs callback: $expected"
         }
     }
 
-    $OverflowLog = '[task9-interaction] key up=0 modifiers=0 text= nativeModifiers=0 nativeScanCode=0 nativeVirtualKey=257'
-    if ($Stderr.Contains($OverflowLog)) {
+    $overflowLog = '[task9-interaction] key up=0 modifiers=0 text= nativeModifiers=0 nativeScanCode=0 nativeVirtualKey=257'
+    if ($Stderr.Contains($overflowLog)) {
         throw 'Held-key overflow was delivered to libobs even though interaction.key returned busy.'
     }
+}
 
+function Complete-Task9Session([int64] $Revision) {
+    $close = Send-V2Request @{
+        op = 'request'; id = 'task9.close'; method = 'session.close'; ifRevision = $Revision; params = @{}
+    }
+    Assert-OkAtRevision $close ($Revision + 1) 'session.close'
+
+    $script:Process.StandardInput.Close()
+    if (-not $script:Process.WaitForExit(30000)) {
+        $script:Process.Kill($true)
+        throw 'obs-engine did not exit within 30 seconds after session.close.'
+    }
+    if ($script:Process.ExitCode -ne 0) {
+        throw "obs-engine exited with code $($script:Process.ExitCode)."
+    }
+
+    $stderr = $script:ErrorTask.Result
+    Write-Host '=== obs-engine stderr ==='
+    Write-Host $stderr
+    Assert-Task9ExpectedLogs $stderr
     Write-Host 'Task 9 interaction namespace: PASS'
 }
-finally {
-    if (-not $Process.HasExited) {
-        try { $Process.StandardInput.Close() } catch {}
-        try { $Process.Kill($true) } catch {}
-        try { $Process.WaitForExit(5000) | Out-Null } catch {}
+
+function Invoke-Task9Scenario {
+    Initialize-Task9Session
+    $revision = Invoke-Task9InitialInteraction
+    $revision = Invoke-Task9PruneScenario $revision
+    $colorKind = Invoke-Task9ValidationScenario $revision
+    $revision = Invoke-Task9UnsupportedCapability $colorKind $revision
+    Complete-Task9Session $revision
+}
+
+function Stop-Task9Engine {
+    if ($null -eq $script:Process) {
+        return
     }
-    $Process.Dispose()
+    if (-not $script:Process.HasExited) {
+        try { $script:Process.StandardInput.Close() } catch {}
+        try { $script:Process.Kill($true) } catch {}
+        try { $script:Process.WaitForExit(5000) | Out-Null } catch {}
+    }
+    $script:Process.Dispose()
+    $script:Process = $null
+}
+
+try {
+    Start-Task9Engine $InstallRoot
+    Invoke-Task9Scenario
+}
+finally {
+    Stop-Task9Engine
 }

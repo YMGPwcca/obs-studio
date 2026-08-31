@@ -294,7 +294,7 @@ function Run-CaseF {
     Finish-EngineCase 4
 }
 
-try {
+function Invoke-Task8Cases {
     Run-CaseA
     Run-CaseB
     Run-CaseC
@@ -303,7 +303,8 @@ try {
     Run-CaseF
     Write-Host 'Task 8 deterministic concurrency A-F: PASS' -ForegroundColor Green
 }
-catch {
+
+function Stop-Task8AfterFailure {
     if ($null -ne $script:Process -and -not $script:Process.HasExited) {
         try { $script:Process.Kill($true) } catch {}
         try { $script:Process.WaitForExit(5000) | Out-Null } catch {}
@@ -314,5 +315,12 @@ catch {
             if ($stderr) { Write-Host "[$script:CaseName] stderr:`n$stderr" }
         } catch {}
     }
+}
+
+try {
+    Invoke-Task8Cases
+}
+catch {
+    Stop-Task8AfterFailure
     throw
 }
