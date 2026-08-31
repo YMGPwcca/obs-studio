@@ -6,30 +6,37 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$InstallRoot = (Resolve-Path $InstallRoot).Path
-$Engine = Get-ChildItem -Path $InstallRoot -Filter 'obs-engine.exe' -File -Recurse | Select-Object -First 1
-if ($null -eq $Engine) {
-    throw 'obs-engine.exe was not found in the runtime root.'
-}
-
-$StartInfo = [System.Diagnostics.ProcessStartInfo]::new()
-$StartInfo.FileName = $Engine.FullName
-$StartInfo.WorkingDirectory = $Engine.Directory.FullName
-$StartInfo.ArgumentList.Add('--plugin=task10-media-source')
-$StartInfo.UseShellExecute = $false
-$StartInfo.RedirectStandardInput = $true
-$StartInfo.RedirectStandardOutput = $true
-$StartInfo.RedirectStandardError = $true
-$StartInfo.CreateNoWindow = $true
-
-$Process = [System.Diagnostics.Process]::new()
-$Process.StartInfo = $StartInfo
-if (-not $Process.Start()) {
-    throw 'Failed to start obs-engine.exe.'
-}
-$ErrorTask = $Process.StandardError.ReadToEndAsync()
+$script:Process = $null
+$script:ErrorTask = $null
 $script:Events = [System.Collections.Generic.List[object]]::new()
 $script:NextSeq = [uint64]1
+
+function Start-Task10Engine([string] $Root) {
+    $resolvedRoot = (Resolve-Path $Root).Path
+    $engine = Get-ChildItem -Path $resolvedRoot -Filter 'obs-engine.exe' -File -Recurse | Select-Object -First 1
+    if ($null -eq $engine) {
+        throw 'obs-engine.exe was not found in the runtime root.'
+    }
+
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $engine.FullName
+    $startInfo.WorkingDirectory = $engine.Directory.FullName
+    $startInfo.ArgumentList.Add('--plugin=task10-media-source')
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardInput = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+
+    $script:Process = [System.Diagnostics.Process]::new()
+    $script:Process.StartInfo = $startInfo
+    if (-not $script:Process.Start()) {
+        throw 'Failed to start obs-engine.exe.'
+    }
+    $script:ErrorTask = $script:Process.StandardError.ReadToEndAsync()
+    $script:Events = [System.Collections.Generic.List[object]]::new()
+    $script:NextSeq = [uint64]1
+}
 
 function Fail([string] $Message) {
     throw "Task 10: $Message"
@@ -151,456 +158,522 @@ function Create-Source([string] $Id, [string] $Kind, [string] $Name, [hashtable]
     return [pscustomobject]@{ Handle = $Handle; Revision = $Revision + 1 }
 }
 
-try {
-    $Ready = Read-EngineMessage
-    if ($Ready.event -ne 'ready' -or [int]$Ready.protocol -ne 1) {
-        Fail 'migration bootstrap ready event changed unexpectedly.'
-    }
-
-    $Hello = Send-V2Request @{ op = 'request'; id = 'task10.hello'; method = 'session.hello'; params = @{} }
-    Assert-Ok $Hello 0 'session.hello'
-    $Capabilities = @($Hello.data.capabilities | ForEach-Object { [string]$_.name })
-    foreach ($Required in @(
+function Assert-Task10Capabilities($Hello) {
+    $capabilities = @($Hello.data.capabilities | ForEach-Object { [string]$_.name })
+    foreach ($required in @(
         'media.v1', 'media.getState.v1', 'media.play.v1', 'media.pause.v1',
         'media.togglePause.v1', 'media.stop.v1', 'media.restart.v1', 'media.next.v1',
         'media.previous.v1', 'media.getDuration.v1', 'media.getPosition.v1', 'media.setPosition.v1'
     )) {
-        if ($Capabilities -notcontains $Required) {
-            Fail "required capability was not advertised: $Required"
+        if ($capabilities -notcontains $required) {
+            Fail "required capability was not advertised: $required"
         }
     }
+}
 
-    $Subscribe = Send-V2Request @{
+function Get-Task10ColorKind($Kinds) {
+    $colorKind = @($Kinds.data.kinds | Where-Object { $_.id -eq 'color_source_v3' }) | Select-Object -First 1
+    if ($null -eq $colorKind) {
+        $colorKind = @($Kinds.data.kinds | Where-Object { $_.id -eq 'color_source' }) | Select-Object -First 1
+    }
+    if ($null -eq $colorKind) {
+        Fail 'no non-media Color Source kind was available for unsupported-capability coverage.'
+    }
+    return $colorKind
+}
+
+function Initialize-Task10Session {
+    $ready = Read-EngineMessage
+    if ($ready.event -ne 'ready' -or [int]$ready.protocol -ne 1) {
+        Fail 'migration bootstrap ready event changed unexpectedly.'
+    }
+
+    $hello = Send-V2Request @{ op = 'request'; id = 'task10.hello'; method = 'session.hello'; params = @{} }
+    Assert-Ok $hello 0 'session.hello'
+    Assert-Task10Capabilities $hello
+
+    $subscribe = Send-V2Request @{
         op = 'request'; id = 'task10.subscribe'; method = 'session.subscribe'
         params = @{ subscriptions = @(@{ pattern = 'source.*' }, @{ pattern = 'media.*' }, @{ pattern = 'session.*' }) }
     }
-    Assert-Ok $Subscribe 0 'session.subscribe'
+    Assert-Ok $subscribe 0 'session.subscribe'
 
-    $Kinds = Send-V2Request @{ op = 'request'; id = 'task10.kinds'; method = 'source.kindList'; params = @{} }
-    Assert-Ok $Kinds 0 'source.kindList'
-    $MediaKind = @($Kinds.data.kinds | Where-Object { $_.id -eq 'task10_media_source' }) | Select-Object -First 1
-    if ($null -eq $MediaKind -or -not [bool]$MediaKind.controllableMedia) {
+    $kinds = Send-V2Request @{ op = 'request'; id = 'task10.kinds'; method = 'source.kindList'; params = @{} }
+    Assert-Ok $kinds 0 'source.kindList'
+    $mediaKind = @($kinds.data.kinds | Where-Object { $_.id -eq 'task10_media_source' }) | Select-Object -First 1
+    if ($null -eq $mediaKind -or -not [bool]$mediaKind.controllableMedia) {
         Fail 'deterministic media source kind was not registered with controllableMedia=true.'
     }
-    $ColorKind = @($Kinds.data.kinds | Where-Object { $_.id -eq 'color_source_v3' }) | Select-Object -First 1
-    if ($null -eq $ColorKind) {
-        $ColorKind = @($Kinds.data.kinds | Where-Object { $_.id -eq 'color_source' }) | Select-Object -First 1
-    }
-    if ($null -eq $ColorKind) {
-        Fail 'no non-media Color Source kind was available for unsupported-capability coverage.'
-    }
+    return Get-Task10ColorKind $kinds
+}
 
-    $Revision = [int64]0
-    $Peer = Create-Source 'task10.create-peer' 'task10_media_source' 'task10-peer' @{ label = 'B' } $Revision
-    $Revision = $Peer.Revision
-    if ($Peer.Handle -ne '1') {
-        Fail "fresh deterministic peer source expected handle 1, got $($Peer.Handle)."
+function Initialize-Task10Sources([object] $ColorKind) {
+    $state = [pscustomobject]@{
+        Revision = [int64]0
+        Peer = $null
+        Source = $null
+        Prequeue = $null
+        Unsupported = $null
+        NoSeek = $null
+        LateSeek = $null
+        BlockingFollowup = $null
+        BlockingLate = $null
+        RemovalOutstanding = $null
+        ColorKind = $ColorKind
     }
-    $Source = Create-Source 'task10.create-source' 'task10_media_source' 'task10-source' @{
+    $state.Peer = Create-Source 'task10.create-peer' 'task10_media_source' 'task10-peer' @{ label = 'B' } $state.Revision
+    $state.Revision = $state.Peer.Revision
+    if ($state.Peer.Handle -ne '1') {
+        Fail "fresh deterministic peer source expected handle 1, got $($state.Peer.Handle)."
+    }
+    $state.Source = Create-Source 'task10.create-source' 'task10_media_source' 'task10-source' @{
         label = 'A'; scenario = 'peer'; peerLabel = 'B'
-    } $Revision
-    $Revision = $Source.Revision
-    if ($Source.Handle -ne '2') {
-        Fail "fresh deterministic media source expected handle 2, got $($Source.Handle)."
+    } $state.Revision
+    $state.Revision = $state.Source.Revision
+    if ($state.Source.Handle -ne '2') {
+        Fail "fresh deterministic media source expected handle 2, got $($state.Source.Handle)."
     }
 
-    $Prequeue = Create-Source 'task10.create-prequeue' 'task10_media_source' 'task10-prequeue' @{
+    $state.Prequeue = Create-Source 'task10.create-prequeue' 'task10_media_source' 'task10-prequeue' @{
         label = 'prequeue'; scenario = 'prequeue'
-    } $Revision
-    $Revision = $Prequeue.Revision
-    $PrequeuedSeek = Send-V2Request @{
-        op = 'request'; id = 'task10.seek.after-prequeue'; method = 'media.setPosition'; ifRevision = $Revision
-        params = @{ source = $Prequeue.Handle; positionMs = 2000 }
+    } $state.Revision
+    $state.Revision = $state.Prequeue.Revision
+    $prequeuedSeek = Send-V2Request @{
+        op = 'request'; id = 'task10.seek.after-prequeue'; method = 'media.setPosition'; ifRevision = $state.Revision
+        params = @{ source = $state.Prequeue.Handle; positionMs = 2000 }
     }
-    Assert-Ok $PrequeuedSeek ($Revision + 1) 'media.setPosition after pre-existing same-source seek'
-    $Revision++
-    if ([int64]$PrequeuedSeek.data.positionMs -ne 2000 -or -not [bool]$PrequeuedSeek.data.processed) {
+    Assert-Ok $prequeuedSeek ($state.Revision + 1) 'media.setPosition after pre-existing same-source seek'
+    $state.Revision++
+    if ([int64]$prequeuedSeek.data.positionMs -ne 2000 -or -not [bool]$prequeuedSeek.data.processed) {
         Fail 'media.setPosition claimed the wrong pre-existing same-source action.'
     }
-    $PrequeueResync = Read-Until-Resync ($Revision + 1)
-    $Revision = [int64]$PrequeueResync.revision
+    $prequeueResync = Read-Until-Resync ($state.Revision + 1)
+    $state.Revision = [int64]$prequeueResync.revision
 
-    $State = Send-V2Request @{ op = 'request'; id = 'task10.state.initial'; method = 'media.getState'; params = @{ source = $Source.Handle } }
-    Assert-Ok $State $Revision 'media.getState initial'
-    if ([string]$State.data.state -ne 'stopped') { Fail 'initial media state was not stopped.' }
-    $GuardedQuery = Send-V2Request @{ op = 'request'; id = 'task10.state.guarded'; method = 'media.getState'; ifRevision = $Revision; params = @{ source = $Source.Handle } }
-    Assert-Error $GuardedQuery 'bad_request' $Revision 'ifRevision on media.getState'
-    $Missing = Send-V2Request @{ op = 'request'; id = 'task10.state.missing'; method = 'media.getState'; params = @{ source = '999' } }
-    Assert-Error $Missing 'not_found' $Revision 'media.getState missing source'
+    $initialState = Send-V2Request @{ op = 'request'; id = 'task10.state.initial'; method = 'media.getState'; params = @{ source = $state.Source.Handle } }
+    Assert-Ok $initialState $state.Revision 'media.getState initial'
+    if ([string]$initialState.data.state -ne 'stopped') { Fail 'initial media state was not stopped.' }
+    $guardedQuery = Send-V2Request @{ op = 'request'; id = 'task10.state.guarded'; method = 'media.getState'; ifRevision = $state.Revision; params = @{ source = $state.Source.Handle } }
+    Assert-Error $guardedQuery 'bad_request' $state.Revision 'ifRevision on media.getState'
+    $missing = Send-V2Request @{ op = 'request'; id = 'task10.state.missing'; method = 'media.getState'; params = @{ source = '999' } }
+    Assert-Error $missing 'not_found' $state.Revision 'media.getState missing source'
 
-    $Duration = Send-V2Request @{ op = 'request'; id = 'task10.duration'; method = 'media.getDuration'; params = @{ source = $Source.Handle } }
-    Assert-Ok $Duration $Revision 'media.getDuration'
-    if ([int64]$Duration.data.durationMs -ne 10000) { Fail 'deterministic media duration was not 10000 ms.' }
+    $duration = Send-V2Request @{ op = 'request'; id = 'task10.duration'; method = 'media.getDuration'; params = @{ source = $state.Source.Handle } }
+    Assert-Ok $duration $state.Revision 'media.getDuration'
+    if ([int64]$duration.data.durationMs -ne 10000) { Fail 'deterministic media duration was not 10000 ms.' }
+    $position = Send-V2Request @{ op = 'request'; id = 'task10.position.initial'; method = 'media.getPosition'; params = @{ source = $state.Source.Handle } }
+    Assert-Ok $position $state.Revision 'media.getPosition initial'
+    if ([int64]$position.data.positionMs -ne 0) { Fail 'initial media position was not zero.' }
+    return $state
+}
 
-    $Position = Send-V2Request @{ op = 'request'; id = 'task10.position.initial'; method = 'media.getPosition'; params = @{ source = $Source.Handle } }
-    Assert-Ok $Position $Revision 'media.getPosition initial'
-    if ([int64]$Position.data.positionMs -ne 0) { Fail 'initial media position was not zero.' }
-
-    $Play = Send-V2Request @{
-        op = 'request'; id = 'task10.play'; method = 'media.play'; ifRevision = $Revision
-        params = @{ source = $Source.Handle }
+function Invoke-Task10PlayPause([object] $State) {
+    $play = Send-V2Request @{
+        op = 'request'; id = 'task10.play'; method = 'media.play'; ifRevision = $State.Revision
+        params = @{ source = $State.Source.Handle }
     }
-    Assert-Ok $Play ($Revision + 1) 'media.play'
-    $Revision++
-    if ([string]$Play.data.state -ne 'playing' -or -not [bool]$Play.data.processed) { Fail 'media.play did not settle as processed/playing.' }
-    $null = Read-Event 'media.stateChanged' $Revision $Source.Handle
-    $null = Read-Event 'media.playing' $Revision $Source.Handle
-    $null = Read-Event 'media.stateChanged' ($Revision + 1) $Peer.Handle
-    $null = Read-Event 'media.started' ($Revision + 1) $Peer.Handle
-    $Revision++
+    Assert-Ok $play ($State.Revision + 1) 'media.play'
+    $State.Revision++
+    if ([string]$play.data.state -ne 'playing' -or -not [bool]$play.data.processed) { Fail 'media.play did not settle as processed/playing.' }
+    $null = Read-Event 'media.stateChanged' $State.Revision $State.Source.Handle
+    $null = Read-Event 'media.playing' $State.Revision $State.Source.Handle
+    $null = Read-Event 'media.stateChanged' ($State.Revision + 1) $State.Peer.Handle
+    $null = Read-Event 'media.started' ($State.Revision + 1) $State.Peer.Handle
+    $State.Revision++
 
-    $State = Send-V2Request @{ op = 'request'; id = 'task10.state.playing'; method = 'media.getState'; params = @{ source = $Source.Handle } }
-    Assert-Ok $State $Revision 'media.getState playing'
-    if ([string]$State.data.state -ne 'playing') { Fail 'media.getState did not report playing after settlement.' }
+    $playingState = Send-V2Request @{ op = 'request'; id = 'task10.state.playing'; method = 'media.getState'; params = @{ source = $State.Source.Handle } }
+    Assert-Ok $playingState $State.Revision 'media.getState playing'
+    if ([string]$playingState.data.state -ne 'playing') { Fail 'media.getState did not report playing after settlement.' }
+    $playNoOp = Send-V2Request @{ op = 'request'; id = 'task10.play.noop'; method = 'media.play'; params = @{ source = $State.Source.Handle } }
+    Assert-Ok $playNoOp $State.Revision 'idempotent media.play'
+    if ([bool]$playNoOp.data.processed) { Fail 'idempotent media.play unexpectedly processed an action.' }
 
-    $PlayNoOp = Send-V2Request @{ op = 'request'; id = 'task10.play.noop'; method = 'media.play'; params = @{ source = $Source.Handle } }
-    Assert-Ok $PlayNoOp $Revision 'idempotent media.play'
-    if ([bool]$PlayNoOp.data.processed) { Fail 'idempotent media.play unexpectedly processed an action.' }
-
-    $Pause = Send-V2Request @{
-        op = 'request'; id = 'task10.pause'; method = 'media.pause'; ifRevision = $Revision
-        params = @{ source = $Source.Handle }
+    $pause = Send-V2Request @{
+        op = 'request'; id = 'task10.pause'; method = 'media.pause'; ifRevision = $State.Revision
+        params = @{ source = $State.Source.Handle }
     }
-    Assert-Ok $Pause ($Revision + 1) 'media.pause'
-    $Revision++
-    if ([string]$Pause.data.state -ne 'paused' -or -not [bool]$Pause.data.processed) { Fail 'media.pause did not settle as paused.' }
-    $null = Read-Event 'media.stateChanged' $Revision $Source.Handle
-    $null = Read-Event 'media.paused' $Revision $Source.Handle
+    Assert-Ok $pause ($State.Revision + 1) 'media.pause'
+    $State.Revision++
+    if ([string]$pause.data.state -ne 'paused' -or -not [bool]$pause.data.processed) { Fail 'media.pause did not settle as paused.' }
+    $null = Read-Event 'media.stateChanged' $State.Revision $State.Source.Handle
+    $null = Read-Event 'media.paused' $State.Revision $State.Source.Handle
+    $pauseNoOp = Send-V2Request @{ op = 'request'; id = 'task10.pause.noop'; method = 'media.pause'; params = @{ source = $State.Source.Handle } }
+    Assert-Ok $pauseNoOp $State.Revision 'idempotent media.pause'
+    if ([bool]$pauseNoOp.data.processed) { Fail 'idempotent media.pause unexpectedly processed an action.' }
+}
 
-    $PauseNoOp = Send-V2Request @{ op = 'request'; id = 'task10.pause.noop'; method = 'media.pause'; params = @{ source = $Source.Handle } }
-    Assert-Ok $PauseNoOp $Revision 'idempotent media.pause'
-    if ([bool]$PauseNoOp.data.processed) { Fail 'idempotent media.pause unexpectedly processed an action.' }
-
-    $ToggleToPlay = Send-V2Request @{
-        op = 'request'; id = 'task10.toggle.play'; method = 'media.togglePause'; ifRevision = $Revision
-        params = @{ source = $Source.Handle }
+function Invoke-Task10ToggleAndSeek([object] $State) {
+    $toggleToPlay = Send-V2Request @{
+        op = 'request'; id = 'task10.toggle.play'; method = 'media.togglePause'; ifRevision = $State.Revision
+        params = @{ source = $State.Source.Handle }
     }
-    Assert-Ok $ToggleToPlay ($Revision + 1) 'media.togglePause paused-to-play'
-    $Revision++
-    $null = Read-Event 'media.stateChanged' $Revision $Source.Handle
-    $null = Read-Event 'media.playing' $Revision $Source.Handle
+    Assert-Ok $toggleToPlay ($State.Revision + 1) 'media.togglePause paused-to-play'
+    $State.Revision++
+    $null = Read-Event 'media.stateChanged' $State.Revision $State.Source.Handle
+    $null = Read-Event 'media.playing' $State.Revision $State.Source.Handle
 
-    $ToggleToPause = Send-V2Request @{
-        op = 'request'; id = 'task10.toggle.pause'; method = 'media.togglePause'; ifRevision = $Revision
-        params = @{ source = $Source.Handle }
+    $toggleToPause = Send-V2Request @{
+        op = 'request'; id = 'task10.toggle.pause'; method = 'media.togglePause'; ifRevision = $State.Revision
+        params = @{ source = $State.Source.Handle }
     }
-    Assert-Ok $ToggleToPause ($Revision + 1) 'media.togglePause playing-to-paused'
-    $Revision++
-    $null = Read-Event 'media.stateChanged' $Revision $Source.Handle
-    $null = Read-Event 'media.paused' $Revision $Source.Handle
+    Assert-Ok $toggleToPause ($State.Revision + 1) 'media.togglePause playing-to-paused'
+    $State.Revision++
+    $null = Read-Event 'media.stateChanged' $State.Revision $State.Source.Handle
+    $null = Read-Event 'media.paused' $State.Revision $State.Source.Handle
 
-    $Seek = Send-V2Request @{
-        op = 'request'; id = 'task10.seek'; method = 'media.setPosition'; ifRevision = $Revision
-        params = @{ source = $Source.Handle; positionMs = 2500 }
+    $seek = Send-V2Request @{
+        op = 'request'; id = 'task10.seek'; method = 'media.setPosition'; ifRevision = $State.Revision
+        params = @{ source = $State.Source.Handle; positionMs = 2500 }
     }
-    Assert-Ok $Seek ($Revision + 1) 'media.setPosition'
-    $Revision++
-    if ([int64]$Seek.data.positionMs -ne 2500 -or -not [bool]$Seek.data.processed) { Fail 'media.setPosition did not settle at 2500 ms.' }
-    $Position = Send-V2Request @{ op = 'request'; id = 'task10.position.seek'; method = 'media.getPosition'; params = @{ source = $Source.Handle } }
-    Assert-Ok $Position $Revision 'media.getPosition after seek'
-    if ([int64]$Position.data.positionMs -ne 2500) { Fail 'media.getPosition did not read back the settled seek.' }
+    Assert-Ok $seek ($State.Revision + 1) 'media.setPosition'
+    $State.Revision++
+    if ([int64]$seek.data.positionMs -ne 2500 -or -not [bool]$seek.data.processed) { Fail 'media.setPosition did not settle at 2500 ms.' }
+    $position = Send-V2Request @{ op = 'request'; id = 'task10.position.seek'; method = 'media.getPosition'; params = @{ source = $State.Source.Handle } }
+    Assert-Ok $position $State.Revision 'media.getPosition after seek'
+    if ([int64]$position.data.positionMs -ne 2500) { Fail 'media.getPosition did not read back the settled seek.' }
 
-    foreach ($Boundary in @(0, 10000)) {
-        $BoundaryResponse = Send-V2Request @{
-            op = 'request'; id = "task10.seek.boundary.$Boundary"; method = 'media.setPosition'; ifRevision = $Revision
-            params = @{ source = $Source.Handle; positionMs = $Boundary }
+    foreach ($boundary in @(0, 10000)) {
+        $boundaryResponse = Send-V2Request @{
+            op = 'request'; id = "task10.seek.boundary.$boundary"; method = 'media.setPosition'; ifRevision = $State.Revision
+            params = @{ source = $State.Source.Handle; positionMs = $boundary }
         }
-        Assert-Ok $BoundaryResponse ($Revision + 1) "media.setPosition boundary $Boundary"
-        $Revision++
-        if ([int64]$BoundaryResponse.data.positionMs -ne $Boundary) { Fail "boundary seek $Boundary did not read back exactly." }
+        Assert-Ok $boundaryResponse ($State.Revision + 1) "media.setPosition boundary $boundary"
+        $State.Revision++
+        if ([int64]$boundaryResponse.data.positionMs -ne $boundary) { Fail "boundary seek $boundary did not read back exactly." }
     }
-    $EqualSeek = Send-V2Request @{
-        op = 'request'; id = 'task10.seek.equal-noop'; method = 'media.setPosition'; ifRevision = $Revision
-        params = @{ source = $Source.Handle; positionMs = 10000 }
+    $equalSeek = Send-V2Request @{
+        op = 'request'; id = 'task10.seek.equal-noop'; method = 'media.setPosition'; ifRevision = $State.Revision
+        params = @{ source = $State.Source.Handle; positionMs = 10000 }
     }
-    Assert-Ok $EqualSeek $Revision 'equal-position media.setPosition no-op'
-    if ([bool]$EqualSeek.data.processed) { Fail 'equal-position media.setPosition unexpectedly processed an action.' }
-    $NegativeSeek = Send-V2Request @{ op = 'request'; id = 'task10.seek.negative'; method = 'media.setPosition'; params = @{ source = $Source.Handle; positionMs = -1 } }
-    Assert-Error $NegativeSeek 'bad_request' $Revision 'negative media.setPosition'
-    $LargeSeek = Send-V2Request @{ op = 'request'; id = 'task10.seek.too-large'; method = 'media.setPosition'; params = @{ source = $Source.Handle; positionMs = 10001 } }
-    Assert-Error $LargeSeek 'bad_request' $Revision 'out-of-range media.setPosition'
-    $WrongTypeSeek = Send-V2Request @{ op = 'request'; id = 'task10.seek.wrong-type'; method = 'media.setPosition'; params = @{ source = $Source.Handle; positionMs = 1.5 } }
-    Assert-Error $WrongTypeSeek 'bad_request' $Revision 'wrong-type media.setPosition'
+    Assert-Ok $equalSeek $State.Revision 'equal-position media.setPosition no-op'
+    if ([bool]$equalSeek.data.processed) { Fail 'equal-position media.setPosition unexpectedly processed an action.' }
+    $negativeSeek = Send-V2Request @{ op = 'request'; id = 'task10.seek.negative'; method = 'media.setPosition'; params = @{ source = $State.Source.Handle; positionMs = -1 } }
+    Assert-Error $negativeSeek 'bad_request' $State.Revision 'negative media.setPosition'
+    $largeSeek = Send-V2Request @{ op = 'request'; id = 'task10.seek.too-large'; method = 'media.setPosition'; params = @{ source = $State.Source.Handle; positionMs = 10001 } }
+    Assert-Error $largeSeek 'bad_request' $State.Revision 'out-of-range media.setPosition'
+    $wrongTypeSeek = Send-V2Request @{ op = 'request'; id = 'task10.seek.wrong-type'; method = 'media.setPosition'; params = @{ source = $State.Source.Handle; positionMs = 1.5 } }
+    Assert-Error $wrongTypeSeek 'bad_request' $State.Revision 'wrong-type media.setPosition'
+}
 
-    $Restart = Send-V2Request @{
-        op = 'request'; id = 'task10.restart'; method = 'media.restart'; ifRevision = $Revision
-        params = @{ source = $Source.Handle }
+function Invoke-Task10RestartAndStop([object] $State) {
+    $restart = Send-V2Request @{
+        op = 'request'; id = 'task10.restart'; method = 'media.restart'; ifRevision = $State.Revision
+        params = @{ source = $State.Source.Handle }
     }
-    Assert-Ok $Restart ($Revision + 1) 'media.restart'
-    $Revision++
-    if ([string]$Restart.data.state -ne 'playing' -or -not [bool]$Restart.data.processed) { Fail 'media.restart did not settle.' }
-    $null = Read-Event 'media.stateChanged' $Revision $Source.Handle
+    Assert-Ok $restart ($State.Revision + 1) 'media.restart'
+    $State.Revision++
+    if ([string]$restart.data.state -ne 'playing' -or -not [bool]$restart.data.processed) { Fail 'media.restart did not settle.' }
+    $null = Read-Event 'media.stateChanged' $State.Revision $State.Source.Handle
 
-    $Next = Send-V2Request @{
-        op = 'request'; id = 'task10.next'; method = 'media.next'; ifRevision = $Revision
-        params = @{ source = $Source.Handle }
+    $next = Send-V2Request @{
+        op = 'request'; id = 'task10.next'; method = 'media.next'; ifRevision = $State.Revision
+        params = @{ source = $State.Source.Handle }
     }
-    Assert-Ok $Next ($Revision + 1) 'media.next'
-    $Revision++
-    if (-not [bool]$Next.data.processed) { Fail 'media.next was not reported processed.' }
-
-    $Previous = Send-V2Request @{
-        op = 'request'; id = 'task10.previous'; method = 'media.previous'; ifRevision = $Revision
-        params = @{ source = $Source.Handle }
+    Assert-Ok $next ($State.Revision + 1) 'media.next'
+    $State.Revision++
+    if (-not [bool]$next.data.processed) { Fail 'media.next was not reported processed.' }
+    $previous = Send-V2Request @{
+        op = 'request'; id = 'task10.previous'; method = 'media.previous'; ifRevision = $State.Revision
+        params = @{ source = $State.Source.Handle }
     }
-    Assert-Ok $Previous ($Revision + 1) 'media.previous'
-    $Revision++
-    if (-not [bool]$Previous.data.processed) { Fail 'media.previous was not reported processed.' }
+    Assert-Ok $previous ($State.Revision + 1) 'media.previous'
+    $State.Revision++
+    if (-not [bool]$previous.data.processed) { Fail 'media.previous was not reported processed.' }
 
-    $Stop = Send-V2Request @{
-        op = 'request'; id = 'task10.stop'; method = 'media.stop'; ifRevision = $Revision
-        params = @{ source = $Source.Handle }
+    $stop = Send-V2Request @{
+        op = 'request'; id = 'task10.stop'; method = 'media.stop'; ifRevision = $State.Revision
+        params = @{ source = $State.Source.Handle }
     }
-    Assert-Ok $Stop ($Revision + 1) 'media.stop'
-    $Revision++
-    $null = Read-Event 'media.stateChanged' $Revision $Source.Handle
-    $null = Read-Event 'media.stopped' $Revision $Source.Handle
-    $StopNoOp = Send-V2Request @{ op = 'request'; id = 'task10.stop.noop'; method = 'media.stop'; params = @{ source = $Source.Handle } }
-    Assert-Ok $StopNoOp $Revision 'idempotent media.stop'
-    if ([bool]$StopNoOp.data.processed) { Fail 'idempotent media.stop unexpectedly processed an action.' }
+    Assert-Ok $stop ($State.Revision + 1) 'media.stop'
+    $State.Revision++
+    $null = Read-Event 'media.stateChanged' $State.Revision $State.Source.Handle
+    $null = Read-Event 'media.stopped' $State.Revision $State.Source.Handle
+    $stopNoOp = Send-V2Request @{ op = 'request'; id = 'task10.stop.noop'; method = 'media.stop'; params = @{ source = $State.Source.Handle } }
+    Assert-Ok $stopNoOp $State.Revision 'idempotent media.stop'
+    if ([bool]$stopNoOp.data.processed) { Fail 'idempotent media.stop unexpectedly processed an action.' }
+    $invalidToggle = Send-V2Request @{ op = 'request'; id = 'task10.toggle.invalid'; method = 'media.togglePause'; params = @{ source = $State.Source.Handle } }
+    Assert-Error $invalidToggle 'invalid_state' $State.Revision 'media.togglePause from stopped'
+}
 
-    $InvalidToggle = Send-V2Request @{ op = 'request'; id = 'task10.toggle.invalid'; method = 'media.togglePause'; params = @{ source = $Source.Handle } }
-    Assert-Error $InvalidToggle 'invalid_state' $Revision 'media.togglePause from stopped'
-
-    $EndPatch = Send-V2Request @{
-        op = 'request'; id = 'task10.trigger-ended'; method = 'source.patchSettings'; ifRevision = $Revision
-        params = @{ source = $Source.Handle; settings = @{ scenario = 'ended' } }
+function Invoke-Task10SourceTransitions([object] $State) {
+    $endPatch = Send-V2Request @{
+        op = 'request'; id = 'task10.trigger-ended'; method = 'source.patchSettings'; ifRevision = $State.Revision
+        params = @{ source = $State.Source.Handle; settings = @{ scenario = 'ended' } }
     }
-    Assert-Ok $EndPatch ($Revision + 1) 'source.patchSettings ended trigger'
-    $Revision++
-    $null = Read-Event 'source.settingsChanged' $Revision $Source.Handle
-    $null = Read-Event 'media.stateChanged' ($Revision + 1) $Source.Handle
-    $null = Read-Event 'media.ended' ($Revision + 1) $Source.Handle
-    $Revision++
+    Assert-Ok $endPatch ($State.Revision + 1) 'source.patchSettings ended trigger'
+    $State.Revision++
+    $null = Read-Event 'source.settingsChanged' $State.Revision $State.Source.Handle
+    $null = Read-Event 'media.stateChanged' ($State.Revision + 1) $State.Source.Handle
+    $null = Read-Event 'media.ended' ($State.Revision + 1) $State.Source.Handle
+    $State.Revision++
 
-    $ErrorPatch = Send-V2Request @{
-        op = 'request'; id = 'task10.trigger-error'; method = 'source.patchSettings'; ifRevision = $Revision
-        params = @{ source = $Source.Handle; settings = @{ scenario = 'error' } }
+    $errorPatch = Send-V2Request @{
+        op = 'request'; id = 'task10.trigger-error'; method = 'source.patchSettings'; ifRevision = $State.Revision
+        params = @{ source = $State.Source.Handle; settings = @{ scenario = 'error' } }
     }
-    Assert-Ok $ErrorPatch ($Revision + 1) 'source.patchSettings error trigger'
-    $Revision++
-    $null = Read-Event 'source.settingsChanged' $Revision $Source.Handle
-    $null = Read-Event 'media.stateChanged' ($Revision + 1) $Source.Handle
-    $null = Read-Event 'media.ended' ($Revision + 1) $Source.Handle
-    $null = Read-Event 'media.error' ($Revision + 1) $Source.Handle
-    $Revision++
+    Assert-Ok $errorPatch ($State.Revision + 1) 'source.patchSettings error trigger'
+    $State.Revision++
+    $null = Read-Event 'source.settingsChanged' $State.Revision $State.Source.Handle
+    $null = Read-Event 'media.stateChanged' ($State.Revision + 1) $State.Source.Handle
+    $null = Read-Event 'media.ended' ($State.Revision + 1) $State.Source.Handle
+    $null = Read-Event 'media.error' ($State.Revision + 1) $State.Source.Handle
+    $State.Revision++
 
-    $StateError = Send-V2Request @{ op = 'request'; id = 'task10.state.error'; method = 'media.getState'; params = @{ source = $Source.Handle } }
-    Assert-Ok $StateError $Revision 'media.getState error'
-    if ([string]$StateError.data.state -ne 'error') { Fail 'media.getState did not report error after trigger.' }
-
-    $Stale = Send-V2Request @{
-        op = 'request'; id = 'task10.stale'; method = 'media.play'; ifRevision = ($Revision - 1)
-        params = @{ source = $Source.Handle }
+    $stateError = Send-V2Request @{ op = 'request'; id = 'task10.state.error'; method = 'media.getState'; params = @{ source = $State.Source.Handle } }
+    Assert-Ok $stateError $State.Revision 'media.getState error'
+    if ([string]$stateError.data.state -ne 'error') { Fail 'media.getState did not report error after trigger.' }
+    $stale = Send-V2Request @{
+        op = 'request'; id = 'task10.stale'; method = 'media.play'; ifRevision = ($State.Revision - 1)
+        params = @{ source = $State.Source.Handle }
     }
-    Assert-Error $Stale 'revision_conflict' $Revision 'stale media.play'
-    $StateAfterStale = Send-V2Request @{ op = 'request'; id = 'task10.state.after-stale'; method = 'media.getState'; params = @{ source = $Source.Handle } }
-    Assert-Ok $StateAfterStale $Revision 'media.getState after stale media.play'
-    if ([string]$StateAfterStale.data.state -ne 'error') { Fail 'stale media.play changed media state.' }
-    $StaleMediaEvents = @($script:Events | Where-Object {
-        [string]$_.event -like 'media.*' -and [string]$_.data.source -eq $Source.Handle
+    Assert-Error $stale 'revision_conflict' $State.Revision 'stale media.play'
+    $stateAfterStale = Send-V2Request @{ op = 'request'; id = 'task10.state.after-stale'; method = 'media.getState'; params = @{ source = $State.Source.Handle } }
+    Assert-Ok $stateAfterStale $State.Revision 'media.getState after stale media.play'
+    if ([string]$stateAfterStale.data.state -ne 'error') { Fail 'stale media.play changed media state.' }
+    $staleMediaEvents = @($script:Events | Where-Object {
+        [string]$_.event -like 'media.*' -and [string]$_.data.source -eq $State.Source.Handle
     })
-    if ($StaleMediaEvents.Count -ne 0) { Fail 'stale media.play produced media events or queued work.' }
+    if ($staleMediaEvents.Count -ne 0) { Fail 'stale media.play produced media events or queued work.' }
+}
 
-    $Unsupported = Create-Source 'task10.create-non-media' ([string]$ColorKind.id) 'task10-non-media' @{ width = 320; height = 180 } $Revision
-    $Revision = $Unsupported.Revision
-    $UnsupportedState = Send-V2Request @{ op = 'request'; id = 'task10.unsupported.state'; method = 'media.getState'; params = @{ source = $Unsupported.Handle } }
-    Assert-Error $UnsupportedState 'unsupported_capability' $Revision 'media.getState on non-media source'
-    $UnsupportedPlay = Send-V2Request @{ op = 'request'; id = 'task10.unsupported.play'; method = 'media.play'; params = @{ source = $Unsupported.Handle } }
-    Assert-Error $UnsupportedPlay 'unsupported_capability' $Revision 'media.play on non-media source'
+function Invoke-Task10UnsupportedAndLateSeek([object] $State) {
+    $State.Unsupported = Create-Source 'task10.create-non-media' ([string]$State.ColorKind.id) 'task10-non-media' @{ width = 320; height = 180 } $State.Revision
+    $State.Revision = $State.Unsupported.Revision
+    $unsupportedState = Send-V2Request @{ op = 'request'; id = 'task10.unsupported.state'; method = 'media.getState'; params = @{ source = $State.Unsupported.Handle } }
+    Assert-Error $unsupportedState 'unsupported_capability' $State.Revision 'media.getState on non-media source'
+    $unsupportedPlay = Send-V2Request @{ op = 'request'; id = 'task10.unsupported.play'; method = 'media.play'; params = @{ source = $State.Unsupported.Handle } }
+    Assert-Error $unsupportedPlay 'unsupported_capability' $State.Revision 'media.play on non-media source'
 
-    $NoSeek = Create-Source 'task10.create-no-seek' 'task10_media_no_seek' 'task10-no-seek' @{} $Revision
-    $Revision = $NoSeek.Revision
-    $Timeout = Send-V2Request @{
-        op = 'request'; id = 'task10.seek.timeout'; method = 'media.setPosition'; ifRevision = $Revision
-        params = @{ source = $NoSeek.Handle; positionMs = 1 }
+    $State.NoSeek = Create-Source 'task10.create-no-seek' 'task10_media_no_seek' 'task10-no-seek' @{} $State.Revision
+    $State.Revision = $State.NoSeek.Revision
+    $timeout = Send-V2Request @{
+        op = 'request'; id = 'task10.seek.timeout'; method = 'media.setPosition'; ifRevision = $State.Revision
+        params = @{ source = $State.NoSeek.Handle; positionMs = 1 }
     }
-    Assert-Error $Timeout 'timeout' $Revision 'media.setPosition without a plugin callback'
-    $TimeoutResync = Read-Until-Resync ($Revision + 1)
-    $Revision = [int64]$TimeoutResync.revision
+    Assert-Error $timeout 'timeout' $State.Revision 'media.setPosition without a plugin callback'
+    $timeoutResync = Read-Until-Resync ($State.Revision + 1)
+    $State.Revision = [int64]$timeoutResync.revision
 
-    $LateSeek = Create-Source 'task10.create-late-seek' 'task10_media_source' 'task10-late-seek' @{
+    $State.LateSeek = Create-Source 'task10.create-late-seek' 'task10_media_source' 'task10-late-seek' @{
         label = 'late-seek'; scenario = 'blockTimeAutoRelease'
-    } $Revision
-    $Revision = $LateSeek.Revision
-    $LateSeekTimeout = Send-V2Request @{
-        op = 'request'; id = 'task10.seek.late-timeout'; method = 'media.setPosition'; ifRevision = $Revision
-        params = @{ source = $LateSeek.Handle; positionMs = 1000 }
+    } $State.Revision
+    $State.Revision = $State.LateSeek.Revision
+    $lateSeekTimeout = Send-V2Request @{
+        op = 'request'; id = 'task10.seek.late-timeout'; method = 'media.setPosition'; ifRevision = $State.Revision
+        params = @{ source = $State.LateSeek.Handle; positionMs = 1000 }
     }
-    Assert-Error $LateSeekTimeout 'timeout' $Revision 'media.setPosition with late completion'
-    $LateSeekTimeoutResync = Read-Until-Resync ($Revision + 1)
-    $Revision = [int64]$LateSeekTimeoutResync.revision
-    $LatePosition = Send-V2Request @{ op = 'request'; id = 'task10.position.late-seek'; method = 'media.getPosition'; params = @{ source = $LateSeek.Handle } }
-    if (-not $LatePosition.status.ok -or [int64]$LatePosition.data.positionMs -ne 1000) {
+    Assert-Error $lateSeekTimeout 'timeout' $State.Revision 'media.setPosition with late completion'
+    $lateSeekTimeoutResync = Read-Until-Resync ($State.Revision + 1)
+    $State.Revision = [int64]$lateSeekTimeoutResync.revision
+    $latePosition = Send-V2Request @{ op = 'request'; id = 'task10.position.late-seek'; method = 'media.getPosition'; params = @{ source = $State.LateSeek.Handle } }
+    if (-not $latePosition.status.ok -or [int64]$latePosition.data.positionMs -ne 1000) {
         Fail 'timed-out setPosition did not eventually reach the fixture callback.'
     }
-    $Revision = [int64]$LatePosition.revision
-    $LateSeekOrphanResync = Read-Until-Resync $Revision
-    $Revision = [int64]$LateSeekOrphanResync.revision
-    $RemoveLateSeek = Send-V2Request @{
-        op = 'request'; id = 'task10.remove-late-seek'; method = 'source.remove'; ifRevision = $Revision
-        params = @{ source = $LateSeek.Handle }
+    $State.Revision = [int64]$latePosition.revision
+    $lateSeekOrphanResync = Read-Until-Resync $State.Revision
+    $State.Revision = [int64]$lateSeekOrphanResync.revision
+    $removeLateSeek = Send-V2Request @{
+        op = 'request'; id = 'task10.remove-late-seek'; method = 'source.remove'; ifRevision = $State.Revision
+        params = @{ source = $State.LateSeek.Handle }
     }
-    Assert-Ok $RemoveLateSeek ($Revision + 1) 'source.remove after late setPosition completion'
-    $Revision++
-    $null = Read-Event 'source.removed' $Revision $LateSeek.Handle
+    Assert-Ok $removeLateSeek ($State.Revision + 1) 'source.remove after late setPosition completion'
+    $State.Revision++
+    $null = Read-Event 'source.removed' $State.Revision $State.LateSeek.Handle
+}
 
-    $BlockingFollowup = Create-Source 'task10.create-blocking-followup' 'task10_media_source' 'task10-blocking-followup' @{
+function Invoke-Task10BlockingFollowup([object] $State) {
+    $State.BlockingFollowup = Create-Source 'task10.create-blocking-followup' 'task10_media_source' 'task10-blocking-followup' @{
         label = 'blocking-followup'; scenario = 'blockSignalFollowup'
-    } $Revision
-    $Revision = $BlockingFollowup.Revision
-    $BlockedFollowupPlay = Send-V2Request @{
-        op = 'request'; id = 'task10.play.blocking-followup'; method = 'media.play'; ifRevision = $Revision
-        params = @{ source = $BlockingFollowup.Handle }
+    } $State.Revision
+    $State.Revision = $State.BlockingFollowup.Revision
+    $blockedFollowupPlay = Send-V2Request @{
+        op = 'request'; id = 'task10.play.blocking-followup'; method = 'media.play'; ifRevision = $State.Revision
+        params = @{ source = $State.BlockingFollowup.Handle }
     }
-    Assert-Error $BlockedFollowupPlay 'timeout' $Revision 'media.play before same-source follow-up action'
-    $FollowupTimeoutResync = Read-Until-Resync ($Revision + 1)
-    $Revision = [int64]$FollowupTimeoutResync.revision
-    $FollowupPause = Send-V2Request @{
-        op = 'request'; id = 'task10.pause.following-orphan'; method = 'media.pause'; ifRevision = $Revision
-        params = @{ source = $BlockingFollowup.Handle }
+    Assert-Error $blockedFollowupPlay 'timeout' $State.Revision 'media.play before same-source follow-up action'
+    $followupTimeoutResync = Read-Until-Resync ($State.Revision + 1)
+    $State.Revision = [int64]$followupTimeoutResync.revision
+    $followupPause = Send-V2Request @{
+        op = 'request'; id = 'task10.pause.following-orphan'; method = 'media.pause'; ifRevision = $State.Revision
+        params = @{ source = $State.BlockingFollowup.Handle }
     }
-    Assert-Ok $FollowupPause ($Revision + 1) 'media.pause while prior media.play is unresolved'
-    $Revision++
-    if ([string]$FollowupPause.data.state -ne 'paused' -or -not [bool]$FollowupPause.data.processed) {
+    Assert-Ok $followupPause ($State.Revision + 1) 'media.pause while prior media.play is unresolved'
+    $State.Revision++
+    if ([string]$followupPause.data.state -ne 'paused' -or -not [bool]$followupPause.data.processed) {
         Fail 'same-source follow-up media.pause did not settle on its own action ticket.'
     }
-    $null = Read-Event 'media.paused' $Revision $BlockingFollowup.Handle
-    $FollowupOrphanResync = Read-Until-Resync ($Revision + 1)
-    $Revision = [int64]$FollowupOrphanResync.revision
-    $null = Read-Event 'media.stateChanged' ($Revision + 1) $BlockingFollowup.Handle
-    $null = Read-Event 'media.paused' ($Revision + 1) $BlockingFollowup.Handle
-    $Revision++
+    $null = Read-Event 'media.paused' $State.Revision $State.BlockingFollowup.Handle
+    $followupOrphanResync = Read-Until-Resync ($State.Revision + 1)
+    $State.Revision = [int64]$followupOrphanResync.revision
+    $null = Read-Event 'media.stateChanged' ($State.Revision + 1) $State.BlockingFollowup.Handle
+    $null = Read-Event 'media.paused' ($State.Revision + 1) $State.BlockingFollowup.Handle
+    $State.Revision++
+}
 
-    $BlockingLate = Create-Source 'task10.create-blocking-signal' 'task10_media_source' 'task10-blocking-signal' @{
+function Invoke-Task10BlockingSignal([object] $State) {
+    $State.BlockingLate = Create-Source 'task10.create-blocking-signal' 'task10_media_source' 'task10-blocking-signal' @{
         label = 'blocking-signal'; scenario = 'blockSignal'
-    } $Revision
-    $Revision = $BlockingLate.Revision
-    $BlockedPlay = Send-V2Request @{
-        op = 'request'; id = 'task10.play.blocking-signal'; method = 'media.play'; ifRevision = $Revision
-        params = @{ source = $BlockingLate.Handle }
+    } $State.Revision
+    $State.Revision = $State.BlockingLate.Revision
+    $blockedPlay = Send-V2Request @{
+        op = 'request'; id = 'task10.play.blocking-signal'; method = 'media.play'; ifRevision = $State.Revision
+        params = @{ source = $State.BlockingLate.Handle }
     }
-    Assert-Error $BlockedPlay 'timeout' $Revision 'media.play with blocking signal callback'
-    $BlockingTimeoutResync = Read-Until-Resync ($Revision + 1)
-    $Revision = [int64]$BlockingTimeoutResync.revision
-    $ReleasedState = Send-V2Request @{ op = 'request'; id = 'task10.state.release-blocking-signal'; method = 'media.getState'; params = @{ source = $BlockingLate.Handle } }
-    if (-not $ReleasedState.status.ok -or [string]$ReleasedState.data.state -ne 'playing') {
+    Assert-Error $blockedPlay 'timeout' $State.Revision 'media.play with blocking signal callback'
+    $blockingTimeoutResync = Read-Until-Resync ($State.Revision + 1)
+    $State.Revision = [int64]$blockingTimeoutResync.revision
+    $releasedState = Send-V2Request @{ op = 'request'; id = 'task10.state.release-blocking-signal'; method = 'media.getState'; params = @{ source = $State.BlockingLate.Handle } }
+    if (-not $releasedState.status.ok -or [string]$releasedState.data.state -ne 'playing') {
         Fail 'blocking-signal source did not release to the expected playing state.'
     }
-    $Revision = [int64]$ReleasedState.revision
-    $LateOrphanResync = Read-Until-Resync $Revision
-    $Revision = [int64]$LateOrphanResync.revision
-    $PauseAfterOrphan = Send-V2Request @{
-        op = 'request'; id = 'task10.pause.after-orphan'; method = 'media.pause'; ifRevision = $Revision
-        params = @{ source = $BlockingLate.Handle }
+    $State.Revision = [int64]$releasedState.revision
+    $lateOrphanResync = Read-Until-Resync $State.Revision
+    $State.Revision = [int64]$lateOrphanResync.revision
+    $pauseAfterOrphan = Send-V2Request @{
+        op = 'request'; id = 'task10.pause.after-orphan'; method = 'media.pause'; ifRevision = $State.Revision
+        params = @{ source = $State.BlockingLate.Handle }
     }
-    Assert-Ok $PauseAfterOrphan ($Revision + 1) 'media.pause after orphan completion'
-    $Revision++
-    $null = Read-Event 'media.stateChanged' $Revision $BlockingLate.Handle
-    $null = Read-Event 'media.paused' $Revision $BlockingLate.Handle
+    Assert-Ok $pauseAfterOrphan ($State.Revision + 1) 'media.pause after orphan completion'
+    $State.Revision++
+    $null = Read-Event 'media.stateChanged' $State.Revision $State.BlockingLate.Handle
+    $null = Read-Event 'media.paused' $State.Revision $State.BlockingLate.Handle
+}
 
-    $RemovalOutstanding = Create-Source 'task10.create-removal-outstanding' 'task10_media_source' 'task10-removal-outstanding' @{
+function Invoke-Task10RemovalOutstanding([object] $State) {
+    $State.RemovalOutstanding = Create-Source 'task10.create-removal-outstanding' 'task10_media_source' 'task10-removal-outstanding' @{
         label = 'removal-outstanding'; scenario = 'blockSignalAutoRelease'
-    } $Revision
-    $Revision = $RemovalOutstanding.Revision
-    $RemovalTimeout = Send-V2Request @{
-        op = 'request'; id = 'task10.play.removal-outstanding'; method = 'media.play'; ifRevision = $Revision
-        params = @{ source = $RemovalOutstanding.Handle }
+    } $State.Revision
+    $State.Revision = $State.RemovalOutstanding.Revision
+    $removalTimeout = Send-V2Request @{
+        op = 'request'; id = 'task10.play.removal-outstanding'; method = 'media.play'; ifRevision = $State.Revision
+        params = @{ source = $State.RemovalOutstanding.Handle }
     }
-    Assert-Error $RemovalTimeout 'timeout' $Revision 'media.play before source removal with outstanding callback'
-    $RemovalTimeoutResync = Read-Until-Resync ($Revision + 1)
-    $Revision = [int64]$RemovalTimeoutResync.revision
-    $RemoveOutstanding = Send-V2Request @{
-        op = 'request'; id = 'task10.remove.outstanding'; method = 'source.remove'; ifRevision = $Revision
-        params = @{ source = $RemovalOutstanding.Handle }
+    Assert-Error $removalTimeout 'timeout' $State.Revision 'media.play before source removal with outstanding callback'
+    $removalTimeoutResync = Read-Until-Resync ($State.Revision + 1)
+    $State.Revision = [int64]$removalTimeoutResync.revision
+    $removeOutstanding = Send-V2Request @{
+        op = 'request'; id = 'task10.remove.outstanding'; method = 'source.remove'; ifRevision = $State.Revision
+        params = @{ source = $State.RemovalOutstanding.Handle }
     }
-    Assert-Ok $RemoveOutstanding ($Revision + 1) 'source.remove with timed-out media callback'
-    $Revision++
-    $null = Read-Event 'source.removed' $Revision $RemovalOutstanding.Handle
+    Assert-Ok $removeOutstanding ($State.Revision + 1) 'source.remove with timed-out media callback'
+    $State.Revision++
+    $null = Read-Event 'source.removed' $State.Revision $State.RemovalOutstanding.Handle
+}
 
-    $Malformed = Send-V2Request @{ op = 'request'; id = 'task10.bad-handle'; method = 'media.getState'; params = @{ source = '01' } }
-    Assert-Error $Malformed 'bad_request' $Revision 'non-canonical media source handle'
-
-    $OverflowTrigger = Send-V2Request @{
-        op = 'request'; id = 'task10.overflow'; method = 'source.patchSettings'; ifRevision = $Revision
-        params = @{ source = $Source.Handle; settings = @{ scenario = 'overflow' } }
-    }
-    Assert-Ok $OverflowTrigger ($Revision + 1) 'media deferred overflow trigger'
-    $Revision++
-    $Resync = Read-Until-Resync ($Revision + 1)
-    $Revision = [int64]$Resync.revision
-
-    foreach ($Entry in @(
-        @{ Handle = $Prequeue.Handle; Name = 'task10.remove-prequeue' },
-        @{ Handle = $BlockingFollowup.Handle; Name = 'task10.remove-blocking-followup' },
-        @{ Handle = $BlockingLate.Handle; Name = 'task10.remove-blocking-signal' },
-        @{ Handle = $NoSeek.Handle; Name = 'task10.remove-no-seek' },
-        @{ Handle = $Unsupported.Handle; Name = 'task10.remove-non-media' },
-        @{ Handle = $Source.Handle; Name = 'task10.remove-source' },
-        @{ Handle = $Peer.Handle; Name = 'task10.remove-peer' }
+function Remove-Task10Sources([object] $State) {
+    foreach ($entry in @(
+        @{ Handle = $State.Prequeue.Handle; Name = 'task10.remove-prequeue' },
+        @{ Handle = $State.BlockingFollowup.Handle; Name = 'task10.remove-blocking-followup' },
+        @{ Handle = $State.BlockingLate.Handle; Name = 'task10.remove-blocking-signal' },
+        @{ Handle = $State.NoSeek.Handle; Name = 'task10.remove-no-seek' },
+        @{ Handle = $State.Unsupported.Handle; Name = 'task10.remove-non-media' },
+        @{ Handle = $State.Source.Handle; Name = 'task10.remove-source' },
+        @{ Handle = $State.Peer.Handle; Name = 'task10.remove-peer' }
     )) {
-        $Remove = Send-V2Request @{
-            op = 'request'; id = $Entry.Name; method = 'source.remove'; ifRevision = $Revision
-            params = @{ source = $Entry.Handle }
+        $remove = Send-V2Request @{
+            op = 'request'; id = $entry.Name; method = 'source.remove'; ifRevision = $State.Revision
+            params = @{ source = $entry.Handle }
         }
-        Assert-Ok $Remove ($Revision + 1) $Entry.Name
-        $Revision++
-        $null = Read-Event 'source.removed' $Revision $Entry.Handle
+        Assert-Ok $remove ($State.Revision + 1) $entry.Name
+        $State.Revision++
+        $null = Read-Event 'source.removed' $State.Revision $entry.Handle
     }
+}
 
-    $ShutdownOutstanding = Create-Source 'task10.create-shutdown-outstanding' 'task10_media_source' 'task10-shutdown-outstanding' @{
+function Complete-Task10Scenario([object] $State) {
+    $malformed = Send-V2Request @{ op = 'request'; id = 'task10.bad-handle'; method = 'media.getState'; params = @{ source = '01' } }
+    Assert-Error $malformed 'bad_request' $State.Revision 'non-canonical media source handle'
+    $overflowTrigger = Send-V2Request @{
+        op = 'request'; id = 'task10.overflow'; method = 'source.patchSettings'; ifRevision = $State.Revision
+        params = @{ source = $State.Source.Handle; settings = @{ scenario = 'overflow' } }
+    }
+    Assert-Ok $overflowTrigger ($State.Revision + 1) 'media deferred overflow trigger'
+    $State.Revision++
+    $resync = Read-Until-Resync ($State.Revision + 1)
+    $State.Revision = [int64]$resync.revision
+    Remove-Task10Sources $State
+
+    $shutdownOutstanding = Create-Source 'task10.create-shutdown-outstanding' 'task10_media_source' 'task10-shutdown-outstanding' @{
         label = 'shutdown-outstanding'; scenario = 'blockSignalAutoRelease'
-    } $Revision
-    $Revision = $ShutdownOutstanding.Revision
-    $ShutdownTimeout = Send-V2Request @{
-        op = 'request'; id = 'task10.play.shutdown-outstanding'; method = 'media.play'; ifRevision = $Revision
-        params = @{ source = $ShutdownOutstanding.Handle }
+    } $State.Revision
+    $State.Revision = $shutdownOutstanding.Revision
+    $shutdownTimeout = Send-V2Request @{
+        op = 'request'; id = 'task10.play.shutdown-outstanding'; method = 'media.play'; ifRevision = $State.Revision
+        params = @{ source = $shutdownOutstanding.Handle }
     }
-    Assert-Error $ShutdownTimeout 'timeout' $Revision 'media.play before shutdown with outstanding callback'
-    $ShutdownTimeoutResync = Read-Until-Resync ($Revision + 1)
-    $Revision = [int64]$ShutdownTimeoutResync.revision
+    Assert-Error $shutdownTimeout 'timeout' $State.Revision 'media.play before shutdown with outstanding callback'
+    $shutdownTimeoutResync = Read-Until-Resync ($State.Revision + 1)
+    $State.Revision = [int64]$shutdownTimeoutResync.revision
 
-    $Close = Send-V2Request @{
-        op = 'request'; id = 'task10.close'; method = 'session.close'; ifRevision = $Revision; params = @{}
+    $close = Send-V2Request @{
+        op = 'request'; id = 'task10.close'; method = 'session.close'; ifRevision = $State.Revision; params = @{}
     }
-    Assert-Ok $Close ($Revision + 1) 'session.close'
-    $Process.StandardInput.Close()
-    if (-not $Process.WaitForExit(30000)) {
-        $Process.Kill($true)
+    Assert-Ok $close ($State.Revision + 1) 'session.close'
+    $script:Process.StandardInput.Close()
+    if (-not $script:Process.WaitForExit(30000)) {
+        $script:Process.Kill($true)
         Fail 'obs-engine did not exit after session.close.'
     }
-    if ($Process.ExitCode -ne 0) {
-        Fail "obs-engine exited with code $($Process.ExitCode)."
+    if ($script:Process.ExitCode -ne 0) {
+        Fail "obs-engine exited with code $($script:Process.ExitCode)."
     }
-
-    $Stderr = $ErrorTask.GetAwaiter().GetResult()
+    $stderr = $script:ErrorTask.GetAwaiter().GetResult()
     Write-Host '=== obs-engine stderr ==='
-    Write-Host $Stderr
-    if ($Stderr -notmatch '\[task10-media\] deterministic media source loaded') {
+    Write-Host $stderr
+    if ($stderr -notmatch '\[task10-media\] deterministic media source loaded') {
         Fail 'deterministic Task 10 module load evidence was missing from stderr.'
     }
     Write-Host 'Task 10 media namespace: PASS' -ForegroundColor Green
 }
-catch {
-    if ($null -ne $Process -and -not $Process.HasExited) {
-        try { $Process.Kill($true) } catch {}
-        try { $Process.WaitForExit(5000) | Out-Null } catch {}
+
+function Invoke-Task10Scenario {
+    $colorKind = Initialize-Task10Session
+    $state = Initialize-Task10Sources $colorKind
+    Invoke-Task10PlayPause $state
+    Invoke-Task10ToggleAndSeek $state
+    Invoke-Task10RestartAndStop $state
+    Invoke-Task10SourceTransitions $state
+    Invoke-Task10UnsupportedAndLateSeek $state
+    Invoke-Task10BlockingFollowup $state
+    Invoke-Task10BlockingSignal $state
+    Invoke-Task10RemovalOutstanding $state
+    Complete-Task10Scenario $state
+}
+
+function Stop-Task10AfterFailure {
+    if ($null -ne $script:Process -and -not $script:Process.HasExited) {
+        try { $script:Process.Kill($true) } catch {}
+        try { $script:Process.WaitForExit(5000) | Out-Null } catch {}
     }
-    if ($null -ne $ErrorTask) {
+    if ($null -ne $script:ErrorTask) {
         try {
-            $Stderr = $ErrorTask.GetAwaiter().GetResult()
-            if ($Stderr) { Write-Host "=== obs-engine stderr ===`n$Stderr" }
+            $stderr = $script:ErrorTask.GetAwaiter().GetResult()
+            if ($stderr) { Write-Host "=== obs-engine stderr ===`n$stderr" }
         } catch {}
     }
+}
+
+function Stop-Task10Engine {
+    if ($null -eq $script:Process) {
+        return
+    }
+    if (-not $script:Process.HasExited) {
+        try { $script:Process.StandardInput.Close() } catch {}
+        try { $script:Process.Kill($true) } catch {}
+        try { $script:Process.WaitForExit(5000) | Out-Null } catch {}
+    }
+    $script:Process.Dispose()
+    $script:Process = $null
+}
+
+try {
+    Start-Task10Engine $InstallRoot
+    Invoke-Task10Scenario
+}
+catch {
+    Stop-Task10AfterFailure
     throw
 }
 finally {
-    if ($null -ne $Process) {
-        if (-not $Process.HasExited) {
-            try { $Process.StandardInput.Close() } catch {}
-            try { $Process.Kill($true) } catch {}
-            try { $Process.WaitForExit(5000) | Out-Null } catch {}
-        }
-        $Process.Dispose()
-    }
+    Stop-Task10Engine
 }
