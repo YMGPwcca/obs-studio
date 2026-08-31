@@ -240,6 +240,374 @@ function Get-PathLanguage {
     return 'unknown'
 }
 
+function Import-WorkflowYamlSupport {
+    $modules = @(Get-Module -ListAvailable -Name 'powershell-yaml' |
+        Where-Object { [string] $_.Version -ceq '0.4.12' } |
+        Sort-Object Version -Descending)
+    if (@($modules).Count -eq 0) {
+        throw 'Workflow executable audit requires the pinned powershell-yaml 0.4.12 module.'
+    }
+    Import-Module -Name $modules[0].Path -Force -ErrorAction Stop
+    if (-not ('YamlDotNet.RepresentationModel.YamlStream' -as [type])) {
+        throw 'Workflow executable audit could not load the pinned YamlDotNet parser.'
+    }
+}
+
+function Read-WorkflowYamlRoot {
+    param([Parameter(Mandatory = $true)] [string] $Path)
+
+    $fullPath = Join-Path $repoRoot $Path
+    $reader = [IO.StringReader]::new((Get-Content -LiteralPath $fullPath -Raw))
+    try {
+        $parser = [YamlDotNet.Core.Parser]::new($reader)
+        $stream = [YamlDotNet.RepresentationModel.YamlStream]::new()
+        $stream.Load($parser)
+        if ($stream.Documents.Count -ne 1) {
+            throw "workflow must contain exactly one YAML document; found $($stream.Documents.Count)"
+        }
+        return ,$stream.Documents[0].RootNode
+    }
+    catch {
+        throw "YAML parser failed for workflow '$Path': $($_.Exception.Message)"
+    }
+    finally {
+        $reader.Close()
+    }
+}
+
+function Get-YamlMappingValue {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Node,
+        [Parameter(Mandatory = $true)] [string] $Name
+    )
+
+    if ($null -eq $Node -or $Node.GetType().Name -cne 'YamlMappingNode') {
+        return $null
+    }
+    foreach ($pair in $Node.Children.GetEnumerator()) {
+        if ([string] $pair.Key.Value -ceq $Name) {
+            return ,$pair.Value
+        }
+    }
+    return $null
+}
+
+function Get-WorkflowPaths {
+    $workflowRoot = Join-Path $repoRoot '.github/workflows'
+    if (-not (Test-Path -LiteralPath $workflowRoot -PathType Container)) {
+        return @()
+    }
+    return @(Get-ChildItem -LiteralPath $workflowRoot -Recurse -File |
+        Where-Object { [IO.Path]::GetExtension($_.Name).ToLowerInvariant() -in @('.yaml', '.yml') } |
+        ForEach-Object { Normalize-RepoPath $_.FullName } | Sort-Object -Unique)
+}
+
+function New-WorkflowRunBlockRecord {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Path,
+        [Parameter(Mandatory = $true)] [string] $Job,
+        [Parameter(Mandatory = $true)] [object] $Step,
+        [Parameter(Mandatory = $true)] [object] $RunNode
+    )
+
+    $nameNode = Get-YamlMappingValue $Step 'name'
+    $shellNode = Get-YamlMappingValue $Step 'shell'
+    $stepName = if ($null -ne $nameNode -and $nameNode.GetType().Name -ceq 'YamlScalarNode') {
+        [string] $nameNode.Value
+    } else {
+        '<unnamed>'
+    }
+    $shell = if ($null -ne $shellNode -and $shellNode.GetType().Name -ceq 'YamlScalarNode') {
+        [string] $shellNode.Value
+    } else {
+        ''
+    }
+    if ($RunNode.GetType().Name -cne 'YamlScalarNode') {
+        throw "workflow '$Path' job '$Job' step '$stepName' has a non-scalar run value."
+    }
+    return [pscustomobject]@{
+        path      = $Path
+        job       = $Job
+        step      = $stepName
+        shell     = $shell
+        source    = [string] $RunNode.Value
+        startLine = [int] $RunNode.Start.Line
+        endLine   = [int] $RunNode.End.Line
+    }
+}
+
+function Get-WorkflowRunBlocks {
+    param([Parameter(Mandatory = $true)] [string] $Path)
+
+    $root = Read-WorkflowYamlRoot $Path
+    if ($root.GetType().Name -cne 'YamlMappingNode') {
+        throw "workflow '$Path' root must be a YAML mapping."
+    }
+    $jobs = Get-YamlMappingValue $root 'jobs'
+    if ($null -eq $jobs) {
+        return @()
+    }
+    if ($jobs.GetType().Name -cne 'YamlMappingNode') {
+        throw "workflow '$Path' jobs value must be a YAML mapping."
+    }
+    $blocks = [System.Collections.Generic.List[object]]::new()
+    foreach ($jobPair in $jobs.Children.GetEnumerator()) {
+        $jobName = [string] $jobPair.Key.Value
+        $steps = Get-YamlMappingValue $jobPair.Value 'steps'
+        if ($null -eq $steps) {
+            continue
+        }
+        if ($steps.GetType().Name -cne 'YamlSequenceNode') {
+            throw "workflow '$Path' job '$jobName' steps value must be a YAML sequence."
+        }
+        foreach ($step in $steps.Children) {
+            if ($step.GetType().Name -cne 'YamlMappingNode') {
+                throw "workflow '$Path' job '$jobName' contains a non-mapping step."
+            }
+            $runNode = Get-YamlMappingValue $step 'run'
+            if ($null -ne $runNode) {
+                $blocks.Add((New-WorkflowRunBlockRecord $Path $jobName $step $runNode))
+            }
+        }
+    }
+    return @($blocks)
+}
+
+function Get-WorkflowOperatorLines {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Path,
+        [Parameter(Mandatory = $true)] [object] $History,
+        [Parameter(Mandatory = $true)] [object] $Post,
+        [Parameter(Mandatory = $true)] [string] $MeasurementHead
+    )
+
+    $lines = [System.Collections.Generic.HashSet[int]]::new()
+    if (-not (Test-PathAtRef $MeasurementHead $Path)) {
+        foreach ($line in (Get-AllFileLines $Path)) { $null = $lines.Add($line) }
+        return ,$lines
+    }
+    if ($Post.WorkingTreePathSet.ContainsKey($Path)) {
+        # The working tree can shift every later line after an insertion.  A
+        # current operator edit therefore owns the complete current workflow
+        # for this policy audit; HEAD blame line numbers are not reused against
+        # shifted working-tree coordinates.
+        foreach ($line in (Get-AllFileLines $Path)) { $null = $lines.Add($line) }
+        return ,$lines
+    }
+    foreach ($line in (Get-OperatorBlameLines $MeasurementHead $Path $History.OperatorEmailSet $History.OperatorNameSet)) {
+        $null = $lines.Add($line)
+    }
+    return ,$lines
+}
+
+function Get-WorkflowExecutableLineCount {
+    param([Parameter(Mandatory = $true)] [string] $Source)
+
+    $count = 0
+    foreach ($line in ($Source -split "`r?`n")) {
+        $trimmed = $line.Trim()
+        if ($trimmed -and -not $trimmed.StartsWith('#')) { $count++ }
+    }
+    return $count
+}
+
+function Get-WorkflowPowerShellFeatures {
+    param([Parameter(Mandatory = $true)] [string] $Source)
+
+    $tokens = $null
+    $errors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseInput($Source, [ref] $tokens, [ref] $errors)
+    if (@($errors).Count -gt 0) {
+        return [pscustomobject]@{
+            parseError       = (@($errors | ForEach-Object { $_.Message }) -join ' | ')
+            functionCount    = 0
+            controlCount     = 0
+            logicalCount     = 0
+            topLevelStatements = 0
+            features         = @('PowerShell AST parse error')
+            substantial      = $true
+        }
+    }
+    $astMetrics = Get-WorkflowPowerShellAstMetrics $ast
+    return [pscustomobject]@{
+        parseError         = $null
+        functionCount      = $astMetrics.functionCount
+        controlCount       = $astMetrics.controlCount
+        logicalCount       = $astMetrics.logicalCount
+        topLevelStatements = $astMetrics.topLevelStatements
+        features           = $astMetrics.features
+        substantial        = $astMetrics.substantial
+    }
+}
+
+function Get-WorkflowPowerShellAstMetrics {
+    param([Parameter(Mandatory = $true)] [object] $Ast)
+
+    $controlNames = @(
+        'FunctionDefinitionAst', 'IfStatementAst', 'ForStatementAst', 'ForEachStatementAst',
+        'WhileStatementAst', 'DoWhileStatementAst', 'DoUntilStatementAst', 'SwitchStatementAst',
+        'CatchClauseAst', 'TrapStatementAst', 'TernaryExpressionAst', 'TryStatementAst',
+        'PipelineChainAst'
+    )
+    $functions = @($Ast.FindAll({ param($node) $node.GetType().Name -ceq 'FunctionDefinitionAst' }, $true))
+    $controls = @($Ast.FindAll({ param($node) $node.GetType().Name -in $controlNames }, $true))
+    $logical = @($Ast.FindAll({
+            param($node)
+            $node.GetType().Name -ceq 'BinaryExpressionAst' -and [string] $node.Operator -match 'And|Or'
+        }, $true))
+    $statementCount = if ($null -ne $Ast.EndBlock) { @($Ast.EndBlock.Statements).Count } else { 0 }
+    $features = [System.Collections.Generic.List[string]]::new()
+    if (@($functions).Count -gt 0) { $features.Add('function definition') }
+    if (@($controls).Count -gt 0) { $features.Add('control-flow AST') }
+    if (@($logical).Count -gt 0) { $features.Add('logical branching') }
+    if ($statementCount -gt 4) { $features.Add('more than four top-level statements') }
+    return [pscustomobject]@{
+        functionCount      = @($functions).Count
+        controlCount       = @($controls).Count
+        logicalCount       = @($logical).Count
+        topLevelStatements = $statementCount
+        features           = @($features)
+        substantial        = @($functions).Count -gt 0 -or @($controls).Count -gt 0 -or
+            @($logical).Count -gt 0 -or $statementCount -gt 4
+    }
+}
+
+function Get-WorkflowLexicalFeatures {
+    param([Parameter(Mandatory = $true)] [string] $Source)
+
+    $lines = @($Source -split "`r?`n" | ForEach-Object {
+            $trimmed = $_.Trim()
+            if ($trimmed -and -not $trimmed.StartsWith('#')) { $trimmed }
+        })
+    $controlPattern = '(?im)^\s*(if|then|elif|else|fi|for|while|until|case|select|do|done|esac|function)\b|^\s*[A-Za-z_][A-Za-z0-9_]*\s*\(\s*\)\s*\{|&&|\|\|'
+    $hasControl = $Source -match $controlPattern
+    $features = [System.Collections.Generic.List[string]]::new()
+    if ($hasControl) { $features.Add('shell control-flow token') }
+    if (@($lines).Count -gt 4) { $features.Add('more than four executable lines') }
+    return [pscustomobject]@{
+        executableLines = @($lines).Count
+        features        = @($features)
+        substantial     = $hasControl -or @($lines).Count -gt 4
+    }
+}
+
+function Get-WorkflowInterpreter {
+    param([Parameter(Mandatory = $true)] [string] $Shell)
+
+    if ([string]::IsNullOrWhiteSpace($Shell)) { return 'unknown' }
+    $first = (($Shell.Trim() -split '\s+', 2)[0]).Trim().Trim('"').Trim("'")
+    $leaf = (($first -split '[/\\]')[-1]).ToLowerInvariant()
+    if ($leaf -match '^pwsh(?:\.exe)?$' -or $leaf -match '^powershell(?:\.exe)?$') { return 'powershell' }
+    if ($leaf -eq 'bash') { return 'bash' }
+    if ($leaf -eq 'sh') { return 'sh' }
+    if ($leaf -match '^python(?:3)?(?:\.exe)?$') { return 'python' }
+    if ($leaf -match '^node(?:\.exe)?$') { return 'node' }
+    if ($leaf -match '^ruby(?:\.exe)?$') { return 'ruby' }
+    if ($leaf -match '^perl(?:\.exe)?$') { return 'perl' }
+    return 'unknown'
+}
+
+function New-WorkflowAssessment {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Block,
+        [Parameter(Mandatory = $true)] [string] $Interpreter,
+        [Parameter(Mandatory = $true)] [string] $Classification,
+        [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [string[]] $Features,
+        [AllowNull()] [string] $PolicyError
+    )
+
+    return [pscustomobject]@{
+        path                    = $Block.path
+        job                     = $Block.job
+        step                    = $Block.step
+        shell                   = if ($Block.shell) { $Block.shell } else { '<default/unspecified>' }
+        interpreter             = $Interpreter
+        startLine               = $Block.startLine
+        endLine                 = $Block.endLine
+        approximateExecutableNloc = Get-WorkflowExecutableLineCount $Block.source
+        classification          = $Classification
+        features                = @($Features)
+        meaningfulExecutableLogic = $Classification -eq 'EXECUTABLE_LOGIC' -or $Classification -eq 'UNSUPPORTED_EXECUTABLE'
+        policyError             = $PolicyError
+    }
+}
+
+function Get-WorkflowPowerShellAssessment {
+    param([Parameter(Mandatory = $true)] [object] $Block)
+
+    $features = Get-WorkflowPowerShellFeatures $Block.source
+    if ($features.parseError) {
+        $error = "Workflow '$($Block.path)' job '$($Block.job)' step '$($Block.step)' lines $($Block.startLine)-$($Block.endLine) has invalid inline PowerShell: $($features.parseError)"
+        return New-WorkflowAssessment $Block 'powershell' 'UNSUPPORTED_EXECUTABLE' $features.features $error
+    }
+    if ($features.substantial) {
+        $error = "Workflow '$($Block.path)' job '$($Block.job)' step '$($Block.step)' lines $($Block.startLine)-$($Block.endLine) contains non-trivial inline PowerShell; extract it to a measured .ps1 script."
+        return New-WorkflowAssessment $Block 'powershell' 'EXECUTABLE_LOGIC' $features.features $error
+    }
+    return New-WorkflowAssessment $Block 'powershell' 'TRIVIAL_WRAPPER' $features.features $null
+}
+
+function Get-WorkflowOtherAssessment {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Block,
+        [Parameter(Mandatory = $true)] [string] $Interpreter
+    )
+
+    $features = Get-WorkflowLexicalFeatures $Block.source
+    if ($Interpreter -eq 'unknown') {
+        $error = "Workflow '$($Block.path)' job '$($Block.job)' step '$($Block.step)' uses an unspecified or unrecognized shell; executable workflow code must be explicitly supported."
+        return New-WorkflowAssessment $Block $Interpreter 'UNSUPPORTED_EXECUTABLE' $features.features $error
+    }
+    if ($features.substantial) {
+        $error = "Workflow '$($Block.path)' job '$($Block.job)' step '$($Block.step)' uses unsupported inline $Interpreter control-flow or substantial executable logic; extract it to a separately analyzed project script or define a language-aware analyzer."
+        return New-WorkflowAssessment $Block $Interpreter 'UNSUPPORTED_EXECUTABLE' $features.features $error
+    }
+    return New-WorkflowAssessment $Block $Interpreter 'TRIVIAL_WRAPPER' $features.features $null
+}
+
+function Get-WorkflowBlockAssessment {
+    param([Parameter(Mandatory = $true)] [object] $Block)
+
+    if ([string]::IsNullOrWhiteSpace($Block.source)) {
+        return New-WorkflowAssessment $Block (Get-WorkflowInterpreter $Block.shell) 'DECLARATIVE_ONLY' @() $null
+    }
+    $interpreter = Get-WorkflowInterpreter $Block.shell
+    if ($interpreter -eq 'powershell') { return Get-WorkflowPowerShellAssessment $Block }
+    return Get-WorkflowOtherAssessment $Block $interpreter
+}
+
+function Invoke-WorkflowExecutableAudit {
+    param(
+        [Parameter(Mandatory = $true)] [object] $History,
+        [Parameter(Mandatory = $true)] [object] $Post
+    )
+
+    $paths = @(Get-WorkflowPaths)
+    if (@($paths).Count -eq 0) {
+        return [pscustomobject]@{ blocks = @(); policyErrors = @(); projectOwnedBlockCount = 0 }
+    }
+    Import-WorkflowYamlSupport
+    $blocks = [System.Collections.Generic.List[object]]::new()
+    $policyErrors = [System.Collections.Generic.List[string]]::new()
+    foreach ($path in $paths) {
+        $ownedLines = Get-WorkflowOperatorLines $path $History $Post $History.MeasurementHead
+        foreach ($block in (Get-WorkflowRunBlocks $path)) {
+            if (-not (Test-LineIntersection $ownedLines $block.startLine $block.endLine)) { continue }
+            $assessment = Get-WorkflowBlockAssessment $block
+            $blocks.Add($assessment)
+            if ($assessment.policyError) { $policyErrors.Add($assessment.policyError) }
+        }
+    }
+    if ($policyErrors.Count -gt 0) {
+        throw "Workflow executable policy failed:`n$($policyErrors -join "`n")"
+    }
+    return [pscustomobject]@{
+        blocks                 = @($blocks)
+        policyErrors           = @()
+        projectOwnedBlockCount = $blocks.Count
+    }
+}
+
 function Test-PathAtRef {
     param(
         [Parameter(Mandatory = $true)] [string] $Ref,
@@ -2202,6 +2570,32 @@ function New-ComparisonMarkdown {
     return $lines -join "`n"
 }
 
+function New-WorkflowReportPolicy {
+    param([AllowNull()] [object] $WorkflowAudit)
+
+    if ($null -eq $WorkflowAudit) {
+        return [ordered]@{
+            status                 = 'enforced'
+            projectOwnedBlockCount = 0
+            substantialPowerShell  = 0
+            unsupportedSubstantial = 0
+        }
+    }
+    return [ordered]@{
+        status                 = 'enforced'
+        projectOwnedBlockCount = [int] $WorkflowAudit.projectOwnedBlockCount
+        substantialPowerShell  = @($WorkflowAudit.blocks | Where-Object classification -eq 'EXECUTABLE_LOGIC').Count
+        unsupportedSubstantial = @($WorkflowAudit.blocks | Where-Object classification -eq 'UNSUPPORTED_EXECUTABLE').Count
+    }
+}
+
+function Get-WorkflowReportBlocks {
+    param([AllowNull()] [object] $WorkflowAudit)
+
+    if ($null -eq $WorkflowAudit) { return @() }
+    return @($WorkflowAudit.blocks)
+}
+
 function New-ReportObject {
     param(
         [Parameter(Mandatory = $true)] [object[]] $Metrics,
@@ -2210,7 +2604,8 @@ function New-ReportObject {
         [Parameter(Mandatory = $true)] [string] $Accepted,
         [Parameter(Mandatory = $true)] [string] $MeasurementHead,
         [Parameter(Mandatory = $true)] [int] $LineageCommitCount,
-        [Parameter(Mandatory = $true)] [string] $LizardVersion
+        [Parameter(Mandatory = $true)] [string] $LizardVersion,
+        [AllowNull()] [object] $WorkflowAudit
     )
 
     return [ordered]@{
@@ -2234,6 +2629,8 @@ function New-ReportObject {
             scriptBodies   = Get-Statistics $Metrics 'script-body'
             enforcedScopes = Get-Statistics $Metrics 'enforced'
         }
+        workflowExecutablePolicy = New-WorkflowReportPolicy $WorkflowAudit
+        workflowExecutableBlocks = Get-WorkflowReportBlocks $WorkflowAudit
         functions    = @($Metrics | Sort-Object @{ Expression = { [string] $_.file } }, @{ Expression = { [int] $_.startLine } }, @{ Expression = { [string] $_.function } })
         limitations  = @($limitations)
         lineage      = [ordered]@{ operatorAuthoredCommitCount = $LineageCommitCount }
@@ -2898,6 +3295,7 @@ function New-ComplexityRunContext {
     $history = New-HistoryContext $BaseRef $AcceptedRef
     $historical = New-HistoricalPathContext $history $history.OperatorPredicate $history.AcceptedResolved
     $post = New-PostPathContext $history $history.OperatorPredicate $history.AcceptedResolved $history.MeasurementHead
+    $workflowAudit = Invoke-WorkflowExecutableAudit $history $post
     $historicalAliases = Get-HistoricalPathAliases $historical.Paths $post.PostRecords
     $baseline = New-BaselineContext $Mode $BeforePath $BaselinePath $IdentityMigrationsPath $history.BaseResolved $history.AcceptedResolved
     $scope = New-ScopeContext $Mode $history $post $historical $historical.Paths $historicalAliases $baseline.InclusionByKey $history.AcceptedResolved $history.MeasurementHead
@@ -2911,6 +3309,7 @@ function New-ComplexityRunContext {
         Baseline       = $baseline
         Scope          = $scope
         Measurement    = $measurement
+        WorkflowAudit  = $workflowAudit
         Inventory      = $inventory
     }
 }
@@ -3004,7 +3403,7 @@ function Get-ScriptBodyWarnings {
 function Invoke-BaselineMode {
     param([Parameter(Mandatory = $true)] [object] $Context)
 
-    $report = New-ReportObject $Context.Measurement.Metrics 'baseline' $Context.History.BaseResolved $Context.History.AcceptedResolved $Context.History.MeasurementHead $Context.History.OperatorCommits.Count $Context.Measurement.LizardVersion
+    $report = New-ReportObject $Context.Measurement.Metrics 'baseline' $Context.History.BaseResolved $Context.History.AcceptedResolved $Context.History.MeasurementHead $Context.History.OperatorCommits.Count $Context.Measurement.LizardVersion $Context.WorkflowAudit
     $jsonText = $report | ConvertTo-Json -Depth 30
     Write-Utf8File $InventoryPath ($Context.Inventory | ConvertTo-Json -Depth 30)
     Write-Utf8File ($InventoryPath -replace '\.json$', '.md') (New-InventoryMarkdown $Context.Inventory)
@@ -3027,7 +3426,7 @@ function Invoke-AfterMode {
         throw "Before report '$BeforePath' was not found."
     }
     $allowlist = Get-ComplexityAllowlist $AllowlistPath
-    $report = New-ReportObject $Context.Measurement.Metrics 'after' $Context.History.BaseResolved $Context.History.AcceptedResolved $Context.History.MeasurementHead $Context.History.OperatorCommits.Count $Context.Measurement.LizardVersion
+    $report = New-ReportObject $Context.Measurement.Metrics 'after' $Context.History.BaseResolved $Context.History.AcceptedResolved $Context.History.MeasurementHead $Context.History.OperatorCommits.Count $Context.Measurement.LizardVersion $Context.WorkflowAudit
     $afterOutput = if ($JsonPath) { $JsonPath } else { 'complexity-after.json' }
     $afterMarkdown = if ($MarkdownPath) { $MarkdownPath } else { 'complexity-report.md' }
     Write-Utf8File $afterOutput ($report | ConvertTo-Json -Depth 30)
@@ -3090,7 +3489,7 @@ function Invoke-ComplexityMode {
 function Invoke-ComplexityRun {
     $context = New-ComplexityRunContext $Mode $BaseRef $AcceptedRef $BeforePath $BaselinePath $IdentityMigrationsPath
     if ($Mode -eq 'Check' -and $JsonPath) {
-        $report = New-ReportObject $context.Measurement.Metrics 'check' $context.History.BaseResolved $context.History.AcceptedResolved $context.History.MeasurementHead $context.History.OperatorCommits.Count $context.Measurement.LizardVersion
+        $report = New-ReportObject $context.Measurement.Metrics 'check' $context.History.BaseResolved $context.History.AcceptedResolved $context.History.MeasurementHead $context.History.OperatorCommits.Count $context.Measurement.LizardVersion $context.WorkflowAudit
         Write-Utf8File $JsonPath ($report | ConvertTo-Json -Depth 30)
     }
     Invoke-ComplexityMode $Mode $context

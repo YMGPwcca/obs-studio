@@ -219,6 +219,28 @@ function New-PowerShellTopLevelIfChain {
     return $lines -join "`n"
 }
 
+function New-WorkflowDocument {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Shell,
+        [Parameter(Mandatory = $true)] [AllowEmptyString()] [string] $Run
+    )
+
+    $indentedRun = @($Run -split "`r?`n" | ForEach-Object { '          ' + $_ }) -join "`n"
+    return @"
+name: Fixture workflow
+on:
+  workflow_dispatch:
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fixture executable block
+        shell: $Shell
+        run: |
+$indentedRun
+"@
+}
+
 function New-Fixture {
     param(
         [Parameter(Mandatory = $true)] [string] $Name,
@@ -695,7 +717,69 @@ try {
     Assert-ScriptBodyMeasured $caseZResult 'tools/recreated-script.ps1' 'CASE Z recreated script-body'
     Assert-CheckerFailure $caseZResult 'CASE Z recreated script-body requires continuity' 'script-body'
 
-    Write-Output 'Complexity checker self-test: PASS (cases A-Z)'
+    $caseAA = New-Fixture 'case-aa-inline-powershell-control-flow'
+    Prepare-FixtureBaseline $caseAA
+    Commit-FixtureFile $caseAA '.github/workflows/inline-powershell.yaml' (New-WorkflowDocument 'pwsh' (New-PowerShellTopLevelIfChain 11)) 'fixture add inline PowerShell control flow'
+    $caseAAResult = Invoke-ComplexityChecker $caseAA 'Check'
+    Assert-CheckerFailure $caseAAResult 'CASE AA inline PowerShell requires extraction' '(?s)non-trivial inline PowerShell.*extract it to a measured \.ps1'
+
+    $caseAB = New-Fixture 'case-ab-inline-powershell-function'
+    Prepare-FixtureBaseline $caseAB
+    $inlineFunction = "function Foo { return 1 }`nFoo`n"
+    Commit-FixtureFile $caseAB '.github/workflows/inline-powershell-function.yaml' (New-WorkflowDocument 'pwsh' $inlineFunction) 'fixture add inline PowerShell function'
+    $caseABResult = Invoke-ComplexityChecker $caseAB 'Check'
+    Assert-CheckerFailure $caseABResult 'CASE AB inline PowerShell function requires extraction' '(?s)non-trivial inline PowerShell.*extract it to a measured \.ps1'
+
+    $caseAC = New-Fixture 'case-ac-trivial-powershell-wrapper'
+    Prepare-FixtureBaseline $caseAC
+    Write-FixtureText (Join-Path $caseAC.Directory '.github/scripts/foo.ps1') "Write-Output 'fixture wrapper target'`n"
+    Commit-FixtureFile $caseAC '.github/workflows/trivial-powershell.yaml' (New-WorkflowDocument 'pwsh' '& .github/scripts/foo.ps1') 'fixture add trivial PowerShell wrapper'
+    $caseACResult = Invoke-ComplexityChecker $caseAC 'Check'
+    Assert-CheckerPass $caseACResult 'CASE AC trivial PowerShell wrapper'
+
+    $caseAD = New-Fixture 'case-ad-trivial-bash-wrapper'
+    Prepare-FixtureBaseline $caseAD
+    Commit-FixtureFile $caseAD '.github/workflows/trivial-bash.yaml' (New-WorkflowDocument 'bash' 'cmake --build build') 'fixture add trivial Bash wrapper'
+    $caseADResult = Invoke-ComplexityChecker $caseAD 'Check'
+    Assert-CheckerPass $caseADResult 'CASE AD trivial Bash wrapper'
+
+    $caseAE = New-Fixture 'case-ae-bash-control-flow'
+    Prepare-FixtureBaseline $caseAE
+    $bashControl = "if test -f build/ready; then`n  echo ready`nfi`n"
+    Commit-FixtureFile $caseAE '.github/workflows/inline-bash-control.yaml' (New-WorkflowDocument 'bash' $bashControl) 'fixture add Bash control flow'
+    $caseAEResult = Invoke-ComplexityChecker $caseAE 'Check'
+    Assert-CheckerFailure $caseAEResult 'CASE AE Bash control flow fails closed' 'unsupported inline bash'
+
+    $caseAF = New-Fixture 'case-af-inline-python'
+    Prepare-FixtureBaseline $caseAF
+    $pythonControl = "for value in range(12):`n    print(value)`n"
+    Commit-FixtureFile $caseAF '.github/workflows/inline-python.yaml' (New-WorkflowDocument 'python3' $pythonControl) 'fixture add inline Python logic'
+    $caseAFResult = Invoke-ComplexityChecker $caseAF 'Check'
+    Assert-CheckerFailure $caseAFResult 'CASE AF unsupported inline Python fails closed' 'unsupported inline python'
+
+    $caseAG = New-Fixture 'case-ag-malformed-inline-powershell'
+    Prepare-FixtureBaseline $caseAG
+    Commit-FixtureFile $caseAG '.github/workflows/malformed-powershell.yaml' (New-WorkflowDocument 'pwsh' 'if (') 'fixture add malformed inline PowerShell'
+    $caseAGResult = Invoke-ComplexityChecker $caseAG 'Check'
+    Assert-CheckerFailure $caseAGResult 'CASE AG malformed PowerShell fails closed' 'invalid inline PowerShell'
+
+    $caseAH = New-Fixture 'case-ah-workflow-rename-provenance'
+    Prepare-FixtureBaseline $caseAH
+    $renameWorkflowBody = New-WorkflowDocument 'pwsh' (New-PowerShellTopLevelIfChain 11)
+    Commit-FixtureFile $caseAH '.github/workflows/old-inline.yaml' $renameWorkflowBody 'fixture add owned workflow for rename'
+    $caseAHOldResult = Invoke-ComplexityChecker $caseAH 'Check'
+    Assert-CheckerFailure $caseAHOldResult 'CASE AH original workflow executable policy' '(?s)non-trivial inline PowerShell.*extract it to a measured \.ps1'
+    Commit-FixtureRename $caseAH '.github/workflows/old-inline.yaml' '.github/workflows/new-inline.yaml' $renameWorkflowBody 'fixture rename owned workflow'
+    $caseAHNewResult = Invoke-ComplexityChecker $caseAH 'Check'
+    Assert-CheckerFailure $caseAHNewResult 'CASE AH renamed workflow executable policy' '(?s)non-trivial inline PowerShell.*extract it to a measured \.ps1'
+
+    $caseAI = New-Fixture 'case-ai-untracked-workflow'
+    Prepare-FixtureBaseline $caseAI
+    Write-FixtureText (Join-Path $caseAI.Directory '.github/workflows/untracked-inline.yaml') (New-WorkflowDocument 'pwsh' (New-PowerShellTopLevelIfChain 11))
+    $caseAIResult = Invoke-ComplexityChecker $caseAI 'Check'
+    Assert-CheckerFailure $caseAIResult 'CASE AI untracked workflow executable policy' '(?s)non-trivial inline PowerShell.*extract it to a measured \.ps1'
+
+    Write-Output 'Complexity checker self-test: PASS (cases A-AI)'
 } finally {
     if (Test-Path -LiteralPath $testRoot) {
         Remove-Item -LiteralPath $testRoot -Recurse -Force
