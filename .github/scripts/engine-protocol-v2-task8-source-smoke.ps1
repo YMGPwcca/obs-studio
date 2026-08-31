@@ -1,5 +1,4 @@
 $ErrorActionPreference = 'Stop'
-Set-StrictMode -Version Latest
 
 $script:Task8InstallRoot = $null
 $script:Task8DiagnosticFile = $null

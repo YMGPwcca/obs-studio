@@ -1,5 +1,4 @@
 $ErrorActionPreference = 'Stop'
-Set-StrictMode -Version Latest
 
 $script:Task7InstallRoot = $null
 $script:Task7DiagnosticFile = $null

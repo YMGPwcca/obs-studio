@@ -1,5 +1,4 @@
 $ErrorActionPreference = 'Stop'
-Set-StrictMode -Version Latest
 
 $script:Task6InstallRoot = $null
 $script:Task6DiagnosticFile = $null
