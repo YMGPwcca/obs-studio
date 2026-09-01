@@ -99,38 +99,36 @@ function Read-Task15Event([string] $Name, [int64] $Revision) {
     return $event
 }
 
-try {
+function Invoke-Task15Bootstrap {
     Start-Task15Engine $InstallRoot
     $ready = Read-Task15Message
     if ($ready.event -ne 'ready') { Fail-Task15 'ready marker was not received.' }
     Assert-Ok (Send-Task15Request @{ op = 'request'; id = 'p-hello'; method = 'session.hello' }) 0 'hello'
     Assert-Ok (Send-Task15Request @{ op = 'request'; id = 'p-sub'; method = 'session.subscribe'; params = @{ subscriptions = @(@{ pattern = 'program.*' }, @{ pattern = 'scene.*' }) } }) 0 'subscribe'
-
     $initial = Send-Task15Request @{ op = 'request'; id = 'p-initial'; method = 'program.getScene' }
     Assert-Ok $initial 0 'initial program.getScene'
     if ($null -ne $initial.data.scene) { Fail-Task15 'initial Program was not null.' }
-
-    $first = Send-Task15Request @{ op = 'request'; id = 'p-first'; method = 'scene.create'; params = @{ name = 'Program A' } }
-    Assert-Ok $first 1 'first scene.create'
-    if ([string]$first.data.scene -ne '2') { Fail-Task15 'unexpected first Scene handle.' }
+    $script:T15First = Send-Task15Request @{ op = 'request'; id = 'p-first'; method = 'scene.create'; params = @{ name = 'Program A' } }
+    Assert-Ok $script:T15First 1 'first scene.create'
+    if ([string]$script:T15First.data.scene -ne '2') { Fail-Task15 'unexpected first Scene handle.' }
     Read-Task15Event 'scene.created' 1 | Out-Null
-    $second = Send-Task15Request @{ op = 'request'; id = 'p-second'; method = 'scene.create'; params = @{ name = 'Program B' }; ifRevision = 1 }
-    Assert-Ok $second 2 'second scene.create'
-    if ([string]$second.data.scene -ne '3') { Fail-Task15 'unexpected second Scene handle.' }
+    $script:T15Second = Send-Task15Request @{ op = 'request'; id = 'p-second'; method = 'scene.create'; params = @{ name = 'Program B' }; ifRevision = 1 }
+    Assert-Ok $script:T15Second 2 'second scene.create'
+    if ([string]$script:T15Second.data.scene -ne '3') { Fail-Task15 'unexpected second Scene handle.' }
     Read-Task15Event 'scene.created' 2 | Out-Null
+}
 
+function Invoke-Task15ProgramRouting {
     $setFirst = Send-Task15Request @{ op = 'request'; id = 'p-set-first'; method = 'program.setScene'; params = @{ scene = '2' }; ifRevision = 2 }
     Assert-Ok $setFirst 3 'program.setScene first'
     if ([string]$setFirst.data.scene -ne '2') { Fail-Task15 'Program first route did not read back Scene 2.' }
     $firstEvent = Read-Task15Event 'program.sceneChanged' 3
     if ([string]$firstEvent.data.scene -ne '2') { Fail-Task15 'Program change event had the wrong Scene.' }
     if ($null -ne $firstEvent.data.previousScene) { Fail-Task15 'initial Program change unexpectedly had a previous Scene.' }
-
     $setSecond = Send-Task15Request @{ op = 'request'; id = 'p-set-second'; method = 'program.setScene'; params = @{ scene = '3' }; ifRevision = 3 }
     Assert-Ok $setSecond 4 'program.setScene second'
     $secondEvent = Read-Task15Event 'program.sceneChanged' 4
     if ([string]$secondEvent.data.scene -ne '3' -or [string]$secondEvent.data.previousScene -ne '2') { Fail-Task15 'Program switch event was incorrect.' }
-
     $clear = Send-Task15Request @{ op = 'request'; id = 'p-clear'; method = 'program.setScene'; params = @{ scene = $null }; ifRevision = 4 }
     Assert-Ok $clear 5 'program.setScene clear'
     $clearEvent = Read-Task15Event 'program.sceneChanged' 5
@@ -138,28 +136,41 @@ try {
     $afterClear = Send-Task15Request @{ op = 'request'; id = 'p-after-clear'; method = 'program.getScene' }
     Assert-Ok $afterClear 5 'program.getScene after clear'
     if ($null -ne $afterClear.data.scene) { Fail-Task15 'Program clear did not persist.' }
-
     $stale = Send-Task15Request @{ op = 'request'; id = 'p-stale'; method = 'program.setScene'; params = @{ scene = '2' }; ifRevision = 4 }
     Assert-Error $stale 'revision_conflict' 5 'stale program.setScene'
+}
 
+function Invoke-Task15LegacyAndRemoval {
     $legacy = Send-Task15Legacy @{ id = 9001; cmd = 'program.set'; scene = 2 }
     if (-not $legacy.ok) { Fail-Task15 'legacy program.set did not succeed.' }
     $legacyRead = Send-Task15Request @{ op = 'request'; id = 'p-legacy-read'; method = 'program.getScene' }
     Assert-Ok $legacyRead 5 'program.getScene after legacy route'
     if ([string]$legacyRead.data.scene -ne '2') { Fail-Task15 'v2 Program did not observe legacy program.set routing.' }
-
     $removeCurrent = Send-Task15Request @{ op = 'request'; id = 'p-remove-current'; method = 'scene.remove'; params = @{ scene = '2' }; ifRevision = 5 }
     Assert-Ok $removeCurrent 6 'remove current Program Scene'
     $removeProgramEvent = Read-Task15Event 'program.sceneChanged' 6
     if ($null -ne $removeProgramEvent.data.scene -or [string]$removeProgramEvent.data.previousScene -ne '2') { Fail-Task15 'Program cleanup event on Scene removal was incorrect.' }
     Read-Task15Event 'scene.removed' 6 | Out-Null
     Assert-Error (Send-Task15Request @{ op = 'request'; id = 'p-removed'; method = 'program.setScene'; params = @{ scene = '2' }; ifRevision = 6 }) 'not_found' 6 'removed Program Scene'
+}
 
+function Invoke-Task15Cleanup {
     $close = Send-Task15Request @{ op = 'request'; id = 'p-close'; method = 'session.close'; ifRevision = 6 }
     Assert-Ok $close 7 'session.close'
     $script:Process.WaitForExit(30000) | Out-Null
     Stop-Task15Engine
     Write-Output 'Task 15 program integration: PASS'
+}
+
+function Invoke-Task15Scenario {
+    Invoke-Task15Bootstrap
+    Invoke-Task15ProgramRouting
+    Invoke-Task15LegacyAndRemoval
+    Invoke-Task15Cleanup
+}
+
+try {
+    Invoke-Task15Scenario
 } catch {
     if ($null -ne $script:Process -and -not $script:Process.HasExited) { $script:Process.Kill(); $script:Process.WaitForExit() }
     if ($null -ne $script:LastMessage) { Write-Error ("last protocol message: " + ($script:LastMessage | ConvertTo-Json -Compress -Depth 50)) }

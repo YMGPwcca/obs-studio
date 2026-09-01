@@ -223,15 +223,15 @@ function Initialize-Task10Sources([object] $ColorKind) {
     }
     $state.Peer = Create-Source 'task10.create-peer' 'task10_media_source' 'task10-peer' @{ label = 'B' } $state.Revision
     $state.Revision = $state.Peer.Revision
-    if ($state.Peer.Handle -ne '1') {
-        Fail "fresh deterministic peer source expected handle 1, got $($state.Peer.Handle)."
+    if ($state.Peer.Handle -ne '2') {
+        Fail "fresh deterministic peer source expected handle 2, got $($state.Peer.Handle)."
     }
     $state.Source = Create-Source 'task10.create-source' 'task10_media_source' 'task10-source' @{
         label = 'A'; scenario = 'peer'; peerLabel = 'B'
     } $state.Revision
     $state.Revision = $state.Source.Revision
-    if ($state.Source.Handle -ne '2') {
-        Fail "fresh deterministic media source expected handle 2, got $($state.Source.Handle)."
+    if ($state.Source.Handle -ne '3') {
+        Fail "fresh deterministic media source expected handle 3, got $($state.Source.Handle)."
     }
 
     $state.Prequeue = Create-Source 'task10.create-prequeue' 'task10_media_source' 'task10-prequeue' @{

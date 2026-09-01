@@ -142,60 +142,63 @@ function Read-Task12Event([string] $Name, [int64] $Revision) {
     return $event
 }
 
-try {
+function Invoke-Task12Bootstrap {
     Start-Task12Engine $InstallRoot
     $ready = Read-Task12Message
-    if ($ready.event -ne 'ready') {
-        Fail-Task12 'engine did not emit its ready marker.'
-    }
-
+    if ($ready.event -ne 'ready') { Fail-Task12 'engine did not emit its ready marker.' }
     $hello = Send-Task12Request @{ op = 'request'; id = 't12-hello'; method = 'session.hello' }
     Assert-Task12Ok $hello 0 'session.hello'
     $subscribe = Send-Task12Request @{ op = 'request'; id = 't12-sub'; method = 'session.subscribe'; params = @{ subscriptions = @(@{ pattern = 'scene.*' }, @{ pattern = 'item.*' }) } }
     Assert-Task12Ok $subscribe 0 'session.subscribe'
-
     $empty = Send-Task12Request @{ op = 'request'; id = 't12-list-empty'; method = 'scene.list' }
     Assert-Task12Ok $empty 0 'empty scene.list'
     if ([int]$empty.data.count -ne 0) { Fail-Task12 'initial scene list was not empty.' }
+}
 
+function Invoke-Task12SceneLifecycle {
     $created = Send-Task12Request @{ op = 'request'; id = 't12-create'; method = 'scene.create' }
     Assert-Task12Ok $created 1 'scene.create'
     if ([string]$created.data.scene -ne '2' -or [string]$created.data.canvas -ne '1') { Fail-Task12 'scene.create did not use Main Canvas handle 1 / Scene handle 2.' }
     Read-Task12Event 'scene.created' 1 | Out-Null
-
     $got = Send-Task12Request @{ op = 'request'; id = 't12-get'; method = 'scene.get'; params = @{ scene = '2' } }
     Assert-Task12Ok $got 1 'scene.get'
     if ([string]$got.data.canvas -ne '1') { Fail-Task12 'scene.get returned the wrong Canvas.' }
-
     $renamed = Send-Task12Request @{ op = 'request'; id = 't12-rename'; method = 'scene.rename'; params = @{ scene = '2'; name = 'Task12 Scene' }; ifRevision = 1 }
     Assert-Task12Ok $renamed 2 'scene.rename'
     Read-Task12Event 'scene.renamed' 2 | Out-Null
-
     $duplicate = Send-Task12Request @{ op = 'request'; id = 't12-duplicate'; method = 'scene.duplicate'; params = @{ scene = '2'; mode = 'references' }; ifRevision = 2 }
     Assert-Task12Ok $duplicate 3 'scene.duplicate'
     if ([string]$duplicate.data.scene -ne '3' -or [string]$duplicate.data.canvas -ne '1') { Fail-Task12 'scene.duplicate returned unexpected identity.' }
     Read-Task12Event 'scene.created' 3 | Out-Null
-
     $stale = Send-Task12Request @{ op = 'request'; id = 't12-stale'; method = 'scene.rename'; params = @{ scene = '2'; name = 'stale' }; ifRevision = 1 }
     Assert-Task12Error $stale 'revision_conflict' 3 'stale scene.rename'
+}
 
+function Invoke-Task12Cleanup {
     $removedCopy = Send-Task12Request @{ op = 'request'; id = 't12-remove-copy'; method = 'scene.remove'; params = @{ scene = '3' }; ifRevision = 3 }
     Assert-Task12Ok $removedCopy 4 'scene.remove copy'
     Read-Task12Event 'scene.removed' 4 | Out-Null
-
     $removed = Send-Task12Request @{ op = 'request'; id = 't12-remove'; method = 'scene.remove'; params = @{ scene = '2' }; ifRevision = 4 }
     Assert-Task12Ok $removed 5 'scene.remove'
     Read-Task12Event 'scene.removed' 5 | Out-Null
-
     $finalList = Send-Task12Request @{ op = 'request'; id = 't12-list-final'; method = 'scene.list' }
     Assert-Task12Ok $finalList 5 'final scene.list'
     if ([int]$finalList.data.count -ne 0) { Fail-Task12 'final scene list was not empty.' }
-
     $close = Send-Task12Request @{ op = 'request'; id = 't12-close'; method = 'session.close'; ifRevision = 5 }
     Assert-Task12Ok $close 6 'session.close'
     $script:EngineProcess.WaitForExit(30000) | Out-Null
     Stop-Task12Engine
     Write-Output 'Task 12 scene integration: PASS'
+}
+
+function Invoke-Task12Scenario {
+    Invoke-Task12Bootstrap
+    Invoke-Task12SceneLifecycle
+    Invoke-Task12Cleanup
+}
+
+try {
+    Invoke-Task12Scenario
 } catch {
     if ($null -ne $script:EngineProcess -and -not $script:EngineProcess.HasExited) {
         $script:EngineProcess.Kill()

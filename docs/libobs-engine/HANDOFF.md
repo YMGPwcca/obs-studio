@@ -3,7 +3,7 @@
 **Handoff date:** 2026-08-31
 **Repository:** `YMGPwcca/obs-studio`  
 **Production branch:** `engine-protocol-v2`
-**Candidate branch:** `phase1-workflow-exec-hardening`
+**Candidate branch:** `phase2-scene-render-graph`
 **Current script-body hardening branch:** `phase1-scriptbody-hardening`
 **Current workflow executable hardening branch:** `phase1-workflow-exec-hardening`
 **Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168` (`fix(engine): correlate media actions by source ticket`)
@@ -12,17 +12,18 @@
 **Task-11 acceptance record:** `TASK11_ACCEPTANCE.md`
 **Accepted Phase-1 complexity hardening:** `1b2ddacbb36c39bb61fd645594f0746f106956bf`
 **Phase-1 acceptance record:** `PHASE1_COMPLEXITY_ACCEPTANCE.md`
-**Next roadmap task:** Task 12 — planned, not authorized
+**Next roadmap task:** Task 21 — outside this Phase-2 branch and not authorized
 **Task 10 implementation status:** COMPLETE / ACCEPTED
 **Task 11 implementation status:** COMPLETE / ACCEPTED
 **Phase-1 complexity hardening status:** COMPLETE / ACCEPTED
 **Phase-1 script-body hardening status:** IN REVIEW
 **Phase-1 workflow executable hardening status:** IN REVIEW
+**Phase-2 Tasks 12-20 status:** IN REVIEW
 
-The workflow executable hardening cleanup is tooling-only and remains in review
-on `phase1-workflow-exec-hardening`; see
-`PHASE1_WORKFLOW_EXEC_HARDENING.md`. It extracts substantial GitHub Actions
-`run:` logic and does not change runtime code or authorize Task 12.
+The workflow executable hardening cleanup was the tooling-only pre-Phase-2
+checkpoint. The current candidate is the explicitly authorized Phase-2 branch;
+see `PHASE2_ARCHITECTURE.md` and `PHASE2_ACCEPTANCE_MATRIX.md` for its scope
+and evidence state.
 
 This file exists so a local AI coding agent can continue the project without access to the previous ChatGPT conversation. It records project decisions, accepted behavior, verification evidence, known traps, and the required working process. **Verify everything against the checked-out source before changing it.**
 
@@ -216,6 +217,24 @@ stable state strings, deterministic timeout/orphan/overflow resync, and a
 CI-only fixture. The concrete wire contract is `engine/MEDIA_V1.md`.
 
 ---
+
+## 4.1 Phase-2 candidate — Tasks 12–20
+
+The explicit Phase-2 goal is implemented on `phase2-scene-render-graph` in
+the dependency order `12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 19 -> 18 -> 20`.
+The candidate includes complete Scene/Item/Canvas/Program/Preview semantics,
+dynamic Transition and Studio orchestration, and tagged PreviewOutput routing
+for Program, Preview, Scene, Source, and Canvas. The D3D11 transport uses the
+engine-owned legacy DXGI shared resource plus keyed-mutex synchronization and
+advertises its capability only when the live backend supports it.
+
+The Phase-2 architecture and namespace contracts are recorded in
+`PHASE2_ARCHITECTURE.md` and the `engine/*_V1.md` documents. Deterministic
+Task 12–20 scripts, the D3D11 consumer fixture, and the exact-SHA hosted
+workflow are present. Local Tasks 1–11 and 12–20 lanes are green on the
+Windows D3D11 host; package audit and final physical evidence remain part of
+the review record. Phase 2 is `IN REVIEW`, not accepted, and Task 21+ is out
+of scope.
 
 ## 5. Important source files today
 
@@ -597,8 +616,9 @@ The advisor WIP is preserved locally and remotely on
 implementation remains on `wip/task11-unauthorized`. Neither WIP branch is
 accepted or merged. Preserve the media bridge's separate bounded queue,
 exact-ticket settlement rules, the internal `media_time` signal contract, and
-the no-WebSocket/no-browser default allowlist. Task 12 remains planned and
-unauthorized; do not begin it without explicit approval.
+the no-WebSocket/no-browser default allowlist. The current Phase-2 candidate
+is explicitly authorized through Task 20 and remains in review; do not begin
+Task 21 or later on this branch.
 
 ---
 
@@ -626,7 +646,7 @@ This handoff is successful if a local agent can, using only the repository:
 
 1. explain the process/license/state boundary;
 2. explain revision/event semantics;
-3. identify Tasks 1–11 as accepted and Task 12 as planned/not authorized;
+3. identify Tasks 1–11 as accepted and Phase-2 Tasks 12–20 as in review;
 4. explain the Task-8 deferred update bug and why the current settlement exists;
 5. explain Task-9 transient interaction semantics and physical acceptance;
 6. explain Task-10 media action settlement, media-time limitations, and resync behavior;

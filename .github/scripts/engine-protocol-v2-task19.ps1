@@ -88,88 +88,83 @@ function Read-Task19Event([string] $Name, [int64] $Revision) {
     return $event
 }
 
-try {
+function Invoke-Task19Bootstrap {
     Start-Task19Engine $InstallRoot
     $ready = Read-Task19Message
     if ($ready.event -ne 'ready') { Fail-Task19 'ready marker was not received.' }
     Assert-Ok (Send-Task19Request @{ op = 'request'; id = 'tr-hello'; method = 'session.hello' }) 0 'hello'
     Assert-Ok (Send-Task19Request @{ op = 'request'; id = 'tr-sub'; method = 'session.subscribe'; params = @{ subscriptions = @(@{ pattern = 'transition.*' }) } }) 0 'subscribe'
-
     $kinds = Send-Task19Request @{ op = 'request'; id = 'tr-kind-list'; method = 'transition.kindList' }
     Assert-Ok $kinds 0 'transition.kindList'
     if ([int]$kinds.data.count -le 0) { Fail-Task19 'no dynamic transition kinds were available.' }
     $kindEntry = @($kinds.data.kinds | Where-Object { $_.kind -eq 'fade_to_color_transition' }) | Select-Object -First 1
     if ($null -eq $kindEntry) { $kindEntry = $kinds.data.kinds[0] }
-    $kind = [string]$kindEntry.kind
-    $defaults = Send-Task19Request @{ op = 'request'; id = 'tr-kind-defaults'; method = 'transition.kindDefaults'; params = @{ kind = $kind } }
-    Assert-Ok $defaults 0 'transition.kindDefaults'
-    $kindProperties = Send-Task19Request @{ op = 'request'; id = 'tr-kind-properties'; method = 'transition.kindProperties'; params = @{ kind = $kind } }
-    if ($kindProperties.status.ok) {
-        Assert-Ok $kindProperties 0 'transition.kindProperties'
-    } elseif ([string]$kind -eq 'fade_to_color_transition') {
-        Fail-Task19 'fade_to_color_transition properties unexpectedly failed.'
-    }
+    $script:T19Kind = [string]$kindEntry.kind
+    $script:T19Defaults = Send-Task19Request @{ op = 'request'; id = 'tr-kind-defaults'; method = 'transition.kindDefaults'; params = @{ kind = $script:T19Kind } }
+    Assert-Ok $script:T19Defaults 0 'transition.kindDefaults'
+    $kindProperties = Send-Task19Request @{ op = 'request'; id = 'tr-kind-properties'; method = 'transition.kindProperties'; params = @{ kind = $script:T19Kind } }
+    if ($kindProperties.status.ok) { Assert-Ok $kindProperties 0 'transition.kindProperties' } elseif ([string]$script:T19Kind -eq 'fade_to_color_transition') { Fail-Task19 'fade_to_color_transition properties unexpectedly failed.' }
+}
 
-    $create = Send-Task19Request @{ op = 'request'; id = 'tr-create'; method = 'transition.create'; params = @{ kind = $kind; name = 'Task19 Transition'; settings = $defaults.data.settings } }
+function Invoke-Task19TransitionSetup {
+    $create = Send-Task19Request @{ op = 'request'; id = 'tr-create'; method = 'transition.create'; params = @{ kind = $script:T19Kind; name = 'Task19 Transition'; settings = $script:T19Defaults.data.settings } }
     Assert-Ok $create 1 'transition.create'
     Read-Task19Event 'transition.created' 1 | Out-Null
-    $transitionHandle = [string]$create.data.transition
-    if ($transitionHandle -ne '2') { Fail-Task19 "unexpected transition handle $transitionHandle." }
-
+    $script:T19TransitionHandle = [string]$create.data.transition
+    if ($script:T19TransitionHandle -ne '2') { Fail-Task19 "unexpected transition handle $($script:T19TransitionHandle)." }
     $list = Send-Task19Request @{ op = 'request'; id = 'tr-list'; method = 'transition.list' }
     Assert-Ok $list 1 'transition.list'
     if ([int]$list.data.count -ne 1) { Fail-Task19 'transition.list did not contain the created object.' }
-    Assert-Ok (Send-Task19Request @{ op = 'request'; id = 'tr-get'; method = 'transition.get'; params = @{ transition = $transitionHandle } }) 1 'transition.get'
-    $state = Send-Task19Request @{ op = 'request'; id = 'tr-state'; method = 'transition.getState'; params = @{ transition = $transitionHandle } }
+    Assert-Ok (Send-Task19Request @{ op = 'request'; id = 'tr-get'; method = 'transition.get'; params = @{ transition = $script:T19TransitionHandle } }) 1 'transition.get'
+    $state = Send-Task19Request @{ op = 'request'; id = 'tr-state'; method = 'transition.getState'; params = @{ transition = $script:T19TransitionHandle } }
     Assert-Ok $state 1 'transition.getState'
     if ([string]$state.data.state -ne 'idle' -or $state.data.active) { Fail-Task19 'new transition was not idle.' }
-    Assert-Ok (Send-Task19Request @{ op = 'request'; id = 'tr-settings'; method = 'transition.getSettings'; params = @{ transition = $transitionHandle } }) 1 'transition.getSettings'
-    Assert-Ok (Send-Task19Request @{ op = 'request'; id = 'tr-properties'; method = 'transition.getProperties'; params = @{ transition = $transitionHandle } }) 1 'transition.getProperties'
+    Assert-Ok (Send-Task19Request @{ op = 'request'; id = 'tr-settings'; method = 'transition.getSettings'; params = @{ transition = $script:T19TransitionHandle } }) 1 'transition.getSettings'
+    Assert-Ok (Send-Task19Request @{ op = 'request'; id = 'tr-properties'; method = 'transition.getProperties'; params = @{ transition = $script:T19TransitionHandle } }) 1 'transition.getProperties'
+}
 
-    $rename = Send-Task19Request @{ op = 'request'; id = 'tr-rename'; method = 'transition.rename'; params = @{ transition = $transitionHandle; name = 'Task19 Renamed' }; ifRevision = 1 }
+function Invoke-Task19TransitionMutations {
+    $rename = Send-Task19Request @{ op = 'request'; id = 'tr-rename'; method = 'transition.rename'; params = @{ transition = $script:T19TransitionHandle; name = 'Task19 Renamed' }; ifRevision = 1 }
     Assert-Ok $rename 2 'transition.rename'
     Read-Task19Event 'transition.renamed' 2 | Out-Null
-    $revision = [int64]2
-
-    $patchSettings = if ($kind -eq 'fade_to_color_transition') { @{ switch_point = 75 } } else { @{} }
-    $patch = Send-Task19Request @{ op = 'request'; id = 'tr-patch'; method = 'transition.patchSettings'; params = @{ transition = $transitionHandle; settings = $patchSettings }; ifRevision = $revision }
-    if ($kind -eq 'fade_to_color_transition') {
-        Assert-Ok $patch ($revision + 1) 'transition.patchSettings'
-        $revision++
-        Read-Task19Event 'transition.settingsChanged' $revision | Out-Null
-    } else {
-        Assert-Ok $patch $revision 'transition.patchSettings no-op'
-    }
-
-    $setDuration = Send-Task19Request @{ op = 'request'; id = 'tr-duration'; method = 'transition.setDuration'; params = @{ transition = $transitionHandle; durationMs = 750 }; ifRevision = $revision }
-    Assert-Ok $setDuration ($revision + 1) 'transition.setDuration'
-    $revision++
-    Read-Task19Event 'transition.durationChanged' $revision | Out-Null
-    $duration = Send-Task19Request @{ op = 'request'; id = 'tr-get-duration'; method = 'transition.getDuration'; params = @{ transition = $transitionHandle } }
-    Assert-Ok $duration $revision 'transition.getDuration'
+    $script:T19Revision = [int64]2
+    $patchSettings = if ($script:T19Kind -eq 'fade_to_color_transition') { @{ switch_point = 75 } } else { @{} }
+    $patch = Send-Task19Request @{ op = 'request'; id = 'tr-patch'; method = 'transition.patchSettings'; params = @{ transition = $script:T19TransitionHandle; settings = $patchSettings }; ifRevision = $script:T19Revision }
+    if ($script:T19Kind -eq 'fade_to_color_transition') { Assert-Ok $patch ($script:T19Revision + 1) 'transition.patchSettings'; $script:T19Revision++; Read-Task19Event 'transition.settingsChanged' $script:T19Revision | Out-Null } else { Assert-Ok $patch $script:T19Revision 'transition.patchSettings no-op' }
+    $setDuration = Send-Task19Request @{ op = 'request'; id = 'tr-duration'; method = 'transition.setDuration'; params = @{ transition = $script:T19TransitionHandle; durationMs = 750 }; ifRevision = $script:T19Revision }
+    Assert-Ok $setDuration ($script:T19Revision + 1) 'transition.setDuration'
+    $script:T19Revision++
+    Read-Task19Event 'transition.durationChanged' $script:T19Revision | Out-Null
+    $duration = Send-Task19Request @{ op = 'request'; id = 'tr-get-duration'; method = 'transition.getDuration'; params = @{ transition = $script:T19TransitionHandle } }
+    Assert-Ok $duration $script:T19Revision 'transition.getDuration'
     if ([int]$duration.data.durationMs -ne 750) { Fail-Task19 'transition duration readback was incorrect.' }
+    $replace = Send-Task19Request @{ op = 'request'; id = 'tr-replace'; method = 'transition.replaceSettings'; params = @{ transition = $script:T19TransitionHandle; settings = $script:T19Defaults.data.settings }; ifRevision = $script:T19Revision }
+    if ($script:T19Kind -eq 'fade_to_color_transition') { Assert-Ok $replace ($script:T19Revision + 1) 'transition.replaceSettings'; $script:T19Revision++; Read-Task19Event 'transition.settingsChanged' $script:T19Revision | Out-Null } else { Assert-Ok $replace $script:T19Revision 'transition.replaceSettings no-op' }
+}
 
-    $replace = Send-Task19Request @{ op = 'request'; id = 'tr-replace'; method = 'transition.replaceSettings'; params = @{ transition = $transitionHandle; settings = $defaults.data.settings }; ifRevision = $revision }
-    if ($kind -eq 'fade_to_color_transition') {
-        Assert-Ok $replace ($revision + 1) 'transition.replaceSettings'
-        $revision++
-        Read-Task19Event 'transition.settingsChanged' $revision | Out-Null
-    } else {
-        Assert-Ok $replace $revision 'transition.replaceSettings no-op'
-    }
-
-    Assert-Error (Send-Task19Request @{ op = 'request'; id = 'tr-invalid-kind'; method = 'transition.create'; params = @{ kind = 'not_a_transition_kind' }; ifRevision = $revision }) 'not_found' $revision 'invalid transition kind'
-    $remove = Send-Task19Request @{ op = 'request'; id = 'tr-remove'; method = 'transition.remove'; params = @{ transition = $transitionHandle }; ifRevision = $revision }
-    Assert-Ok $remove ($revision + 1) 'transition.remove'
-    $revision++
-    Read-Task19Event 'transition.removed' $revision | Out-Null
-    Assert-Error (Send-Task19Request @{ op = 'request'; id = 'tr-stale'; method = 'transition.get'; params = @{ transition = $transitionHandle } }) 'not_found' $revision 'stale transition handle'
-
-    $close = Send-Task19Request @{ op = 'request'; id = 'tr-close'; method = 'session.close'; ifRevision = $revision }
-    Assert-Ok $close ($revision + 1) 'session.close'
+function Invoke-Task19Cleanup {
+    Assert-Error (Send-Task19Request @{ op = 'request'; id = 'tr-invalid-kind'; method = 'transition.create'; params = @{ kind = 'not_a_transition_kind' }; ifRevision = $script:T19Revision }) 'not_found' $script:T19Revision 'invalid transition kind'
+    $remove = Send-Task19Request @{ op = 'request'; id = 'tr-remove'; method = 'transition.remove'; params = @{ transition = $script:T19TransitionHandle }; ifRevision = $script:T19Revision }
+    Assert-Ok $remove ($script:T19Revision + 1) 'transition.remove'
+    $script:T19Revision++
+    Read-Task19Event 'transition.removed' $script:T19Revision | Out-Null
+    Assert-Error (Send-Task19Request @{ op = 'request'; id = 'tr-stale'; method = 'transition.get'; params = @{ transition = $script:T19TransitionHandle } }) 'not_found' $script:T19Revision 'stale transition handle'
+    $close = Send-Task19Request @{ op = 'request'; id = 'tr-close'; method = 'session.close'; ifRevision = $script:T19Revision }
+    Assert-Ok $close ($script:T19Revision + 1) 'session.close'
     $script:Process.WaitForExit(30000) | Out-Null
     Stop-Task19Engine
     Write-Output 'Task 19 transition integration: PASS'
+}
+
+function Invoke-Task19Scenario {
+    Invoke-Task19Bootstrap
+    Invoke-Task19TransitionSetup
+    Invoke-Task19TransitionMutations
+    Invoke-Task19Cleanup
+}
+
+try {
+    Invoke-Task19Scenario
 } catch {
     if ($null -ne $script:Process -and -not $script:Process.HasExited) { $script:Process.Kill(); $script:Process.WaitForExit() }
     if ($null -ne $script:ErrorTask) { Write-Host ("engine stderr: " + $script:ErrorTask.GetAwaiter().GetResult()) }

@@ -88,13 +88,12 @@ function Read-Task16Event([string] $Name, [int64] $Revision) {
     return $event
 }
 
-try {
+function Invoke-Task16Bootstrap {
     Start-Task16Engine $InstallRoot
     $ready = Read-Task16Message
     if ($ready.event -ne 'ready') { Fail-Task16 'ready marker was not received.' }
     Assert-Ok (Send-Task16Request @{ op = 'request'; id = 'v-hello'; method = 'session.hello' }) 0 'hello'
     Assert-Ok (Send-Task16Request @{ op = 'request'; id = 'v-sub'; method = 'session.subscribe'; params = @{ subscriptions = @(@{ pattern = 'program.*' }, @{ pattern = 'preview.*' }, @{ pattern = 'scene.*' }) } }) 0 'subscribe'
-
     $programInitial = Send-Task16Request @{ op = 'request'; id = 'v-program-initial'; method = 'program.getScene' }
     Assert-Ok $programInitial 0 'initial Program'
     if ($null -ne $programInitial.data.scene) { Fail-Task16 'initial Program was not null.' }
@@ -104,14 +103,15 @@ try {
     $infoInitial = Send-Task16Request @{ op = 'request'; id = 'v-preview-info'; method = 'preview.getInfo' }
     Assert-Ok $infoInitial 0 'initial Preview info'
     if ([int]$infoInitial.data.renderWidth -le 0 -or [int]$infoInitial.data.renderHeight -le 0) { Fail-Task16 'Preview info did not report Main Canvas dimensions.' }
+}
 
+function Invoke-Task16RouteSetup {
     $first = Send-Task16Request @{ op = 'request'; id = 'v-first'; method = 'scene.create'; params = @{ name = 'Preview A' } }
     Assert-Ok $first 1 'first scene.create'
     Read-Task16Event 'scene.created' 1 | Out-Null
     $second = Send-Task16Request @{ op = 'request'; id = 'v-second'; method = 'scene.create'; params = @{ name = 'Preview B' }; ifRevision = 1 }
     Assert-Ok $second 2 'second scene.create'
     Read-Task16Event 'scene.created' 2 | Out-Null
-
     $programA = Send-Task16Request @{ op = 'request'; id = 'v-program-a'; method = 'program.setScene'; params = @{ scene = '2' }; ifRevision = 2 }
     Assert-Ok $programA 3 'Program A'
     Read-Task16Event 'program.sceneChanged' 3 | Out-Null
@@ -122,24 +122,27 @@ try {
     Assert-Ok $infoB 4 'Preview B info'
     if ([string]$infoB.data.scene -ne '3' -or [string]$infoB.data.canvas -ne '1' -or -not $infoB.data.hasScene) { Fail-Task16 'Preview B metadata was incorrect.' }
     if ([int]$infoB.data.renderWidth -le 0 -or [int]$infoB.data.renderHeight -le 0) { Fail-Task16 'Preview B dimensions were not reported.' }
+}
 
+function Invoke-Task16IndependenceChecks {
     $clearPreview = Send-Task16Request @{ op = 'request'; id = 'v-preview-clear'; method = 'preview.setScene'; params = @{ scene = $null }; ifRevision = 4 }
     Assert-Ok $clearPreview 5 'clear Preview'
     Read-Task16Event 'preview.sceneChanged' 5 | Out-Null
     $programStillA = Send-Task16Request @{ op = 'request'; id = 'v-program-still-a'; method = 'program.getScene' }
     Assert-Ok $programStillA 5 'Program after Preview clear'
     if ([string]$programStillA.data.scene -ne '2') { Fail-Task16 'clearing Preview changed Program.' }
-
     $programB = Send-Task16Request @{ op = 'request'; id = 'v-program-b'; method = 'program.setScene'; params = @{ scene = '3' }; ifRevision = 5 }
     Assert-Ok $programB 6 'Program B'
     Read-Task16Event 'program.sceneChanged' 6 | Out-Null
     $previewStillClear = Send-Task16Request @{ op = 'request'; id = 'v-preview-still-clear'; method = 'preview.getScene' }
     Assert-Ok $previewStillClear 6 'Preview after Program switch'
     if ($null -ne $previewStillClear.data.scene) { Fail-Task16 'changing Program changed Preview.' }
-
     $previewA = Send-Task16Request @{ op = 'request'; id = 'v-preview-a'; method = 'preview.setScene'; params = @{ scene = '2' }; ifRevision = 6 }
     Assert-Ok $previewA 7 'Preview A'
     Read-Task16Event 'preview.sceneChanged' 7 | Out-Null
+}
+
+function Invoke-Task16CleanupChecks {
     $removePreviewScene = Send-Task16Request @{ op = 'request'; id = 'v-remove-preview'; method = 'scene.remove'; params = @{ scene = '2' }; ifRevision = 7 }
     Assert-Ok $removePreviewScene 8 'remove Preview Scene'
     $previewCleanup = Read-Task16Event 'preview.sceneChanged' 8
@@ -148,19 +151,28 @@ try {
     $programStillB = Send-Task16Request @{ op = 'request'; id = 'v-program-still-b'; method = 'program.getScene' }
     Assert-Ok $programStillB 8 'Program after Preview Scene removal'
     if ([string]$programStillB.data.scene -ne '3') { Fail-Task16 'removing Preview Scene changed Program.' }
-
     $removeProgramScene = Send-Task16Request @{ op = 'request'; id = 'v-remove-program'; method = 'scene.remove'; params = @{ scene = '3' }; ifRevision = 8 }
     Assert-Ok $removeProgramScene 9 'remove Program Scene'
     $programCleanup = Read-Task16Event 'program.sceneChanged' 9
     if ($null -ne $programCleanup.data.scene -or [string]$programCleanup.data.previousScene -ne '3') { Fail-Task16 'Program cleanup event was incorrect.' }
     Read-Task16Event 'scene.removed' 9 | Out-Null
     Assert-Error (Send-Task16Request @{ op = 'request'; id = 'v-preview-stale'; method = 'preview.setScene'; params = @{ scene = '2' }; ifRevision = 9 }) 'not_found' 9 'stale Preview Scene'
-
     $close = Send-Task16Request @{ op = 'request'; id = 'v-close'; method = 'session.close'; ifRevision = 9 }
     Assert-Ok $close 10 'session.close'
     $script:Process.WaitForExit(30000) | Out-Null
     Stop-Task16Engine
     Write-Output 'Task 16 preview integration: PASS'
+}
+
+function Invoke-Task16Scenario {
+    Invoke-Task16Bootstrap
+    Invoke-Task16RouteSetup
+    Invoke-Task16IndependenceChecks
+    Invoke-Task16CleanupChecks
+}
+
+try {
+    Invoke-Task16Scenario
 } catch {
     if ($null -ne $script:Process -and -not $script:Process.HasExited) { $script:Process.Kill(); $script:Process.WaitForExit() }
     if ($null -ne $script:LastMessage) { Write-Error ("last protocol message: " + ($script:LastMessage | ConvertTo-Json -Compress -Depth 50)) }

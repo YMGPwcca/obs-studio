@@ -152,135 +152,148 @@ function Assert-ColorEvidence($Evidence, [bool] $ExpectChanged, [bool] $ExpectBl
     }
 }
 
-try {
+function Invoke-Task17Bootstrap {
     Start-Task17Engine $InstallRoot
     $ready = Read-Task17Message
     if ($ready.event -ne 'ready') { Fail-Task17 'ready marker was not received.' }
-    $hello = Send-Task17Request @{ op = 'request'; id = 't17-hello'; method = 'session.hello' }
-    Assert-Ok $hello 0 'hello'
-    $transportCapability = @($hello.data.capabilities | Where-Object { $_.name -eq 'preview.d3d11SharedTexture.v1' }) | Select-Object -First 1
+    $script:T17Hello = Send-Task17Request @{ op = 'request'; id = 't17-hello'; method = 'session.hello' }
+    Assert-Ok $script:T17Hello 0 'hello'
+    $transportCapability = @($script:T17Hello.data.capabilities | Where-Object { $_.name -eq 'preview.d3d11SharedTexture.v1' }) | Select-Object -First 1
     if ($null -eq $transportCapability) { Fail-Task17 'D3D11 shared-texture capability was not advertised on the physical D3D11 host.' }
     Assert-Ok (Send-Task17Request @{ op = 'request'; id = 't17-sub'; method = 'session.subscribe'; params = @{ subscriptions = @(@{ pattern = 'scene.*' }, @{ pattern = 'item.*' }, @{ pattern = 'program.*' }, @{ pattern = 'preview.*' }, @{ pattern = 'previewOutput.*' }) } }) 0 'subscribe'
+}
 
-    $redScene = Send-Task17Request @{ op = 'request'; id = 't17-red-scene'; method = 'scene.create'; params = @{ name = 'Task17 Red' } }
-    Assert-Ok $redScene 1 'red scene.create'
+function Invoke-Task17ColorSetup {
+    $script:T17RedScene = Send-Task17Request @{ op = 'request'; id = 't17-red-scene'; method = 'scene.create'; params = @{ name = 'Task17 Red' } }
+    Assert-Ok $script:T17RedScene 1 'red scene.create'
     Read-Task17Event 'scene.created' 1 | Out-Null
     $redSource = Send-Task17Request @{ op = 'request'; id = 't17-red-source'; method = 'source.create'; params = @{ kind = 'color_source_v3'; name = 'Task17 Red Source'; settings = @{ width = 1920; height = 1080; color = 4278190335 } } }
     Assert-Ok $redSource 2 'red source.create'
-    $redItem = Send-Task17Request @{ op = 'request'; id = 't17-red-item'; method = 'item.create'; params = @{ scene = [string]$redScene.data.scene; source = [string]$redSource.data.source }; ifRevision = 2 }
+    $redItem = Send-Task17Request @{ op = 'request'; id = 't17-red-item'; method = 'item.create'; params = @{ scene = [string]$script:T17RedScene.data.scene; source = [string]$redSource.data.source }; ifRevision = 2 }
     Assert-Ok $redItem 3 'red item.create'
     Read-Task17Event 'item.created' 3 | Out-Null
-
-    $blueScene = Send-Task17Request @{ op = 'request'; id = 't17-blue-scene'; method = 'scene.create'; params = @{ name = 'Task17 Blue' }; ifRevision = 3 }
-    Assert-Ok $blueScene 4 'blue scene.create'
+    $script:T17BlueScene = Send-Task17Request @{ op = 'request'; id = 't17-blue-scene'; method = 'scene.create'; params = @{ name = 'Task17 Blue' }; ifRevision = 3 }
+    Assert-Ok $script:T17BlueScene 4 'blue scene.create'
     Read-Task17Event 'scene.created' 4 | Out-Null
     $blueSource = Send-Task17Request @{ op = 'request'; id = 't17-blue-source'; method = 'source.create'; params = @{ kind = 'color_source_v3'; name = 'Task17 Blue Source'; settings = @{ width = 1920; height = 1080; color = 4294901760 } } }
     Assert-Ok $blueSource 5 'blue source.create'
-    $blueItem = Send-Task17Request @{ op = 'request'; id = 't17-blue-item'; method = 'item.create'; params = @{ scene = [string]$blueScene.data.scene; source = [string]$blueSource.data.source }; ifRevision = 5 }
+    $blueItem = Send-Task17Request @{ op = 'request'; id = 't17-blue-item'; method = 'item.create'; params = @{ scene = [string]$script:T17BlueScene.data.scene; source = [string]$blueSource.data.source }; ifRevision = 5 }
     Assert-Ok $blueItem 6 'blue item.create'
     Read-Task17Event 'item.created' 6 | Out-Null
-
-    $programRed = Send-Task17Request @{ op = 'request'; id = 't17-program-red'; method = 'program.setScene'; params = @{ scene = [string]$redScene.data.scene }; ifRevision = 6 }
+    $programRed = Send-Task17Request @{ op = 'request'; id = 't17-program-red'; method = 'program.setScene'; params = @{ scene = [string]$script:T17RedScene.data.scene }; ifRevision = 6 }
     Assert-Ok $programRed 7 'program red'
     Read-Task17Event 'program.sceneChanged' 7 | Out-Null
     $programSettled = Send-Task17Request @{ op = 'request'; id = 't17-program-settled'; method = 'program.getScene' }
     if (-not $programSettled.status.ok -or [int64]$programSettled.revision -lt [int64]$programRed.revision) { Fail-Task17 'program state query regressed the revision after the red route.' }
-    if ([string]$programSettled.data.scene -ne [string]$redScene.data.scene) { Fail-Task17 'Program route did not settle on the red Scene.' }
-    $revision = [int64]$programSettled.revision
-    $previewBlue = Send-Task17GuardedRequest 't17-preview-blue' 'preview.setScene' @{ scene = [string]$blueScene.data.scene } $revision
-    $previewBlueRevision = [int64]$previewBlue.GuardRevision + 1
-    Assert-Ok $previewBlue $previewBlueRevision 'preview blue'
-    Read-Task17Event 'preview.sceneChanged' $previewBlueRevision | Out-Null
-    $revision = $previewBlueRevision
+    if ([string]$programSettled.data.scene -ne [string]$script:T17RedScene.data.scene) { Fail-Task17 'Program route did not settle on the red Scene.' }
+    $script:T17Revision = [int64]$programSettled.revision
+    $previewBlue = Send-Task17GuardedRequest 't17-preview-blue' 'preview.setScene' @{ scene = [string]$script:T17BlueScene.data.scene } $script:T17Revision
+    $script:T17Revision = [int64]$previewBlue.GuardRevision + 1
+    Assert-Ok $previewBlue $script:T17Revision 'preview blue'
+    Read-Task17Event 'preview.sceneChanged' $script:T17Revision | Out-Null
+}
 
-    $programOutput = Send-Task17GuardedRequest 't17-output-program' 'previewOutput.create' @{ target = @{ type = 'program' }; width = 320; height = 180; enabled = $true } $revision
+function Invoke-Task17OutputSetup {
+    $programOutput = Send-Task17GuardedRequest 't17-output-program' 'previewOutput.create' @{ target = @{ type = 'program' }; width = 320; height = 180; enabled = $true } $script:T17Revision
     $programOutputRevision = [int64]$programOutput.GuardRevision + 1
     Assert-Ok $programOutput $programOutputRevision 'program PreviewOutput create'
     Read-Task17Event 'previewOutput.created' $programOutputRevision | Out-Null
-    $revision = $programOutputRevision
-    $programOutputHandle = [string]$programOutput.data.previewOutput
-    $previewOutput = Send-Task17GuardedRequest 't17-output-preview' 'previewOutput.create' @{ target = @{ type = 'preview' }; width = 320; height = 180; enabled = $false } $revision
-    $previewOutputRevision = [int64]$previewOutput.GuardRevision + 1
-    Assert-Ok $previewOutput $previewOutputRevision 'preview PreviewOutput create'
+    $script:T17Revision = $programOutputRevision
+    $script:T17ProgramOutputHandle = [string]$programOutput.data.previewOutput
+    $script:T17PreviewOutput = Send-Task17GuardedRequest 't17-output-preview' 'previewOutput.create' @{ target = @{ type = 'preview' }; width = 320; height = 180; enabled = $false } $script:T17Revision
+    $previewOutputRevision = [int64]$script:T17PreviewOutput.GuardRevision + 1
+    Assert-Ok $script:T17PreviewOutput $previewOutputRevision 'preview PreviewOutput create'
     Read-Task17Event 'previewOutput.created' $previewOutputRevision | Out-Null
-    $revision = $previewOutputRevision
-
-    $programDescriptor = Send-Task17Request @{ op = 'request'; id = 't17-get-shared'; method = 'previewOutput.getSharedTexture'; params = @{ previewOutput = $programOutputHandle } }
-    if (-not $programDescriptor.status.ok -or [int64]$programDescriptor.revision -lt $revision) { Fail-Task17 'get program shared texture failed or regressed the revision.' }
-    if ([string]$programDescriptor.data.sharedTexture.type -ne 'd3d11LegacySharedHandle' -or [string]$programDescriptor.data.sharedTexture.openApi -ne 'ID3D11Device::OpenSharedResource' -or -not $programDescriptor.data.sharedTexture.controllerMustNotClose) { Fail-Task17 'shared texture descriptor did not preserve the documented legacy handle contract.' }
-    if ([string]$programDescriptor.data.synchronization.type -ne 'keyedMutex' -or [int]$programDescriptor.data.synchronization.consumerAcquireKey -ne 1 -or [int]$programDescriptor.data.synchronization.consumerReleaseKey -ne 0) { Fail-Task17 'keyed mutex synchronization descriptor was incorrect.' }
-    $initialGeneration = [string]$programDescriptor.data.resourceGeneration
-    $revision = [int64]$programDescriptor.revision
-    Start-Task17Consumer $ConsumerPath $programDescriptor.data 90
+    $script:T17Revision = $previewOutputRevision
+    $script:T17ProgramDescriptor = Send-Task17Request @{ op = 'request'; id = 't17-get-shared'; method = 'previewOutput.getSharedTexture'; params = @{ previewOutput = $script:T17ProgramOutputHandle } }
+    if (-not $script:T17ProgramDescriptor.status.ok -or [int64]$script:T17ProgramDescriptor.revision -lt $script:T17Revision) { Fail-Task17 'get program shared texture failed or regressed the revision.' }
+    if ([string]$script:T17ProgramDescriptor.data.sharedTexture.type -ne 'd3d11LegacySharedHandle' -or [string]$script:T17ProgramDescriptor.data.sharedTexture.openApi -ne 'ID3D11Device::OpenSharedResource' -or -not $script:T17ProgramDescriptor.data.sharedTexture.controllerMustNotClose) { Fail-Task17 'shared texture descriptor did not preserve the documented legacy handle contract.' }
+    if ([string]$script:T17ProgramDescriptor.data.synchronization.type -ne 'keyedMutex' -or [int]$script:T17ProgramDescriptor.data.synchronization.consumerAcquireKey -ne 1 -or [int]$script:T17ProgramDescriptor.data.synchronization.consumerReleaseKey -ne 0) { Fail-Task17 'keyed mutex synchronization descriptor was incorrect.' }
+    $script:T17InitialGeneration = [string]$script:T17ProgramDescriptor.data.resourceGeneration
+    $script:T17Revision = [int64]$script:T17ProgramDescriptor.revision
+    Start-Task17Consumer $ConsumerPath $script:T17ProgramDescriptor.data 90
     Start-Sleep -Milliseconds 700
+}
 
+function Invoke-Task17RouteSwitch {
     $programBeforeSwitch = Send-Task17Request @{ op = 'request'; id = 't17-program-before-switch'; method = 'program.getScene' }
-    if (-not $programBeforeSwitch.status.ok -or [int64]$programBeforeSwitch.revision -lt $revision) { Fail-Task17 'program state query regressed the revision before the route switch.' }
-    if ([string]$programBeforeSwitch.data.scene -ne [string]$redScene.data.scene) { Fail-Task17 'Program changed before the explicit route switch.' }
-    $revision = [int64]$programBeforeSwitch.revision
-    $programBlue = Send-Task17GuardedRequest 't17-program-blue' 'program.setScene' @{ scene = [string]$blueScene.data.scene } $revision
+    if (-not $programBeforeSwitch.status.ok -or [int64]$programBeforeSwitch.revision -lt $script:T17Revision) { Fail-Task17 'program state query regressed the revision before the route switch.' }
+    if ([string]$programBeforeSwitch.data.scene -ne [string]$script:T17RedScene.data.scene) { Fail-Task17 'Program changed before the explicit route switch.' }
+    $script:T17Revision = [int64]$programBeforeSwitch.revision
+    $programBlue = Send-Task17GuardedRequest 't17-program-blue' 'program.setScene' @{ scene = [string]$script:T17BlueScene.data.scene } $script:T17Revision
     $programBlueRevision = [int64]$programBlue.GuardRevision + 1
     Assert-Ok $programBlue $programBlueRevision 'program blue'
     Read-Task17Event 'program.sceneChanged' $programBlueRevision | Out-Null
-    $revision = $programBlueRevision
-    $firstEvidence = Wait-Task17Consumer
-    Assert-ColorEvidence $firstEvidence $true $false 'first shared-texture consumer'
-    if ([int]$firstEvidence.lastCenterB -lt 200 -or [int]$firstEvidence.lastCenterR -gt 50) { Fail-Task17 'first consumer did not observe the post-switch blue frame.' }
+    $script:T17Revision = $programBlueRevision
+    $script:T17FirstEvidence = Wait-Task17Consumer
+    Assert-ColorEvidence $script:T17FirstEvidence $true $false 'first shared-texture consumer'
+    if ([int]$script:T17FirstEvidence.lastCenterB -lt 200 -or [int]$script:T17FirstEvidence.lastCenterR -gt 50) { Fail-Task17 'first consumer did not observe the post-switch blue frame.' }
     $programBlueSettled = Send-Task17Request @{ op = 'request'; id = 't17-program-blue-settled'; method = 'program.getScene' }
-    if (-not $programBlueSettled.status.ok -or [int64]$programBlueSettled.revision -lt [int64]$programBlue.revision) { Fail-Task17 'program state query regressed the revision after the route switch.' }
-    if ([string]$programBlueSettled.data.scene -ne [string]$blueScene.data.scene) { Fail-Task17 'Program route did not settle on the blue Scene.' }
-    $revision = [int64]$programBlueSettled.revision
+    if (-not $programBlueSettled.status.ok -or [int64]$programBlueSettled.revision -lt $programBlueRevision) { Fail-Task17 'program state query regressed the revision after the route switch.' }
+    if ([string]$programBlueSettled.data.scene -ne [string]$script:T17BlueScene.data.scene) { Fail-Task17 'Program route did not settle on the blue Scene.' }
+    $script:T17Revision = [int64]$programBlueSettled.revision
+}
 
-    $release = Send-Task17Request @{ op = 'request'; id = 't17-release'; method = 'previewOutput.releaseSharedTexture'; params = @{ previewOutput = $programOutputHandle } }
-    Assert-Ok $release $revision 'release shared texture'
+function Invoke-Task17ResourceChecks {
+    $release = Send-Task17Request @{ op = 'request'; id = 't17-release'; method = 'previewOutput.releaseSharedTexture'; params = @{ previewOutput = $script:T17ProgramOutputHandle } }
+    Assert-Ok $release $script:T17Revision 'release shared texture'
     if (-not $release.data.released) { Fail-Task17 'releaseSharedTexture did not acknowledge release.' }
-    $resize = Send-Task17GuardedRequest 't17-resize' 'previewOutput.resize' @{ previewOutput = $programOutputHandle; width = 160; height = 90 } $revision
+    $resize = Send-Task17GuardedRequest 't17-resize' 'previewOutput.resize' @{ previewOutput = $script:T17ProgramOutputHandle; width = 160; height = 90 } $script:T17Revision
     $resizeRevision = [int64]$resize.GuardRevision + 1
     Assert-Ok $resize $resizeRevision 'resize shared texture'
     $resourceEvent = Read-Task17Event 'previewOutput.resourceChanged' $resizeRevision
-    $revision = $resizeRevision
-    if ([string]$resize.data.resourceGeneration -eq $initialGeneration -or [int]$resize.data.width -ne 160 -or [int]$resize.data.height -ne 90) { Fail-Task17 'resize did not replace the resource or bump generation.' }
+    $script:T17Revision = $resizeRevision
+    if ([string]$resize.data.resourceGeneration -eq $script:T17InitialGeneration -or [int]$resize.data.width -ne 160 -or [int]$resize.data.height -ne 90) { Fail-Task17 'resize did not replace the resource or bump generation.' }
     if ([string]$resourceEvent.data.resourceGeneration -ne [string]$resize.data.resourceGeneration) { Fail-Task17 'resourceChanged event disagreed with resize response.' }
-    $resizedDescriptor = Send-Task17Request @{ op = 'request'; id = 't17-get-resized'; method = 'previewOutput.getSharedTexture'; params = @{ previewOutput = $programOutputHandle } }
-    Assert-Ok $resizedDescriptor $revision 'get resized shared texture'
+    $resizedDescriptor = Send-Task17Request @{ op = 'request'; id = 't17-get-resized'; method = 'previewOutput.getSharedTexture'; params = @{ previewOutput = $script:T17ProgramOutputHandle } }
+    Assert-Ok $resizedDescriptor $script:T17Revision 'get resized shared texture'
     Start-Task17Consumer $ConsumerPath $resizedDescriptor.data 12
-    $secondEvidence = Wait-Task17Consumer
-    Assert-ColorEvidence $secondEvidence $false $true 'resized shared-texture consumer'
-
-    Assert-Ok (Send-Task17Request @{ op = 'request'; id = 't17-release-2'; method = 'previewOutput.releaseSharedTexture'; params = @{ previewOutput = $programOutputHandle } }) $revision 'release resized shared texture'
-    $disable = Send-Task17GuardedRequest 't17-disable' 'previewOutput.setEnabled' @{ previewOutput = $programOutputHandle; enabled = $false } $revision
+    $script:T17SecondEvidence = Wait-Task17Consumer
+    Assert-ColorEvidence $script:T17SecondEvidence $false $true 'resized shared-texture consumer'
+    Assert-Ok (Send-Task17Request @{ op = 'request'; id = 't17-release-2'; method = 'previewOutput.releaseSharedTexture'; params = @{ previewOutput = $script:T17ProgramOutputHandle } }) $script:T17Revision 'release resized shared texture'
+    $disable = Send-Task17GuardedRequest 't17-disable' 'previewOutput.setEnabled' @{ previewOutput = $script:T17ProgramOutputHandle; enabled = $false } $script:T17Revision
     $disableRevision = [int64]$disable.GuardRevision + 1
     Assert-Ok $disable $disableRevision 'disable PreviewOutput'
     Read-Task17Event 'previewOutput.enabledChanged' $disableRevision | Out-Null
-    $revision = $disableRevision
-    $enable = Send-Task17GuardedRequest 't17-enable' 'previewOutput.setEnabled' @{ previewOutput = $programOutputHandle; enabled = $true } $revision
+    $script:T17Revision = $disableRevision
+    $enable = Send-Task17GuardedRequest 't17-enable' 'previewOutput.setEnabled' @{ previewOutput = $script:T17ProgramOutputHandle; enabled = $true } $script:T17Revision
     $enableRevision = [int64]$enable.GuardRevision + 1
     Assert-Ok $enable $enableRevision 'enable PreviewOutput'
     Read-Task17Event 'previewOutput.enabledChanged' $enableRevision | Out-Null
-    $revision = $enableRevision
+    $script:T17Revision = $enableRevision
+}
 
-    $destroyPreview = Send-Task17GuardedRequest 't17-destroy-preview' 'previewOutput.destroy' @{ previewOutput = [string]$previewOutput.data.previewOutput } $revision
+function Invoke-Task17Cleanup {
+    $destroyPreview = Send-Task17GuardedRequest 't17-destroy-preview' 'previewOutput.destroy' @{ previewOutput = [string]$script:T17PreviewOutput.data.previewOutput } $script:T17Revision
     $destroyPreviewRevision = [int64]$destroyPreview.GuardRevision + 1
     Assert-Ok $destroyPreview $destroyPreviewRevision 'destroy preview PreviewOutput'
     Read-Task17Event 'previewOutput.destroyed' $destroyPreviewRevision | Out-Null
-    $revision = $destroyPreviewRevision
-    $destroyProgram = Send-Task17GuardedRequest 't17-destroy-program' 'previewOutput.destroy' @{ previewOutput = $programOutputHandle } $revision
+    $script:T17Revision = $destroyPreviewRevision
+    $destroyProgram = Send-Task17GuardedRequest 't17-destroy-program' 'previewOutput.destroy' @{ previewOutput = $script:T17ProgramOutputHandle } $script:T17Revision
     $destroyProgramRevision = [int64]$destroyProgram.GuardRevision + 1
     Assert-Ok $destroyProgram $destroyProgramRevision 'destroy program PreviewOutput'
     Read-Task17Event 'previewOutput.destroyed' $destroyProgramRevision | Out-Null
-    $revision = $destroyProgramRevision
-
-    Write-Output ("Task 17 first consumer evidence: " + ($firstEvidence | ConvertTo-Json -Compress -Depth 20))
-    Write-Output ("Task 17 resized consumer evidence: " + ($secondEvidence | ConvertTo-Json -Compress -Depth 20))
-    $close = Send-Task17GuardedRequest 't17-close' 'session.close' $null $revision
+    $script:T17Revision = $destroyProgramRevision
+    Write-Output ("Task 17 first consumer evidence: " + ($script:T17FirstEvidence | ConvertTo-Json -Compress -Depth 20))
+    Write-Output ("Task 17 resized consumer evidence: " + ($script:T17SecondEvidence | ConvertTo-Json -Compress -Depth 20))
+    $close = Send-Task17GuardedRequest 't17-close' 'session.close' $null $script:T17Revision
     $closeRevision = [int64]$close.GuardRevision + 1
     Assert-Ok $close $closeRevision 'session.close'
     $script:Process.WaitForExit(30000) | Out-Null
     Stop-Task17Engine
     Write-Output 'Task 17 D3D11 shared-texture integration: PASS'
-} catch {
-    if ($null -ne $script:Consumer -and -not $script:Consumer.HasExited) { $script:Consumer.Kill(); $script:Consumer.WaitForExit() }
-    if ($null -ne $script:Process -and -not $script:Process.HasExited) { $script:Process.Kill(); $script:Process.WaitForExit() }
+}
+
+function Invoke-Task17Scenario {
+    Invoke-Task17Bootstrap
+    Invoke-Task17ColorSetup
+    Invoke-Task17OutputSetup
+    Invoke-Task17RouteSwitch
+    Invoke-Task17ResourceChecks
+    Invoke-Task17Cleanup
+}
+
+function Write-Task17FailureDetails {
     if ($null -ne $script:LastMessage) {
         $lastOp = if ($null -ne $script:LastMessage.PSObject.Properties['op']) { [string]$script:LastMessage.op } else { '' }
         $lastEvent = if ($null -ne $script:LastMessage.PSObject.Properties['event']) { [string]$script:LastMessage.event } else { '' }
@@ -289,5 +302,17 @@ try {
     }
     if ($script:ResponseTrace.Count -gt 0) { Write-Host ("response trace: " + ($script:ResponseTrace | ConvertTo-Json -Compress -Depth 50)) }
     if ($null -ne $script:ErrorTask) { Write-Host ("engine stderr: " + $script:ErrorTask.GetAwaiter().GetResult()) }
+}
+
+function Invoke-Task17FailureCleanup {
+    if ($null -ne $script:Consumer -and -not $script:Consumer.HasExited) { $script:Consumer.Kill(); $script:Consumer.WaitForExit() }
+    if ($null -ne $script:Process -and -not $script:Process.HasExited) { $script:Process.Kill(); $script:Process.WaitForExit() }
+    Write-Task17FailureDetails
+}
+
+try {
+    Invoke-Task17Scenario
+} catch {
+    Invoke-Task17FailureCleanup
     throw
 }

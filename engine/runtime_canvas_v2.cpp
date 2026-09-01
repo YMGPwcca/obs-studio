@@ -16,81 +16,37 @@ constexpr uint32_t kMinCanvasDimension = 16;
 constexpr uint32_t kMaxCanvasDimension = 16384;
 constexpr uint32_t kMaxCanvasRate = 1000;
 
+struct CanvasFormatName {
+	std::string_view name;
+	enum video_format value;
+};
+
+constexpr CanvasFormatName kCanvasFormats[] = {
+	{"rgba", VIDEO_FORMAT_RGBA}, {"bgra", VIDEO_FORMAT_BGRA}, {"bgrx", VIDEO_FORMAT_BGRX},
+	{"y800", VIDEO_FORMAT_Y800}, {"i420", VIDEO_FORMAT_I420}, {"nv12", VIDEO_FORMAT_NV12},
+	{"yvyu", VIDEO_FORMAT_YVYU}, {"yuy2", VIDEO_FORMAT_YUY2}, {"uyvy", VIDEO_FORMAT_UYVY},
+	{"i444", VIDEO_FORMAT_I444}, {"bgr3", VIDEO_FORMAT_BGR3}, {"i422", VIDEO_FORMAT_I422},
+	{"i40a", VIDEO_FORMAT_I40A}, {"i42a", VIDEO_FORMAT_I42A}, {"yuva", VIDEO_FORMAT_YUVA},
+	{"ayuv", VIDEO_FORMAT_AYUV}, {"i010", VIDEO_FORMAT_I010}, {"p010", VIDEO_FORMAT_P010},
+	{"i210", VIDEO_FORMAT_I210}, {"i412", VIDEO_FORMAT_I412}, {"ya2l", VIDEO_FORMAT_YA2L},
+	{"p216", VIDEO_FORMAT_P216}, {"p416", VIDEO_FORMAT_P416}, {"v210", VIDEO_FORMAT_V210},
+	{"r10l", VIDEO_FORMAT_R10L}, {"none", VIDEO_FORMAT_NONE},
+};
+
 const char *canvas_format_name(enum video_format value)
 {
-	switch (value) {
-	case VIDEO_FORMAT_RGBA:
-		return "rgba";
-	case VIDEO_FORMAT_BGRA:
-		return "bgra";
-	case VIDEO_FORMAT_BGRX:
-		return "bgrx";
-	case VIDEO_FORMAT_Y800:
-		return "y800";
-	case VIDEO_FORMAT_I420:
-		return "i420";
-	case VIDEO_FORMAT_NV12:
-		return "nv12";
-	case VIDEO_FORMAT_YVYU:
-		return "yvyu";
-	case VIDEO_FORMAT_YUY2:
-		return "yuy2";
-	case VIDEO_FORMAT_UYVY:
-		return "uyvy";
-	case VIDEO_FORMAT_I444:
-		return "i444";
-	case VIDEO_FORMAT_BGR3:
-		return "bgr3";
-	case VIDEO_FORMAT_I422:
-		return "i422";
-	case VIDEO_FORMAT_I40A:
-		return "i40a";
-	case VIDEO_FORMAT_I42A:
-		return "i42a";
-	case VIDEO_FORMAT_YUVA:
-		return "yuva";
-	case VIDEO_FORMAT_AYUV:
-		return "ayuv";
-	case VIDEO_FORMAT_I010:
-		return "i010";
-	case VIDEO_FORMAT_P010:
-		return "p010";
-	case VIDEO_FORMAT_I210:
-		return "i210";
-	case VIDEO_FORMAT_I412:
-		return "i412";
-	case VIDEO_FORMAT_YA2L:
-		return "ya2l";
-	case VIDEO_FORMAT_P216:
-		return "p216";
-	case VIDEO_FORMAT_P416:
-		return "p416";
-	case VIDEO_FORMAT_V210:
-		return "v210";
-	case VIDEO_FORMAT_R10L:
-		return "r10l";
-	case VIDEO_FORMAT_NONE:
-		return "none";
+	for (const CanvasFormatName &entry : kCanvasFormats) {
+		if (entry.value == value)
+			return entry.name.data();
 	}
 	return "unknown";
 }
 
 bool parse_canvas_format(std::string_view value, enum video_format &out)
 {
-	constexpr std::pair<std::string_view, enum video_format> values[] = {
-		{"rgba", VIDEO_FORMAT_RGBA}, {"bgra", VIDEO_FORMAT_BGRA}, {"bgrx", VIDEO_FORMAT_BGRX},
-		{"y800", VIDEO_FORMAT_Y800}, {"i420", VIDEO_FORMAT_I420}, {"nv12", VIDEO_FORMAT_NV12},
-		{"yvyu", VIDEO_FORMAT_YVYU}, {"yuy2", VIDEO_FORMAT_YUY2}, {"uyvy", VIDEO_FORMAT_UYVY},
-		{"i444", VIDEO_FORMAT_I444}, {"bgr3", VIDEO_FORMAT_BGR3}, {"i422", VIDEO_FORMAT_I422},
-		{"i40a", VIDEO_FORMAT_I40A}, {"i42a", VIDEO_FORMAT_I42A}, {"yuva", VIDEO_FORMAT_YUVA},
-		{"ayuv", VIDEO_FORMAT_AYUV}, {"i010", VIDEO_FORMAT_I010}, {"p010", VIDEO_FORMAT_P010},
-		{"i210", VIDEO_FORMAT_I210}, {"i412", VIDEO_FORMAT_I412}, {"ya2l", VIDEO_FORMAT_YA2L},
-		{"p216", VIDEO_FORMAT_P216}, {"p416", VIDEO_FORMAT_P416}, {"v210", VIDEO_FORMAT_V210},
-		{"r10l", VIDEO_FORMAT_R10L}, {"none", VIDEO_FORMAT_NONE},
-	};
-	for (const auto &[name, parsed] : values) {
-		if (name == value) {
-			out = parsed;
+	for (const CanvasFormatName &entry : kCanvasFormats) {
+		if (entry.name == value) {
+			out = entry.value;
 			return true;
 		}
 	}
@@ -171,47 +127,88 @@ bool parse_canvas_scale(std::string_view value, enum obs_scale_type &out)
 	return phase2_parse_scale_filter(value, out);
 }
 
-bool canvas_video_equal(const obs_video_info &left, const obs_video_info &right)
+bool canvas_video_dimensions_equal(const obs_video_info &left, const obs_video_info &right)
 {
 	return left.base_width == right.base_width && left.base_height == right.base_height &&
-	       left.output_width == right.output_width && left.output_height == right.output_height &&
-	       left.output_format == right.output_format && left.fps_num == right.fps_num && left.fps_den == right.fps_den &&
-	       left.adapter == right.adapter && left.gpu_conversion == right.gpu_conversion &&
+	       left.output_width == right.output_width && left.output_height == right.output_height;
+}
+
+bool canvas_video_format_equal(const obs_video_info &left, const obs_video_info &right)
+{
+	return left.output_format == right.output_format && left.fps_num == right.fps_num && left.fps_den == right.fps_den;
+}
+
+bool canvas_video_options_equal(const obs_video_info &left, const obs_video_info &right)
+{
+	return left.adapter == right.adapter && left.gpu_conversion == right.gpu_conversion &&
 	       left.colorspace == right.colorspace && left.range == right.range && left.scale_type == right.scale_type;
 }
 
-bool read_canvas_video_settings(obs_data_t *settings, obs_video_info &video, RuntimeV2Error &error)
+bool canvas_video_equal(const obs_video_info &left, const obs_video_info &right)
 {
-	long long integer = 0;
+	return canvas_video_dimensions_equal(left, right) && canvas_video_format_equal(left, right) &&
+	       canvas_video_options_equal(left, right);
+}
+
+bool read_bounded_canvas_integer(obs_data_t *settings, const char *name, long long minimum, long long maximum,
+					 long long &value, bool &present, const char *message, RuntimeV2Error &error)
+{
+	if (!phase2_read_integer(settings, name, value, present))
+		return phase2_fail(error, "bad_request", message);
+	if (present && (value < minimum || value > maximum))
+		return phase2_fail(error, "bad_request", message);
+	return true;
+}
+
+bool read_canvas_dimensions(obs_data_t *settings, obs_video_info &video, RuntimeV2Error &error)
+{
+	long long value = 0;
 	bool present = false;
-	if (!phase2_read_integer(settings, "width", integer, present) || (present && (integer < kMinCanvasDimension || integer > kMaxCanvasDimension)))
-		return phase2_fail(error, "bad_request", "videoSettings.width is outside the supported range");
+	if (!read_bounded_canvas_integer(settings, "width", kMinCanvasDimension, kMaxCanvasDimension, value, present,
+					 "videoSettings.width is outside the supported range", error))
+		return false;
 	if (present)
-		video.base_width = video.output_width = static_cast<uint32_t>(integer);
-	if (!phase2_read_integer(settings, "height", integer, present) || (present && (integer < kMinCanvasDimension || integer > kMaxCanvasDimension)))
-		return phase2_fail(error, "bad_request", "videoSettings.height is outside the supported range");
+		video.base_width = video.output_width = static_cast<uint32_t>(value);
+	if (!read_bounded_canvas_integer(settings, "height", kMinCanvasDimension, kMaxCanvasDimension, value, present,
+					 "videoSettings.height is outside the supported range", error))
+		return false;
 	if (present)
-		video.base_height = video.output_height = static_cast<uint32_t>(integer);
-	if (!phase2_read_integer(settings, "outputWidth", integer, present) || (present && (integer < kMinCanvasDimension || integer > kMaxCanvasDimension)))
-		return phase2_fail(error, "bad_request", "videoSettings.outputWidth is outside the supported range");
+		video.base_height = video.output_height = static_cast<uint32_t>(value);
+	if (!read_bounded_canvas_integer(settings, "outputWidth", kMinCanvasDimension, kMaxCanvasDimension, value,
+					 present, "videoSettings.outputWidth is outside the supported range", error))
+		return false;
 	if (present)
-		video.output_width = static_cast<uint32_t>(integer);
-	if (!phase2_read_integer(settings, "outputHeight", integer, present) || (present && (integer < kMinCanvasDimension || integer > kMaxCanvasDimension)))
-		return phase2_fail(error, "bad_request", "videoSettings.outputHeight is outside the supported range");
+		video.output_width = static_cast<uint32_t>(value);
+	if (!read_bounded_canvas_integer(settings, "outputHeight", kMinCanvasDimension, kMaxCanvasDimension, value,
+					 present, "videoSettings.outputHeight is outside the supported range", error))
+		return false;
 	if (present)
-		video.output_height = static_cast<uint32_t>(integer);
-	if (!phase2_read_integer(settings, "fpsNumerator", integer, present) ||
-	    (present && (integer < 1 || integer > kMaxCanvasRate)))
-		return phase2_fail(error, "bad_request", "videoSettings.fpsNumerator is invalid");
+		video.output_height = static_cast<uint32_t>(value);
+	return true;
+}
+
+bool read_canvas_frame_rate(obs_data_t *settings, obs_video_info &video, RuntimeV2Error &error)
+{
+	long long value = 0;
+	bool present = false;
+	if (!read_bounded_canvas_integer(settings, "fpsNumerator", 1, kMaxCanvasRate, value, present,
+					 "videoSettings.fpsNumerator is invalid", error))
+		return false;
 	if (present)
-		video.fps_num = static_cast<uint32_t>(integer);
-	if (!phase2_read_integer(settings, "fpsDenominator", integer, present) ||
-	    (present && (integer < 1 || integer > kMaxCanvasRate)))
-		return phase2_fail(error, "bad_request", "videoSettings.fpsDenominator is invalid");
+		video.fps_num = static_cast<uint32_t>(value);
+	if (!read_bounded_canvas_integer(settings, "fpsDenominator", 1, kMaxCanvasRate, value, present,
+					 "videoSettings.fpsDenominator is invalid", error))
+		return false;
 	if (present)
-		video.fps_den = static_cast<uint32_t>(integer);
+		video.fps_den = static_cast<uint32_t>(value);
+	return true;
+}
+
+bool read_canvas_format_fields(obs_data_t *settings, obs_video_info &video, RuntimeV2Error &error)
+{
 
 	std::string value;
+	bool present = false;
 	if (!phase2_read_string(settings, "format", value, present))
 		return phase2_fail(error, "bad_request", "videoSettings.format must be a semantic string");
 	if (present && !parse_canvas_format(value, video.output_format))
@@ -224,18 +221,47 @@ bool read_canvas_video_settings(obs_data_t *settings, obs_video_info &video, Run
 		return phase2_fail(error, "bad_request", "videoSettings.range must be a semantic string");
 	if (present && !parse_canvas_range(value, video.range))
 		return phase2_fail(error, "bad_request", "videoSettings.range is unsupported");
+	return true;
+}
+
+bool read_canvas_scale_field(obs_data_t *settings, obs_video_info &video, RuntimeV2Error &error)
+{
+	std::string value;
+	bool present = false;
 	if (!phase2_read_string(settings, "scaleType", value, present))
 		return phase2_fail(error, "bad_request", "videoSettings.scaleType must be a semantic string");
 	if (present && !parse_canvas_scale(value, video.scale_type))
 		return phase2_fail(error, "bad_request", "videoSettings.scaleType is unsupported");
-	if (!phase2_read_integer(settings, "adapter", integer, present) || (present && (integer < 0 || integer > 64)))
-		return phase2_fail(error, "bad_request", "videoSettings.adapter is invalid");
+	return true;
+}
+
+bool read_canvas_device_fields(obs_data_t *settings, obs_video_info &video, RuntimeV2Error &error)
+{
+	long long value = 0;
+	bool present = false;
+	if (!read_bounded_canvas_integer(settings, "adapter", 0, 64, value, present,
+					 "videoSettings.adapter is invalid", error))
+		return false;
 	if (present)
-		video.adapter = static_cast<uint32_t>(integer);
+		video.adapter = static_cast<uint32_t>(value);
 	if (!phase2_read_bool(settings, "gpuConversion", video.gpu_conversion, present))
 		return phase2_fail(error, "bad_request", "videoSettings.gpuConversion must be boolean");
-	if (video.base_width == 0 || video.base_height == 0 || video.output_width == 0 || video.output_height == 0 ||
-	    video.fps_num == 0 || video.fps_den == 0 || video.output_format == VIDEO_FORMAT_NONE)
+	return true;
+}
+
+bool canvas_video_complete(const obs_video_info &video)
+{
+	return video.base_width != 0 && video.base_height != 0 && video.output_width != 0 && video.output_height != 0 &&
+	       video.fps_num != 0 && video.fps_den != 0 && video.output_format != VIDEO_FORMAT_NONE;
+}
+
+bool read_canvas_video_settings(obs_data_t *settings, obs_video_info &video, RuntimeV2Error &error)
+{
+	if (!read_canvas_dimensions(settings, video, error) || !read_canvas_frame_rate(settings, video, error) ||
+	    !read_canvas_format_fields(settings, video, error) || !read_canvas_scale_field(settings, video, error) ||
+	    !read_canvas_device_fields(settings, video, error))
+		return false;
+	if (!canvas_video_complete(video))
 		return phase2_fail(error, "bad_request", "videoSettings contains an incomplete video configuration");
 	return true;
 }
@@ -289,6 +315,35 @@ struct CanvasTarget {
 	bool empty = false;
 };
 
+bool read_canvas_source_target(Engine &engine, obs_data_t *object, CanvasTarget &target, RuntimeV2Error &error)
+{
+	if (!phase2_read_handle(object, "source", target.source_handle))
+		return phase2_fail(error, "bad_request", "target.source must be a canonical source handle");
+	target.source = engine.v2_source_for_handle(target.source_handle);
+	return target.source || phase2_fail(error, "not_found", "target source handle was not found");
+}
+
+bool read_canvas_scene_target(Engine &engine, obs_data_t *object, CanvasTarget &target, RuntimeV2Error &error)
+{
+	if (!phase2_read_handle(object, "scene", target.scene_handle))
+		return phase2_fail(error, "bad_request", "target.scene must be a canonical scene handle");
+	obs_scene_t *scene = engine.v2_scene_for_handle(target.scene_handle);
+	if (!scene)
+		return phase2_fail(error, "not_found", "target scene handle was not found");
+	target.source = obs_scene_get_source(scene);
+	return true;
+}
+
+bool read_canvas_target_type(Engine &engine, obs_data_t *object, const std::string &type, CanvasTarget &target,
+				     RuntimeV2Error &error)
+{
+	if (type == "source")
+		return read_canvas_source_target(engine, object, target, error);
+	if (type == "scene")
+		return read_canvas_scene_target(engine, object, target, error);
+	return phase2_fail(error, "bad_request", "canvas channel target type must be source, scene, or null");
+}
+
 bool read_canvas_target(Engine &engine, obs_data_t *params, CanvasTarget &target, RuntimeV2Error &error)
 {
 	obs_data_item_t *item = obs_data_item_byname(params, "target");
@@ -313,24 +368,7 @@ bool read_canvas_target(Engine &engine, obs_data_t *params, CanvasTarget &target
 	bool present = false;
 	if (!phase2_read_string(object.get(), "type", type, present) || !present)
 		return phase2_fail(error, "bad_request", "target.type is required");
-	if (type == "source") {
-		if (!phase2_read_handle(object.get(), "source", target.source_handle))
-			return phase2_fail(error, "bad_request", "target.source must be a canonical source handle");
-		target.source = engine.v2_source_for_handle(target.source_handle);
-		if (!target.source)
-			return phase2_fail(error, "not_found", "target source handle was not found");
-		return true;
-	}
-	if (type == "scene") {
-		if (!phase2_read_handle(object.get(), "scene", target.scene_handle))
-			return phase2_fail(error, "bad_request", "target.scene must be a canonical scene handle");
-		obs_scene_t *scene = engine.v2_scene_for_handle(target.scene_handle);
-		if (!scene)
-			return phase2_fail(error, "not_found", "target scene handle was not found");
-		target.source = obs_scene_get_source(scene);
-		return true;
-	}
-	return phase2_fail(error, "bad_request", "canvas channel target type must be source, scene, or null");
+	return read_canvas_target_type(engine, object.get(), type, target, error);
 }
 
 ObsDataPtr make_channel_target(const Engine &engine, obs_source_t *source)
@@ -363,6 +401,82 @@ bool read_channel_index(obs_data_t *params, uint32_t &channel, RuntimeV2Error &e
 	if (!phase2_read_integer(params, "channel", value, present) || !present || value < 0 || value >= MAX_CHANNELS)
 		return phase2_fail(error, "bad_request", "params.channel must be an integer in the supported channel range");
 	channel = static_cast<uint32_t>(value);
+	return true;
+}
+
+bool read_canvas_flag(obs_data_t *flags, const char *name, uint32_t bit, uint32_t &value, const char *message,
+				      RuntimeV2Error &error)
+{
+	bool flag = false;
+	bool present = false;
+	if (!phase2_read_bool(flags, name, flag, present))
+		return phase2_fail(error, "bad_request", message);
+	if (present) {
+		if (flag)
+			value |= bit;
+		else
+			value &= ~bit;
+	}
+	return true;
+}
+
+bool read_canvas_name_and_video(obs_data_t *params, std::string &name, bool &name_present, obs_video_info &video,
+						RuntimeV2Error &error)
+{
+	if (!phase2_read_string(params, "name", name, name_present))
+		return phase2_fail(error, "bad_request", "params.name must be a string when present");
+	if (name_present && !phase2_is_bounded_string(name, 256))
+		return phase2_fail(error, "bad_request", "canvas name must be a non-empty string of at most 256 bytes");
+	if (!obs_get_video_info(&video))
+		return phase2_fail(error, "not_available", "Main Canvas video settings are unavailable");
+	ObsDataPtr video_settings;
+	bool video_present = false;
+	if (!phase2_read_object(params, "videoSettings", video_settings, video_present))
+		return phase2_fail(error, "bad_request", "params.videoSettings must be an object when present");
+	if (video_present && !read_canvas_video_settings(video_settings.get(), video, error))
+		return false;
+	return true;
+}
+
+bool read_canvas_flags(obs_data_t *params, uint32_t &flags, RuntimeV2Error &error)
+{
+	ObsDataPtr requested_flags;
+	bool flags_present = false;
+	if (!phase2_read_object(params, "flags", requested_flags, flags_present))
+		return phase2_fail(error, "bad_request", "params.flags must be an object when present");
+	flags = ACTIVATE | MIX_AUDIO | SCENE_REF | EPHEMERAL;
+	if (!flags_present)
+		return true;
+	if (!read_canvas_flag(requested_flags.get(), "activate", ACTIVATE, flags, "flags.activate must be boolean", error))
+		return false;
+	if (!read_canvas_flag(requested_flags.get(), "mixAudio", MIX_AUDIO, flags, "flags.mixAudio must be boolean", error))
+		return false;
+	if (!read_canvas_flag(requested_flags.get(), "sceneRef", SCENE_REF, flags, "flags.sceneRef must be boolean", error))
+		return false;
+	return read_canvas_flag(requested_flags.get(), "ephemeral", EPHEMERAL, flags, "flags.ephemeral must be boolean", error);
+}
+
+bool read_canvas_create_options(obs_data_t *params, std::string &name, bool &name_present, obs_video_info &video,
+					 uint32_t &flags, RuntimeV2Error &error)
+{
+	if (!read_canvas_name_and_video(params, name, name_present, video, error))
+		return false;
+	return read_canvas_flags(params, flags, error);
+}
+
+bool prepare_canvas_video_update(obs_data_t *params, obs_canvas_t *canvas, obs_video_info &current,
+					obs_video_info &proposed, bool &changed, RuntimeV2Error &error)
+{
+	ObsDataPtr settings;
+	bool present = false;
+	if (!phase2_read_object(params, "videoSettings", settings, present) || !present)
+		return phase2_fail(error, "bad_request", "params.videoSettings object is required");
+	if (!obs_canvas_get_video_info(canvas, &current))
+		return phase2_fail(error, "not_available", "Canvas has no video settings");
+	proposed = current;
+	if (!read_canvas_video_settings(settings.get(), proposed, error))
+		return false;
+	changed = !canvas_video_equal(current, proposed);
 	return true;
 }
 
@@ -412,53 +526,10 @@ bool Engine::v2_canvas_create(obs_data_t *params, RuntimeV2Result &result, Runti
 	phase2_reset_result(result, error);
 	std::string name;
 	bool name_present = false;
-	if (!phase2_read_string(params, "name", name, name_present))
-		return phase2_fail(error, "bad_request", "params.name must be a string when present");
-	if (name_present && !phase2_is_bounded_string(name, 256))
-		return phase2_fail(error, "bad_request", "canvas name must be a non-empty string of at most 256 bytes");
 	obs_video_info video = {};
-	if (!obs_get_video_info(&video))
-		return phase2_fail(error, "not_available", "Main Canvas video settings are unavailable");
-	ObsDataPtr video_settings;
-	bool video_present = false;
-	if (!phase2_read_object(params, "videoSettings", video_settings, video_present))
-		return phase2_fail(error, "bad_request", "params.videoSettings must be an object when present");
-	if (video_present && !read_canvas_video_settings(video_settings.get(), video, error))
+	uint32_t flags = 0;
+	if (!read_canvas_create_options(params, name, name_present, video, flags, error))
 		return false;
-
-	uint32_t flags = ACTIVATE | MIX_AUDIO | SCENE_REF | EPHEMERAL;
-	ObsDataPtr requested_flags;
-	bool flags_present = false;
-	if (!phase2_read_object(params, "flags", requested_flags, flags_present))
-		return phase2_fail(error, "bad_request", "params.flags must be an object when present");
-	if (flags_present) {
-		bool value = false;
-		bool present = false;
-		if (!phase2_read_bool(requested_flags.get(), "activate", value, present))
-			return phase2_fail(error, "bad_request", "flags.activate must be boolean");
-		if (present && value)
-			flags |= ACTIVATE;
-		else if (present)
-			flags &= ~ACTIVATE;
-		if (!phase2_read_bool(requested_flags.get(), "mixAudio", value, present))
-			return phase2_fail(error, "bad_request", "flags.mixAudio must be boolean");
-		if (present && value)
-			flags |= MIX_AUDIO;
-		else if (present)
-			flags &= ~MIX_AUDIO;
-		if (!phase2_read_bool(requested_flags.get(), "sceneRef", value, present))
-			return phase2_fail(error, "bad_request", "flags.sceneRef must be boolean");
-		if (present && value)
-			flags |= SCENE_REF;
-		else if (present)
-			flags &= ~SCENE_REF;
-		if (!phase2_read_bool(requested_flags.get(), "ephemeral", value, present))
-			return phase2_fail(error, "bad_request", "flags.ephemeral must be boolean");
-		if (present && value)
-			flags |= EPHEMERAL;
-		else if (present)
-			flags &= ~EPHEMERAL;
-	}
 	const uint64_t handle = allocate_handle();
 	const std::string generated = "engine-canvas-" + std::to_string(handle);
 	obs_canvas_t *canvas = obs_canvas_create_private(name_present ? name.c_str() : generated.c_str(), &video, flags);
@@ -559,17 +630,12 @@ bool Engine::v2_canvas_set_video_settings(obs_data_t *params, RuntimeV2Result &r
 		return false;
 	if (entry->is_main)
 		return phase2_fail(error, "invalid_state", "Main Canvas video settings are controlled by engine startup");
-	ObsDataPtr settings;
-	bool present = false;
-	if (!phase2_read_object(params, "videoSettings", settings, present) || !present)
-		return phase2_fail(error, "bad_request", "params.videoSettings object is required");
 	obs_video_info current = {};
-	if (!obs_canvas_get_video_info(entry->canvas, &current))
-		return phase2_fail(error, "not_available", "Canvas has no video settings");
 	obs_video_info proposed = current;
-	if (!read_canvas_video_settings(settings.get(), proposed, error))
+	bool changed = false;
+	if (!prepare_canvas_video_update(params, entry->canvas, current, proposed, changed, error))
 		return false;
-	if (canvas_video_equal(current, proposed)) {
+	if (!changed) {
 		result.data = make_canvas_video_data(handle, entry->canvas);
 		return true;
 	}

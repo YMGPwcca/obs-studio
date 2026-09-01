@@ -120,6 +120,8 @@ public:
 	void v2_prepare_filter_shutdown() noexcept;
 	void v2_bind_transition_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_sync_transition_observers();
+	void sync_transition_observer(const std::shared_ptr<TransitionV2Observer> &observer, RevisionState &revisions,
+					      EventDispatcher &events);
 	void v2_prepare_transition_shutdown() noexcept;
 	void v2_cancel_studio_transition() noexcept;
 	bool v2_start_transition(uint64_t handle, obs_source_t *from, obs_source_t *destination, uint32_t duration_ms,
@@ -303,6 +305,11 @@ public:
 	void v2_preview_output_invalidate_source(uint64_t source_handle, RuntimeV2Result &result);
 	void v2_preview_output_invalidate_canvas(uint64_t canvas_handle, RuntimeV2Result &result);
 	void v2_preview_output_invalidate_canvas_video(uint64_t canvas_handle, RuntimeV2Result &result);
+	void refresh_preview_output_after_canvas_video(const std::shared_ptr<PreviewOutputV2State> &state,
+							      RuntimeV2Result &result);
+	void finish_studio_transition(uint64_t revision, const TransitionV2Observer &observer, EventDispatcher &events);
+	void publish_transition_signal(const TransitionV2Observer &observer, bool ended, RevisionState &revisions,
+					      EventDispatcher &events);
 
 	bool v2_properties_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_properties_resolve(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -393,6 +400,15 @@ private:
 	bool command_program_set(long long request_id, obs_data_t *request);
 
 	void release_item(ItemMap::iterator &it);
+	void release_item_handles(const std::vector<uint64_t> &handles);
+	bool update_registered_scene_item(uint64_t scene_id, uint64_t parent_group_id, uint64_t handle,
+					 obs_sceneitem_t *item, RuntimeV2Error &error);
+	bool register_group_item(uint64_t scene_handle, obs_scene_t *scene, obs_sceneitem_t *group, uint64_t &handle,
+					 RuntimeV2Error &error);
+	bool register_scene_entry(uint64_t handle, uint64_t canvas_handle, obs_scene_t *scene, RuntimeV2Error &error);
+	void discard_scene_entry(uint64_t handle, obs_scene_t *scene);
+	void clear_program_scene_for_removal(uint64_t scene_handle, RuntimeV2Result &result);
+	void clear_preview_scene_for_removal(uint64_t scene_handle, RuntimeV2Result &result);
 	std::vector<uint64_t> v2_item_handles_for_scene(uint64_t scene_id) const;
 	bool v2_append_item_removal_events(const std::vector<uint64_t> &item_handles, RuntimeV2Result &result,
 					   RuntimeV2Error &error) const;
@@ -421,13 +437,19 @@ private:
 	private:
 	void remove_items_for_source(uint64_t source_id);
 	void remove_items_for_scene(uint64_t scene_id);
+	bool start_runtime();
 	uint64_t v2_current_program_scene() const;
+	bool apply_program_scene_route(uint64_t requested, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool begin_studio_transition(uint64_t program_scene, uint64_t preview_scene, obs_source_t *preview_source,
+					     RuntimeV2Result &result, RuntimeV2Error &error);
 	ObsDataPtr v2_program_data(uint64_t scene_handle) const;
 	ObsDataPtr v2_preview_data() const;
 	void v2_clear_preview_source() noexcept;
 	void v2_shutdown_preview_outputs() noexcept;
 	bool v2_get_preview_output_entry(obs_data_t *params, uint64_t &handle,
 					std::shared_ptr<PreviewOutputV2State> &entry, RuntimeV2Error &error) const;
+	bool replace_preview_output_resource(const std::shared_ptr<PreviewOutputV2State> &state, uint32_t width,
+					     uint32_t height, RuntimeV2Result &result, RuntimeV2Error &error);
 	static void v2_preview_output_render_callback(void *param, uint32_t base_width, uint32_t base_height);
 	void v2_render_preview_outputs(uint32_t base_width, uint32_t base_height);
 	bool initialize_phase2_runtime();

@@ -13,6 +13,20 @@ void set_nullable_handle(obs_data_t *data, const char *name, uint64_t handle)
 		obs_data_set_obj(data, name, nullptr);
 }
 
+bool read_preview_scene_request(obs_data_t *params, const std::unordered_map<uint64_t, obs_scene_t *> &scenes,
+					 uint64_t &requested, RuntimeV2Error &error)
+{
+	bool is_null = false;
+	bool present = false;
+	if (!phase2_read_nullable_handle(params, "scene", requested, is_null, present) || !present)
+		return phase2_fail(error, "bad_request", "params.scene must be a canonical scene handle string or null");
+	if (is_null)
+		requested = 0;
+	if (requested != 0 && !scenes.contains(requested))
+		return phase2_fail(error, "not_found", "scene handle was not found");
+	return true;
+}
+
 } // namespace
 
 ObsDataPtr Engine::v2_preview_data() const
@@ -79,14 +93,8 @@ bool Engine::v2_preview_set_scene(obs_data_t *params, RuntimeV2Result &result, R
 {
 	phase2_reset_result(result, error);
 	uint64_t requested = 0;
-	bool is_null = false;
-	bool present = false;
-	if (!phase2_read_nullable_handle(params, "scene", requested, is_null, present) || !present)
-		return phase2_fail(error, "bad_request", "params.scene must be a canonical scene handle string or null");
-	if (is_null)
-		requested = 0;
-	if (requested != 0 && !scenes_.contains(requested))
-		return phase2_fail(error, "not_found", "scene handle was not found");
+	if (!read_preview_scene_request(params, scenes_, requested, error))
+		return false;
 	bool unchanged = false;
 	{
 		std::lock_guard<std::mutex> lock(preview_outputs_mutex_);

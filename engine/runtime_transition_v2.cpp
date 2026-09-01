@@ -195,6 +195,31 @@ void set_source_identity(const Engine &engine, obs_data_t *data, const char *nam
 		obs_data_set_obj(data, name, nullptr);
 }
 
+void set_transition_source_identities(const Engine &engine, obs_data_t *data, const TransitionEntry &entry)
+{
+	if (!entry.transition) {
+		set_nullable_handle(data, "sourceA", 0);
+		set_nullable_handle(data, "sourceB", 0);
+		return;
+	}
+	obs_source_t *source_a = obs_transition_get_source(entry.transition, OBS_TRANSITION_SOURCE_A);
+	obs_source_t *source_b = obs_transition_get_source(entry.transition, OBS_TRANSITION_SOURCE_B);
+	set_source_identity(engine, data, "sourceA", source_a);
+	set_source_identity(engine, data, "sourceB", source_b);
+	if (source_a)
+		obs_source_release(source_a);
+	if (source_b)
+		obs_source_release(source_b);
+}
+
+void set_transition_state(ObsDataPtr &data, const TransitionEntry &entry)
+{
+	const bool active = entry.transition && obs_transition_is_active(entry.transition);
+	obs_data_set_string(data.get(), "state", active ? "running" : "idle");
+	obs_data_set_bool(data.get(), "active", active);
+	obs_data_set_double(data.get(), "progress", active ? obs_transition_get_time(entry.transition) : 0.0);
+}
+
 ObsDataPtr make_transition_event_data(uint64_t handle, const char *state)
 {
 	ObsDataPtr data(obs_data_create());
@@ -207,28 +232,13 @@ ObsDataPtr make_transition_summary(const Engine &engine, uint64_t handle, const 
 {
 	ObsDataPtr data(obs_data_create());
 	phase2_set_handle(data.get(), "transition", handle);
-	obs_data_set_string(data.get(), "name",
-			   entry.transition && obs_source_get_name(entry.transition) ? obs_source_get_name(entry.transition) : "");
-	obs_data_set_string(data.get(), "kind",
-			   entry.transition && obs_source_get_id(entry.transition) ? obs_source_get_id(entry.transition) : "");
+	const char *name = entry.transition && obs_source_get_name(entry.transition) ? obs_source_get_name(entry.transition) : "";
+	const char *kind = entry.transition && obs_source_get_id(entry.transition) ? obs_source_get_id(entry.transition) : "";
+	obs_data_set_string(data.get(), "name", name);
+	obs_data_set_string(data.get(), "kind", kind);
 	obs_data_set_int(data.get(), "durationMs", entry.duration_ms);
-	const bool active = entry.transition && obs_transition_is_active(entry.transition);
-	obs_data_set_string(data.get(), "state", active ? "running" : "idle");
-	obs_data_set_bool(data.get(), "active", active);
-	obs_data_set_double(data.get(), "progress", active ? obs_transition_get_time(entry.transition) : 0.0);
-	if (entry.transition) {
-		obs_source_t *source_a = obs_transition_get_source(entry.transition, OBS_TRANSITION_SOURCE_A);
-		obs_source_t *source_b = obs_transition_get_source(entry.transition, OBS_TRANSITION_SOURCE_B);
-		set_source_identity(engine, data.get(), "sourceA", source_a);
-		set_source_identity(engine, data.get(), "sourceB", source_b);
-		if (source_a)
-			obs_source_release(source_a);
-		if (source_b)
-			obs_source_release(source_b);
-	} else {
-		set_nullable_handle(data.get(), "sourceA", 0);
-		set_nullable_handle(data.get(), "sourceB", 0);
-	}
+	set_transition_state(data, entry);
+	set_transition_source_identities(engine, data.get(), entry);
 	return data;
 }
 
@@ -255,6 +265,52 @@ bool read_transition_name(obs_data_t *params, std::string &name, bool &present, 
 	if (present && !phase2_is_bounded_string(name, kMaxTransitionNameBytes))
 		return phase2_fail(error, "bad_request", "transition name must be non-empty and at most 256 bytes");
 	return true;
+}
+
+bool read_transition_create_options(obs_data_t *params, std::string &kind, std::string &name, bool &name_present,
+					    ObsDataPtr &settings, RuntimeV2Error &error)
+{
+	bool kind_present = false;
+	if (!phase2_read_string(params, "kind", kind, kind_present) || !kind_present || !safe_transition_identifier(kind))
+		return phase2_fail(error, "bad_request", "params.kind must be a valid transition kind identifier");
+	if (!transition_kind_exists(kind))
+		return phase2_fail(error, "not_found", "transition kind is not registered");
+	if (!read_transition_name(params, name, name_present, error))
+		return false;
+	bool settings_present = false;
+	if (!phase2_read_object(params, "settings", settings, settings_present))
+		return phase2_fail(error, "bad_request", "params.settings must be an object when present");
+	if (settings_present)
+		return true;
+	settings.reset(obs_get_source_defaults(kind.c_str()));
+	if (!settings)
+		return phase2_fail(error, "obs_error", "transition kind did not provide defaults");
+	return true;
+}
+
+bool snapshot_transition_state(TransitionV2State *state, RevisionState *&revisions, EventDispatcher *&events,
+				       std::vector<std::shared_ptr<TransitionV2Observer>> &observers)
+{
+	if (!state)
+		return false;
+	std::lock_guard<std::mutex> lock(state->mutex);
+	if (!state->accepting)
+		return false;
+	revisions = state->revisions;
+	events = state->events;
+	for (const auto &[_, observer] : state->observers)
+		observers.push_back(observer);
+	return revisions && events;
+}
+
+void drain_transition_observer(const std::shared_ptr<TransitionV2Observer> &observer,
+				       std::deque<TransitionPendingSignal> &pending, bool &overflow)
+{
+	std::lock_guard<std::mutex> lock(observer->mutex);
+	pending = std::move(observer->pending);
+	observer->pending.clear();
+	overflow = observer->overflow;
+	observer->overflow = false;
 }
 
 } // namespace
@@ -364,24 +420,11 @@ bool Engine::v2_transition_create(obs_data_t *params, RuntimeV2Result &result, R
 {
 	phase2_reset_result(result, error);
 	std::string kind;
-	bool kind_present = false;
-	if (!phase2_read_string(params, "kind", kind, kind_present) || !kind_present || !safe_transition_identifier(kind))
-		return phase2_fail(error, "bad_request", "params.kind must be a valid transition kind identifier");
-	if (!transition_kind_exists(kind))
-		return phase2_fail(error, "not_found", "transition kind is not registered");
 	std::string requested_name;
 	bool name_present = false;
-	if (!read_transition_name(params, requested_name, name_present, error))
-		return false;
 	ObsDataPtr settings;
-	bool settings_present = false;
-	if (!phase2_read_object(params, "settings", settings, settings_present))
-		return phase2_fail(error, "bad_request", "params.settings must be an object when present");
-	if (!settings_present) {
-		settings.reset(obs_get_source_defaults(kind.c_str()));
-		if (!settings)
-			return phase2_fail(error, "obs_error", "transition kind did not provide defaults");
-	}
+	if (!read_transition_create_options(params, kind, requested_name, name_present, settings, error))
+		return false;
 
 	const uint64_t handle = allocate_handle();
 	const std::string generated_name = "engine-transition-" + std::to_string(handle);
@@ -682,75 +725,70 @@ bool Engine::v2_start_transition(uint64_t handle, obs_source_t *from, obs_source
 
 void Engine::v2_sync_transition_observers()
 {
-	if (!transition_v2_state_)
-		return;
 	RevisionState *revisions = nullptr;
 	EventDispatcher *events = nullptr;
 	std::vector<std::shared_ptr<TransitionV2Observer>> observers;
-	{
-		std::lock_guard<std::mutex> lock(transition_v2_state_->mutex);
-		if (!transition_v2_state_->accepting)
-			return;
-		revisions = transition_v2_state_->revisions;
-		events = transition_v2_state_->events;
-		for (const auto &[_, observer] : transition_v2_state_->observers)
-			observers.push_back(observer);
-	}
-	if (!revisions || !events)
+	if (!snapshot_transition_state(transition_v2_state_.get(), revisions, events, observers))
 		return;
 
-	for (const auto &observer : observers) {
-		std::deque<TransitionPendingSignal> pending;
-		bool overflow = false;
-		{
-			std::lock_guard<std::mutex> lock(observer->mutex);
-			pending = std::move(observer->pending);
-			observer->pending.clear();
-			overflow = observer->overflow;
-			observer->overflow = false;
-		}
-		if (overflow) {
-			if (revisions->can_commit_mutation())
-				revisions->commit_mutation();
-			events->require_resync_due_to_overflow(revisions->current());
-		}
-		for (const TransitionPendingSignal signal : pending) {
-			if (!revisions->can_commit_mutation()) {
-				events->require_resync_due_to_overflow(revisions->current());
-				break;
-			}
-			const uint64_t revision = revisions->commit_mutation();
-			const char *name = signal == TransitionPendingSignal::Started ? "transition.started" : "transition.ended";
-			const char *state = signal == TransitionPendingSignal::Started ? "running" : "idle";
-			if (signal == TransitionPendingSignal::Ended && studio_transition_active_ &&
-			    observer->handle == studio_transition_) {
-				// This headless engine drives video only. libobs can leave the
-				// audio half of a transition active after video_stop when no audio
-				// consumer exists; clear both halves before allowing the selected
-				// Transition to be reused.
-				if (observer->transition)
-					obs_transition_clear(observer->transition);
-				const uint64_t previous_scene = studio_transition_from_scene_;
-				const uint64_t destination_scene = studio_transition_destination_scene_;
-				auto main_it = canvases_.find(main_canvas_);
-				obs_source_t *destination = nullptr;
-				auto destination_it = scenes_.find(destination_scene);
-				if (destination_it != scenes_.end())
-					destination = obs_scene_get_source(destination_it->second);
-				if (main_it != canvases_.end() && main_it->second.canvas)
-					obs_canvas_set_channel(main_it->second.canvas, 0, destination);
-				program_scene_ = destination ? destination_scene : 0;
-				studio_transition_active_ = false;
-				studio_transition_from_scene_ = 0;
-				studio_transition_destination_scene_ = 0;
-				ObsDataPtr program_data = v2_program_data(program_scene_);
-				set_nullable_handle(program_data.get(), "previousScene", previous_scene);
-				events->publish(EngineEventKind::State, "program.sceneChanged", revision, program_data.get());
-			}
-			events->publish(EngineEventKind::State, name, revision,
-					make_transition_event_data(observer->handle, state).get());
-		}
+	for (const auto &observer : observers)
+		sync_transition_observer(observer, *revisions, *events);
+}
+
+void Engine::sync_transition_observer(const std::shared_ptr<TransitionV2Observer> &observer, RevisionState &revisions,
+					      EventDispatcher &events)
+{
+	std::deque<TransitionPendingSignal> pending;
+	bool overflow = false;
+	drain_transition_observer(observer, pending, overflow);
+	if (overflow) {
+		if (revisions.can_commit_mutation())
+			revisions.commit_mutation();
+		events.require_resync_due_to_overflow(revisions.current());
 	}
+	for (const TransitionPendingSignal signal : pending) {
+		if (!revisions.can_commit_mutation()) {
+			events.require_resync_due_to_overflow(revisions.current());
+			break;
+		}
+		publish_transition_signal(*observer, signal == TransitionPendingSignal::Ended, revisions, events);
+	}
+}
+
+void Engine::publish_transition_signal(const TransitionV2Observer &observer, bool ended, RevisionState &revisions,
+					       EventDispatcher &events)
+{
+	const uint64_t revision = revisions.commit_mutation();
+	if (ended)
+		finish_studio_transition(revision, observer, events);
+	const char *name = ended ? "transition.ended" : "transition.started";
+	const char *state = ended ? "idle" : "running";
+	events.publish(EngineEventKind::State, name, revision, make_transition_event_data(observer.handle, state).get());
+}
+
+void Engine::finish_studio_transition(uint64_t revision, const TransitionV2Observer &observer,
+					      EventDispatcher &events)
+{
+	if (!studio_transition_active_ || observer.handle != studio_transition_)
+		return;
+	if (observer.transition)
+		obs_transition_clear(observer.transition);
+	const uint64_t previous_scene = studio_transition_from_scene_;
+	const uint64_t destination_scene = studio_transition_destination_scene_;
+	auto main_it = canvases_.find(main_canvas_);
+	obs_source_t *destination = nullptr;
+	const auto destination_it = scenes_.find(destination_scene);
+	if (destination_it != scenes_.end())
+		destination = obs_scene_get_source(destination_it->second);
+	if (main_it != canvases_.end() && main_it->second.canvas)
+		obs_canvas_set_channel(main_it->second.canvas, 0, destination);
+	program_scene_ = destination ? destination_scene : 0;
+	studio_transition_active_ = false;
+	studio_transition_from_scene_ = 0;
+	studio_transition_destination_scene_ = 0;
+	ObsDataPtr program_data = v2_program_data(program_scene_);
+	set_nullable_handle(program_data.get(), "previousScene", previous_scene);
+	events.publish(EngineEventKind::State, "program.sceneChanged", revision, program_data.get());
 }
 
 void Engine::v2_cancel_studio_transition() noexcept

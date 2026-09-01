@@ -6,13 +6,14 @@
 **Accepted Task-10 documentation checkpoint:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
 **Accepted Task-11 implementation:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
 **Task-11 acceptance record:** `TASK11_ACCEPTANCE.md`
-**Candidate branch:** `phase1-workflow-exec-hardening`
+**Candidate branch:** `phase2-scene-render-graph`
 **Script-body hardening branch:** `phase1-scriptbody-hardening`
 **Task-11 status:** COMPLETE / ACCEPTED
 **Tasks 1-11:** ACCEPTED
 **Phase-1 complexity hardening:** COMPLETE / ACCEPTED
 **Phase-1 script-body hardening:** IN REVIEW
 **Phase-1 workflow executable hardening:** IN REVIEW
+**Phase-2 Tasks 12-20:** IN REVIEW
 
 The current Phase-1 review checkpoint hardens the complexity gate's moving
 post-Task-11 scope, adds exact function-identity continuity migrations, and
@@ -41,6 +42,31 @@ The final pre-Phase-2 workflow executable-code cleanup is in review on
 inline executable logic. It does not change runtime behavior or authorize Task
 12. See `PHASE1_WORKFLOW_EXEC_HARDENING.md` for the inventory and evidence.
 
+## 2.2 Phase-2 candidate — Tasks 12–20
+
+The explicit Phase-2 goal authorized the complete composition path on the
+dedicated `phase2-scene-render-graph` branch, in this order:
+
+```text
+12 scene -> 13 item -> 14 canvas -> 15 program -> 16 preview ->
+17 D3D11 PreviewOutput -> 19 transition -> 18 studio -> 20 PreviewOutput routing
+```
+
+The candidate implements the namespace contracts in `engine/PROTOCOL_V2.md`
+and the concrete `CANVAS_V1.md`, `PROGRAM_V1.md`, `PREVIEW_V1.md`,
+`PREVIEW_OUTPUT_V1.md`, `D3D11_SHARED_PREVIEW_V1.md`, `TRANSITION_V1.md`, and
+`STUDIO_V1.md` documents. It preserves the single stdio Engine Protocol
+boundary, ephemeral decimal-string handles, global revision/event ordering,
+callback queue ownership, and the no-frontend/no-WebSocket production package
+boundary.
+
+Phase-2 implementation lanes and the Tasks 1–11 regression matrix are green on
+the local Windows D3D11 host. The branch also contains the reproducible
+`.github/workflows/engine-protocol-v2-phase2.yaml` hosted matrix and normal
+package audit. Phase 2 remains `IN REVIEW`: the final exact-SHA matrix,
+physical evidence, and independent advisor review must be recorded before any
+acceptance claim. Task 21 and all later work are outside this branch.
+
 This file is the current status ledger for the LibOBS split-engine project. If an older roadmap says Task 8 is active or Task 9 is only proposed, that older status is stale. Verify this ledger against Git/source/CI whenever resuming work.
 
 ---
@@ -61,7 +87,8 @@ This file is the current status ledger for the LibOBS split-engine project. If a
 | 9 | `interaction.*` | COMPLETE | seven methods + deterministic callback fixture + same-SHA matrix + physical Windows |
 | 10 | `media.*` | COMPLETE / ACCEPTED | 11 methods, exact queued-action settlement, exact-SHA hosted and physical evidence |
 | 11 | `filter.*` | COMPLETE / ACCEPTED | `e7b34828...`, exact-SHA matrix, physical Windows, artifact and independent review PASS |
-| 12–50 | Later roadmap | NOT STARTED | Task 12 remains planned and unauthorized |
+| 12–20 | Full composition and preview output path | IN REVIEW | Phase-2 candidate on `phase2-scene-render-graph`; independent review and final hosted CI pending |
+| 21–50 | Later roadmap | NOT STARTED | Outside the Phase-2 authorization; do not begin on this branch |
 
 ---
 
@@ -466,9 +493,8 @@ Record exact final SHA and acceptance evidence in this file after each completed
 
 The next project state transition is:
 
-`Phase-1 complexity hardening accepted` -> `Task 12 planned/not authorized`.
+`Phase-1 complexity hardening accepted` -> `Phase-2 Tasks 12-20 in review`.
 
-Task 12 has not started and is not authorized. The advisor WIP is preserved on
-`wip/task11-advisor-handoff-137b2e5` locally and remotely; the older unauthorized
-implementation is preserved on `wip/task11-unauthorized`. Neither is accepted or
-merged.
+The Phase-2 candidate must stop after the final evidence and independent
+review handoff. Task 21 and later namespaces remain not started and are not
+authorized on this branch.

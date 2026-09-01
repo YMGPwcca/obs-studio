@@ -88,49 +88,47 @@ function Read-Task14Event([string] $Name, [int64] $Revision) {
     return $event
 }
 
-try {
+function Invoke-Task14Bootstrap {
     Start-Task14Engine $InstallRoot
     $ready = Read-Task14Message
     if ($ready.event -ne 'ready') { Fail-Task14 'ready marker was not received.' }
     Assert-Ok (Send-Task14Request @{ op = 'request'; id = 'c-hello'; method = 'session.hello' }) 0 'hello'
     Assert-Ok (Send-Task14Request @{ op = 'request'; id = 'c-sub'; method = 'session.subscribe'; params = @{ subscriptions = @(@{ pattern = 'canvas.*' }, @{ pattern = 'scene.*' }) } }) 0 'subscribe'
-
     $main = Send-Task14Request @{ op = 'request'; id = 'c-main'; method = 'canvas.getMain' }
     Assert-Ok $main 0 'canvas.getMain'
     if ([string]$main.data.canvas -ne '1' -or -not $main.data.isMain) { Fail-Task14 'Main Canvas identity was not stable.' }
     $mainList = Send-Task14Request @{ op = 'request'; id = 'c-list'; method = 'canvas.list' }
     Assert-Ok $mainList 0 'canvas.list'
     if ([int]$mainList.data.count -ne 1) { Fail-Task14 'initial Canvas list did not contain only Main.' }
+}
 
-    $private = Send-Task14Request @{ op = 'request'; id = 'c-create'; method = 'canvas.create'; params = @{ name = 'Task14 Canvas'; videoSettings = @{ width = 640; height = 360; format = 'bgra'; colorSpace = 'srgb'; range = 'full'; scaleType = 'bilinear'; fpsNumerator = 30; fpsDenominator = 1 } } }
-    Assert-Ok $private 1 'canvas.create'
-    if ([string]$private.data.canvas -ne '2') { Fail-Task14 'unexpected private Canvas handle.' }
+function Invoke-Task14CanvasSetup {
+    $script:T14Private = Send-Task14Request @{ op = 'request'; id = 'c-create'; method = 'canvas.create'; params = @{ name = 'Task14 Canvas'; videoSettings = @{ width = 640; height = 360; format = 'bgra'; colorSpace = 'srgb'; range = 'full'; scaleType = 'bilinear'; fpsNumerator = 30; fpsDenominator = 1 } } }
+    Assert-Ok $script:T14Private 1 'canvas.create'
+    if ([string]$script:T14Private.data.canvas -ne '2') { Fail-Task14 'unexpected private Canvas handle.' }
     Read-Task14Event 'canvas.created' 1 | Out-Null
-
     $privateGet = Send-Task14Request @{ op = 'request'; id = 'c-get'; method = 'canvas.get'; params = @{ canvas = '2' } }
     Assert-Ok $privateGet 1 'canvas.get'
     if ([int]$privateGet.data.video.width -ne 640 -or [int]$privateGet.data.video.height -ne 360) { Fail-Task14 'private Canvas video settings were not applied.' }
-
-    $scene = Send-Task14Request @{ op = 'request'; id = 'c-scene'; method = 'scene.create'; params = @{ name = 'Private Scene'; canvas = '2' }; ifRevision = 1 }
-    Assert-Ok $scene 2 'scene.create on private Canvas'
-    if ([string]$scene.data.canvas -ne '2') { Fail-Task14 'Scene was not owned by private Canvas.' }
+    $script:T14Scene = Send-Task14Request @{ op = 'request'; id = 'c-scene'; method = 'scene.create'; params = @{ name = 'Private Scene'; canvas = '2' }; ifRevision = 1 }
+    Assert-Ok $script:T14Scene 2 'scene.create on private Canvas'
+    if ([string]$script:T14Scene.data.canvas -ne '2') { Fail-Task14 'Scene was not owned by private Canvas.' }
     Read-Task14Event 'scene.created' 2 | Out-Null
-
     $scenes = Send-Task14Request @{ op = 'request'; id = 'c-scenes'; method = 'canvas.listScenes'; params = @{ canvas = '2' } }
     Assert-Ok $scenes 2 'canvas.listScenes'
     if ([int]$scenes.data.count -ne 1 -or [string]$scenes.data.scenes[0].scene -ne '3') { Fail-Task14 'canvas.listScenes disagreed with Scene ownership.' }
+}
 
+function Invoke-Task14CanvasOperations {
     Assert-Error (Send-Task14Request @{ op = 'request'; id = 'c-busy-remove'; method = 'canvas.remove'; params = @{ canvas = '2' }; ifRevision = 2 }) 'object_in_use' 2 'remove Canvas with Scene'
     $rename = Send-Task14Request @{ op = 'request'; id = 'c-rename'; method = 'canvas.rename'; params = @{ canvas = '2'; name = 'Renamed Canvas' }; ifRevision = 2 }
     Assert-Ok $rename 3 'canvas.rename'
     Read-Task14Event 'canvas.renamed' 3 | Out-Null
-
     Assert-Error (Send-Task14Request @{ op = 'request'; id = 'c-invalid-video'; method = 'canvas.setVideoSettings'; params = @{ canvas = '2'; videoSettings = @{ width = 0 } }; ifRevision = 3 }) 'bad_request' 3 'invalid video settings'
     $reset = Send-Task14Request @{ op = 'request'; id = 'c-reset-video'; method = 'canvas.setVideoSettings'; params = @{ canvas = '2'; videoSettings = @{ width = 800; height = 450 } }; ifRevision = 3 }
     Assert-Ok $reset 4 'idle Canvas video reset'
     if ([int]$reset.data.width -ne 800 -or [int]$reset.data.height -ne 450) { Fail-Task14 'Canvas video reset did not read back its new dimensions.' }
     Read-Task14Event 'canvas.videoSettingsChanged' 4 | Out-Null
-
     $channel = Send-Task14Request @{ op = 'request'; id = 'c-channel'; method = 'canvas.setChannel'; params = @{ canvas = '2'; channel = 0; target = @{ type = 'scene'; scene = '3' } }; ifRevision = 4 }
     Assert-Ok $channel 5 'canvas.setChannel'
     Read-Task14Event 'canvas.channelChanged' 5 | Out-Null
@@ -138,7 +136,9 @@ try {
     Assert-Ok $channelGet 5 'canvas.getChannel'
     if ([string]$channelGet.data.target.type -ne 'scene' -or [string]$channelGet.data.target.scene -ne '3') { Fail-Task14 'Canvas channel target readback was incorrect.' }
     Assert-Error (Send-Task14Request @{ op = 'request'; id = 'c-channel-busy'; method = 'canvas.remove'; params = @{ canvas = '2' }; ifRevision = 5 }) 'object_in_use' 5 'remove Canvas with routed channel'
+}
 
+function Invoke-Task14Cleanup {
     $clear = Send-Task14Request @{ op = 'request'; id = 'c-channel-clear'; method = 'canvas.setChannel'; params = @{ canvas = '2'; channel = 0; target = $null }; ifRevision = 5 }
     Assert-Ok $clear 6 'clear Canvas channel'
     Read-Task14Event 'canvas.channelChanged' 6 | Out-Null
@@ -149,12 +149,22 @@ try {
     Assert-Ok $removeCanvas 8 'remove private Canvas'
     Read-Task14Event 'canvas.removed' 8 | Out-Null
     Assert-Error (Send-Task14Request @{ op = 'request'; id = 'c-main-remove'; method = 'canvas.remove'; params = @{ canvas = '1' }; ifRevision = 8 }) 'invalid_state' 8 'remove Main Canvas'
-
     $close = Send-Task14Request @{ op = 'request'; id = 'c-close'; method = 'session.close'; ifRevision = 8 }
     Assert-Ok $close 9 'session.close'
     $script:Process.WaitForExit(30000) | Out-Null
     Stop-Task14Engine
     Write-Output 'Task 14 canvas integration: PASS'
+}
+
+function Invoke-Task14Scenario {
+    Invoke-Task14Bootstrap
+    Invoke-Task14CanvasSetup
+    Invoke-Task14CanvasOperations
+    Invoke-Task14Cleanup
+}
+
+try {
+    Invoke-Task14Scenario
 } catch {
     if ($null -ne $script:Process -and -not $script:Process.HasExited) { $script:Process.Kill(); $script:Process.WaitForExit() }
     if ($null -ne $script:LastMessage) { Write-Error ("last protocol message: " + ($script:LastMessage | ConvertTo-Json -Compress -Depth 50)) }

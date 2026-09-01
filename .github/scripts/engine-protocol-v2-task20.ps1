@@ -115,171 +115,193 @@ function Read-Task20EventsThrough([string] $FinalName, [int64] $Revision, [Syste
     }
 }
 
-try {
+function Invoke-Task20Bootstrap {
     Start-Task20Engine $InstallRoot
     $ready = Read-Task20Message
     if ($ready.event -ne 'ready') { Fail-Task20 'ready marker was not received.' }
-    $hello = Send-Task20Request @{ op = 'request'; id = 'o-hello'; method = 'session.hello' }
-    Assert-Ok $hello 0 'hello'
+    $script:T20Hello = Send-Task20Request @{ op = 'request'; id = 'o-hello'; method = 'session.hello' }
+    Assert-Ok $script:T20Hello 0 'hello'
     $requiredCapabilities = @('previewOutput.v1', 'previewOutput.list.v1', 'previewOutput.get.v1', 'previewOutput.setTarget.v1')
     foreach ($capability in $requiredCapabilities) {
-        if (@($hello.data.capabilities | Where-Object { $_.name -eq $capability }).Count -eq 0) { Fail-Task20 "capability $capability was not advertised." }
+        if (@($script:T20Hello.data.capabilities | Where-Object { $_.name -eq $capability }).Count -eq 0) { Fail-Task20 "capability $capability was not advertised." }
     }
     Assert-Ok (Send-Task20Request @{ op = 'request'; id = 'o-sub'; method = 'session.subscribe'; params = @{ subscriptions = @(@{ pattern = 'canvas.*' }, @{ pattern = 'scene.*' }, @{ pattern = 'item.*' }, @{ pattern = 'source.*' }, @{ pattern = 'filter.*' }, @{ pattern = 'previewOutput.*' }) } }) 0 'subscribe'
+}
 
+function Invoke-Task20GraphSetup {
     $canvasOne = Send-Task20Request @{ op = 'request'; id = 'o-canvas-one'; method = 'canvas.create'; params = @{ name = 'Task20 Canvas One'; videoSettings = @{ width = 640; height = 360; format = 'bgra'; colorSpace = 'srgb'; range = 'full'; scaleType = 'bilinear'; fpsNumerator = 30; fpsDenominator = 1 } } }
     Assert-Ok $canvasOne 1 'Canvas One'
     Read-Task20Event 'canvas.created' 1 | Out-Null
-    $revision = 1
-    $canvasTwo = Send-Task20Guarded 'o-canvas-two' 'canvas.create' @{ name = 'Task20 Canvas Two'; videoSettings = @{ width = 320; height = 180; format = 'bgra'; colorSpace = 'srgb'; range = 'full'; scaleType = 'bilinear'; fpsNumerator = 30; fpsDenominator = 1 } } $revision
-    Assert-Ok $canvasTwo ($canvasTwo.GuardRevision + 1) 'Canvas Two'
-    $revision = [int64]$canvasTwo.revision
-    Read-Task20Event 'canvas.created' $revision | Out-Null
+    $script:T20Revision = 1
+    $script:T20CanvasTwo = Send-Task20Guarded 'o-canvas-two' 'canvas.create' @{ name = 'Task20 Canvas Two'; videoSettings = @{ width = 320; height = 180; format = 'bgra'; colorSpace = 'srgb'; range = 'full'; scaleType = 'bilinear'; fpsNumerator = 30; fpsDenominator = 1 } } $script:T20Revision
+    Assert-Ok $script:T20CanvasTwo ($script:T20CanvasTwo.GuardRevision + 1) 'Canvas Two'
+    $script:T20Revision = [int64]$script:T20CanvasTwo.revision
+    Read-Task20Event 'canvas.created' $script:T20Revision | Out-Null
+    $script:T20MainScene = Send-Task20Guarded 'o-main-scene' 'scene.create' @{ name = 'Task20 Main Scene' } $script:T20Revision
+    Assert-Ok $script:T20MainScene ($script:T20MainScene.GuardRevision + 1) 'main Scene'
+    $script:T20Revision = [int64]$script:T20MainScene.revision
+    Read-Task20Event 'scene.created' $script:T20Revision | Out-Null
+    $script:T20TargetScene = Send-Task20Guarded 'o-target-scene' 'scene.create' @{ name = 'Task20 Target Scene' } $script:T20Revision
+    Assert-Ok $script:T20TargetScene ($script:T20TargetScene.GuardRevision + 1) 'target Scene'
+    $script:T20Revision = [int64]$script:T20TargetScene.revision
+    Read-Task20Event 'scene.created' $script:T20Revision | Out-Null
+    $script:T20PrivateScene = Send-Task20Guarded 'o-private-scene' 'scene.create' @{ name = 'Task20 Private Scene'; canvas = [string]$script:T20CanvasTwo.data.canvas } $script:T20Revision
+    Assert-Ok $script:T20PrivateScene ($script:T20PrivateScene.GuardRevision + 1) 'private Scene'
+    $script:T20Revision = [int64]$script:T20PrivateScene.revision
+    Read-Task20Event 'scene.created' $script:T20Revision | Out-Null
+}
 
-    $mainScene = Send-Task20Guarded 'o-main-scene' 'scene.create' @{ name = 'Task20 Main Scene' } $revision
-    Assert-Ok $mainScene ($mainScene.GuardRevision + 1) 'main Scene'
-    $revision = [int64]$mainScene.revision
-    Read-Task20Event 'scene.created' $revision | Out-Null
-    $targetScene = Send-Task20Guarded 'o-target-scene' 'scene.create' @{ name = 'Task20 Target Scene' } $revision
-    Assert-Ok $targetScene ($targetScene.GuardRevision + 1) 'target Scene'
-    $revision = [int64]$targetScene.revision
-    Read-Task20Event 'scene.created' $revision | Out-Null
-    $privateScene = Send-Task20Guarded 'o-private-scene' 'scene.create' @{ name = 'Task20 Private Scene'; canvas = [string]$canvasTwo.data.canvas } $revision
-    Assert-Ok $privateScene ($privateScene.GuardRevision + 1) 'private Scene'
-    $revision = [int64]$privateScene.revision
-    Read-Task20Event 'scene.created' $revision | Out-Null
-
-    $source = Send-Task20Guarded 'o-source' 'source.create' @{ kind = 'color_source_v3'; name = 'Task20 Filtered Color'; settings = @{ width = 640; height = 360; color = 4278190335 } } $revision
-    Assert-Ok $source ($source.GuardRevision + 1) 'color source'
-    $revision = [int64]$source.revision
-    Read-Task20Event 'source.created' $revision | Out-Null
-    $item = Send-Task20Guarded 'o-item' 'item.create' @{ scene = [string]$mainScene.data.scene; source = [string]$source.data.source } $revision
-    Assert-Ok $item ($item.GuardRevision + 1) 'scene item'
-    $revision = [int64]$item.revision
-    Read-Task20Event 'item.created' $revision | Out-Null
-    $transform = Send-Task20Guarded 'o-transform' 'item.setTransform' @{ item = [string]$item.data.item; transform = @{ position = @{ x = 20.0; y = 30.0 }; scale = @{ x = 1.5; y = 1.25 }; rotation = 15.0; alignment = 5; bounds = @{ type = 'none' }; crop = @{ left = 0; top = 0; right = 0; bottom = 0 }; cropToBounds = $false } } $revision
+function Invoke-Task20SourceSetup {
+    $script:T20Source = Send-Task20Guarded 'o-source' 'source.create' @{ kind = 'color_source_v3'; name = 'Task20 Filtered Color'; settings = @{ width = 640; height = 360; color = 4278190335 } } $script:T20Revision
+    Assert-Ok $script:T20Source ($script:T20Source.GuardRevision + 1) 'color source'
+    $script:T20Revision = [int64]$script:T20Source.revision
+    Read-Task20Event 'source.created' $script:T20Revision | Out-Null
+    $script:T20Item = Send-Task20Guarded 'o-item' 'item.create' @{ scene = [string]$script:T20MainScene.data.scene; source = [string]$script:T20Source.data.source } $script:T20Revision
+    Assert-Ok $script:T20Item ($script:T20Item.GuardRevision + 1) 'scene item'
+    $script:T20Revision = [int64]$script:T20Item.revision
+    Read-Task20Event 'item.created' $script:T20Revision | Out-Null
+    $transform = Send-Task20Guarded 'o-transform' 'item.setTransform' @{ item = [string]$script:T20Item.data.item; transform = @{ position = @{ x = 20.0; y = 30.0 }; scale = @{ x = 1.5; y = 1.25 }; rotation = 15.0; alignment = 5; bounds = @{ type = 'none' }; crop = @{ left = 0; top = 0; right = 0; bottom = 0 }; cropToBounds = $false } } $script:T20Revision
     Assert-Ok $transform ($transform.GuardRevision + 1) 'transformed scene item'
-    $revision = [int64]$transform.revision
-    Read-Task20Event 'item.transformChanged' $revision | Out-Null
-
+    $script:T20Revision = [int64]$transform.revision
+    Read-Task20Event 'item.transformChanged' $script:T20Revision | Out-Null
     $filterKinds = Send-Task20Request @{ op = 'request'; id = 'o-filter-kinds'; method = 'filter.kindList' }
-    Assert-Ok $filterKinds $revision 'filter kind list'
+    Assert-Ok $filterKinds $script:T20Revision 'filter kind list'
     $filterKindEntry = @($filterKinds.data.kinds | Where-Object { $_.id -eq 'color_filter' }) | Select-Object -First 1
     if ($null -eq $filterKindEntry) { $filterKindEntry = $filterKinds.data.kinds[0] }
     $filterKind = [string]$filterKindEntry.id
     $filterDefaults = Send-Task20Request @{ op = 'request'; id = 'o-filter-defaults'; method = 'filter.kindDefaults'; params = @{ kind = $filterKind } }
-    Assert-Ok $filterDefaults $revision 'filter defaults'
-    $filter = Send-Task20Guarded 'o-filter' 'filter.create' @{ source = [string]$source.data.source; kind = $filterKind; name = 'Task20 Filter'; settings = $filterDefaults.data.settings } $revision
+    Assert-Ok $filterDefaults $script:T20Revision 'filter defaults'
+    $filter = Send-Task20Guarded 'o-filter' 'filter.create' @{ source = [string]$script:T20Source.data.source; kind = $filterKind; name = 'Task20 Filter'; settings = $filterDefaults.data.settings } $script:T20Revision
     Assert-Ok $filter ($filter.GuardRevision + 1) 'source filter'
-    $revision = [int64]$filter.revision
-    Read-Task20Event 'filter.created' $revision | Out-Null
+    $script:T20Revision = [int64]$filter.revision
+    Read-Task20Event 'filter.created' $script:T20Revision | Out-Null
+}
 
-    $programOutput = Send-Task20Guarded 'o-output-program' 'previewOutput.create' @{ target = @{ type = 'program' }; width = 160; height = 90; enabled = $false } $revision
-    Assert-Ok $programOutput ($programOutput.GuardRevision + 1) 'Program output'
-    $revision = [int64]$programOutput.revision
-    Read-Task20Event 'previewOutput.created' $revision | Out-Null
-    $previewOutput = Send-Task20Guarded 'o-output-preview' 'previewOutput.create' @{ target = @{ type = 'preview' }; width = 160; height = 90; enabled = $false } $revision
-    Assert-Ok $previewOutput ($previewOutput.GuardRevision + 1) 'Preview output'
-    $revision = [int64]$previewOutput.revision
-    Read-Task20Event 'previewOutput.created' $revision | Out-Null
-    $sceneOutput = Send-Task20Guarded 'o-output-scene' 'previewOutput.create' @{ target = @{ type = 'scene'; scene = [string]$mainScene.data.scene }; width = 160; height = 90; enabled = $false; scale = 'fit' } $revision
-    Assert-Ok $sceneOutput ($sceneOutput.GuardRevision + 1) 'Scene output'
-    $revision = [int64]$sceneOutput.revision
-    Read-Task20Event 'previewOutput.created' $revision | Out-Null
-    $sourceOutput = Send-Task20Guarded 'o-output-source' 'previewOutput.create' @{ target = @{ type = 'source'; source = [string]$source.data.source }; width = 160; height = 90; enabled = $false; scale = 'fill' } $revision
-    Assert-Ok $sourceOutput ($sourceOutput.GuardRevision + 1) 'Source output'
-    $revision = [int64]$sourceOutput.revision
-    Read-Task20Event 'previewOutput.created' $revision | Out-Null
-    $canvasOutput = Send-Task20Guarded 'o-output-canvas' 'previewOutput.create' @{ target = @{ type = 'canvas'; canvas = [string]$canvasTwo.data.canvas }; width = 160; height = 90; enabled = $false; scale = 'oneToOne' } $revision
-    Assert-Ok $canvasOutput ($canvasOutput.GuardRevision + 1) 'Canvas output'
-    $revision = [int64]$canvasOutput.revision
-    Read-Task20Event 'previewOutput.created' $revision | Out-Null
-
+function Invoke-Task20OutputSetup {
+    $script:T20ProgramOutput = Send-Task20Guarded 'o-output-program' 'previewOutput.create' @{ target = @{ type = 'program' }; width = 160; height = 90; enabled = $false } $script:T20Revision
+    Assert-Ok $script:T20ProgramOutput ($script:T20ProgramOutput.GuardRevision + 1) 'Program output'
+    $script:T20Revision = [int64]$script:T20ProgramOutput.revision
+    Read-Task20Event 'previewOutput.created' $script:T20Revision | Out-Null
+    $script:T20PreviewOutput = Send-Task20Guarded 'o-output-preview' 'previewOutput.create' @{ target = @{ type = 'preview' }; width = 160; height = 90; enabled = $false } $script:T20Revision
+    Assert-Ok $script:T20PreviewOutput ($script:T20PreviewOutput.GuardRevision + 1) 'Preview output'
+    $script:T20Revision = [int64]$script:T20PreviewOutput.revision
+    Read-Task20Event 'previewOutput.created' $script:T20Revision | Out-Null
+    $script:T20SceneOutput = Send-Task20Guarded 'o-output-scene' 'previewOutput.create' @{ target = @{ type = 'scene'; scene = [string]$script:T20MainScene.data.scene }; width = 160; height = 90; enabled = $false; scale = 'fit' } $script:T20Revision
+    Assert-Ok $script:T20SceneOutput ($script:T20SceneOutput.GuardRevision + 1) 'Scene output'
+    $script:T20Revision = [int64]$script:T20SceneOutput.revision
+    Read-Task20Event 'previewOutput.created' $script:T20Revision | Out-Null
+    $script:T20SourceOutput = Send-Task20Guarded 'o-output-source' 'previewOutput.create' @{ target = @{ type = 'source'; source = [string]$script:T20Source.data.source }; width = 160; height = 90; enabled = $false; scale = 'fill' } $script:T20Revision
+    Assert-Ok $script:T20SourceOutput ($script:T20SourceOutput.GuardRevision + 1) 'Source output'
+    $script:T20Revision = [int64]$script:T20SourceOutput.revision
+    Read-Task20Event 'previewOutput.created' $script:T20Revision | Out-Null
+    $script:T20CanvasOutput = Send-Task20Guarded 'o-output-canvas' 'previewOutput.create' @{ target = @{ type = 'canvas'; canvas = [string]$script:T20CanvasTwo.data.canvas }; width = 160; height = 90; enabled = $false; scale = 'oneToOne' } $script:T20Revision
+    Assert-Ok $script:T20CanvasOutput ($script:T20CanvasOutput.GuardRevision + 1) 'Canvas output'
+    $script:T20Revision = [int64]$script:T20CanvasOutput.revision
+    Read-Task20Event 'previewOutput.created' $script:T20Revision | Out-Null
     $list = Send-Task20Request @{ op = 'request'; id = 'o-list'; method = 'previewOutput.list' }
-    Assert-Ok $list $revision 'previewOutput.list'
+    Assert-Ok $list $script:T20Revision 'previewOutput.list'
     if ([int]$list.data.count -ne 5) { Fail-Task20 'previewOutput.list did not enumerate all five target types.' }
-    foreach ($output in @($programOutput, $previewOutput, $sceneOutput, $sourceOutput, $canvasOutput)) {
+    foreach ($output in @($script:T20ProgramOutput, $script:T20PreviewOutput, $script:T20SceneOutput, $script:T20SourceOutput, $script:T20CanvasOutput)) {
         $got = Send-Task20Request @{ op = 'request'; id = "o-get-$($output.data.previewOutput)"; method = 'previewOutput.get'; params = @{ previewOutput = [string]$output.data.previewOutput } }
-        Assert-Ok $got $revision 'previewOutput.get'
+        Assert-Ok $got $script:T20Revision 'previewOutput.get'
         if (-not $got.data.hasSharedTexture -or [int]$got.data.width -ne 160 -or [int]$got.data.height -ne 90) { Fail-Task20 'previewOutput.get returned incomplete resource metadata.' }
     }
+    $script:T20ProgramHandle = [string]$script:T20ProgramOutput.data.previewOutput
+}
 
-    $programHandle = [string]$programOutput.data.previewOutput
-    $retargetSource = Send-Task20Guarded 'o-retarget-source' 'previewOutput.setTarget' @{ previewOutput = $programHandle; target = @{ type = 'source'; source = [string]$source.data.source }; scale = 'stretch' } $revision
+function Invoke-Task20RetargetAndReset {
+    $retargetSource = Send-Task20Guarded 'o-retarget-source' 'previewOutput.setTarget' @{ previewOutput = $script:T20ProgramHandle; target = @{ type = 'source'; source = [string]$script:T20Source.data.source }; scale = 'stretch' } $script:T20Revision
     Assert-Ok $retargetSource ($retargetSource.GuardRevision + 1) 'retarget to Source'
-    $revision = [int64]$retargetSource.revision
-    Read-Task20Event 'previewOutput.targetChanged' $revision | Out-Null
-    $retargetScene = Send-Task20Guarded 'o-retarget-scene' 'previewOutput.setTarget' @{ previewOutput = $programHandle; target = @{ type = 'scene'; scene = [string]$mainScene.data.scene }; scale = 'fill' } $revision
+    $script:T20Revision = [int64]$retargetSource.revision
+    Read-Task20Event 'previewOutput.targetChanged' $script:T20Revision | Out-Null
+    $retargetScene = Send-Task20Guarded 'o-retarget-scene' 'previewOutput.setTarget' @{ previewOutput = $script:T20ProgramHandle; target = @{ type = 'scene'; scene = [string]$script:T20MainScene.data.scene }; scale = 'fill' } $script:T20Revision
     Assert-Ok $retargetScene ($retargetScene.GuardRevision + 1) 'retarget to Scene'
-    $revision = [int64]$retargetScene.revision
-    Read-Task20Event 'previewOutput.targetChanged' $revision | Out-Null
-    $retargetCanvas = Send-Task20Guarded 'o-retarget-canvas' 'previewOutput.setTarget' @{ previewOutput = $programHandle; target = @{ type = 'canvas'; canvas = [string]$canvasTwo.data.canvas }; scale = 'oneToOne' } $revision
+    $script:T20Revision = [int64]$retargetScene.revision
+    Read-Task20Event 'previewOutput.targetChanged' $script:T20Revision | Out-Null
+    $retargetCanvas = Send-Task20Guarded 'o-retarget-canvas' 'previewOutput.setTarget' @{ previewOutput = $script:T20ProgramHandle; target = @{ type = 'canvas'; canvas = [string]$script:T20CanvasTwo.data.canvas }; scale = 'oneToOne' } $script:T20Revision
     Assert-Ok $retargetCanvas ($retargetCanvas.GuardRevision + 1) 'retarget to Canvas'
-    $revision = [int64]$retargetCanvas.revision
-    Read-Task20Event 'previewOutput.targetChanged' $revision | Out-Null
-    $retargetInfo = Send-Task20Request @{ op = 'request'; id = 'o-retarget-info'; method = 'previewOutput.getInfo'; params = @{ previewOutput = $programHandle } }
-    Assert-Ok $retargetInfo $revision 'retarget info'
+    $script:T20Revision = [int64]$retargetCanvas.revision
+    Read-Task20Event 'previewOutput.targetChanged' $script:T20Revision | Out-Null
+    $retargetInfo = Send-Task20Request @{ op = 'request'; id = 'o-retarget-info'; method = 'previewOutput.getInfo'; params = @{ previewOutput = $script:T20ProgramHandle } }
+    Assert-Ok $retargetInfo $script:T20Revision 'retarget info'
     if ([string]$retargetInfo.data.target.type -ne 'canvas' -or [string]$retargetInfo.data.scale -ne 'oneToOne') { Fail-Task20 'rapid retargeting or semantic scale readback was incorrect.' }
-
-    $canvasReset = Send-Task20Guarded 'o-canvas-reset' 'canvas.setVideoSettings' @{ canvas = [string]$canvasTwo.data.canvas; videoSettings = @{ width = 400; height = 200 } } $revision
+    $canvasReset = Send-Task20Guarded 'o-canvas-reset' 'canvas.setVideoSettings' @{ canvas = [string]$script:T20CanvasTwo.data.canvas; videoSettings = @{ width = 400; height = 200 } } $script:T20Revision
     Assert-Ok $canvasReset ($canvasReset.GuardRevision + 1) 'Canvas video reset with output'
-    $revision = [int64]$canvasReset.revision
-    Read-Task20Event 'canvas.videoSettingsChanged' $revision | Out-Null
-    $resourceReset = Read-Task20Event 'previewOutput.resourceChanged' $revision
-    $resourceResetSecond = Read-Task20Event 'previewOutput.resourceChanged' $revision
-    if ([string]$resourceReset.data.resourceGeneration -eq [string]$canvasOutput.data.resourceGeneration -or [string]$resourceResetSecond.data.resourceGeneration -eq [string]$canvasOutput.data.resourceGeneration) { Fail-Task20 'Canvas video reset did not bump PreviewOutput resource generation.' }
+    $script:T20Revision = [int64]$canvasReset.revision
+    Read-Task20Event 'canvas.videoSettingsChanged' $script:T20Revision | Out-Null
+    $resourceReset = Read-Task20Event 'previewOutput.resourceChanged' $script:T20Revision
+    $resourceResetSecond = Read-Task20Event 'previewOutput.resourceChanged' $script:T20Revision
+    if ([string]$resourceReset.data.resourceGeneration -eq [string]$script:T20CanvasOutput.data.resourceGeneration -or [string]$resourceResetSecond.data.resourceGeneration -eq [string]$script:T20CanvasOutput.data.resourceGeneration) { Fail-Task20 'Canvas video reset did not bump PreviewOutput resource generation.' }
+}
 
-    $removeSource = Send-Task20Guarded 'o-remove-source' 'source.remove' @{ source = [string]$source.data.source } $revision
+function Invoke-Task20InvalidationChecks {
+    $removeSource = Send-Task20Guarded 'o-remove-source' 'source.remove' @{ source = [string]$script:T20Source.data.source } $script:T20Revision
     Assert-Ok $removeSource ($removeSource.GuardRevision + 1) 'remove Source target'
-    $revision = [int64]$removeSource.revision
+    $script:T20Revision = [int64]$removeSource.revision
     $sourceRemovalEvents = [System.Collections.Generic.List[string]]::new()
-    Read-Task20EventsThrough 'source.removed' $revision $sourceRemovalEvents
+    Read-Task20EventsThrough 'source.removed' $script:T20Revision $sourceRemovalEvents
     if (-not ($sourceRemovalEvents -contains 'previewOutput.targetChanged')) { Fail-Task20 'Source target removal did not invalidate its PreviewOutput.' }
-    $sourceInfo = Send-Task20Request @{ op = 'request'; id = 'o-source-invalidated'; method = 'previewOutput.getInfo'; params = @{ previewOutput = [string]$sourceOutput.data.previewOutput } }
-    Assert-Ok $sourceInfo $revision 'invalidated Source output info'
+    $sourceInfo = Send-Task20Request @{ op = 'request'; id = 'o-source-invalidated'; method = 'previewOutput.getInfo'; params = @{ previewOutput = [string]$script:T20SourceOutput.data.previewOutput } }
+    Assert-Ok $sourceInfo $script:T20Revision 'invalidated Source output info'
     if ($sourceInfo.data.targetAvailable) { Fail-Task20 'Source-targeted PreviewOutput remained available after source removal.' }
-
-    $removeMainScene = Send-Task20Guarded 'o-remove-scene' 'scene.remove' @{ scene = [string]$mainScene.data.scene } $revision
+    $removeMainScene = Send-Task20Guarded 'o-remove-scene' 'scene.remove' @{ scene = [string]$script:T20MainScene.data.scene } $script:T20Revision
     Assert-Ok $removeMainScene ($removeMainScene.GuardRevision + 1) 'remove Scene target'
-    $revision = [int64]$removeMainScene.revision
+    $script:T20Revision = [int64]$removeMainScene.revision
     $sceneRemovalEvents = [System.Collections.Generic.List[string]]::new()
-    Read-Task20EventsThrough 'scene.removed' $revision $sceneRemovalEvents
+    Read-Task20EventsThrough 'scene.removed' $script:T20Revision $sceneRemovalEvents
     if (-not ($sceneRemovalEvents -contains 'previewOutput.targetChanged')) { Fail-Task20 'Scene target removal did not invalidate its PreviewOutput.' }
-
-    $removePrivateScene = Send-Task20Guarded 'o-remove-private-scene' 'scene.remove' @{ scene = [string]$privateScene.data.scene } $revision
+    $removePrivateScene = Send-Task20Guarded 'o-remove-private-scene' 'scene.remove' @{ scene = [string]$script:T20PrivateScene.data.scene } $script:T20Revision
     Assert-Ok $removePrivateScene ($removePrivateScene.GuardRevision + 1) 'remove private Scene'
-    $revision = [int64]$removePrivateScene.revision
-    Read-Task20Event 'scene.removed' $revision | Out-Null
-    $removeCanvas = Send-Task20Guarded 'o-remove-canvas' 'canvas.remove' @{ canvas = [string]$canvasTwo.data.canvas } $revision
+    $script:T20Revision = [int64]$removePrivateScene.revision
+    Read-Task20Event 'scene.removed' $script:T20Revision | Out-Null
+}
+
+function Invoke-Task20CanvasCleanup {
+    $removeCanvas = Send-Task20Guarded 'o-remove-canvas' 'canvas.remove' @{ canvas = [string]$script:T20CanvasTwo.data.canvas } $script:T20Revision
     Assert-Ok $removeCanvas ($removeCanvas.GuardRevision + 1) 'remove Canvas target'
-    $revision = [int64]$removeCanvas.revision
-    Read-Task20Event 'previewOutput.targetChanged' $revision | Out-Null
-    Read-Task20Event 'previewOutput.targetChanged' $revision | Out-Null
-    Read-Task20Event 'canvas.removed' $revision | Out-Null
-    $canvasInfo = Send-Task20Request @{ op = 'request'; id = 'o-canvas-invalidated'; method = 'previewOutput.getInfo'; params = @{ previewOutput = [string]$canvasOutput.data.previewOutput } }
-    Assert-Ok $canvasInfo $revision 'invalidated Canvas output info'
+    $script:T20Revision = [int64]$removeCanvas.revision
+    Read-Task20Event 'previewOutput.targetChanged' $script:T20Revision | Out-Null
+    Read-Task20Event 'previewOutput.targetChanged' $script:T20Revision | Out-Null
+    Read-Task20Event 'canvas.removed' $script:T20Revision | Out-Null
+    $canvasInfo = Send-Task20Request @{ op = 'request'; id = 'o-canvas-invalidated'; method = 'previewOutput.getInfo'; params = @{ previewOutput = [string]$script:T20CanvasOutput.data.previewOutput } }
+    Assert-Ok $canvasInfo $script:T20Revision 'invalidated Canvas output info'
     if ($canvasInfo.data.targetAvailable) { Fail-Task20 'Canvas-targeted PreviewOutput remained available after Canvas removal.' }
-
-    $rebindPreview = Send-Task20Guarded 'o-rebind-preview' 'previewOutput.setTarget' @{ previewOutput = $programHandle; target = @{ type = 'preview' }; scale = 'fit' } $revision
+    $rebindPreview = Send-Task20Guarded 'o-rebind-preview' 'previewOutput.setTarget' @{ previewOutput = $script:T20ProgramHandle; target = @{ type = 'preview' }; scale = 'fit' } $script:T20Revision
     Assert-Ok $rebindPreview ($rebindPreview.GuardRevision + 1) 'rebind after target disappearance'
-    $revision = [int64]$rebindPreview.revision
-    Read-Task20Event 'previewOutput.targetChanged' $revision | Out-Null
+    $script:T20Revision = [int64]$rebindPreview.revision
+    Read-Task20Event 'previewOutput.targetChanged' $script:T20Revision | Out-Null
     $remaining = Send-Task20Request @{ op = 'request'; id = 'o-list-final'; method = 'previewOutput.list' }
-    Assert-Ok $remaining $revision 'final previewOutput.list'
+    Assert-Ok $remaining $script:T20Revision 'final previewOutput.list'
     if ([int]$remaining.data.count -ne 5) { Fail-Task20 'PreviewOutput list lost a live output during target invalidation.' }
+}
 
-    foreach ($output in @($programOutput, $previewOutput, $sceneOutput, $sourceOutput, $canvasOutput)) {
-        $destroy = Send-Task20Guarded "o-destroy-$($output.data.previewOutput)" 'previewOutput.destroy' @{ previewOutput = [string]$output.data.previewOutput } $revision
+function Invoke-Task20FinalCleanup {
+    foreach ($output in @($script:T20ProgramOutput, $script:T20PreviewOutput, $script:T20SceneOutput, $script:T20SourceOutput, $script:T20CanvasOutput)) {
+        $destroy = Send-Task20Guarded "o-destroy-$($output.data.previewOutput)" 'previewOutput.destroy' @{ previewOutput = [string]$output.data.previewOutput } $script:T20Revision
         Assert-Ok $destroy ($destroy.GuardRevision + 1) 'destroy PreviewOutput'
-        $revision = [int64]$destroy.revision
-        Read-Task20Event 'previewOutput.destroyed' $revision | Out-Null
+        $script:T20Revision = [int64]$destroy.revision
+        Read-Task20Event 'previewOutput.destroyed' $script:T20Revision | Out-Null
     }
-
-    $close = Send-Task20Guarded 'o-close' 'session.close' $null $revision
+    $close = Send-Task20Guarded 'o-close' 'session.close' $null $script:T20Revision
     Assert-Ok $close ($close.GuardRevision + 1) 'session.close'
     $script:Process.WaitForExit(30000) | Out-Null
     Stop-Task20Engine
     Write-Output 'Task 20 previewOutput integration: PASS'
+}
+
+function Invoke-Task20Scenario {
+    Invoke-Task20Bootstrap
+    Invoke-Task20GraphSetup
+    Invoke-Task20SourceSetup
+    Invoke-Task20OutputSetup
+    Invoke-Task20RetargetAndReset
+    Invoke-Task20InvalidationChecks
+    Invoke-Task20CanvasCleanup
+    Invoke-Task20FinalCleanup
+}
+
+try {
+    Invoke-Task20Scenario
 } catch {
     if ($null -ne $script:Process -and -not $script:Process.HasExited) { $script:Process.Kill(); $script:Process.WaitForExit() }
     if ($null -ne $script:ErrorTask) { Write-Host ("engine stderr: " + $script:ErrorTask.GetAwaiter().GetResult()) }

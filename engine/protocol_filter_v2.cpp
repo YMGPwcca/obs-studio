@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <optional>
 #include <string_view>
+#include <vector>
 
 namespace obs_engine {
 
@@ -343,15 +344,23 @@ bool requires_preview_output_transport(std::string_view name)
 	return name == "preview.d3d11SharedTexture.v1" || name.starts_with("previewOutput.");
 }
 
+std::vector<const CapabilityDescriptor *> advertised_capabilities(const Engine &engine)
+{
+	std::vector<const CapabilityDescriptor *> advertised;
+	for (const CapabilityDescriptor &descriptor : kCapabilities) {
+		if (!requires_preview_output_transport(descriptor.name) || engine.v2_preview_output_capable())
+			advertised.push_back(&descriptor);
+	}
+	return advertised;
+}
+
 ObsArrayPtr make_capabilities_array(const Engine &engine)
 {
 	ObsArrayPtr capabilities(obs_data_array_create());
-	for (const CapabilityDescriptor &descriptor : kCapabilities) {
-		if (requires_preview_output_transport(descriptor.name) && !engine.v2_preview_output_capable())
-			continue;
+	for (const CapabilityDescriptor *descriptor : advertised_capabilities(engine)) {
 		ObsDataPtr capability(obs_data_create());
-		obs_data_set_string(capability.get(), "name", descriptor.name);
-		obs_data_set_bool(capability.get(), "experimental", descriptor.experimental);
+		obs_data_set_string(capability.get(), "name", descriptor->name);
+		obs_data_set_bool(capability.get(), "experimental", descriptor->experimental);
 		obs_data_array_push_back(capabilities.get(), capability.get());
 	}
 	return capabilities;
@@ -507,6 +516,11 @@ bool handle_capability_request(Engine &engine, RevisionState &revisions, const V
 	return true;
 }
 
+bool is_capability_request(std::string_view method)
+{
+	return method == "session.hello" || method == "engine.getCapabilities";
+}
+
 bool handle_filter_request(Engine &engine, RevisionState &revisions, EventDispatcher &events, const V2Request &request,
 			   FilterMethod method)
 {
@@ -553,7 +567,7 @@ bool handle_v2_request(Engine &engine, const Config &config, RevisionState &revi
 			       const V2Request &request)
 {
 	engine.v2_sync_transition_observers();
-	if (request.method == "session.hello" || request.method == "engine.getCapabilities")
+	if (is_capability_request(request.method))
 		return handle_capability_request(engine, revisions, request);
 
 	const FilterMethod filter_method = classify_filter_method(request.method);

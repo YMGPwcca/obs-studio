@@ -1,0 +1,120 @@
+name: Engine Protocol v2 Phase 2 Verification
+
+on:
+  push:
+    branches:
+      - phase2-scene-render-graph
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  complexity:
+    name: Phase 2 complexity regression gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Install isolated complexity analyzer
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-warn-script-location \
+            --target "$RUNNER_TEMP/libobs-lizard" 'lizard==1.24.0'
+      - name: Install pinned workflow YAML parser
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Install-Module -Name powershell-yaml -RequiredVersion 0.4.12 -Repository PSGallery -Scope CurrentUser -Force -AllowClobber
+      - name: Run complexity self-tests and gate
+        shell: pwsh
+        env:
+          LIZARD_PATH: ${{ runner.temp }}/libobs-lizard
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & pwsh -NoProfile -File tools/check-complexity.tests.ps1 -LizardPythonPath $env:LIZARD_PATH
+          & pwsh -NoProfile -File tools/check-complexity.ps1 -Mode Check -LizardPythonPath $env:LIZARD_PATH
+
+  previous-regression:
+    name: Tasks 1-11 same-SHA regression matrix
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Build Windows minimal runtime
+        uses: ./.github/actions/build-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
+      - name: Verify normal package before fixture staging
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & .github/scripts/engine-protocol-v2-phase2-package-audit.ps1 -InstallRoot (Resolve-Path 'build_x64/install')
+      - name: Run Tasks 1-11 regression matrix
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & .github/scripts/engine-protocol-v2-phase2-regression.ps1
+      - name: Verify normal package after fixture cleanup
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & .github/scripts/engine-protocol-v2-phase2-package-audit.ps1 -InstallRoot (Resolve-Path 'build_x64/install')
+      - name: Upload same-SHA regression runtime
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: obs-engine-windows-x64-phase2-regression-${{ github.sha }}
+          path: build_x64/install/
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 7
+
+  phase2-lanes:
+    name: Task ${{ matrix.task }} Windows lane
+    needs: [complexity]
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        task: ['12', '13', '14', '15', '16', '17', '18', '19', '20']
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Build Windows minimal runtime
+        uses: ./.github/actions/build-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
+      - name: Build D3D11 PreviewOutput consumer fixture
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cmake --build build_x64 --config RelWithDebInfo --target obs-engine-preview-consumer-test --parallel 1
+      - name: Verify normal package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & .github/scripts/engine-protocol-v2-phase2-package-audit.ps1 -InstallRoot (Resolve-Path 'build_x64/install')
+      - name: Run Phase 2 Task ${{ matrix.task }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & .github/scripts/engine-protocol-v2-phase2-lane.ps1 -Task '${{ matrix.task }}' -InstallRoot (Resolve-Path 'build_x64/install') -ConsumerPath (Resolve-Path 'build_x64/engine/RelWithDebInfo/obs-engine-preview-consumer-test.exe')
+      - name: Upload Phase 2 Task artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: obs-engine-windows-x64-phase2-task${{ matrix.task }}-${{ github.sha }}
+          path: build_x64/install/
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 7

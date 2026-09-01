@@ -82,127 +82,128 @@ int fail(const char *message, HRESULT hr = S_OK)
 	return 1;
 }
 
-} // namespace
-
-int main(int argc, char **argv)
-{
-	uint64_t shared_handle_value = 0;
-	uint64_t expected_width = 0;
-	uint64_t expected_height = 0;
-	uint64_t expected_frames = 60;
+struct ConsumerOptions {
+	uint64_t shared_handle = 0;
+	uint64_t width = 0;
+	uint64_t height = 0;
+	uint64_t frames = 60;
 	uint64_t timeout_ms = 250;
-	LUID expected_luid = {};
+	LUID luid = {};
 	bool have_luid = false;
-	for (int index = 1; index < argc; ++index) {
-		const std::string_view arg(argv[index]);
-		std::string value;
-		if (argument(arg, "shared-handle", value)) {
-			if (!parse_unsigned(value, shared_handle_value, 10))
-				return fail("invalid shared handle");
-		} else if (argument(arg, "width", value)) {
-			if (!parse_unsigned(value, expected_width, 10))
-				return fail("invalid width");
-		} else if (argument(arg, "height", value)) {
-			if (!parse_unsigned(value, expected_height, 10))
-				return fail("invalid height");
-		} else if (argument(arg, "frames", value)) {
-			if (!parse_unsigned(value, expected_frames, 10) || expected_frames == 0)
-				return fail("invalid frame count");
-		} else if (argument(arg, "adapter-luid", value)) {
-			if (!parse_luid(value, expected_luid))
-				return fail("invalid adapter LUID");
-			have_luid = true;
-		} else if (argument(arg, "timeout-ms", value)) {
-			if (!parse_unsigned(value, timeout_ms, 10) || timeout_ms > std::numeric_limits<DWORD>::max())
-				return fail("invalid timeout");
-		}
-	}
-	if (shared_handle_value == 0 || expected_width == 0 || expected_height == 0 || !have_luid)
-		return fail("shared handle, dimensions, and adapter LUID are required");
+};
 
-	ComPtr<IDXGIFactory1> factory;
-	HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(factory.GetAddressOf()));
-	if (FAILED(hr))
-		return fail("CreateDXGIFactory1 failed", hr);
-	ComPtr<IDXGIAdapter1> selected_adapter;
+bool parse_consumer_option(std::string_view arg, ConsumerOptions &options)
+{
+	std::string value;
+	if (argument(arg, "shared-handle", value))
+		return parse_unsigned(value, options.shared_handle, 10);
+	if (argument(arg, "width", value))
+		return parse_unsigned(value, options.width, 10);
+	if (argument(arg, "height", value))
+		return parse_unsigned(value, options.height, 10);
+	if (argument(arg, "frames", value))
+		return parse_unsigned(value, options.frames, 10) && options.frames != 0;
+	if (argument(arg, "adapter-luid", value)) {
+		options.have_luid = parse_luid(value, options.luid);
+		return options.have_luid;
+	}
+	if (argument(arg, "timeout-ms", value))
+		return parse_unsigned(value, options.timeout_ms, 10) &&
+		       options.timeout_ms <= std::numeric_limits<DWORD>::max();
+	return true;
+}
+
+bool parse_consumer_options(int argc, char **argv, ConsumerOptions &options)
+{
+	for (int index = 1; index < argc; ++index) {
+		if (!parse_consumer_option(argv[index], options))
+			return false;
+	}
+	return options.shared_handle != 0 && options.width != 0 && options.height != 0 && options.have_luid;
+}
+
+bool select_adapter(IDXGIFactory1 *factory, const LUID &expected, ComPtr<IDXGIAdapter1> &selected)
+{
 	for (UINT index = 0;; ++index) {
 		ComPtr<IDXGIAdapter1> candidate;
-		hr = factory->EnumAdapters1(index, candidate.GetAddressOf());
+		const HRESULT hr = factory->EnumAdapters1(index, candidate.GetAddressOf());
 		if (hr == DXGI_ERROR_NOT_FOUND)
 			break;
 		if (FAILED(hr))
-			return fail("EnumAdapters1 failed", hr);
+			fail("EnumAdapters1 failed", hr);
+			return false;
 		DXGI_ADAPTER_DESC1 description = {};
 		if (FAILED(candidate->GetDesc1(&description)))
 			continue;
-		if (description.AdapterLuid.HighPart == expected_luid.HighPart &&
-		    description.AdapterLuid.LowPart == expected_luid.LowPart) {
-			selected_adapter = candidate;
+		if (description.AdapterLuid.HighPart == expected.HighPart && description.AdapterLuid.LowPart == expected.LowPart) {
+			selected = candidate;
 			break;
 		}
 	}
-	if (!selected_adapter)
-		return fail("requested adapter LUID was not found");
+	if (selected)
+		return true;
+	fail("requested adapter LUID was not found");
+	return false;
+}
 
-	ComPtr<ID3D11Device> device;
-	ComPtr<ID3D11DeviceContext> context;
+bool create_consumer_resources(const ConsumerOptions &options, IDXGIAdapter1 *adapter, ComPtr<ID3D11Device> &device,
+				       ComPtr<ID3D11DeviceContext> &context, ComPtr<ID3D11Texture2D> &shared,
+				       ComPtr<IDXGIKeyedMutex> &keyed_mutex, ComPtr<ID3D11Texture2D> &staging)
+{
 	D3D_FEATURE_LEVEL feature_level = D3D_FEATURE_LEVEL_11_0;
 	const D3D_FEATURE_LEVEL feature_levels[] = {D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0};
-	hr = D3D11CreateDevice(selected_adapter.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-			       feature_levels, ARRAYSIZE(feature_levels), D3D11_SDK_VERSION, device.GetAddressOf(), &feature_level,
-			       context.GetAddressOf());
+	HRESULT hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+				       feature_levels, ARRAYSIZE(feature_levels), D3D11_SDK_VERSION, device.GetAddressOf(),
+				       &feature_level, context.GetAddressOf());
 	if (FAILED(hr))
-		return fail("D3D11CreateDevice failed", hr);
-
-	ComPtr<ID3D11Texture2D> shared_texture;
-	const HANDLE shared_handle = reinterpret_cast<HANDLE>(static_cast<uintptr_t>(shared_handle_value));
-	hr = device->OpenSharedResource(shared_handle, IID_PPV_ARGS(shared_texture.GetAddressOf()));
+		return fail("D3D11CreateDevice failed", hr), false;
+	const HANDLE shared_handle = reinterpret_cast<HANDLE>(static_cast<uintptr_t>(options.shared_handle));
+	hr = device->OpenSharedResource(shared_handle, IID_PPV_ARGS(shared.GetAddressOf()));
 	if (FAILED(hr))
-		return fail("OpenSharedResource failed", hr);
+		return fail("OpenSharedResource failed", hr), false;
 	D3D11_TEXTURE2D_DESC description = {};
-	shared_texture->GetDesc(&description);
-	if (description.Width != expected_width || description.Height != expected_height ||
+	shared->GetDesc(&description);
+	if (description.Width != options.width || description.Height != options.height ||
 	    description.Format != DXGI_FORMAT_B8G8R8A8_UNORM)
-		return fail("shared texture descriptor mismatch");
-
-	ComPtr<IDXGIKeyedMutex> keyed_mutex;
-	hr = shared_texture.As(&keyed_mutex);
+		return fail("shared texture descriptor mismatch"), false;
+	hr = shared.As(&keyed_mutex);
 	if (FAILED(hr))
-		return fail("shared texture did not expose keyed mutex", hr);
+		return fail("shared texture did not expose keyed mutex", hr), false;
 	D3D11_TEXTURE2D_DESC staging_description = description;
 	staging_description.Usage = D3D11_USAGE_STAGING;
 	staging_description.BindFlags = 0;
 	staging_description.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 	staging_description.MiscFlags = 0;
-	ComPtr<ID3D11Texture2D> staging;
 	hr = device->CreateTexture2D(&staging_description, nullptr, staging.GetAddressOf());
 	if (FAILED(hr))
-		return fail("staging texture creation failed", hr);
+		return fail("staging texture creation failed", hr), false;
+	return true;
+}
 
-	std::vector<uint64_t> checksums;
-	checksums.reserve(static_cast<size_t>(expected_frames));
-	uint8_t first_center[4] = {};
-	uint8_t last_center[4] = {};
-	uint64_t timeouts = 0;
-	for (uint64_t frame = 0; frame < expected_frames; ++frame) {
-		hr = keyed_mutex->AcquireSync(1, static_cast<DWORD>(timeout_ms));
+int collect_consumer_frames(const ConsumerOptions &options, ID3D11DeviceContext *context,
+				    ID3D11Texture2D *shared, IDXGIKeyedMutex *keyed_mutex, ID3D11Texture2D *staging,
+				    const D3D11_TEXTURE2D_DESC &description, std::vector<uint64_t> &checksums,
+				    uint8_t (&first_center)[4], uint8_t (&last_center)[4], uint64_t &timeouts)
+{
+	for (uint64_t frame = 0; frame < options.frames; ++frame) {
+		HRESULT hr = keyed_mutex->AcquireSync(1, static_cast<DWORD>(options.timeout_ms));
 		if (hr == WAIT_TIMEOUT) {
 			timeouts++;
 			continue;
 		}
 		if (FAILED(hr))
 			return fail("keyed mutex acquire failed", hr);
-		context->CopyResource(staging.Get(), shared_texture.Get());
+		context->CopyResource(staging, shared);
 		context->Flush();
 		D3D11_MAPPED_SUBRESOURCE mapped = {};
-		hr = context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped);
+		hr = context->Map(staging, 0, D3D11_MAP_READ, 0, &mapped);
 		if (FAILED(hr)) {
 			keyed_mutex->ReleaseSync(0);
 			return fail("staging map failed", hr);
 		}
 		uint8_t center[4] = {};
 		const uint64_t checksum = fnv1a_rows(mapped, description.Width, description.Height, center);
-		context->Unmap(staging.Get(), 0);
+		context->Unmap(staging, 0);
 		if (checksums.empty())
 			std::copy(std::begin(center), std::end(center), std::begin(first_center));
 		std::copy(std::begin(center), std::end(center), std::begin(last_center));
@@ -211,8 +212,11 @@ int main(int argc, char **argv)
 		if (FAILED(hr))
 			return fail("keyed mutex release failed", hr);
 	}
-	if (checksums.empty())
-		return fail("no frames acquired");
+	return checksums.empty() ? fail("no frames acquired") : 0;
+}
+
+uint64_t count_unique_checksums(const std::vector<uint64_t> &checksums)
+{
 	uint64_t unique = 0;
 	for (size_t index = 0; index < checksums.size(); ++index) {
 		bool seen = false;
@@ -221,6 +225,12 @@ int main(int argc, char **argv)
 		if (!seen)
 			unique++;
 	}
+	return unique;
+}
+
+void print_consumer_evidence(const std::vector<uint64_t> &checksums, uint64_t timeouts, uint64_t unique,
+				     const uint8_t (&first_center)[4], const uint8_t (&last_center)[4])
+{
 	std::printf(
 		"{\"ok\":true,\"frames\":%zu,\"timeouts\":%llu,\"uniqueChecksums\":%llu,"
 		"\"firstChecksum\":\"%llu\",\"lastChecksum\":\"%llu\","
@@ -230,5 +240,44 @@ int main(int argc, char **argv)
 		static_cast<unsigned long long>(checksums.front()), static_cast<unsigned long long>(checksums.back()),
 		first_center[0], first_center[1], first_center[2], first_center[3], last_center[0], last_center[1],
 		last_center[2], last_center[3]);
+}
+
+} // namespace
+
+int main(int argc, char **argv)
+{
+	ConsumerOptions options;
+	if (!parse_consumer_options(argc, argv, options))
+		return fail("invalid or incomplete consumer arguments");
+	if (options.shared_handle == 0 || options.width == 0 || options.height == 0 || !options.have_luid)
+		return fail("shared handle, dimensions, and adapter LUID are required");
+
+	ComPtr<IDXGIFactory1> factory;
+	HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(factory.GetAddressOf()));
+	if (FAILED(hr))
+		return fail("CreateDXGIFactory1 failed", hr);
+	ComPtr<IDXGIAdapter1> selected_adapter;
+	if (!select_adapter(factory.Get(), options.luid, selected_adapter))
+		return 1;
+
+	ComPtr<ID3D11Device> device;
+	ComPtr<ID3D11DeviceContext> context;
+	ComPtr<ID3D11Texture2D> shared_texture;
+	ComPtr<IDXGIKeyedMutex> keyed_mutex;
+	ComPtr<ID3D11Texture2D> staging;
+	if (!create_consumer_resources(options, selected_adapter.Get(), device, context, shared_texture, keyed_mutex, staging))
+		return 1;
+	D3D11_TEXTURE2D_DESC description = {};
+	shared_texture->GetDesc(&description);
+
+	std::vector<uint64_t> checksums;
+	checksums.reserve(static_cast<size_t>(options.frames));
+	uint8_t first_center[4] = {};
+	uint8_t last_center[4] = {};
+	uint64_t timeouts = 0;
+	if (collect_consumer_frames(options, context.Get(), shared_texture.Get(), keyed_mutex.Get(), staging.Get(), description,
+					checksums, first_center, last_center, timeouts) != 0)
+		return 1;
+	print_consumer_evidence(checksums, timeouts, count_unique_checksums(checksums), first_center, last_center);
 	return 0;
 }

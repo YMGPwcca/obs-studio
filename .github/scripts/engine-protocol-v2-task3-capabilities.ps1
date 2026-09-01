@@ -62,6 +62,17 @@ function Get-Task3CapabilityNames([object] $Response) {
     return @($Response.data.capabilities | ForEach-Object { [string]$_.name })
 }
 
+function Test-Task3AllowedExperimentalCapability([string] $Name) {
+    return $Name -eq 'canvas.v1.experimental' -or $Name -like 'canvas.*' -or
+        $Name -eq 'preview.d3d11SharedTexture.v1' -or $Name -like 'previewOutput.*'
+}
+
+function Assert-Task3CapabilityExperimentStatus([object] $Capability) {
+    if ([bool]$Capability.experimental -and -not (Test-Task3AllowedExperimentalCapability ([string]$Capability.name))) {
+        throw "Stable capability was unexpectedly marked experimental: $($Capability.name)"
+    }
+}
+
 function Assert-Task3Hello([object] $Hello) {
     if ($Hello.op -ne 'response' -or $Hello.id -ne 'task3.hello' -or -not $Hello.status.ok) {
         throw 'session.hello did not return a valid v2 success envelope.'
@@ -85,9 +96,7 @@ function Assert-Task3HelloCapabilities([object] $Hello, [string[]] $Required) {
         if ([string]::IsNullOrWhiteSpace([string]$capability.name)) {
             throw 'Capability descriptor is missing a name.'
         }
-        if ([bool]$capability.experimental) {
-            throw "Stable capability was unexpectedly marked experimental: $($capability.name)"
-        }
+        Assert-Task3CapabilityExperimentStatus $capability
     }
     return $helloNames
 }

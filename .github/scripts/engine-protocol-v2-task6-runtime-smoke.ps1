@@ -7,6 +7,7 @@ $script:Task6ErrorTask = $null
 $script:Task6Engine = $null
 $script:Task6FailureText = $null
 $script:Task6NextSeq = [uint64]1
+$script:Task6PendingEvents = [System.Collections.Generic.List[object]]::new()
 
 function Initialize-Task6Runtime {
   $script:Task6InstallRoot = Resolve-Path 'build_x64/install'
@@ -35,6 +36,7 @@ function Initialize-Task6Runtime {
     throw 'Failed to start obs-engine.exe.'
   }
   $script:Task6ErrorTask = $script:Task6Process.StandardError.ReadToEndAsync()
+  $script:Task6PendingEvents = [System.Collections.Generic.List[object]]::new()
 }
 
 function Read-Task6EngineMessage {
@@ -56,29 +58,69 @@ function Send-Task6Request([hashtable] $Request) {
   Write-Host "obs-engine stdin:  $Json"
   $script:Task6Process.StandardInput.WriteLine($Json)
   $script:Task6Process.StandardInput.Flush()
-  $Response = Read-Task6EngineMessage
-  if ( $Response.op -ne 'response' -or [string]$Response.id -ne [string]$Request.id ) {
-    throw "Expected response for '$($Request.id)' but received a different message."
+  return Read-Task6Response $Request.id
+}
+
+function Read-Task6Response([string] $RequestId) {
+  while ($true) {
+    $Response = Read-Task6EngineMessage
+    if ($Response.op -eq 'event') {
+      $script:Task6PendingEvents.Add($Response)
+      continue
+    }
+    if ($Response.op -ne 'response' -or [string]$Response.id -ne $RequestId) {
+      throw "Expected response for '$RequestId' but received a different message."
+    }
+    return $Response
   }
-  return $Response
+}
+
+function Get-Task6NextEvent {
+  if ($script:Task6PendingEvents.Count -gt 0) {
+    $Event = $script:Task6PendingEvents[0]
+    $script:Task6PendingEvents.RemoveAt(0)
+  } else {
+    $Event = Read-Task6EngineMessage
+  }
+  return $Event
+}
+
+function Assert-Task6EventEnvelope($Event, [int64] $Revision) {
+  if ( $Event.op -ne 'event' ) {
+    throw 'Expected an event message.'
+  }
+  if ( [uint64]$Event.seq -ne $script:Task6NextSeq ) {
+    throw "Event '$($Event.event)' had seq=$($Event.seq), expected $script:Task6NextSeq."
+  }
+  if ( $null -ne $Event.telemetry ) {
+    throw "State event '$($Event.event)' was incorrectly marked as telemetry."
+  }
+  $script:Task6NextSeq++
+  if ([string]$Event.event -eq 'scene.itemsChanged') {
+    if ([int64]$Event.revision -gt $Revision) {
+      throw "Event '$($Event.event)' had a future revision=$($Event.revision), expected at most $Revision."
+    }
+    return $false
+  }
+  if ( [int64]$Event.revision -ne $Revision ) {
+    throw "Event '$($Event.event)' had revision=$($Event.revision), expected $Revision."
+  }
+  return $true
+}
+
+function Read-Task6NamedEvent([string] $Name, [int64] $Revision) {
+  while ($true) {
+    $Event = Get-Task6NextEvent
+    if (-not (Assert-Task6EventEnvelope $Event $Revision)) { continue }
+    if ([string]$Event.event -ne $Name) {
+      throw "Expected event '$Name' but received '$($Event.event)'."
+    }
+    return $Event
+  }
 }
 
 function Read-Task6StateEvent([string] $Name, [int64] $Revision) {
-  $Event = Read-Task6EngineMessage
-  if ( $Event.op -ne 'event' -or [string]$Event.event -ne $Name ) {
-    throw "Expected event '$Name' but received '$($Event.event)'."
-  }
-  if ( [uint64]$Event.seq -ne $script:Task6NextSeq ) {
-    throw "Event '$Name' had seq=$($Event.seq), expected $script:Task6NextSeq."
-  }
-  if ( [int64]$Event.revision -ne $Revision ) {
-    throw "Event '$Name' had revision=$($Event.revision), expected $Revision."
-  }
-  if ( $null -ne $Event.telemetry ) {
-    throw "State event '$Name' was incorrectly marked as telemetry."
-  }
-  $script:Task6NextSeq++
-  return $Event
+  return Read-Task6NamedEvent $Name $Revision
 }
 
 function Assert-Task6CanonicalHandle([string] $Handle, [string] $Label) {
@@ -107,11 +149,8 @@ function Assert-Task6Capabilities([object] $Hello) {
       throw "Task 6 capability was not advertised: $Required"
     }
   }
-  foreach ( $ForbiddenNamespace in @('scene.v1', 'item.v1') ) {
-    if ( $CapabilityNames -contains $ForbiddenNamespace ) {
-      throw "Partial Task 6 support must not claim complete namespace capability $ForbiddenNamespace."
-    }
-  }
+  # Phase 2 now implements and validates the complete Scene and Item
+  # namespaces, so their namespace-level capability descriptors are expected.
 }
 
 function Get-Task6ColorKind([object] $Kinds) {

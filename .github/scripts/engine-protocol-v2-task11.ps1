@@ -379,8 +379,8 @@ function New-Task11State {
 function Initialize-Task11FilterGraph([object] $State) {
     $State.Parent = New-TestSource 'task11.source' 'task11_filter_source' 'task11-parent' $null $State.Revision
     $State.Revision = $State.Parent.Revision
-    if ($State.Parent.Handle -ne '1') {
-        Fail "fresh Task 11 engine expected source handle 1, got $($State.Parent.Handle)."
+    if ($State.Parent.Handle -ne '2') {
+        Fail "fresh Task 11 engine expected source handle 2, got $($State.Parent.Handle)."
     }
     $empty = Send-V2Request @{
         op = 'request'; id = 'task11.empty'; method = 'filter.list'
@@ -392,18 +392,18 @@ function Initialize-Task11FilterGraph([object] $State) {
     }
     $State.FilterA = New-TestFilter 'task11.filter-a' $State.Parent.Handle 'first-filter' 10 $State.Revision
     $State.Revision = $State.FilterA.Revision
-    if ($State.FilterA.Handle -ne '2') {
-        Fail "fresh Task 11 engine expected first filter handle 2, got $($State.FilterA.Handle)."
+    if ($State.FilterA.Handle -ne '3') {
+        Fail "fresh Task 11 engine expected first filter handle 3, got $($State.FilterA.Handle)."
     }
     $State.FilterB = New-TestFilter 'task11.filter-b' $State.Parent.Handle 'second-filter' 11 $State.Revision
     $State.Revision = $State.FilterB.Revision
-    if ($State.FilterB.Handle -ne '3') {
-        Fail "fresh Task 11 engine expected second filter handle 3, got $($State.FilterB.Handle)."
+    if ($State.FilterB.Handle -ne '4') {
+        Fail "fresh Task 11 engine expected second filter handle 4, got $($State.FilterB.Handle)."
     }
     $State.FilterC = New-TestFilter 'task11.filter-c' $State.Parent.Handle 'third-filter' 12 $State.Revision
     $State.Revision = $State.FilterC.Revision
-    if ($State.FilterC.Handle -ne '4') {
-        Fail "fresh Task 11 engine expected third filter handle 4, got $($State.FilterC.Handle)."
+    if ($State.FilterC.Handle -ne '5') {
+        Fail "fresh Task 11 engine expected third filter handle 5, got $($State.FilterC.Handle)."
     }
 }
 

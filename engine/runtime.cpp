@@ -68,6 +68,14 @@ bool apply_legacy_transform_alignment(long long request_id, obs_data_t *request,
 	return true;
 }
 
+void remove_attached_scene_item(obs_sceneitem_t *item)
+{
+	if (!item)
+		return;
+	if (obs_sceneitem_get_scene(item))
+		obs_sceneitem_remove(item);
+}
+
 } // namespace
 
 Engine::Engine(Config config) : config_(std::move(config)) {}
@@ -158,6 +166,11 @@ bool Engine::load_runtime_modules()
 }
 
 bool Engine::start()
+{
+	return start_runtime();
+}
+
+bool Engine::start_runtime()
 {
 	return prepare_startup_environment() && reset_video() && load_runtime_modules() && initialize_phase2_runtime();
 }
@@ -392,10 +405,8 @@ bool Engine::command_source_settings(long long request_id, obs_data_t *request)
 
 void Engine::release_item(ItemMap::iterator &it)
 {
-	if (it->second.item)
-		item_handles_.erase(it->second.item);
-	if (it->second.item && obs_sceneitem_get_scene(it->second.item))
-		obs_sceneitem_remove(it->second.item);
+	item_handles_.erase(it->second.item);
+	remove_attached_scene_item(it->second.item);
 	obs_sceneitem_release(it->second.item);
 	it = items_.erase(it);
 }

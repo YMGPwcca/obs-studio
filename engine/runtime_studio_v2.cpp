@@ -30,6 +30,23 @@ ObsDataPtr make_studio_transition_data(uint64_t transition, uint32_t duration_ms
 	return data;
 }
 
+bool validate_studio_transition_request(bool enabled, uint64_t transition,
+					       bool active,
+					       const std::unordered_map<uint64_t, TransitionEntry> &transitions,
+					       RuntimeV2Error &error)
+{
+	if (!enabled)
+		return phase2_fail(error, "invalid_state", "Studio is disabled");
+	if (transition == 0)
+		return phase2_fail(error, "not_available", "Studio has no selected Transition");
+	const auto transition_it = transitions.find(transition);
+	if (transition_it == transitions.end() || !transition_it->second.transition)
+		return phase2_fail(error, "not_found", "selected Transition was not found");
+	if (active || obs_transition_is_active(transition_it->second.transition))
+		return phase2_fail(error, "busy", "Studio Transition is already running");
+	return true;
+}
+
 } // namespace
 
 bool Engine::v2_studio_get_enabled(obs_data_t *, RuntimeV2Result &result, RuntimeV2Error &error)
@@ -147,41 +164,16 @@ bool Engine::v2_studio_set_transition_duration(obs_data_t *params, RuntimeV2Resu
 	return true;
 }
 
-bool Engine::v2_studio_transition(obs_data_t *, RuntimeV2Result &result, RuntimeV2Error &error)
+bool Engine::begin_studio_transition(uint64_t program_scene, uint64_t preview_scene, obs_source_t *preview_source,
+					     RuntimeV2Result &result, RuntimeV2Error &error)
 {
-	phase2_reset_result(result, error);
-	if (!studio_enabled_)
-		return phase2_fail(error, "invalid_state", "Studio is disabled");
-	if (studio_transition_ == 0)
-		return phase2_fail(error, "not_available", "Studio has no selected Transition");
 	const auto transition_it = transitions_.find(studio_transition_);
-	if (transition_it == transitions_.end() || !transition_it->second.transition)
-		return phase2_fail(error, "not_found", "selected Transition was not found");
-	if (studio_transition_active_ || obs_transition_is_active(transition_it->second.transition))
-		return phase2_fail(error, "busy", "Studio Transition is already running");
-
-	uint64_t preview_scene = 0;
-	obs_source_t *preview_source = nullptr;
-	{
-		std::lock_guard<std::mutex> lock(preview_outputs_mutex_);
-		preview_scene = preview_scene_;
-		preview_source = obs_source_get_ref(preview_source_);
-	}
-	if (preview_scene == 0 || !preview_source) {
-		if (preview_source)
-			obs_source_release(preview_source);
-		return phase2_fail(error, "invalid_state", "Preview must contain a live Scene");
-	}
-	const uint64_t program_scene = v2_current_program_scene();
-	if (program_scene != 0 && program_scene == preview_scene) {
+	if (transition_it == transitions_.end() || !transition_it->second.transition) {
 		obs_source_release(preview_source);
-		result.data = make_studio_transition_data(studio_transition_, transition_it->second.duration_ms, program_scene,
-							 preview_scene, "idle");
-		return true;
+		return phase2_fail(error, "not_found", "selected Transition was not found");
 	}
 	obs_source_t *program_source = obs_get_output_source(0);
 	const uint32_t duration = transition_it->second.duration_ms;
-	const obs_source_t *transition_source = transition_it->second.transition;
 	if (!v2_start_transition(studio_transition_, program_source, preview_source, duration, result, error)) {
 		if (program_source)
 			obs_source_release(program_source);
@@ -199,12 +191,41 @@ bool Engine::v2_studio_transition(obs_data_t *, RuntimeV2Result &result, Runtime
 		obs_source_release(preview_source);
 		return phase2_fail(error, "internal_error", "Main Canvas is not registered");
 	}
-	obs_canvas_set_channel(main_it->second.canvas, 0, const_cast<obs_source_t *>(transition_source));
+	obs_canvas_set_channel(main_it->second.canvas, 0, transition_it->second.transition);
 	if (program_source)
 		obs_source_release(program_source);
 	obs_source_release(preview_source);
 	result.data = make_studio_transition_data(studio_transition_, duration, program_scene, preview_scene, "running");
 	return true;
+}
+
+bool Engine::v2_studio_transition(obs_data_t *, RuntimeV2Result &result, RuntimeV2Error &error)
+{
+	phase2_reset_result(result, error);
+	if (!validate_studio_transition_request(studio_enabled_, studio_transition_, studio_transition_active_, transitions_, error))
+		return false;
+
+	uint64_t preview_scene = 0;
+	obs_source_t *preview_source = nullptr;
+	{
+		std::lock_guard<std::mutex> lock(preview_outputs_mutex_);
+		preview_scene = preview_scene_;
+		preview_source = obs_source_get_ref(preview_source_);
+	}
+	if (preview_scene == 0 || !preview_source) {
+		if (preview_source)
+			obs_source_release(preview_source);
+		return phase2_fail(error, "invalid_state", "Preview must contain a live Scene");
+	}
+	const uint64_t program_scene = v2_current_program_scene();
+	if (program_scene != 0 && program_scene == preview_scene) {
+		const auto transition_it = transitions_.find(studio_transition_);
+		obs_source_release(preview_source);
+		result.data = make_studio_transition_data(studio_transition_, transition_it->second.duration_ms, program_scene,
+							 preview_scene, "idle");
+		return true;
+	}
+	return begin_studio_transition(program_scene, preview_scene, preview_source, result, error);
 }
 
 } // namespace obs_engine

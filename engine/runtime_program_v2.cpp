@@ -14,6 +14,20 @@ void set_nullable_handle(obs_data_t *data, const char *name, uint64_t handle)
 		obs_data_set_obj(data, name, nullptr);
 }
 
+bool read_program_scene_request(obs_data_t *params, const std::unordered_map<uint64_t, obs_scene_t *> &scenes,
+					uint64_t &requested, RuntimeV2Error &error)
+{
+	bool is_null = false;
+	bool present = false;
+	if (!phase2_read_nullable_handle(params, "scene", requested, is_null, present) || !present)
+		return phase2_fail(error, "bad_request", "params.scene must be a canonical scene handle string or null");
+	if (is_null)
+		requested = 0;
+	if (requested != 0 && !scenes.contains(requested))
+		return phase2_fail(error, "not_found", "scene handle was not found");
+	return true;
+}
+
 } // namespace
 
 uint64_t Engine::v2_current_program_scene() const
@@ -54,17 +68,15 @@ bool Engine::v2_program_set_scene(obs_data_t *params, RuntimeV2Result &result, R
 {
 	phase2_reset_result(result, error);
 	uint64_t requested = 0;
-	bool is_null = false;
-	bool present = false;
-	if (!phase2_read_nullable_handle(params, "scene", requested, is_null, present) || !present)
-		return phase2_fail(error, "bad_request", "params.scene must be a canonical scene handle string or null");
-	if (is_null)
-		requested = 0;
-	if (requested != 0 && !scenes_.contains(requested))
-		return phase2_fail(error, "not_found", "scene handle was not found");
+	if (!read_program_scene_request(params, scenes_, requested, error))
+		return false;
 	if (studio_transition_active_)
 		v2_cancel_studio_transition();
+	return apply_program_scene_route(requested, result, error);
+}
 
+bool Engine::apply_program_scene_route(uint64_t requested, RuntimeV2Result &result, RuntimeV2Error &error)
+{
 	const auto main_it = canvases_.find(main_canvas_);
 	if (main_it == canvases_.end() || !main_it->second.canvas)
 		return phase2_fail(error, "internal_error", "Main Canvas is not registered");

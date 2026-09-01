@@ -182,7 +182,7 @@ logic into measured scripts and does not authorize Task 12.
 
 # Phase C — Full composition and canvas/frontend-equivalent scene behavior
 
-## Task 12 — Complete `scene.*` — PLANNED
+## Task 12 — Complete `scene.*` — IMPLEMENTED / IN REVIEW
 
 **Goal:** expand scene lifecycle beyond initial Task-6 primitives.
 
@@ -190,7 +190,7 @@ logic into measured scripts and does not authorize Task 12.
 
 **Acceptance themes:** duplicate names/collisions, removal with items, event/revision ownership, scene-as-source relationships if exposed.
 
-## Task 13 — Complete `item.*` — PLANNED
+## Task 13 — Complete `item.*` — IMPLEMENTED / IN REVIEW
 
 **Goal:** expose full scene-item composition behavior.
 
@@ -198,7 +198,7 @@ logic into measured scripts and does not authorize Task 12.
 
 **Critical:** scene-item reference ownership is subtle; inspect libobs ref semantics before every lifecycle change. Transform changes should be one canonical revision per command and normalized events should not double-count libobs callbacks.
 
-## Task 14 — `canvas.*` — PLANNED
+## Task 14 — `canvas.*` — IMPLEMENTED / IN REVIEW
 
 **Goal:** support canvas/video-space configuration needed for a custom frontend and future multi-canvas semantics.
 
@@ -206,19 +206,19 @@ logic into measured scripts and does not authorize Task 12.
 
 **Acceptance:** dimensions/format/fps state, object association, rebuild/device implications, deterministic invalid configuration errors.
 
-## Task 15 — `program.*` — PLANNED
+## Task 15 — `program.*` — IMPLEMENTED / IN REVIEW
 
 **Goal:** explicitly control/query current program composition output state in semantic v2 form.
 
 **Scope:** program scene/source selection and events; relation to scene lifecycle; behavior when selected program scene is removed.
 
-## Task 16 — `preview.*` — PLANNED
+## Task 16 — `preview.*` — IMPLEMENTED / IN REVIEW
 
 **Goal:** represent preview-side composition separately from program where the product needs studio/edit workflows.
 
 **Important:** UI selection is Controller state; only model engine preview state that actually affects rendering/runtime semantics.
 
-## Task 17 — D3D11 shared-texture preview transport — PLANNED
+## Task 17 — D3D11 shared-texture preview transport — IMPLEMENTED / IN REVIEW
 
 **Goal:** give the private Windows UI low-latency rendered frames without embedding OBS frontend windows.
 
@@ -236,19 +236,19 @@ logic into measured scripts and does not authorize Task 12.
 
 **Physical acceptance mandatory:** multi-GPU machine, including RX 9060 XT path and adapter mismatch/recreation scenarios.
 
-## Task 18 — `studio.*` — PLANNED
+## Task 18 — `studio.*` — IMPLEMENTED / IN REVIEW
 
 **Goal:** studio-mode semantic orchestration between preview/program and transition behavior.
 
 **Keep boundaries:** UI controls remain Controller; engine exposes runtime preview/program/transition state and commands.
 
-## Task 19 — `transition.*` — PLANNED
+## Task 19 — `transition.*` — IMPLEMENTED / IN REVIEW
 
 **Goal:** discover/create/configure/select/control transitions, including duration/state and transition lifecycle callbacks.
 
 **Research:** transition sources are sources with special APIs; ensure source events/properties interoperate without duplicate ownership.
 
-## Task 20 — `previewOutput.*` — PLANNED
+## Task 20 — `previewOutput.*` — IMPLEMENTED / IN REVIEW
 
 **Goal:** manage rendered preview-output instances/consumers independently from preview logical state, especially for shared-texture or additional display consumers.
 
@@ -499,6 +499,6 @@ After each accepted task:
 4. add any newly discovered architectural invariant/known debt to `HANDOFF.md`/`ARCHITECTURE.md`;
 5. do not mark a later task active until operator explicitly authorizes it.
 
-The current transition point is **Phase-1 accepted -> Task 12 planned/not
-authorized**. The advisor WIP and older unauthorized implementation remain
-quarantined reference branches only.
+The current transition point is **Phase-1 accepted -> Phase-2 Tasks 12–20 in
+review**. Task 21 and later remain planned and outside this branch until a
+separate explicit authorization.

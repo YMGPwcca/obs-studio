@@ -95,122 +95,135 @@ function Read-Task13Event([string] $Name, [int64] $Revision) {
     return $event
 }
 
-try {
+function Invoke-Task13Bootstrap {
     Start-Task13Engine $InstallRoot
     $ready = Read-Task13Message
     if ($ready.event -ne 'ready') { Fail-Task13 'ready marker was not received.' }
     Assert-Ok (Send-Task13Request @{ op = 'request'; id = 'i-hello'; method = 'session.hello' }) 0 'hello'
     Assert-Ok (Send-Task13Request @{ op = 'request'; id = 'i-sub'; method = 'session.subscribe'; params = @{ subscriptions = @(@{ pattern = 'scene.*' }, @{ pattern = 'item.*' }) } }) 0 'subscribe'
-
-    $scene = Send-Task13Request @{ op = 'request'; id = 'i-scene'; method = 'scene.create' }
-    Assert-Ok $scene 1 'scene.create'
-    if ([string]$scene.data.scene -ne '2') { Fail-Task13 'unexpected Scene handle.' }
+    $script:T13Scene = Send-Task13Request @{ op = 'request'; id = 'i-scene'; method = 'scene.create' }
+    Assert-Ok $script:T13Scene 1 'scene.create'
+    if ([string]$script:T13Scene.data.scene -ne '2') { Fail-Task13 'unexpected Scene handle.' }
     Read-Task13Event 'scene.created' 1 | Out-Null
-
-    $source = Send-Task13Request @{ op = 'request'; id = 'i-source'; method = 'source.create'; params = @{ kind = 'color_source_v3'; name = 'Task13 Color'; settings = @{ width = 320; height = 180 } } }
-    Assert-Ok $source 2 'source.create'
-    $sourceHandle = [string]$source.data.source
-
-    $item = Send-Task13Request @{ op = 'request'; id = 'i-item'; method = 'item.create'; params = @{ scene = '2'; source = $sourceHandle }; ifRevision = 2 }
-    Assert-Ok $item 3 'item.create'
-    $itemHandle = [string]$item.data.item
-    if ($itemHandle -ne '4') { Fail-Task13 "unexpected Item handle $itemHandle." }
+    $script:T13Source = Send-Task13Request @{ op = 'request'; id = 'i-source'; method = 'source.create'; params = @{ kind = 'color_source_v3'; name = 'Task13 Color'; settings = @{ width = 320; height = 180 } } }
+    Assert-Ok $script:T13Source 2 'source.create'
+    $script:T13SourceHandle = [string]$script:T13Source.data.source
+    $script:T13Item = Send-Task13Request @{ op = 'request'; id = 'i-item'; method = 'item.create'; params = @{ scene = '2'; source = $script:T13SourceHandle }; ifRevision = 2 }
+    Assert-Ok $script:T13Item 3 'item.create'
+    $script:T13ItemHandle = [string]$script:T13Item.data.item
+    if ($script:T13ItemHandle -ne '4') { Fail-Task13 "unexpected Item handle $($script:T13ItemHandle)." }
     Read-Task13Event 'item.created' 3 | Out-Null
+}
 
-    $got = Send-Task13Request @{ op = 'request'; id = 'i-get'; method = 'item.get'; params = @{ item = $itemHandle } }
+function Invoke-Task13TransformChecks {
+    $got = Send-Task13Request @{ op = 'request'; id = 'i-get'; method = 'item.get'; params = @{ item = $script:T13ItemHandle } }
     Assert-Ok $got 3 'item.get'
     if ([int]$got.data.order -ne 0 -or -not $got.data.visible -or $got.data.locked) { Fail-Task13 'initial Item state was incorrect.' }
-
     $transform = @{ position = @{ x = 40.0; y = 20.0 }; scale = @{ x = 1.5; y = 0.75 }; rotation = 12.0; alignment = 5; bounds = @{ type = 'none' }; crop = @{ left = 0; top = 0; right = 0; bottom = 0 }; cropToBounds = $false }
-    $set = Send-Task13Request @{ op = 'request'; id = 'i-transform'; method = 'item.setTransform'; params = @{ item = $itemHandle; transform = $transform }; ifRevision = 3 }
+    $set = Send-Task13Request @{ op = 'request'; id = 'i-transform'; method = 'item.setTransform'; params = @{ item = $script:T13ItemHandle; transform = $transform }; ifRevision = 3 }
     Assert-Ok $set 4 'item.setTransform'
     Read-Task13Event 'item.transformChanged' 4 | Out-Null
     if ([double]$set.data.transform.position.x -ne 40.0) { Fail-Task13 'canonical transform readback was incorrect.' }
-
-    $invalid = Send-Task13Request @{ op = 'request'; id = 'i-invalid'; method = 'item.setTransform'; params = @{ item = $itemHandle; transform = @{ position = @{ x = 99.0 }; bounds = @{ type = 'invalid' } } }; ifRevision = 4 }
+    $invalid = Send-Task13Request @{ op = 'request'; id = 'i-invalid'; method = 'item.setTransform'; params = @{ item = $script:T13ItemHandle; transform = @{ position = @{ x = 99.0 }; bounds = @{ type = 'invalid' } } }; ifRevision = 4 }
     Assert-Error $invalid 'bad_request' 4 'invalid compound transform'
-    $unchanged = Send-Task13Request @{ op = 'request'; id = 'i-unchanged'; method = 'item.getTransform'; params = @{ item = $itemHandle } }
+    $unchanged = Send-Task13Request @{ op = 'request'; id = 'i-unchanged'; method = 'item.getTransform'; params = @{ item = $script:T13ItemHandle } }
     Assert-Ok $unchanged 4 'getTransform after rejected update'
     if ([double]$unchanged.data.transform.position.x -ne 40.0) { Fail-Task13 'rejected compound update partially changed the Item.' }
+    $script:T13Revision = [int64]4
+}
 
+function Invoke-Task13PropertyChecks {
     $commands = @(
-        @{ id = 'i-pos'; method = 'item.setPosition'; params = @{ item = $itemHandle; position = @{ x = 50.0; y = 25.0 } } },
-        @{ id = 'i-scale'; method = 'item.setScale'; params = @{ item = $itemHandle; scale = @{ x = 2.0; y = 2.0 } } },
-        @{ id = 'i-rot'; method = 'item.setRotation'; params = @{ item = $itemHandle; rotation = 20.0 } },
-        @{ id = 'i-align'; method = 'item.setAlignment'; params = @{ item = $itemHandle; alignment = 10 } },
-        @{ id = 'i-bounds'; method = 'item.setBounds'; params = @{ item = $itemHandle; bounds = @{ type = 'stretch'; width = 160.0; height = 90.0 } } },
-        @{ id = 'i-balign'; method = 'item.setBoundsAlignment'; params = @{ item = $itemHandle; alignment = 5 } },
-        @{ id = 'i-crop'; method = 'item.setCrop'; params = @{ item = $itemHandle; crop = @{ left = 1; top = 1; right = 1; bottom = 1 } } },
-        @{ id = 'i-ctb'; method = 'item.setCropToBounds'; params = @{ item = $itemHandle; cropToBounds = $true } },
-        @{ id = 'i-visible'; method = 'item.setVisible'; params = @{ item = $itemHandle; visible = $false } },
-        @{ id = 'i-locked'; method = 'item.setLocked'; params = @{ item = $itemHandle; locked = $true } },
-        @{ id = 'i-filter'; method = 'item.setScaleFilter'; params = @{ item = $itemHandle; scaleFilter = 'point' } },
-        @{ id = 'i-blend-mode'; method = 'item.setBlendMode'; params = @{ item = $itemHandle; blendMode = 'additive' } },
-        @{ id = 'i-blend-method'; method = 'item.setBlendMethod'; params = @{ item = $itemHandle; blendMethod = 'srgbOff' } }
+        @{ id = 'i-pos'; method = 'item.setPosition'; params = @{ item = $script:T13ItemHandle; position = @{ x = 50.0; y = 25.0 } } },
+        @{ id = 'i-scale'; method = 'item.setScale'; params = @{ item = $script:T13ItemHandle; scale = @{ x = 2.0; y = 2.0 } } },
+        @{ id = 'i-rot'; method = 'item.setRotation'; params = @{ item = $script:T13ItemHandle; rotation = 20.0 } },
+        @{ id = 'i-align'; method = 'item.setAlignment'; params = @{ item = $script:T13ItemHandle; alignment = 10 } },
+        @{ id = 'i-bounds'; method = 'item.setBounds'; params = @{ item = $script:T13ItemHandle; bounds = @{ type = 'stretch'; width = 160.0; height = 90.0 } } },
+        @{ id = 'i-balign'; method = 'item.setBoundsAlignment'; params = @{ item = $script:T13ItemHandle; alignment = 5 } },
+        @{ id = 'i-crop'; method = 'item.setCrop'; params = @{ item = $script:T13ItemHandle; crop = @{ left = 1; top = 1; right = 1; bottom = 1 } } },
+        @{ id = 'i-ctb'; method = 'item.setCropToBounds'; params = @{ item = $script:T13ItemHandle; cropToBounds = $true } },
+        @{ id = 'i-visible'; method = 'item.setVisible'; params = @{ item = $script:T13ItemHandle; visible = $false } },
+        @{ id = 'i-locked'; method = 'item.setLocked'; params = @{ item = $script:T13ItemHandle; locked = $true } },
+        @{ id = 'i-filter'; method = 'item.setScaleFilter'; params = @{ item = $script:T13ItemHandle; scaleFilter = 'point' } },
+        @{ id = 'i-blend-mode'; method = 'item.setBlendMode'; params = @{ item = $script:T13ItemHandle; blendMode = 'additive' } },
+        @{ id = 'i-blend-method'; method = 'item.setBlendMethod'; params = @{ item = $script:T13ItemHandle; blendMethod = 'srgbOff' } }
     )
-    $revision = [int64]4
     foreach ($command in $commands) {
-        $revision++
-        $request = @{ op = 'request'; id = $command.id; method = $command.method; params = $command.params; ifRevision = $revision - 1 }
+        $script:T13Revision++
+        $request = @{ op = 'request'; id = $command.id; method = $command.method; params = $command.params; ifRevision = $script:T13Revision - 1 }
         $response = Send-Task13Request $request
-        Assert-Ok $response $revision $command.method
+        Assert-Ok $response $script:T13Revision $command.method
         $eventName = if ($command.method -in @('item.setVisible')) { 'item.visibilityChanged' } elseif ($command.method -eq 'item.setLocked') { 'item.lockedChanged' } elseif ($command.method -in @('item.setBlendMode','item.setBlendMethod')) { 'item.blendChanged' } else { 'item.transformChanged' }
-        Read-Task13Event $eventName $revision | Out-Null
+        Read-Task13Event $eventName $script:T13Revision | Out-Null
     }
+}
 
-    $second = Send-Task13Request @{ op = 'request'; id = 'i-second'; method = 'item.create'; params = @{ scene = '2'; source = $sourceHandle }; ifRevision = $revision }
-    $revision++
-    Assert-Ok $second $revision 'second item.create'
-    $secondHandle = [string]$second.data.item
-    Read-Task13Event 'item.created' $revision | Out-Null
+function Invoke-Task13OrderingChecks {
+    $second = Send-Task13Request @{ op = 'request'; id = 'i-second'; method = 'item.create'; params = @{ scene = '2'; source = $script:T13SourceHandle }; ifRevision = $script:T13Revision }
+    $script:T13Revision++
+    Assert-Ok $second $script:T13Revision 'second item.create'
+    $script:T13SecondHandle = [string]$second.data.item
+    Read-Task13Event 'item.created' $script:T13Revision | Out-Null
+    $moveTop = Send-Task13Request @{ op = 'request'; id = 'i-top'; method = 'item.moveTop'; params = @{ item = $script:T13ItemHandle }; ifRevision = $script:T13Revision }
+    $script:T13Revision++
+    Assert-Ok $moveTop $script:T13Revision 'item.moveTop'
+    Read-Task13Event 'item.orderChanged' $script:T13Revision | Out-Null
+    $moveBottom = Send-Task13Request @{ op = 'request'; id = 'i-bottom'; method = 'item.setOrder'; params = @{ item = $script:T13ItemHandle; index = 0 }; ifRevision = $script:T13Revision }
+    $script:T13Revision++
+    Assert-Ok $moveBottom $script:T13Revision 'item.setOrder'
+    Read-Task13Event 'item.orderChanged' $script:T13Revision | Out-Null
+    $duplicate = Send-Task13Request @{ op = 'request'; id = 'i-duplicate'; method = 'item.duplicate'; params = @{ item = $script:T13ItemHandle }; ifRevision = $script:T13Revision }
+    $script:T13Revision++
+    Assert-Ok $duplicate $script:T13Revision 'item.duplicate'
+    $script:T13DuplicateHandle = [string]$duplicate.data.item
+    if ($script:T13DuplicateHandle -eq $script:T13ItemHandle -or $script:T13DuplicateHandle -eq $script:T13SecondHandle) { Fail-Task13 'item.duplicate reused an Item handle.' }
+    Read-Task13Event 'item.created' $script:T13Revision | Out-Null
+}
 
-    $moveTop = Send-Task13Request @{ op = 'request'; id = 'i-top'; method = 'item.moveTop'; params = @{ item = $itemHandle }; ifRevision = $revision }
-    $revision++
-    Assert-Ok $moveTop $revision 'item.moveTop'
-    Read-Task13Event 'item.orderChanged' $revision | Out-Null
-    $moveBottom = Send-Task13Request @{ op = 'request'; id = 'i-bottom'; method = 'item.setOrder'; params = @{ item = $itemHandle; index = 0 }; ifRevision = $revision }
-    $revision++
-    Assert-Ok $moveBottom $revision 'item.setOrder'
-    Read-Task13Event 'item.orderChanged' $revision | Out-Null
-
-    $duplicate = Send-Task13Request @{ op = 'request'; id = 'i-duplicate'; method = 'item.duplicate'; params = @{ item = $itemHandle }; ifRevision = $revision }
-    $revision++
-    Assert-Ok $duplicate $revision 'item.duplicate'
-    $duplicateHandle = [string]$duplicate.data.item
-    if ($duplicateHandle -eq $itemHandle -or $duplicateHandle -eq $secondHandle) { Fail-Task13 'item.duplicate reused an Item handle.' }
-    Read-Task13Event 'item.created' $revision | Out-Null
-
-    $group = Send-Task13Request @{ op = 'request'; id = 'i-group'; method = 'item.createGroup'; params = @{ scene = '2'; name = 'Task13 Group'; items = @(@{ item = $itemHandle }, @{ item = $secondHandle }) }; ifRevision = $revision }
-    $revision++
-    Assert-Ok $group $revision 'item.createGroup'
-    $groupHandle = [string]$group.data.item
-    Read-Task13Event 'item.created' $revision | Out-Null
-    Read-Task13Event 'scene.itemsChanged' $revision | Out-Null
-
-    $children = Send-Task13Request @{ op = 'request'; id = 'i-children'; method = 'item.getChildren'; params = @{ item = $groupHandle } }
-    Assert-Ok $children $revision 'item.getChildren'
+function Invoke-Task13GroupingChecks {
+    $group = Send-Task13Request @{ op = 'request'; id = 'i-group'; method = 'item.createGroup'; params = @{ scene = '2'; name = 'Task13 Group'; items = @(@{ item = $script:T13ItemHandle }, @{ item = $script:T13SecondHandle }) }; ifRevision = $script:T13Revision }
+    $script:T13Revision++
+    Assert-Ok $group $script:T13Revision 'item.createGroup'
+    $script:T13GroupHandle = [string]$group.data.item
+    Read-Task13Event 'item.created' $script:T13Revision | Out-Null
+    Read-Task13Event 'scene.itemsChanged' $script:T13Revision | Out-Null
+    $children = Send-Task13Request @{ op = 'request'; id = 'i-children'; method = 'item.getChildren'; params = @{ item = $script:T13GroupHandle } }
+    Assert-Ok $children $script:T13Revision 'item.getChildren'
     if ([int]$children.data.count -ne 2) { Fail-Task13 'group child enumeration was incorrect.' }
+    $ungroup = Send-Task13Request @{ op = 'request'; id = 'i-ungroup'; method = 'item.ungroup'; params = @{ item = $script:T13GroupHandle }; ifRevision = $script:T13Revision }
+    $script:T13Revision++
+    Assert-Ok $ungroup $script:T13Revision 'item.ungroup'
+    Read-Task13Event 'item.removed' $script:T13Revision | Out-Null
+    Read-Task13Event 'item.removed' $script:T13Revision | Out-Null
+    Read-Task13Event 'item.removed' $script:T13Revision | Out-Null
+    Read-Task13Event 'item.created' $script:T13Revision | Out-Null
+    Read-Task13Event 'item.created' $script:T13Revision | Out-Null
+    Read-Task13Event 'scene.itemsChanged' $script:T13Revision | Out-Null
+}
 
-    $ungroup = Send-Task13Request @{ op = 'request'; id = 'i-ungroup'; method = 'item.ungroup'; params = @{ item = $groupHandle }; ifRevision = $revision }
-    $revision++
-    Assert-Ok $ungroup $revision 'item.ungroup'
-    Read-Task13Event 'item.removed' $revision | Out-Null
-    Read-Task13Event 'item.removed' $revision | Out-Null
-    Read-Task13Event 'item.removed' $revision | Out-Null
-    Read-Task13Event 'item.created' $revision | Out-Null
-    Read-Task13Event 'item.created' $revision | Out-Null
-    Read-Task13Event 'scene.itemsChanged' $revision | Out-Null
-
-    $removeScene = Send-Task13Request @{ op = 'request'; id = 'i-remove-scene'; method = 'scene.remove'; params = @{ scene = '2' }; ifRevision = $revision }
-    $revision++
-    Assert-Ok $removeScene $revision 'scene.remove with Items'
-    while ($script:Events.Count -gt 0) { $event = $script:Events[0]; $script:Events.RemoveAt(0); if ($event.op -ne 'event' -or [int64]$event.revision -ne $revision) { Fail-Task13 'scene removal event had the wrong revision.' }; if ([uint64]$event.seq -ne $script:NextSequence) { Fail-Task13 'scene removal event sequence was not monotonic.' }; $script:NextSequence++ }
-
-    $close = Send-Task13Request @{ op = 'request'; id = 'i-close'; method = 'session.close'; ifRevision = $revision }
-    Assert-Ok $close ($revision + 1) 'session.close'
+function Invoke-Task13Cleanup {
+    $removeScene = Send-Task13Request @{ op = 'request'; id = 'i-remove-scene'; method = 'scene.remove'; params = @{ scene = '2' }; ifRevision = $script:T13Revision }
+    $script:T13Revision++
+    Assert-Ok $removeScene $script:T13Revision 'scene.remove with Items'
+    while ($script:Events.Count -gt 0) { $event = $script:Events[0]; $script:Events.RemoveAt(0); if ($event.op -ne 'event' -or [int64]$event.revision -ne $script:T13Revision) { Fail-Task13 'scene removal event had the wrong revision.' }; if ([uint64]$event.seq -ne $script:NextSequence) { Fail-Task13 'scene removal event sequence was not monotonic.' }; $script:NextSequence++ }
+    $close = Send-Task13Request @{ op = 'request'; id = 'i-close'; method = 'session.close'; ifRevision = $script:T13Revision }
+    Assert-Ok $close ($script:T13Revision + 1) 'session.close'
     $script:Process.WaitForExit(30000) | Out-Null
     Stop-Task13Engine
     Write-Output 'Task 13 item integration: PASS'
+}
+
+function Invoke-Task13Scenario {
+    Invoke-Task13Bootstrap
+    Invoke-Task13TransformChecks
+    Invoke-Task13PropertyChecks
+    Invoke-Task13OrderingChecks
+    Invoke-Task13GroupingChecks
+    Invoke-Task13Cleanup
+}
+
+try {
+    Invoke-Task13Scenario
 } catch {
     if ($null -ne $script:Process -and -not $script:Process.HasExited) { $script:Process.Kill(); $script:Process.WaitForExit() }
     if ($null -ne $script:Process) { Write-Host "last request: $($script:LastRequest); engine exit code: $($script:Process.ExitCode)" }

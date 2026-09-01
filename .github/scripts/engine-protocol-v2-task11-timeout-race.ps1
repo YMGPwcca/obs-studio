@@ -166,7 +166,7 @@ function Initialize-RaceScenario([string] $Label) {
 
     $filter = Send-V2Request @{
         op = 'request'; id = "$Label.filter"; method = 'filter.create'; ifRevision = 1
-        params = @{ source = '1'; kind = 'task11_filter'; name = "$Label-filter"; settings = @{ value = 700 } }
+        params = @{ source = '2'; kind = 'task11_filter'; name = "$Label-filter"; settings = @{ value = 700 } }
     }
     Assert-Ok $filter 2 "$Label filter.create"
     Assert-RaceEvent (Read-NextEvent) 'filter.created' "$Label filter.create event"
@@ -177,7 +177,7 @@ function Invoke-RaceTimeout([string] $Label) {
     $timeoutWatch = [System.Diagnostics.Stopwatch]::StartNew()
     $timeoutA = Send-V2Request @{
         op = 'request'; id = "$Label.timeout-a"; method = 'filter.patchSettings'; ifRevision = 2
-        params = @{ filter = '2'; settings = @{ value = 701; blockMs = 7500 } }
+        params = @{ filter = '3'; settings = @{ value = 701; blockMs = 7500 } }
     }
     $timeoutWatch.Stop()
     Assert-Timeout $timeoutA 2 "$Label timeout A"
@@ -190,9 +190,9 @@ function Invoke-RaceTimeout([string] $Label) {
 function Invoke-RaceAction([string] $Label, [ValidateSet('rename', 'enable')] [string] $Action,
     [int64] $Revision) {
     $actionParams = if ($Action -eq 'rename') {
-        @{ filter = '2'; name = "$Label-renamed" }
+        @{ filter = '3'; name = "$Label-renamed" }
     } else {
-        @{ filter = '2'; enabled = $false }
+        @{ filter = '3'; enabled = $false }
     }
     $actionMethod = if ($Action -eq 'rename') { 'filter.rename' } else { 'filter.setEnabled' }
     $actionResponse = Send-V2Request @{
@@ -223,7 +223,7 @@ function Invoke-RaceNewerRequest([string] $Label, [int64] $Revision) {
         op = 'request'; id = "$Label.newer-b"; method = 'filter.patchSettings'; ifRevision = $Revision
         # B has no deliberate callback delay. Its five-second settlement window
         # contains A's late completion; success would be an A/B misclaim.
-        params = @{ filter = '2'; settings = @{ value = 702; blockMs = 0 } }
+        params = @{ filter = '3'; settings = @{ value = 702; blockMs = 0 } }
     }
     $newerWatch.Stop()
     Write-Host "$Label newer B elapsed=$($newerWatch.Elapsed.TotalSeconds) seconds"

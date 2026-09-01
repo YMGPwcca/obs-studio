@@ -6,6 +6,7 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -95,34 +96,33 @@ bool read_vec2_fields(obs_data_t *data, const char *name, vec2 &target, double m
 	return true;
 }
 
-bool read_bounds_fields(obs_data_t *transform, obs_transform_info &info, bool &changed, RuntimeV2Error &error)
+bool read_bounds_type_field(obs_data_t *bounds, obs_transform_info &info, bool &changed, RuntimeV2Error &error)
 {
-	ObsDataPtr bounds;
 	bool present = false;
-	if (!phase2_read_object(transform, "bounds", bounds, present))
-		return phase2_fail(error, "bad_request", "transform.bounds must be an object");
-	if (!present)
-		return true;
-
 	std::string type;
 	bool type_present = false;
-	if (!phase2_read_string(bounds.get(), "type", type, type_present) || (type_present && !phase2_parse_bounds_type(type, info.bounds_type)))
+	if (!phase2_read_string(bounds, "type", type, type_present) || (type_present && !phase2_parse_bounds_type(type, info.bounds_type)))
 		return phase2_fail(error, "bad_request", "transform.bounds.type is invalid");
-	if (type_present)
-		changed = true;
-	if (!read_alignment_field(bounds.get(), "alignment", info.bounds_alignment, present, error,
+	changed = changed || type_present;
+	return true;
+}
+
+bool read_bounds_dimensions(obs_data_t *bounds, obs_transform_info &info, bool &changed, RuntimeV2Error &error)
+{
+	bool present = false;
+	if (!read_alignment_field(bounds, "alignment", info.bounds_alignment, present, error,
 					  "transform.bounds.alignment is invalid"))
 		return false;
 	changed = changed || present;
 	double value = 0.0;
-	if (!read_finite_field(bounds.get(), "width", 0.0, kMaxItemBounds, value, present, error,
+	if (!read_finite_field(bounds, "width", 0.0, kMaxItemBounds, value, present, error,
 				       "transform.bounds.width is invalid"))
 		return false;
 	if (present) {
 		info.bounds.x = static_cast<float>(value);
 		changed = true;
 	}
-	if (!read_finite_field(bounds.get(), "height", 0.0, kMaxItemBounds, value, present, error,
+	if (!read_finite_field(bounds, "height", 0.0, kMaxItemBounds, value, present, error,
 				       "transform.bounds.height is invalid"))
 		return false;
 	if (present) {
@@ -131,6 +131,48 @@ bool read_bounds_fields(obs_data_t *transform, obs_transform_info &info, bool &c
 	}
 	if (info.bounds_type != OBS_BOUNDS_NONE && (info.bounds.x <= 0.0f || info.bounds.y <= 0.0f))
 		return phase2_fail(error, "bad_request", "non-none bounds require positive width and height");
+	return true;
+}
+
+bool read_bounds_fields(obs_data_t *transform, obs_transform_info &info, bool &changed, RuntimeV2Error &error)
+{
+	ObsDataPtr bounds;
+	bool present = false;
+	if (!phase2_read_object(transform, "bounds", bounds, present))
+		return phase2_fail(error, "bad_request", "transform.bounds must be an object");
+	if (!present)
+		return true;
+	return read_bounds_type_field(bounds.get(), info, changed, error) &&
+	       read_bounds_dimensions(bounds.get(), info, changed, error);
+}
+
+bool read_crop_component(obs_data_t *crop_object, const char *name, int &target, bool &changed,
+				 RuntimeV2Error &error)
+{
+	long long value = 0;
+	bool present = false;
+	if (!phase2_read_integer(crop_object, name, value, present))
+		return phase2_fail(error, "bad_request", "transform.crop components must be integers");
+	if (!present)
+		return true;
+	if (value < 0 || value > kMaxItemCrop)
+		return phase2_fail(error, "bad_request", "transform.crop component is outside the supported range");
+	target = static_cast<int>(value);
+	changed = true;
+	return true;
+}
+
+bool validate_crop_source_bounds(const ItemEntry &entry, const obs_sceneitem_crop &crop, RuntimeV2Error &error)
+{
+	obs_source_t *source = obs_sceneitem_get_source(entry.item);
+	if (!source)
+		return true;
+	const uint32_t width = obs_source_get_width(source);
+	const uint32_t height = obs_source_get_height(source);
+	if (width != 0 && static_cast<uint64_t>(crop.left) + crop.right > width)
+		return phase2_fail(error, "bad_request", "transform.crop exceeds source width");
+	if (height != 0 && static_cast<uint64_t>(crop.top) + crop.bottom > height)
+		return phase2_fail(error, "bad_request", "transform.crop exceeds source height");
 	return true;
 }
 
@@ -144,41 +186,20 @@ bool read_crop_fields(obs_data_t *transform, const ItemEntry &entry, obs_sceneit
 	if (!present)
 		return true;
 
-	long long value = 0;
-	bool component_present = false;
 	const struct {
 		const char *name;
 		int *target;
 	} fields[] = {{"left", &crop.left}, {"top", &crop.top}, {"right", &crop.right}, {"bottom", &crop.bottom}};
 	for (const auto &field : fields) {
-		if (!phase2_read_integer(crop_object.get(), field.name, value, component_present))
-			return phase2_fail(error, "bad_request", "transform.crop components must be integers");
-		if (!component_present)
-			continue;
-		if (value < 0 || value > kMaxItemCrop)
-			return phase2_fail(error, "bad_request", "transform.crop component is outside the supported range");
-		*field.target = static_cast<int>(value);
-		changed = true;
+		if (!read_crop_component(crop_object.get(), field.name, *field.target, changed, error))
+			return false;
 	}
-
-	obs_source_t *source = obs_sceneitem_get_source(entry.item);
-	if (source) {
-		const uint32_t width = obs_source_get_width(source);
-		const uint32_t height = obs_source_get_height(source);
-		if (width != 0 && static_cast<uint64_t>(crop.left) + crop.right > width)
-			return phase2_fail(error, "bad_request", "transform.crop exceeds source width");
-		if (height != 0 && static_cast<uint64_t>(crop.top) + crop.bottom > height)
-			return phase2_fail(error, "bad_request", "transform.crop exceeds source height");
-	}
-	return true;
+	return validate_crop_source_bounds(entry, crop, error);
 }
 
-bool parse_transform(obs_data_t *transform, const ItemEntry &entry, obs_transform_info &info,
-			     obs_sceneitem_crop &crop, bool &changed, RuntimeV2Error &error)
+bool read_transform_rotation_alignment(obs_data_t *transform, obs_transform_info &info, bool &changed,
+					      RuntimeV2Error &error)
 {
-	if (!read_vec2_fields(transform, "position", info.pos, -kMaxItemCoordinate, kMaxItemCoordinate, changed, error) ||
-	    !read_vec2_fields(transform, "scale", info.scale, -kMaxItemScale, kMaxItemScale, changed, error))
-		return false;
 	double value = 0.0;
 	bool present = false;
 	if (!read_finite_field(transform, "rotation", -kMaxItemRotation, kMaxItemRotation, value, present, error,
@@ -192,8 +213,13 @@ bool parse_transform(obs_data_t *transform, const ItemEntry &entry, obs_transfor
 				  "transform.alignment is invalid"))
 		return false;
 	changed = changed || present;
-	if (!read_bounds_fields(transform, info, changed, error) || !read_crop_fields(transform, entry, crop, changed, error))
-		return false;
+	return true;
+}
+
+bool read_transform_crop_flag(obs_data_t *transform, obs_transform_info &info, bool &changed,
+				      RuntimeV2Error &error)
+{
+	bool present = false;
 	bool crop_to_bounds = false;
 	if (!phase2_read_bool(transform, "cropToBounds", crop_to_bounds, present))
 		return phase2_fail(error, "bad_request", "transform.cropToBounds must be a boolean");
@@ -204,15 +230,41 @@ bool parse_transform(obs_data_t *transform, const ItemEntry &entry, obs_transfor
 	return true;
 }
 
+bool parse_transform(obs_data_t *transform, const ItemEntry &entry, obs_transform_info &info,
+			     obs_sceneitem_crop &crop, bool &changed, RuntimeV2Error &error)
+{
+	if (!read_vec2_fields(transform, "position", info.pos, -kMaxItemCoordinate, kMaxItemCoordinate, changed, error) ||
+	    !read_vec2_fields(transform, "scale", info.scale, -kMaxItemScale, kMaxItemScale, changed, error))
+		return false;
+	if (!read_transform_rotation_alignment(transform, info, changed, error) ||
+	    !read_bounds_fields(transform, info, changed, error) ||
+	    !read_crop_fields(transform, entry, crop, changed, error))
+		return false;
+	return read_transform_crop_flag(transform, info, changed, error);
+}
+
+bool transform_vectors_equal(const obs_transform_info &left, const obs_transform_info &right)
+{
+	return left.pos.x == right.pos.x && left.pos.y == right.pos.y && left.rot == right.rot &&
+	       left.scale.x == right.scale.x && left.scale.y == right.scale.y && left.alignment == right.alignment;
+}
+
+bool transform_bounds_equal(const obs_transform_info &left, const obs_transform_info &right)
+{
+	return left.bounds_type == right.bounds_type && left.bounds_alignment == right.bounds_alignment &&
+	       left.bounds.x == right.bounds.x && left.bounds.y == right.bounds.y &&
+	       left.crop_to_bounds == right.crop_to_bounds;
+}
+
+bool crop_equal(const obs_sceneitem_crop &left, const obs_sceneitem_crop &right)
+{
+	return left.left == right.left && left.top == right.top && left.right == right.right && left.bottom == right.bottom;
+}
+
 bool transform_equal(const obs_transform_info &left, const obs_transform_info &right,
 			     const obs_sceneitem_crop &left_crop, const obs_sceneitem_crop &right_crop)
 {
-	return left.pos.x == right.pos.x && left.pos.y == right.pos.y && left.rot == right.rot &&
-	       left.scale.x == right.scale.x && left.scale.y == right.scale.y && left.alignment == right.alignment &&
-	       left.bounds_type == right.bounds_type && left.bounds_alignment == right.bounds_alignment &&
-	       left.bounds.x == right.bounds.x && left.bounds.y == right.bounds.y &&
-	       left.crop_to_bounds == right.crop_to_bounds && left_crop.left == right_crop.left &&
-	       left_crop.top == right_crop.top && left_crop.right == right_crop.right && left_crop.bottom == right_crop.bottom;
+	return transform_vectors_equal(left, right) && transform_bounds_equal(left, right) && crop_equal(left_crop, right_crop);
 }
 
 bool apply_item_transform(Engine &engine, uint64_t handle, ItemEntry &entry, obs_data_t *transform,
@@ -246,34 +298,43 @@ bool apply_item_transform(Engine &engine, uint64_t handle, ItemEntry &entry, obs
 	return true;
 }
 
+bool is_scalar_transform_field(std::string_view field)
+{
+	return field == "rotation" || field == "alignment" || field == "cropToBounds";
+}
+
+bool copy_scalar_transform_field(obs_data_t *params, std::string_view field, obs_data_t *transform,
+					 RuntimeV2Error &error)
+{
+	obs_data_item_t *item = obs_data_item_byname(params, field.data());
+	if (!item)
+		return phase2_fail(error, "bad_request", "the requested transform field is required");
+	const obs_data_type type = obs_data_item_gettype(item);
+	const bool is_crop_flag = field == "cropToBounds";
+	const bool is_rotation = field == "rotation";
+	const bool valid = is_crop_flag ? type == OBS_DATA_BOOLEAN
+					       : type == OBS_DATA_NUMBER && (is_rotation || obs_data_item_numtype(item) == OBS_DATA_NUM_INT);
+	if (!valid) {
+		obs_data_item_release(&item);
+		return phase2_fail(error, "bad_request", "the requested transform field has the wrong type");
+	}
+	if (is_crop_flag)
+		obs_data_set_bool(transform, field.data(), obs_data_item_get_bool(item));
+	else if (is_rotation)
+		obs_data_set_double(transform, field.data(), obs_data_item_get_double(item));
+	else
+		obs_data_set_int(transform, field.data(), obs_data_item_get_int(item));
+	obs_data_item_release(&item);
+	return true;
+}
+
 bool make_single_transform(obs_data_t *params, const char *field, ObsDataPtr &transform, RuntimeV2Error &error)
 {
 	transform.reset(obs_data_create());
+	if (is_scalar_transform_field(field))
+		return copy_scalar_transform_field(params, field, transform.get(), error);
 	ObsDataPtr value;
 	bool present = false;
-	if (std::strcmp(field, "rotation") == 0 || std::strcmp(field, "alignment") == 0 ||
-	    std::strcmp(field, "cropToBounds") == 0) {
-		obs_data_item_t *item = obs_data_item_byname(params, field);
-		if (!item)
-			return phase2_fail(error, "bad_request", "the requested transform field is required");
-		const obs_data_type type = obs_data_item_gettype(item);
-		if ((std::strcmp(field, "cropToBounds") == 0 && type != OBS_DATA_BOOLEAN) ||
-		    (std::strcmp(field, "cropToBounds") != 0 &&
-		     (type != OBS_DATA_NUMBER || obs_data_item_numtype(item) != OBS_DATA_NUM_INT) &&
-	     std::strcmp(field, "rotation") != 0) ||
-		    (std::strcmp(field, "rotation") == 0 && type != OBS_DATA_NUMBER)) {
-			obs_data_item_release(&item);
-			return phase2_fail(error, "bad_request", "the requested transform field has the wrong type");
-		}
-		if (type == OBS_DATA_BOOLEAN)
-			obs_data_set_bool(transform.get(), field, obs_data_item_get_bool(item));
-		else if (std::strcmp(field, "rotation") == 0)
-			obs_data_set_double(transform.get(), field, obs_data_item_get_double(item));
-		else
-			obs_data_set_int(transform.get(), field, obs_data_item_get_int(item));
-		obs_data_item_release(&item);
-		return true;
-	}
 	if (!phase2_read_object(params, field, value, present) || !present)
 		return phase2_fail(error, "bad_request", "the requested transform object is required");
 	obs_data_set_obj(transform.get(), field, value.get());
@@ -333,7 +394,129 @@ bool read_item_enum(obs_data_t *params, const char *name, std::string &value, Ru
 	return true;
 }
 
+bool read_duplicate_target(obs_data_t *params, const ItemEntry &entry,
+				   const std::unordered_map<uint64_t, obs_scene_t *> &scenes,
+				   const std::unordered_map<uint64_t, uint64_t> &scene_canvases,
+				   uint64_t &target_handle, obs_scene_t *&target_scene, RuntimeV2Error &error)
+{
+	std::string requested_scene;
+	bool present = false;
+	if (!phase2_read_string(params, "scene", requested_scene, present))
+		return phase2_fail(error, "bad_request", "params.scene must be a canonical decimal scene handle string");
+	if (present && !phase2_parse_handle(requested_scene, target_handle))
+		return phase2_fail(error, "bad_request", "params.scene must be a canonical decimal scene handle string");
+	const auto target_it = scenes.find(target_handle);
+	if (target_it == scenes.end())
+		return phase2_fail(error, "not_found", "target scene handle was not found");
+	const auto source_canvas = scene_canvases.find(entry.scene_id);
+	const auto target_canvas = scene_canvases.find(target_handle);
+	if (source_canvas == scene_canvases.end() || target_canvas == scene_canvases.end() ||
+	    source_canvas->second != target_canvas->second)
+		return phase2_fail(error, "invalid_state", "item duplication requires Scenes on the same Canvas");
+	target_scene = target_it->second;
+	return true;
+}
+
+void copy_item_appearance(obs_sceneitem_t *source, obs_sceneitem_t *target)
+{
+	obs_transform_info info = {};
+	obs_sceneitem_crop crop = {};
+	obs_sceneitem_get_info2(source, &info);
+	obs_sceneitem_get_crop(source, &crop);
+	obs_sceneitem_defer_update_begin(target);
+	obs_sceneitem_set_info2(target, &info);
+	obs_sceneitem_set_crop(target, &crop);
+	obs_sceneitem_set_scale_filter(target, obs_sceneitem_get_scale_filter(source));
+	obs_sceneitem_set_blending_mode(target, obs_sceneitem_get_blending_mode(source));
+	obs_sceneitem_set_blending_method(target, obs_sceneitem_get_blending_method(source));
+	obs_sceneitem_defer_update_end(target);
+	obs_sceneitem_set_visible(target, obs_sceneitem_visible(source));
+	obs_sceneitem_set_locked(target, obs_sceneitem_locked(source));
+}
+
+std::vector<uint64_t> group_child_handles(const std::unordered_map<uint64_t, ItemEntry> &items, uint64_t group_handle)
+{
+	std::vector<uint64_t> children;
+	for (const auto &[handle, entry] : items) {
+		if (entry.parent_group_id == group_handle)
+			children.push_back(handle);
+	}
+	std::sort(children.begin(), children.end());
+	return children;
+}
+
+void append_item_removal_events(const Engine &engine, const std::unordered_map<uint64_t, ItemEntry> &items,
+					const std::vector<uint64_t> &handles, RuntimeV2Result &result)
+{
+	for (const uint64_t handle : handles) {
+		const auto item_it = items.find(handle);
+		if (item_it != items.end())
+			phase2_append_event(result, "item.removed", engine.v2_item_summary(handle, item_it->second));
+	}
+}
+
+bool read_group_item(ObsDataPtr &value, uint64_t scene_handle, const std::unordered_map<uint64_t, ItemEntry> &items,
+				 std::vector<obs_sceneitem_t *> &scene_items, std::vector<uint64_t> &handles, RuntimeV2Error &error)
+{
+	if (!value)
+		return phase2_fail(error, "bad_request", "each group item must be an object containing item");
+	uint64_t item_handle = 0;
+	if (!phase2_read_handle(value.get(), "item", item_handle))
+		return phase2_fail(error, "bad_request", "each group item handle must be canonical");
+	const auto item_it = items.find(item_handle);
+	if (item_it == items.end() || item_it->second.scene_id != scene_handle || item_it->second.is_group ||
+	    item_it->second.parent_group_id != 0)
+		return phase2_fail(error, "invalid_state", "group items must be ungrouped items from the target Scene");
+	if (std::find(handles.begin(), handles.end(), item_handle) != handles.end())
+		return phase2_fail(error, "bad_request", "group items must be unique");
+	handles.push_back(item_handle);
+	scene_items.push_back(item_it->second.item);
+	return true;
+}
+
+bool read_group_items(obs_data_t *params, uint64_t scene_handle,
+				 const std::unordered_map<uint64_t, ItemEntry> &items,
+				 std::vector<obs_sceneitem_t *> &scene_items, std::vector<uint64_t> &handles, RuntimeV2Error &error)
+{
+	ObsArrayPtr requested;
+	bool present = false;
+	if (!phase2_read_array(params, "items", requested, present))
+		return phase2_fail(error, "bad_request", "params.items must be an array when present");
+	if (!present)
+		return true;
+	const size_t count = obs_data_array_count(requested.get());
+	if (count == 0 || count > 1024)
+		return phase2_fail(error, "bad_request", "params.items must contain between 1 and 1024 items");
+	for (size_t index = 0; index < count; ++index) {
+		ObsDataPtr value(obs_data_array_item(requested.get(), index));
+		if (!read_group_item(value, scene_handle, items, scene_items, handles, error))
+			return false;
+	}
+	return true;
+}
+
 } // namespace
+
+void Engine::release_item_handles(const std::vector<uint64_t> &handles)
+{
+	for (const uint64_t handle : handles) {
+		auto item_it = items_.find(handle);
+		if (item_it != items_.end())
+			release_item(item_it);
+	}
+}
+
+bool Engine::register_group_item(uint64_t scene_handle, obs_scene_t *scene, obs_sceneitem_t *group, uint64_t &handle,
+					 RuntimeV2Error &error)
+{
+	std::vector<uint64_t> added;
+	if (!v2_register_scene_items(scene_handle, scene, added, error))
+		return false;
+	handle = v2_item_handle_for_pointer(group);
+	if (handle == 0 || !items_.contains(handle))
+		return phase2_fail(error, "internal_error", "created group item was not registered");
+	return true;
+}
 
 bool Engine::v2_item_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
@@ -386,35 +569,13 @@ bool Engine::v2_item_duplicate(obs_data_t *params, RuntimeV2Result &result, Runt
 		return phase2_fail(error, "not_available", "group item duplication is not supported by the references-only item API");
 
 	uint64_t target_scene_handle = entry->scene_id;
-	std::string requested_scene;
-	bool scene_present = false;
-	if (!phase2_read_string(params, "scene", requested_scene, scene_present))
-		return phase2_fail(error, "bad_request", "params.scene must be a canonical decimal scene handle string");
-	if (scene_present && !phase2_parse_handle(requested_scene, target_scene_handle))
-		return phase2_fail(error, "bad_request", "params.scene must be a canonical decimal scene handle string");
-	auto target_it = scenes_.find(target_scene_handle);
-	if (target_it == scenes_.end())
-		return phase2_fail(error, "not_found", "target scene handle was not found");
-	if (!scene_canvases_.contains(entry->scene_id) || !scene_canvases_.contains(target_scene_handle) ||
-	    scene_canvases_.at(entry->scene_id) != scene_canvases_.at(target_scene_handle))
-		return phase2_fail(error, "invalid_state", "item duplication requires Scenes on the same Canvas");
-
-	obs_sceneitem_t *duplicate = obs_scene_add(target_it->second, obs_sceneitem_get_source(entry->item));
+	obs_scene_t *target_scene = nullptr;
+	if (!read_duplicate_target(params, *entry, scenes_, scene_canvases_, target_scene_handle, target_scene, error))
+		return false;
+	obs_sceneitem_t *duplicate = obs_scene_add(target_scene, obs_sceneitem_get_source(entry->item));
 	if (!duplicate)
 		return phase2_fail(error, "obs_error", "obs_scene_add failed while duplicating item");
-	obs_transform_info info = {};
-	obs_sceneitem_crop crop = {};
-	obs_sceneitem_get_info2(entry->item, &info);
-	obs_sceneitem_get_crop(entry->item, &crop);
-	obs_sceneitem_defer_update_begin(duplicate);
-	obs_sceneitem_set_info2(duplicate, &info);
-	obs_sceneitem_set_crop(duplicate, &crop);
-	obs_sceneitem_set_scale_filter(duplicate, obs_sceneitem_get_scale_filter(entry->item));
-	obs_sceneitem_set_blending_mode(duplicate, obs_sceneitem_get_blending_mode(entry->item));
-	obs_sceneitem_set_blending_method(duplicate, obs_sceneitem_get_blending_method(entry->item));
-	obs_sceneitem_defer_update_end(duplicate);
-	obs_sceneitem_set_visible(duplicate, obs_sceneitem_visible(entry->item));
-	obs_sceneitem_set_locked(duplicate, obs_sceneitem_locked(entry->item));
+	copy_item_appearance(entry->item, duplicate);
 
 	std::vector<uint64_t> added;
 	if (!v2_register_scene_item(target_scene_handle, 0, duplicate, added, error)) {
@@ -443,26 +604,11 @@ bool Engine::v2_item_remove(obs_data_t *params, RuntimeV2Result &result, Runtime
 	obs_scene_t *scene = scenes_.contains(scene_handle) ? scenes_.at(scene_handle) : nullptr;
 	if (!scene)
 		return phase2_fail(error, "not_found", "item parent scene was not found");
-	std::vector<uint64_t> children;
-	if (entry->is_group) {
-		for (const auto &[candidate, candidate_entry] : items_) {
-			if (candidate_entry.parent_group_id == handle)
-				children.push_back(candidate);
-		}
-		std::sort(children.begin(), children.end());
-	}
+	const std::vector<uint64_t> children = entry->is_group ? group_child_handles(items_, handle) : std::vector<uint64_t>{};
 	result.data = v2_item_summary(handle, *entry);
-	for (const uint64_t child : children) {
-		auto child_it = items_.find(child);
-		if (child_it != items_.end())
-			phase2_append_event(result, "item.removed", v2_item_summary(child, child_it->second));
-	}
+	append_item_removal_events(*this, items_, children, result);
 	phase2_append_event(result, "item.removed", phase2_clone_data(result.data.get()));
-	for (const uint64_t child : children) {
-		auto child_it = items_.find(child);
-		if (child_it != items_.end())
-			release_item(child_it);
-	}
+	release_item_handles(children);
 	auto item_it = items_.find(handle);
 	if (item_it != items_.end())
 		release_item(item_it);
@@ -837,44 +983,19 @@ bool Engine::v2_item_create_group(obs_data_t *params, RuntimeV2Result &result, R
 	if (name_present && !phase2_is_bounded_string(name, 256))
 		return phase2_fail(error, "bad_request", "group name must be a non-empty string of at most 256 bytes");
 
-	ObsArrayPtr requested;
-	bool items_present = false;
-	if (!phase2_read_array(params, "items", requested, items_present))
-		return phase2_fail(error, "bad_request", "params.items must be an array when present");
 	std::vector<obs_sceneitem_t *> items;
 	std::vector<uint64_t> handles;
-	if (items_present) {
-		const size_t count = obs_data_array_count(requested.get());
-		if (count == 0 || count > 1024)
-			return phase2_fail(error, "bad_request", "params.items must contain between 1 and 1024 items");
-		for (size_t index = 0; index < count; ++index) {
-			ObsDataPtr value(obs_data_array_item(requested.get(), index));
-			if (!value)
-				return phase2_fail(error, "bad_request", "each group item must be an object containing item");
-			uint64_t item_handle = 0;
-			if (!phase2_read_handle(value.get(), "item", item_handle))
-				return phase2_fail(error, "bad_request", "each group item handle must be canonical");
-			auto item_it = items_.find(item_handle);
-			if (item_it == items_.end() || item_it->second.scene_id != scene_handle || item_it->second.is_group ||
-				item_it->second.parent_group_id != 0)
-				return phase2_fail(error, "invalid_state", "group items must be ungrouped items from the target Scene");
-			if (std::find(handles.begin(), handles.end(), item_handle) != handles.end())
-				return phase2_fail(error, "bad_request", "group items must be unique");
-			handles.push_back(item_handle);
-			items.push_back(item_it->second.item);
-		}
-	}
+	if (!read_group_items(params, scene_handle, items_, items, handles, error))
+		return false;
+	const bool items_present = !items.empty();
 	const std::string actual_name = name_present ? name : "engine-group-" + std::to_string(next_handle_);
 	obs_sceneitem_t *group = items_present ? obs_scene_insert_group2(scene, actual_name.c_str(), items.data(), items.size(), false)
 					       : obs_scene_add_group2(scene, actual_name.c_str(), false);
 	if (!group)
 		return phase2_fail(error, "obs_error", "libobs group creation failed");
-	std::vector<uint64_t> added;
-	if (!v2_register_scene_items(scene_handle, scene, added, error))
+	uint64_t group_handle = 0;
+	if (!register_group_item(scene_handle, scene, group, group_handle, error))
 		return false;
-	const uint64_t group_handle = v2_item_handle_for_pointer(group);
-	if (group_handle == 0 || !items_.contains(group_handle))
-		return phase2_fail(error, "internal_error", "created group item was not registered");
 	result.data = v2_item_summary(group_handle, items_.at(group_handle));
 	phase2_append_event(result, "item.created", phase2_clone_data(result.data.get()));
 	phase2_append_event(result, "scene.itemsChanged", make_items_changed_data(*this, scene_handle, scene, group_handle));
@@ -947,20 +1068,10 @@ bool Engine::v2_item_ungroup(obs_data_t *params, RuntimeV2Result &result, Runtim
 	obs_scene_t *scene = scenes_.contains(scene_handle) ? scenes_.at(scene_handle) : nullptr;
 	if (!scene)
 		return phase2_fail(error, "not_found", "group parent Scene was not found");
-	std::vector<uint64_t> old_children;
-	for (const auto &[handle, entry] : items_)
-		if (entry.parent_group_id == group_handle)
-			old_children.push_back(handle);
-	std::sort(old_children.begin(), old_children.end());
+	const std::vector<uint64_t> old_children = group_child_handles(items_, group_handle);
 	obs_sceneitem_group_ungroup2(group->item, false);
-
-	for (const uint64_t child_handle : old_children) {
-		auto child_it = items_.find(child_handle);
-		if (child_it != items_.end()) {
-			phase2_append_event(result, "item.removed", v2_item_summary(child_handle, child_it->second));
-			release_item(child_it);
-		}
-	}
+	append_item_removal_events(*this, items_, old_children, result);
+	release_item_handles(old_children);
 	auto group_it = items_.find(group_handle);
 	if (group_it != items_.end()) {
 		ObsDataPtr removed(obs_data_create());

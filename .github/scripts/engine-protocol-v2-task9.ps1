@@ -7,6 +7,9 @@ $ErrorActionPreference = 'Stop'
 
 $script:Process = $null
 $script:ErrorTask = $null
+$script:Task9InteractionHandle = '2'
+$script:Task9TemporaryHandle = '3'
+$script:Task9UnsupportedHandle = '4'
 
 function Start-Task9Engine([string] $Root) {
     $resolvedRoot = (Resolve-Path $Root).Path
@@ -106,20 +109,20 @@ function Invoke-Task9InitialInteraction {
         params = @{ kind = 'task9_interaction_source'; name = 'task9-interactive' }
     }
     Assert-OkAtRevision $create 1 'Task 9 interaction source.create'
-    if ([string]$create.data.source -ne '1') {
-        throw "Fresh Task 9 engine expected interaction source handle '1', got '$($create.data.source)'."
+    if ([string]$create.data.source -ne $script:Task9InteractionHandle) {
+        throw "Fresh Task 9 engine expected interaction source handle '$($script:Task9InteractionHandle)', got '$($create.data.source)'."
     }
 
     $focus = Send-V2Request @{
         op = 'request'; id = 'task9.focus'; method = 'interaction.focus'
-        params = @{ source = '1'; focused = $true }
+        params = @{ source = $script:Task9InteractionHandle; focused = $true }
     }
     Assert-OkAtRevision $focus 1 'interaction.focus'
 
     $move = Send-V2Request @{
         op = 'request'; id = 'task9.move'; method = 'interaction.mouseMove'
         params = @{
-            source = '1'; x = 100; y = 50; leave = $false
+            source = $script:Task9InteractionHandle; x = 100; y = 50; leave = $false
             modifiers = @{ shift = $true; mouseLeft = $true }
         }
     }
@@ -128,7 +131,7 @@ function Invoke-Task9InitialInteraction {
     $button = Send-V2Request @{
         op = 'request'; id = 'task9.button'; method = 'interaction.mouseButton'
         params = @{
-            source = '1'; x = 100; y = 50; button = 'left'; state = 'down'; clickCount = 1
+            source = $script:Task9InteractionHandle; x = 100; y = 50; button = 'left'; state = 'down'; clickCount = 1
             modifiers = @{ mouseLeft = $true }
         }
     }
@@ -137,7 +140,7 @@ function Invoke-Task9InitialInteraction {
     $rightButton = Send-V2Request @{
         op = 'request'; id = 'task9.button-right'; method = 'interaction.mouseButton'
         params = @{
-            source = '1'; x = 100; y = 50; button = 'right'; state = 'down'; clickCount = 1
+            source = $script:Task9InteractionHandle; x = 100; y = 50; button = 'right'; state = 'down'; clickCount = 1
             modifiers = @{ mouseLeft = $true; mouseRight = $true }
         }
     }
@@ -149,7 +152,7 @@ function Invoke-Task9InitialInteraction {
     $wheel = Send-V2Request @{
         op = 'request'; id = 'task9.wheel'; method = 'interaction.mouseWheel'
         params = @{
-            source = '1'; x = 100; y = 50; deltaX = 0; deltaY = 120
+            source = $script:Task9InteractionHandle; x = 100; y = 50; deltaX = 0; deltaY = 120
             modifiers = @{ control = $true }
         }
     }
@@ -158,7 +161,7 @@ function Invoke-Task9InitialInteraction {
     $key = Send-V2Request @{
         op = 'request'; id = 'task9.key'; method = 'interaction.key'
         params = @{
-            source = '1'; state = 'down'; text = 'a'; nativeModifiers = 0; nativeScanCode = 30; nativeVirtualKey = 65
+            source = $script:Task9InteractionHandle; state = 'down'; text = 'a'; nativeModifiers = 0; nativeScanCode = 30; nativeVirtualKey = 65
             modifiers = @{ shift = $true }
         }
     }
@@ -166,12 +169,12 @@ function Invoke-Task9InitialInteraction {
 
     $textRequest = Send-V2Request @{
         op = 'request'; id = 'task9.text'; method = 'interaction.text'
-        params = @{ source = '1'; text = 'Hi'; modifiers = @{} }
+        params = @{ source = $script:Task9InteractionHandle; text = 'Hi'; modifiers = @{} }
     }
     Assert-OkAtRevision $textRequest 1 'interaction.text'
 
     $reset = Send-V2Request @{
-        op = 'request'; id = 'task9.reset'; method = 'interaction.reset'; params = @{ source = '1' }
+        op = 'request'; id = 'task9.reset'; method = 'interaction.reset'; params = @{ source = $script:Task9InteractionHandle }
     }
     Assert-OkAtRevision $reset 1 'interaction.reset'
     if ([int]$reset.data.releasedButtons -ne 2 -or [int]$reset.data.releasedKeys -ne 1) {
@@ -186,7 +189,7 @@ function Invoke-Task9PruneScenario([int64] $Revision) {
     # 1 executes the bounded stale-state pruning path.
     $pruneSeed = Send-V2Request @{
         op = 'request'; id = 'task9.prune-seed'; method = 'interaction.focus'
-        params = @{ source = '1'; focused = $true }
+        params = @{ source = $script:Task9InteractionHandle; focused = $true }
     }
     Assert-OkAtRevision $pruneSeed $Revision 'interaction prune seed'
 
@@ -195,15 +198,15 @@ function Invoke-Task9PruneScenario([int64] $Revision) {
         params = @{ kind = 'task9_interaction_source'; name = 'task9-held-key-bound' }
     }
     Assert-OkAtRevision $tempCreate ($Revision + 1) 'held-key bound source.create'
-    if ([string]$tempCreate.data.source -ne '2') {
-        throw "Fresh Task 9 engine expected temporary interaction source handle '2', got '$($tempCreate.data.source)'."
+    if ([string]$tempCreate.data.source -ne $script:Task9TemporaryHandle) {
+        throw "Fresh Task 9 engine expected temporary interaction source handle '$($script:Task9TemporaryHandle)', got '$($tempCreate.data.source)'."
     }
 
     for ($keyIndex = 1; $keyIndex -le 256; $keyIndex++) {
         $heldKey = Send-V2Request @{
             op = 'request'; id = "task9.held-key.$keyIndex"; method = 'interaction.key'
             params = @{
-                source = '2'; state = 'down'; nativeModifiers = 0; nativeScanCode = 0; nativeVirtualKey = $keyIndex
+                source = $script:Task9TemporaryHandle; state = 'down'; nativeModifiers = 0; nativeScanCode = 0; nativeVirtualKey = $keyIndex
                 modifiers = @{}
             }
         }
@@ -213,7 +216,7 @@ function Invoke-Task9PruneScenario([int64] $Revision) {
     $heldKeyOverflow = Send-V2Request @{
         op = 'request'; id = 'task9.held-key.overflow'; method = 'interaction.key'
         params = @{
-            source = '2'; state = 'down'; nativeModifiers = 0; nativeScanCode = 0; nativeVirtualKey = 257
+            source = $script:Task9TemporaryHandle; state = 'down'; nativeModifiers = 0; nativeScanCode = 0; nativeVirtualKey = 257
             modifiers = @{}
         }
     }
@@ -221,18 +224,18 @@ function Invoke-Task9PruneScenario([int64] $Revision) {
 
     $tempRemove = Send-V2Request @{
         op = 'request'; id = 'task9.temp-remove'; method = 'source.remove'; ifRevision = ($Revision + 1)
-        params = @{ source = '2' }
+        params = @{ source = $script:Task9TemporaryHandle }
     }
     Assert-OkAtRevision $tempRemove ($Revision + 2) 'remove held-key bound source'
 
     $pruneTrigger = Send-V2Request @{
         op = 'request'; id = 'task9.prune-trigger'; method = 'interaction.mouseMove'
-        params = @{ source = '1'; x = 1; y = 1; leave = $false; modifiers = @{} }
+        params = @{ source = $script:Task9InteractionHandle; x = 1; y = 1; leave = $false; modifiers = @{} }
     }
     Assert-OkAtRevision $pruneTrigger ($Revision + 2) 'interaction stale-state prune trigger'
 
     $pruneReset = Send-V2Request @{
-        op = 'request'; id = 'task9.prune-reset'; method = 'interaction.reset'; params = @{ source = '1' }
+        op = 'request'; id = 'task9.prune-reset'; method = 'interaction.reset'; params = @{ source = $script:Task9InteractionHandle }
     }
     Assert-OkAtRevision $pruneReset ($Revision + 2) 'interaction reset after stale-state prune'
     if ([int]$pruneReset.data.releasedButtons -ne 0 -or [int]$pruneReset.data.releasedKeys -ne 0) {
@@ -244,7 +247,7 @@ function Invoke-Task9PruneScenario([int64] $Revision) {
 function Invoke-Task9ValidationScenario([int64] $Revision) {
     $badCoordinates = Send-V2Request @{
         op = 'request'; id = 'task9.bad-coordinates'; method = 'interaction.mouseMove'
-        params = @{ source = '1'; x = 5000; y = 5000; leave = $false }
+        params = @{ source = $script:Task9InteractionHandle; x = 5000; y = 5000; leave = $false }
     }
     Assert-ErrorAtRevision $badCoordinates 'bad_request' $Revision 'out-of-bounds interaction.mouseMove'
 
@@ -262,7 +265,7 @@ function Invoke-Task9ValidationScenario([int64] $Revision) {
 
     $badRevision = Send-V2Request @{
         op = 'request'; id = 'task9.bad-revision'; method = 'interaction.focus'; ifRevision = $Revision
-        params = @{ source = '1'; focused = $true }
+        params = @{ source = $script:Task9InteractionHandle; focused = $true }
     }
     Assert-ErrorAtRevision $badRevision 'bad_request' $Revision 'interaction ifRevision guard'
 
@@ -284,25 +287,25 @@ function Invoke-Task9UnsupportedCapability([object] $ColorKind, [int64] $Revisio
         params = @{ kind = [string]$ColorKind.id; name = 'task9-noninteractive'; settings = @{ width = 320; height = 180 } }
     }
     Assert-OkAtRevision $unsupportedCreate ($Revision + 1) 'non-interactive source.create'
-    if ([string]$unsupportedCreate.data.source -ne '3') {
-        throw "Fresh Task 9 engine expected non-interactive source handle '3', got '$($unsupportedCreate.data.source)'."
+    if ([string]$unsupportedCreate.data.source -ne $script:Task9UnsupportedHandle) {
+        throw "Fresh Task 9 engine expected non-interactive source handle '$($script:Task9UnsupportedHandle)', got '$($unsupportedCreate.data.source)'."
     }
 
     $unsupported = Send-V2Request @{
         op = 'request'; id = 'task9.unsupported'; method = 'interaction.focus'
-        params = @{ source = '3'; focused = $true }
+        params = @{ source = $script:Task9UnsupportedHandle; focused = $true }
     }
     Assert-ErrorAtRevision $unsupported 'unsupported_capability' ($Revision + 1) 'non-interactive source interaction'
 
     $removeUnsupported = Send-V2Request @{
         op = 'request'; id = 'task9.remove-unsupported'; method = 'source.remove'; ifRevision = ($Revision + 1)
-        params = @{ source = '3' }
+        params = @{ source = $script:Task9UnsupportedHandle }
     }
     Assert-OkAtRevision $removeUnsupported ($Revision + 2) 'remove non-interactive source'
 
     $removeInteractive = Send-V2Request @{
         op = 'request'; id = 'task9.remove-interactive'; method = 'source.remove'; ifRevision = ($Revision + 2)
-        params = @{ source = '1' }
+        params = @{ source = $script:Task9InteractionHandle }
     }
     Assert-OkAtRevision $removeInteractive ($Revision + 3) 'remove interaction source'
     return [int64]($Revision + 3)

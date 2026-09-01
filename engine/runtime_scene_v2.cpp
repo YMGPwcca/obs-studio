@@ -111,6 +111,25 @@ bool read_optional_canvas(obs_data_t *params, uint64_t main_handle, uint64_t &ca
 	return true;
 }
 
+bool read_scene_duplicate_options(obs_data_t *params, uint64_t source_handle,
+					 const std::unordered_map<uint64_t, uint64_t> &scene_canvases, std::string &name,
+					 bool &name_present, uint64_t &canvas_handle, RuntimeV2Error &error)
+{
+	if (!read_scene_name(params, "name", name, name_present, error))
+		return false;
+	std::string mode;
+	bool mode_present = false;
+	if (!phase2_read_string(params, "mode", mode, mode_present))
+		return phase2_fail(error, "bad_request", "params.mode must be a string when present");
+	if (mode_present && mode != "references")
+		return phase2_fail(error, "bad_request", "scene duplication mode must be 'references'");
+	const auto canvas_it = scene_canvases.find(source_handle);
+	if (canvas_it == scene_canvases.end())
+		return phase2_fail(error, "internal_error", "scene has no canvas mapping");
+	canvas_handle = canvas_it->second;
+	return true;
+}
+
 ObsDataPtr make_scene_item_transform(const ItemEntry &entry)
 {
 	ObsDataPtr data(obs_data_create());
@@ -144,6 +163,20 @@ ObsDataPtr make_scene_item_transform(const ItemEntry &entry)
 	obs_data_set_obj(data.get(), "crop", crop.get());
 	obs_data_set_bool(data.get(), "cropToBounds", info.crop_to_bounds);
 	return data;
+}
+
+std::vector<uint64_t> scene_removal_order(const std::vector<uint64_t> &handles,
+					 const std::unordered_map<uint64_t, ItemEntry> &items)
+{
+	std::vector<uint64_t> ordered = handles;
+	std::stable_sort(ordered.begin(), ordered.end(), [&](uint64_t left, uint64_t right) {
+		const bool left_group = items.contains(left) && items.at(left).is_group;
+		const bool right_group = items.contains(right) && items.at(right).is_group;
+		if (left_group != right_group)
+			return !left_group;
+		return left < right;
+	});
+	return ordered;
 }
 
 } // namespace
@@ -292,17 +325,8 @@ bool Engine::v2_register_scene_item(uint64_t scene_id, uint64_t parent_group_id,
 	if (!item)
 		return phase2_fail(error, "internal_error", "scene enumeration returned a null item");
 	const auto known = item_handles_.find(item);
-	if (known != item_handles_.end()) {
-		auto item_it = items_.find(known->second);
-		if (item_it == items_.end())
-			return phase2_fail(error, "internal_error", "scene item handle registry is inconsistent");
-		if (item_it->second.scene_id != scene_id)
-			return phase2_fail(error, "invalid_state", "one libobs scene item belongs to multiple protocol Scenes");
-		item_it->second.parent_group_id = parent_group_id;
-		item_it->second.source_id = v2_source_handle_for_pointer(obs_sceneitem_get_source(item));
-		item_it->second.is_group = obs_sceneitem_is_group(item);
-		return true;
-	}
+	if (known != item_handles_.end())
+		return update_registered_scene_item(scene_id, parent_group_id, known->second, item, error);
 
 	const uint64_t handle = allocate_handle();
 	const uint64_t source_id = v2_source_handle_for_pointer(obs_sceneitem_get_source(item));
@@ -335,6 +359,72 @@ bool Engine::v2_register_scene_item(uint64_t scene_id, uint64_t parent_group_id,
 			obs_sceneitem_release(item);
 		return phase2_fail(error, "internal_error", "could not register scene item handle");
 	}
+}
+
+bool Engine::update_registered_scene_item(uint64_t scene_id, uint64_t parent_group_id, uint64_t handle,
+					   obs_sceneitem_t *item, RuntimeV2Error &error)
+{
+	auto item_it = items_.find(handle);
+	if (item_it == items_.end())
+		return phase2_fail(error, "internal_error", "scene item handle registry is inconsistent");
+	if (item_it->second.scene_id != scene_id)
+		return phase2_fail(error, "invalid_state", "one libobs scene item belongs to multiple protocol Scenes");
+	item_it->second.parent_group_id = parent_group_id;
+	item_it->second.source_id = v2_source_handle_for_pointer(obs_sceneitem_get_source(item));
+	item_it->second.is_group = obs_sceneitem_is_group(item);
+	return true;
+}
+
+bool Engine::register_scene_entry(uint64_t handle, uint64_t canvas_handle, obs_scene_t *scene, RuntimeV2Error &error)
+{
+	try {
+		if (!scenes_.emplace(handle, scene).second)
+			throw std::runtime_error("scene handle collision");
+		if (!scene_canvases_.emplace(handle, canvas_handle).second) {
+			scenes_.erase(handle);
+			throw std::runtime_error("scene canvas mapping collision");
+		}
+		return true;
+	} catch (...) {
+		scene_canvases_.erase(handle);
+		scenes_.erase(handle);
+		obs_canvas_scene_remove(scene);
+		obs_scene_release(scene);
+		return phase2_fail(error, "internal_error", "could not register scene handle");
+	}
+}
+
+void Engine::discard_scene_entry(uint64_t handle, obs_scene_t *scene)
+{
+	const std::vector<uint64_t> item_handles = scene_removal_order(v2_item_handles_for_scene(handle), items_);
+	release_item_handles(item_handles);
+	scene_canvases_.erase(handle);
+	scenes_.erase(handle);
+	obs_canvas_scene_remove(scene);
+	obs_scene_release(scene);
+}
+
+void Engine::clear_program_scene_for_removal(uint64_t scene_handle, RuntimeV2Result &result)
+{
+	auto main_it = canvases_.find(main_canvas_);
+	if (main_it != canvases_.end() && main_it->second.canvas)
+		obs_canvas_set_channel(main_it->second.canvas, 0, nullptr);
+	program_scene_ = 0;
+	ObsDataPtr event_data(obs_data_create());
+	set_nullable_handle(event_data.get(), "scene", 0);
+	set_nullable_handle(event_data.get(), "previousScene", scene_handle);
+	if (main_canvas_ != 0)
+		phase2_set_handle(event_data.get(), "canvas", main_canvas_);
+	phase2_append_event(result, "program.sceneChanged", std::move(event_data));
+}
+
+void Engine::clear_preview_scene_for_removal(uint64_t scene_handle, RuntimeV2Result &result)
+{
+	v2_clear_preview_source();
+	ObsDataPtr event_data(obs_data_create());
+	set_nullable_handle(event_data.get(), "scene", 0);
+	set_nullable_handle(event_data.get(), "previousScene", scene_handle);
+	phase2_append_event(result, "preview.sceneChanged", std::move(event_data));
 }
 
 bool Engine::v2_register_scene_items(uint64_t scene_id, obs_scene_t *scene, std::vector<uint64_t> &added,
@@ -453,21 +543,8 @@ bool Engine::v2_scene_create(obs_data_t *params, RuntimeV2Result &result, Runtim
 	obs_scene_t *scene = obs_canvas_scene_create(canvas->canvas, name.c_str());
 	if (!scene)
 		return phase2_fail(error, "obs_error", "canvas-aware scene creation failed");
-
-	try {
-		if (!scenes_.emplace(handle, scene).second)
-			throw std::runtime_error("scene handle collision");
-		if (!scene_canvases_.emplace(handle, canvas_handle).second) {
-			scenes_.erase(handle);
-			throw std::runtime_error("scene canvas mapping collision");
-		}
-	} catch (...) {
-		scene_canvases_.erase(handle);
-		scenes_.erase(handle);
-		obs_canvas_scene_remove(scene);
-		obs_scene_release(scene);
-		return phase2_fail(error, "internal_error", "could not register scene handle");
-	}
+	if (!register_scene_entry(handle, canvas_handle, scene, error))
+		return false;
 
 	result.data = v2_scene_summary(handle, scene);
 	phase2_append_event(result, "scene.created", phase2_clone_data(result.data.get()));
@@ -512,17 +589,10 @@ bool Engine::v2_scene_duplicate(obs_data_t *params, RuntimeV2Result &result, Run
 		return false;
 	std::string requested_name;
 	bool name_present = false;
-	if (!read_scene_name(params, "name", requested_name, name_present, error))
+	uint64_t canvas_handle = 0;
+	if (!read_scene_duplicate_options(params, source_handle, scene_canvases_, requested_name, name_present,
+						   canvas_handle, error))
 		return false;
-	std::string mode;
-	bool mode_present = false;
-	if (!phase2_read_string(params, "mode", mode, mode_present))
-		return phase2_fail(error, "bad_request", "params.mode must be a string when present");
-	if (mode_present && mode != "references")
-		return phase2_fail(error, "bad_request", "scene duplication mode must be 'references'");
-	const auto canvas_it = scene_canvases_.find(source_handle);
-	if (canvas_it == scene_canvases_.end())
-		return phase2_fail(error, "internal_error", "scene has no canvas mapping");
 	const uint64_t duplicate_handle = allocate_handle();
 	const std::string generated_name = std::string(obs_source_get_name(obs_scene_get_source(source_scene))) + " copy";
 	const std::string name = name_present ? requested_name : generated_name;
@@ -530,32 +600,12 @@ bool Engine::v2_scene_duplicate(obs_data_t *params, RuntimeV2Result &result, Run
 	if (!duplicate)
 		return phase2_fail(error, "obs_error", "libobs scene duplication failed");
 
-	try {
-		if (!scenes_.emplace(duplicate_handle, duplicate).second)
-			throw std::runtime_error("scene handle collision");
-		if (!scene_canvases_.emplace(duplicate_handle, canvas_it->second).second) {
-			scenes_.erase(duplicate_handle);
-			throw std::runtime_error("scene canvas mapping collision");
-		}
-	} catch (...) {
-		scene_canvases_.erase(duplicate_handle);
-		scenes_.erase(duplicate_handle);
-		obs_canvas_scene_remove(duplicate);
-		obs_scene_release(duplicate);
-		return phase2_fail(error, "internal_error", "could not register duplicated scene handle");
-	}
+	if (!register_scene_entry(duplicate_handle, canvas_handle, duplicate, error))
+		return false;
 
 	std::vector<uint64_t> added;
 	if (!v2_register_scene_items(duplicate_handle, duplicate, added, error)) {
-		for (const uint64_t item_handle : added) {
-			auto item_it = items_.find(item_handle);
-			if (item_it != items_.end())
-				release_item(item_it);
-		}
-		scene_canvases_.erase(duplicate_handle);
-		scenes_.erase(duplicate_handle);
-		obs_canvas_scene_remove(duplicate);
-		obs_scene_release(duplicate);
+		discard_scene_entry(duplicate_handle, duplicate);
 		return false;
 	}
 
@@ -639,35 +689,13 @@ bool Engine::v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, Runtim
 	const std::vector<uint64_t> all_items = v2_item_handles_for_scene(handle);
 	const bool program_was_scene = v2_current_program_scene() == handle;
 	const bool preview_was_scene = preview_scene_ == handle;
-	std::vector<uint64_t> item_handles = all_items;
-	std::stable_sort(item_handles.begin(), item_handles.end(), [&](uint64_t left, uint64_t right) {
-		const bool left_group = items_.contains(left) && items_.at(left).is_group;
-		const bool right_group = items_.contains(right) && items_.at(right).is_group;
-		if (left_group != right_group)
-			return !left_group;
-		return left < right;
-	});
+	const std::vector<uint64_t> item_handles = scene_removal_order(all_items, items_);
 
 	result.data = v2_scene_summary(handle, scene);
-	if (program_was_scene) {
-		auto main_it = canvases_.find(main_canvas_);
-		if (main_it != canvases_.end() && main_it->second.canvas)
-			obs_canvas_set_channel(main_it->second.canvas, 0, nullptr);
-		program_scene_ = 0;
-		ObsDataPtr event_data(obs_data_create());
-		set_nullable_handle(event_data.get(), "scene", 0);
-		set_nullable_handle(event_data.get(), "previousScene", handle);
-		if (main_canvas_ != 0)
-			phase2_set_handle(event_data.get(), "canvas", main_canvas_);
-		phase2_append_event(result, "program.sceneChanged", std::move(event_data));
-	}
-	if (preview_was_scene) {
-		v2_clear_preview_source();
-		ObsDataPtr event_data(obs_data_create());
-		set_nullable_handle(event_data.get(), "scene", 0);
-		set_nullable_handle(event_data.get(), "previousScene", handle);
-		phase2_append_event(result, "preview.sceneChanged", std::move(event_data));
-	}
+	if (program_was_scene)
+		clear_program_scene_for_removal(handle, result);
+	if (preview_was_scene)
+		clear_preview_scene_for_removal(handle, result);
 	if (!v2_append_item_removal_events(item_handles, result, error))
 		return false;
 	v2_preview_output_invalidate_scene(handle, result);
@@ -677,15 +705,7 @@ bool Engine::v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, Runtim
 		phase2_set_handle(removed_event.get(), "canvas", canvas_handle);
 	phase2_append_event(result, "scene.removed", std::move(removed_event));
 
-	for (const uint64_t item_handle : item_handles) {
-		auto item_it = items_.find(item_handle);
-		if (item_it != items_.end())
-			release_item(item_it);
-	}
-	obs_canvas_scene_remove(scene);
-	obs_scene_release(scene);
-	scene_canvases_.erase(handle);
-	scenes_.erase(handle);
+	discard_scene_entry(handle, scene);
 	result.mutated = true;
 	return true;
 }

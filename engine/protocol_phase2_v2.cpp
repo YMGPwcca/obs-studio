@@ -5,6 +5,7 @@
 
 #include <obs.h>
 
+#include <algorithm>
 #include <optional>
 #include <string_view>
 
@@ -101,6 +102,8 @@ enum class Phase2Method {
 	Unknown,
 };
 
+using Handler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
+
 struct Phase2MethodName {
 	std::string_view name;
 	Phase2Method method;
@@ -181,250 +184,166 @@ Phase2Method classify(std::string_view method)
 
 bool mutating(Phase2Method method)
 {
-	switch (method) {
-	case Phase2Method::SceneCreate:
-	case Phase2Method::SceneRemove:
-	case Phase2Method::SceneRename:
-	case Phase2Method::SceneDuplicate:
-	case Phase2Method::ItemCreate:
-	case Phase2Method::ItemRemove:
-	case Phase2Method::ItemDuplicate:
-	case Phase2Method::ItemSetTransform:
-	case Phase2Method::ItemSetPosition:
-	case Phase2Method::ItemSetScale:
-	case Phase2Method::ItemSetRotation:
-	case Phase2Method::ItemSetAlignment:
-	case Phase2Method::ItemSetBounds:
-	case Phase2Method::ItemSetBoundsAlignment:
-	case Phase2Method::ItemSetCrop:
-	case Phase2Method::ItemSetCropToBounds:
-	case Phase2Method::ItemSetVisible:
-	case Phase2Method::ItemSetLocked:
-	case Phase2Method::ItemSetOrder:
-	case Phase2Method::ItemMoveUp:
-	case Phase2Method::ItemMoveDown:
-	case Phase2Method::ItemMoveTop:
-	case Phase2Method::ItemMoveBottom:
-	case Phase2Method::ItemSetScaleFilter:
-	case Phase2Method::ItemSetBlendMode:
-	case Phase2Method::ItemSetBlendMethod:
-	case Phase2Method::ItemCreateGroup:
-	case Phase2Method::ItemUngroup:
-	case Phase2Method::ItemAddToGroup:
-	case Phase2Method::ItemRemoveFromGroup:
-		return true;
-	case Phase2Method::CanvasCreate:
-	case Phase2Method::CanvasRemove:
-	case Phase2Method::CanvasRename:
-	case Phase2Method::CanvasSetVideoSettings:
-	case Phase2Method::CanvasSetChannel:
-		return true;
-	case Phase2Method::ProgramSetScene:
-		return true;
-	case Phase2Method::PreviewSetScene:
-		return true;
-	case Phase2Method::PreviewOutputCreate:
-	case Phase2Method::PreviewOutputDestroy:
-	case Phase2Method::PreviewOutputSetEnabled:
-	case Phase2Method::PreviewOutputResize:
-	case Phase2Method::PreviewOutputSetTarget:
-		return true;
-	case Phase2Method::TransitionCreate:
-	case Phase2Method::TransitionRemove:
-	case Phase2Method::TransitionRename:
-	case Phase2Method::TransitionPatchSettings:
-	case Phase2Method::TransitionReplaceSettings:
-	case Phase2Method::TransitionSetDuration:
-		return true;
-	case Phase2Method::StudioSetEnabled:
-	case Phase2Method::StudioSetTransition:
-	case Phase2Method::StudioSetTransitionDuration:
-	case Phase2Method::StudioTransition:
-		return true;
-	default:
-		return false;
+	constexpr Phase2Method mutating_methods[] = {
+		Phase2Method::SceneCreate,
+		Phase2Method::SceneRemove,
+		Phase2Method::SceneRename,
+		Phase2Method::SceneDuplicate,
+		Phase2Method::ItemCreate,
+		Phase2Method::ItemRemove,
+		Phase2Method::ItemDuplicate,
+		Phase2Method::ItemSetTransform,
+		Phase2Method::ItemSetPosition,
+		Phase2Method::ItemSetScale,
+		Phase2Method::ItemSetRotation,
+		Phase2Method::ItemSetAlignment,
+		Phase2Method::ItemSetBounds,
+		Phase2Method::ItemSetBoundsAlignment,
+		Phase2Method::ItemSetCrop,
+		Phase2Method::ItemSetCropToBounds,
+		Phase2Method::ItemSetVisible,
+		Phase2Method::ItemSetLocked,
+		Phase2Method::ItemSetOrder,
+		Phase2Method::ItemMoveUp,
+		Phase2Method::ItemMoveDown,
+		Phase2Method::ItemMoveTop,
+		Phase2Method::ItemMoveBottom,
+		Phase2Method::ItemSetScaleFilter,
+		Phase2Method::ItemSetBlendMode,
+		Phase2Method::ItemSetBlendMethod,
+		Phase2Method::ItemCreateGroup,
+		Phase2Method::ItemUngroup,
+		Phase2Method::ItemAddToGroup,
+		Phase2Method::ItemRemoveFromGroup,
+		Phase2Method::CanvasCreate,
+		Phase2Method::CanvasRemove,
+		Phase2Method::CanvasRename,
+		Phase2Method::CanvasSetVideoSettings,
+		Phase2Method::CanvasSetChannel,
+		Phase2Method::ProgramSetScene,
+		Phase2Method::PreviewSetScene,
+		Phase2Method::PreviewOutputCreate,
+		Phase2Method::PreviewOutputDestroy,
+		Phase2Method::PreviewOutputSetEnabled,
+		Phase2Method::PreviewOutputResize,
+		Phase2Method::PreviewOutputSetTarget,
+		Phase2Method::TransitionCreate,
+		Phase2Method::TransitionRemove,
+		Phase2Method::TransitionRename,
+		Phase2Method::TransitionPatchSettings,
+		Phase2Method::TransitionReplaceSettings,
+		Phase2Method::TransitionSetDuration,
+		Phase2Method::StudioSetEnabled,
+		Phase2Method::StudioSetTransition,
+		Phase2Method::StudioSetTransitionDuration,
+		Phase2Method::StudioTransition,
+	};
+	for (const Phase2Method candidate : mutating_methods) {
+		if (candidate == method)
+			return true;
 	}
+	return false;
 }
 
-using Handler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
+struct HandlerEntry {
+	Phase2Method method;
+	Handler handler;
+};
+
+constexpr HandlerEntry kHandlers[] = {
+	{Phase2Method::SceneList, &Engine::v2_scene_list},
+	{Phase2Method::SceneGet, &Engine::v2_scene_get},
+	{Phase2Method::SceneCreate, &Engine::v2_scene_create},
+	{Phase2Method::SceneRemove, &Engine::v2_scene_remove},
+	{Phase2Method::SceneRename, &Engine::v2_scene_rename},
+	{Phase2Method::SceneDuplicate, &Engine::v2_scene_duplicate},
+	{Phase2Method::SceneGetItems, &Engine::v2_scene_get_items},
+	{Phase2Method::SceneGetState, &Engine::v2_scene_get_state},
+	{Phase2Method::ItemGet, &Engine::v2_item_get},
+	{Phase2Method::ItemCreate, &Engine::v2_item_create},
+	{Phase2Method::ItemRemove, &Engine::v2_item_remove},
+	{Phase2Method::ItemDuplicate, &Engine::v2_item_duplicate},
+	{Phase2Method::ItemGetTransform, &Engine::v2_item_get_transform},
+	{Phase2Method::ItemSetTransform, &Engine::v2_item_set_transform},
+	{Phase2Method::ItemSetPosition, &Engine::v2_item_set_position},
+	{Phase2Method::ItemSetScale, &Engine::v2_item_set_scale},
+	{Phase2Method::ItemSetRotation, &Engine::v2_item_set_rotation},
+	{Phase2Method::ItemSetAlignment, &Engine::v2_item_set_alignment},
+	{Phase2Method::ItemSetBounds, &Engine::v2_item_set_bounds},
+	{Phase2Method::ItemSetBoundsAlignment, &Engine::v2_item_set_bounds_alignment},
+	{Phase2Method::ItemSetCrop, &Engine::v2_item_set_crop},
+	{Phase2Method::ItemSetCropToBounds, &Engine::v2_item_set_crop_to_bounds},
+	{Phase2Method::ItemSetVisible, &Engine::v2_item_set_visible},
+	{Phase2Method::ItemSetLocked, &Engine::v2_item_set_locked},
+	{Phase2Method::ItemSetOrder, &Engine::v2_item_set_order},
+	{Phase2Method::ItemMoveUp, &Engine::v2_item_move_up},
+	{Phase2Method::ItemMoveDown, &Engine::v2_item_move_down},
+	{Phase2Method::ItemMoveTop, &Engine::v2_item_move_top},
+	{Phase2Method::ItemMoveBottom, &Engine::v2_item_move_bottom},
+	{Phase2Method::ItemSetScaleFilter, &Engine::v2_item_set_scale_filter},
+	{Phase2Method::ItemSetBlendMode, &Engine::v2_item_set_blend_mode},
+	{Phase2Method::ItemSetBlendMethod, &Engine::v2_item_set_blend_method},
+	{Phase2Method::ItemCreateGroup, &Engine::v2_item_create_group},
+	{Phase2Method::ItemUngroup, &Engine::v2_item_ungroup},
+	{Phase2Method::ItemAddToGroup, &Engine::v2_item_add_to_group},
+	{Phase2Method::ItemRemoveFromGroup, &Engine::v2_item_remove_from_group},
+	{Phase2Method::ItemGetChildren, &Engine::v2_item_get_children},
+	{Phase2Method::CanvasList, &Engine::v2_canvas_list},
+	{Phase2Method::CanvasGetMain, &Engine::v2_canvas_get_main},
+	{Phase2Method::CanvasGet, &Engine::v2_canvas_get},
+	{Phase2Method::CanvasCreate, &Engine::v2_canvas_create},
+	{Phase2Method::CanvasRemove, &Engine::v2_canvas_remove},
+	{Phase2Method::CanvasRename, &Engine::v2_canvas_rename},
+	{Phase2Method::CanvasGetVideoSettings, &Engine::v2_canvas_get_video_settings},
+	{Phase2Method::CanvasSetVideoSettings, &Engine::v2_canvas_set_video_settings},
+	{Phase2Method::CanvasListScenes, &Engine::v2_canvas_list_scenes},
+	{Phase2Method::CanvasGetChannel, &Engine::v2_canvas_get_channel},
+	{Phase2Method::CanvasSetChannel, &Engine::v2_canvas_set_channel},
+	{Phase2Method::CanvasGetFlags, &Engine::v2_canvas_get_flags},
+	{Phase2Method::ProgramGetScene, &Engine::v2_program_get_scene},
+	{Phase2Method::ProgramSetScene, &Engine::v2_program_set_scene},
+	{Phase2Method::PreviewGetScene, &Engine::v2_preview_get_scene},
+	{Phase2Method::PreviewSetScene, &Engine::v2_preview_set_scene},
+	{Phase2Method::PreviewGetInfo, &Engine::v2_preview_get_info},
+	{Phase2Method::PreviewOutputCreate, &Engine::v2_preview_output_create},
+	{Phase2Method::PreviewOutputDestroy, &Engine::v2_preview_output_destroy},
+	{Phase2Method::PreviewOutputList, &Engine::v2_preview_output_list},
+	{Phase2Method::PreviewOutputGet, &Engine::v2_preview_output_get},
+	{Phase2Method::PreviewOutputSetTarget, &Engine::v2_preview_output_set_target},
+	{Phase2Method::PreviewOutputGetInfo, &Engine::v2_preview_output_get_info},
+	{Phase2Method::PreviewOutputSetEnabled, &Engine::v2_preview_output_set_enabled},
+	{Phase2Method::PreviewOutputResize, &Engine::v2_preview_output_resize},
+	{Phase2Method::PreviewOutputGetSharedTexture, &Engine::v2_preview_output_get_shared_texture},
+	{Phase2Method::PreviewOutputReleaseSharedTexture, &Engine::v2_preview_output_release_shared_texture},
+	{Phase2Method::TransitionKindList, &Engine::v2_transition_kind_list},
+	{Phase2Method::TransitionKindDefaults, &Engine::v2_transition_kind_defaults},
+	{Phase2Method::TransitionKindProperties, &Engine::v2_transition_kind_properties},
+	{Phase2Method::TransitionList, &Engine::v2_transition_list},
+	{Phase2Method::TransitionGet, &Engine::v2_transition_get},
+	{Phase2Method::TransitionCreate, &Engine::v2_transition_create},
+	{Phase2Method::TransitionRemove, &Engine::v2_transition_remove},
+	{Phase2Method::TransitionRename, &Engine::v2_transition_rename},
+	{Phase2Method::TransitionGetSettings, &Engine::v2_transition_get_settings},
+	{Phase2Method::TransitionPatchSettings, &Engine::v2_transition_patch_settings},
+	{Phase2Method::TransitionReplaceSettings, &Engine::v2_transition_replace_settings},
+	{Phase2Method::TransitionGetProperties, &Engine::v2_transition_get_properties},
+	{Phase2Method::TransitionGetDuration, &Engine::v2_transition_get_duration},
+	{Phase2Method::TransitionSetDuration, &Engine::v2_transition_set_duration},
+	{Phase2Method::TransitionGetState, &Engine::v2_transition_get_state},
+	{Phase2Method::StudioGetEnabled, &Engine::v2_studio_get_enabled},
+	{Phase2Method::StudioSetEnabled, &Engine::v2_studio_set_enabled},
+	{Phase2Method::StudioGetTransition, &Engine::v2_studio_get_transition},
+	{Phase2Method::StudioSetTransition, &Engine::v2_studio_set_transition},
+	{Phase2Method::StudioGetTransitionDuration, &Engine::v2_studio_get_transition_duration},
+	{Phase2Method::StudioSetTransitionDuration, &Engine::v2_studio_set_transition_duration},
+	{Phase2Method::StudioTransition, &Engine::v2_studio_transition},
+};
 
 Handler handler_for(Phase2Method method)
 {
-	switch (method) {
-	case Phase2Method::SceneList:
-		return &Engine::v2_scene_list;
-	case Phase2Method::SceneGet:
-		return &Engine::v2_scene_get;
-	case Phase2Method::SceneCreate:
-		return &Engine::v2_scene_create;
-	case Phase2Method::SceneRemove:
-		return &Engine::v2_scene_remove;
-	case Phase2Method::SceneRename:
-		return &Engine::v2_scene_rename;
-	case Phase2Method::SceneDuplicate:
-		return &Engine::v2_scene_duplicate;
-	case Phase2Method::SceneGetItems:
-		return &Engine::v2_scene_get_items;
-	case Phase2Method::SceneGetState:
-		return &Engine::v2_scene_get_state;
-	case Phase2Method::ItemGet:
-		return &Engine::v2_item_get;
-	case Phase2Method::ItemCreate:
-		return &Engine::v2_item_create;
-	case Phase2Method::ItemRemove:
-		return &Engine::v2_item_remove;
-	case Phase2Method::ItemDuplicate:
-		return &Engine::v2_item_duplicate;
-	case Phase2Method::ItemGetTransform:
-		return &Engine::v2_item_get_transform;
-	case Phase2Method::ItemSetTransform:
-		return &Engine::v2_item_set_transform;
-	case Phase2Method::ItemSetPosition:
-		return &Engine::v2_item_set_position;
-	case Phase2Method::ItemSetScale:
-		return &Engine::v2_item_set_scale;
-	case Phase2Method::ItemSetRotation:
-		return &Engine::v2_item_set_rotation;
-	case Phase2Method::ItemSetAlignment:
-		return &Engine::v2_item_set_alignment;
-	case Phase2Method::ItemSetBounds:
-		return &Engine::v2_item_set_bounds;
-	case Phase2Method::ItemSetBoundsAlignment:
-		return &Engine::v2_item_set_bounds_alignment;
-	case Phase2Method::ItemSetCrop:
-		return &Engine::v2_item_set_crop;
-	case Phase2Method::ItemSetCropToBounds:
-		return &Engine::v2_item_set_crop_to_bounds;
-	case Phase2Method::ItemSetVisible:
-		return &Engine::v2_item_set_visible;
-	case Phase2Method::ItemSetLocked:
-		return &Engine::v2_item_set_locked;
-	case Phase2Method::ItemSetOrder:
-		return &Engine::v2_item_set_order;
-	case Phase2Method::ItemMoveUp:
-		return &Engine::v2_item_move_up;
-	case Phase2Method::ItemMoveDown:
-		return &Engine::v2_item_move_down;
-	case Phase2Method::ItemMoveTop:
-		return &Engine::v2_item_move_top;
-	case Phase2Method::ItemMoveBottom:
-		return &Engine::v2_item_move_bottom;
-	case Phase2Method::ItemSetScaleFilter:
-		return &Engine::v2_item_set_scale_filter;
-	case Phase2Method::ItemSetBlendMode:
-		return &Engine::v2_item_set_blend_mode;
-	case Phase2Method::ItemSetBlendMethod:
-		return &Engine::v2_item_set_blend_method;
-	case Phase2Method::ItemCreateGroup:
-		return &Engine::v2_item_create_group;
-	case Phase2Method::ItemUngroup:
-		return &Engine::v2_item_ungroup;
-	case Phase2Method::ItemAddToGroup:
-		return &Engine::v2_item_add_to_group;
-	case Phase2Method::ItemRemoveFromGroup:
-		return &Engine::v2_item_remove_from_group;
-	case Phase2Method::ItemGetChildren:
-		return &Engine::v2_item_get_children;
-	case Phase2Method::CanvasList:
-		return &Engine::v2_canvas_list;
-	case Phase2Method::CanvasGetMain:
-		return &Engine::v2_canvas_get_main;
-	case Phase2Method::CanvasGet:
-		return &Engine::v2_canvas_get;
-	case Phase2Method::CanvasCreate:
-		return &Engine::v2_canvas_create;
-	case Phase2Method::CanvasRemove:
-		return &Engine::v2_canvas_remove;
-	case Phase2Method::CanvasRename:
-		return &Engine::v2_canvas_rename;
-	case Phase2Method::CanvasGetVideoSettings:
-		return &Engine::v2_canvas_get_video_settings;
-	case Phase2Method::CanvasSetVideoSettings:
-		return &Engine::v2_canvas_set_video_settings;
-	case Phase2Method::CanvasListScenes:
-		return &Engine::v2_canvas_list_scenes;
-	case Phase2Method::CanvasGetChannel:
-		return &Engine::v2_canvas_get_channel;
-	case Phase2Method::CanvasSetChannel:
-		return &Engine::v2_canvas_set_channel;
-	case Phase2Method::CanvasGetFlags:
-		return &Engine::v2_canvas_get_flags;
-	case Phase2Method::ProgramGetScene:
-		return &Engine::v2_program_get_scene;
-	case Phase2Method::ProgramSetScene:
-		return &Engine::v2_program_set_scene;
-	case Phase2Method::PreviewGetScene:
-		return &Engine::v2_preview_get_scene;
-	case Phase2Method::PreviewSetScene:
-		return &Engine::v2_preview_set_scene;
-	case Phase2Method::PreviewGetInfo:
-		return &Engine::v2_preview_get_info;
-	case Phase2Method::PreviewOutputCreate:
-		return &Engine::v2_preview_output_create;
-	case Phase2Method::PreviewOutputDestroy:
-		return &Engine::v2_preview_output_destroy;
-	case Phase2Method::PreviewOutputList:
-		return &Engine::v2_preview_output_list;
-	case Phase2Method::PreviewOutputGet:
-		return &Engine::v2_preview_output_get;
-	case Phase2Method::PreviewOutputSetTarget:
-		return &Engine::v2_preview_output_set_target;
-	case Phase2Method::PreviewOutputGetInfo:
-		return &Engine::v2_preview_output_get_info;
-	case Phase2Method::PreviewOutputSetEnabled:
-		return &Engine::v2_preview_output_set_enabled;
-	case Phase2Method::PreviewOutputResize:
-		return &Engine::v2_preview_output_resize;
-	case Phase2Method::PreviewOutputGetSharedTexture:
-		return &Engine::v2_preview_output_get_shared_texture;
-	case Phase2Method::PreviewOutputReleaseSharedTexture:
-		return &Engine::v2_preview_output_release_shared_texture;
-	case Phase2Method::TransitionKindList:
-		return &Engine::v2_transition_kind_list;
-	case Phase2Method::TransitionKindDefaults:
-		return &Engine::v2_transition_kind_defaults;
-	case Phase2Method::TransitionKindProperties:
-		return &Engine::v2_transition_kind_properties;
-	case Phase2Method::TransitionList:
-		return &Engine::v2_transition_list;
-	case Phase2Method::TransitionGet:
-		return &Engine::v2_transition_get;
-	case Phase2Method::TransitionCreate:
-		return &Engine::v2_transition_create;
-	case Phase2Method::TransitionRemove:
-		return &Engine::v2_transition_remove;
-	case Phase2Method::TransitionRename:
-		return &Engine::v2_transition_rename;
-	case Phase2Method::TransitionGetSettings:
-		return &Engine::v2_transition_get_settings;
-	case Phase2Method::TransitionPatchSettings:
-		return &Engine::v2_transition_patch_settings;
-	case Phase2Method::TransitionReplaceSettings:
-		return &Engine::v2_transition_replace_settings;
-	case Phase2Method::TransitionGetProperties:
-		return &Engine::v2_transition_get_properties;
-	case Phase2Method::TransitionGetDuration:
-		return &Engine::v2_transition_get_duration;
-	case Phase2Method::TransitionSetDuration:
-		return &Engine::v2_transition_set_duration;
-	case Phase2Method::TransitionGetState:
-		return &Engine::v2_transition_get_state;
-	case Phase2Method::StudioGetEnabled:
-		return &Engine::v2_studio_get_enabled;
-	case Phase2Method::StudioSetEnabled:
-		return &Engine::v2_studio_set_enabled;
-	case Phase2Method::StudioGetTransition:
-		return &Engine::v2_studio_get_transition;
-	case Phase2Method::StudioSetTransition:
-		return &Engine::v2_studio_set_transition;
-	case Phase2Method::StudioGetTransitionDuration:
-		return &Engine::v2_studio_get_transition_duration;
-	case Phase2Method::StudioSetTransitionDuration:
-		return &Engine::v2_studio_set_transition_duration;
-	case Phase2Method::StudioTransition:
-		return &Engine::v2_studio_transition;
-	case Phase2Method::Unknown:
-		return nullptr;
+	for (const HandlerEntry &entry : kHandlers) {
+		if (entry.method == method)
+			return entry.handler;
 	}
 	return nullptr;
 }
@@ -509,6 +428,47 @@ bool prepare(const V2Request &request, Phase2Method method, Engine &engine, Revi
 	return true;
 }
 
+bool execute_phase2_handler(Engine &engine, Phase2Method method, obs_data_t *params, RuntimeV2Result &result,
+				    RuntimeV2Error &error)
+{
+	const Handler handler = handler_for(method);
+	return handler && (engine.*handler)(params, result, error);
+}
+
+void normalize_phase2_error(RuntimeV2Error &error)
+{
+	if (error.code.empty()) {
+		error.code = "internal_error";
+		error.message = "Phase-2 dispatch failed";
+	}
+}
+
+void flush_phase2_capture(std::optional<Phase2CaptureScope> &capture,
+				 std::optional<RevisionState::MutationGuard> &guard)
+{
+	if (capture)
+		capture->flush(*guard);
+}
+
+bool commit_phase2_result(const V2Request &request, RuntimeV2Result &result, RuntimeV2Error &error,
+				  RevisionState &revisions, std::optional<RevisionState::MutationGuard> &guard,
+				  std::optional<Phase2CaptureScope> &capture, uint64_t &revision)
+{
+	revision = guard ? guard->current() : revisions.current();
+	if (!result.mutated)
+		return true;
+	if (guard) {
+		revision = guard->commit_mutation();
+		return true;
+	}
+	send_v2_error(request.id, "internal_error", "read-only Phase-2 method mutated engine state", nullptr,
+		      revisions.current());
+	flush_phase2_capture(capture, guard);
+	error.code = "internal_error";
+	error.message = "read-only Phase-2 method mutated engine state";
+	return false;
+}
+
 } // namespace
 
 bool is_phase2_method(std::string_view method)
@@ -530,36 +490,22 @@ bool handle_phase2_request(Engine &engine, RevisionState &revisions, EventDispat
 	if (!prepare(request, method, engine, revisions, result, capture, guard))
 		return true;
 
-	const Handler handler = handler_for(method);
-	const bool succeeded = handler && (engine.*handler)(request.params.get(), result, error);
+	const bool succeeded = execute_phase2_handler(engine, method, request.params.get(), result, error);
 	engine.v2_sync_source_observers();
 	if (!succeeded) {
-		if (error.code.empty()) {
-			error.code = "internal_error";
-			error.message = "Phase-2 scene dispatch failed";
-		}
+		normalize_phase2_error(error);
 		send_v2_error(request.id, error.code.c_str(), error.message.c_str(), nullptr,
 			      guard ? guard->current() : revisions.current());
-		if (capture)
-			capture->flush(*guard);
+		flush_phase2_capture(capture, guard);
 		return true;
 	}
 
-	uint64_t revision = guard ? guard->current() : revisions.current();
-	if (result.mutated) {
-		if (!guard) {
-			send_v2_error(request.id, "internal_error", "read-only scene method mutated engine state", nullptr,
-				      revisions.current());
-			if (capture)
-				capture->flush(*guard);
-			return true;
-		}
-		revision = guard->commit_mutation();
-	}
+	uint64_t revision = 0;
+	if (!commit_phase2_result(request, result, error, revisions, guard, capture, revision))
+		return true;
 	send_v2_ok(request.id, result.data.get(), revision);
 	publish_events(events, revision, result);
-	if (capture)
-		capture->flush(*guard);
+	flush_phase2_capture(capture, guard);
 	return true;
 }
 
