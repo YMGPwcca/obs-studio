@@ -2,6 +2,7 @@
 
 **Date:** 2026-09-01
 **Branch:** `phase2-scene-render-graph`
+**Human-approved reviewed Phase-2 tip:** `1c71ceaf502eb622d37efc45842525967818fb6f`
 **Runtime artifact candidate:** `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`
 **Host:** Windows 11 Pro 25H2, build `26200`, revision `9278`, x64
 **CPU:** AMD Ryzen 7 9700X, 8 physical cores / 16 logical processors
@@ -140,7 +141,9 @@ deadlock, stdout corruption, or consumer timeout occurred.
 
 ## Boundary
 
-This is physical acceptance of the D3D11 shared PreviewOutput and Phase-2
-composition path on the stated Windows host. It does not claim forced
-device-loss recovery; that remains planned later work. Hosted exact-SHA CI and
-independent advisor review are still required before human acceptance.
+This is the physical Windows evidence supporting the human-approved Phase-2
+acceptance of the D3D11 shared PreviewOutput and composition path on the
+stated host. It does not claim forced device-loss recovery; that remains later
+roadmap Task 44 scope and was never a Phase-2 contract requirement. The final
+acceptance commit is documentation-only and does not change this runtime
+artifact or its evidence.

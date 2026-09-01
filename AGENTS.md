@@ -33,20 +33,26 @@ When documents disagree, use this order and reconcile the mismatch before contin
 The current accepted implementation baseline is:
 
 - Branch: `engine-protocol-v2`
+- Human-approved reviewed Phase-2 tip: `1c71ceaf502eb622d37efc45842525967818fb6f`
+- Reviewed Phase-2 runtime candidate: `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`
+- Phase-2 acceptance commit: the single documentation-only child of the reviewed Phase-2 tip
+- Complete Phase-2 complexity baseline: `eb5ed120ddc3f159ce5d0d3a317fd4c741532525`
 - Task-9 implementation commit: `f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc`
 - Commit subject: `feat(engine): complete protocol v2 interaction namespace`
 - Parent / accepted Task-8 baseline: `e88ceb0a1e1103c3297cd1bd589e56e28ae638e4`
 - Task-10 (`media.*`) implementation: `6a590c2985a99d186c8eecd0241acdc824d32168`
 - Task-11 (`filter.*`) implementation: `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
 - Tasks 1 through 11: complete and accepted.
+- Tasks 12 through 20: complete and accepted by human approval of the reviewed Phase-2 candidate.
+- Phase 2: accepted. The acceptance commit changes documentation only; it does not change the reviewed runtime candidate.
 - Phase-1 cyclomatic-complexity hardening: complete and accepted at reviewed checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`; see `docs/libobs-engine/PHASE1_COMPLEXITY_ACCEPTANCE.md`.
 - Pre-Phase-2 PowerShell script-body hardening: IN REVIEW on `phase1-scriptbody-hardening`; see `docs/libobs-engine/PHASE1_SCRIPTBODY_HARDENING.md`. This cleanup does not alter runtime code or authorize Task 12.
 - Final pre-Phase-2 workflow executable-code hardening: IN REVIEW on `phase1-workflow-exec-hardening`; see `docs/libobs-engine/PHASE1_WORKFLOW_EXEC_HARDENING.md`. This cleanup does not alter runtime code or authorize Task 12.
-- Task 12: planned and not authorized.
+- Task 21 and later: NOT STARTED / NOT AUTHORIZED.
 
-The acceptance-doc commit necessarily advances branch HEAD beyond the accepted
-Task-11 implementation SHA. That does **not** change the accepted engine/runtime
-implementation. Verify with `git diff e7b34828cb9fbd55bae01f97148f1ec93a4ae015..HEAD`.
+The Phase-2 acceptance commit advances branch HEAD beyond the reviewed runtime
+candidate only with approved Markdown documentation. Verify its exact parent
+and runtime-bearing diff before any later roadmap work.
 
 ## Non-negotiable architecture rules
 

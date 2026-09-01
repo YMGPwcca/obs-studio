@@ -85,15 +85,18 @@ Current status to verify:
 
 - Tasks 1–11 are complete and accepted. Task 11 is accepted at
   `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`.
+- Phase-2 Tasks 12–20 are complete and accepted at human-approved reviewed tip
+  `1c71ceaf502eb622d37efc45842525967818fb6f`; the reviewed runtime candidate
+  is `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`.
 - Task 8 deterministic A–F source concurrency + physical Windows acceptance complete.
 - Task 9 all seven `interaction.*` methods complete; same-SHA regression matrix green; physical Windows acceptance complete.
 - Task 10 `media.*` is accepted at `6a590c2985a99d186c8eecd0241acdc824d32168`; `engine/MEDIA_V1.md` and the media settlement limits are authoritative.
 - Phase-1 cyclomatic-complexity hardening is COMPLETE / ACCEPTED at reviewed checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`; see `PHASE1_COMPLEXITY_ACCEPTANCE.md` for the frozen baseline and approval evidence.
 - The separate pre-Phase-2 PowerShell script-body hardening cleanup is IN REVIEW on `phase1-scriptbody-hardening`; see `PHASE1_SCRIPTBODY_HARDENING.md`. Do not treat it as accepted or modify runtime code while it is under review.
 - The final pre-Phase-2 workflow executable-code hardening cleanup is IN REVIEW on `phase1-workflow-exec-hardening`; see `PHASE1_WORKFLOW_EXEC_HARDENING.md`. Do not treat it as accepted or modify runtime code while it is under review.
-- Task 12 remains planned and NOT AUTHORIZED.
+- Task 21 and later remain NOT STARTED / NOT AUTHORIZED.
 
-**Do not begin Task 12.** Wait for explicit human authorization before any later roadmap implementation.
+**Do not begin Task 21.** Wait for explicit human authorization before any later roadmap implementation.
 
 After the audit, report back with:
 
@@ -107,7 +110,7 @@ After the audit, report back with:
 8. the accepted Task-11 filter implementation and its evidence record;
 9. confirmation that you have not changed production code before the audit report.
 
-After the audit, do not implement Task 12 or any later task unless the operator separately authorizes it. For an explicitly authorized future task, follow its full task gate and stop before the next unauthorized task.
+After the audit, do not implement Task 21 or any later task unless the operator separately authorizes it. For an explicitly authorized future task, follow its full task gate and stop before the next unauthorized task.
 
 For manual acceptance commands, make fresh-engine handles deterministic and use literal `"source":"1"` whenever possible. Do not give the operator commands containing `YOUR_HANDLE` placeholders that require manual editing.
 
@@ -117,6 +120,6 @@ For manual acceptance commands, make fresh-engine handles deterministic and use 
 
 A good first response is not “I’ll start coding filters.” It should be an audit report similar to:
 
-> I verified the branch/HEAD, read the protocol/namespace/handoff files, and audited the current v2 dispatch/source/interaction/media/filter code. Tasks 1–11 match the recorded accepted state, including media-specific asynchronous settlement and the filter tracked-update serial bridge. Task 12 remains planned and unauthorized. I found the following source/doc mismatches or none: [...]. I have not changed production code before this report.
+> I verified the branch/HEAD, read the protocol/namespace/handoff files, and audited the current v2 dispatch/source/interaction/media/filter code. Tasks 1–11 and Phase-2 Tasks 12–20 match the recorded accepted state, including media-specific asynchronous settlement and the filter tracked-update serial bridge. Task 21 remains not started and unauthorized. I found the following source/doc mismatches or none: [...]. I have not changed production code before this report.
 
 That response demonstrates the handoff was actually read and source-checked.

@@ -7,18 +7,24 @@
 **Accepted Task-11 implementation:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
 **Task-11 acceptance record:** `TASK11_ACCEPTANCE.md`
 **Candidate branch:** `phase2-scene-render-graph`
+**Human-approved reviewed Phase-2 tip:** `1c71ceaf502eb622d37efc45842525967818fb6f`
+**Reviewed Phase-2 runtime candidate:** `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`
+**Complete Phase-2 complexity baseline:** `eb5ed120ddc3f159ce5d0d3a317fd4c741532525`
+**Phase-2 acceptance commit:** the single documentation-only child of the reviewed Phase-2 tip
 **Script-body hardening branch:** `phase1-scriptbody-hardening`
 **Task-11 status:** COMPLETE / ACCEPTED
 **Tasks 1-11:** ACCEPTED
 **Phase-1 complexity hardening:** COMPLETE / ACCEPTED
 **Phase-1 script-body hardening:** IN REVIEW
 **Phase-1 workflow executable hardening:** IN REVIEW
-**Phase-2 Tasks 12-20:** IN REVIEW
+**Phase-2 Tasks 12-20:** COMPLETE / ACCEPTED
+**Phase 2:** ACCEPTED
+**Task 21+:** NOT STARTED / NOT AUTHORIZED
 
 The current Phase-1 review checkpoint hardens the complexity gate's moving
 post-Task-11 scope, adds exact function-identity continuity migrations, and
 extends deterministic checker self-tests through A–U. It does not change
-production engine/libobs behavior and does not start Task 12. Phase-1 is
+production engine/libobs behavior and did not start Task 12. Phase-1 is
 accepted at reviewed checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`;
 see `PHASE1_COMPLEXITY_ACCEPTANCE.md` for the explicit approval record.
 
@@ -65,9 +71,14 @@ and final physical integration are recorded in `PHASE2_ACCEPTANCE.md` and
 `PHASE2_PHYSICAL_EVIDENCE.md` from the local Windows D3D11 host. The branch
 also contains the reproducible `.github/workflows/engine-protocol-v2-phase2.yaml`
 hosted matrix; run `33513275145` passed the exact-SHA complexity, regression,
-and Tasks 12–20 jobs at exact head `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`.
-Independent advisor review remains pending. Phase 2 remains `IN REVIEW`, not
-accepted. Task 21 and all later work are outside this branch.
+and Tasks 12–20 jobs at exact runtime candidate
+`13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`. The final branch-tip workflow
+`33515365496` attempt 2 also passed at reviewed tip
+`1c71ceaf502eb622d37efc45842525967818fb6f`. Phase 2 was accepted by human
+approval based on successful source review, exact-SHA automated regression,
+adversarial repair validation, complete complexity-baseline enforcement, and
+physical Windows D3D11 integration evidence. The acceptance commit itself is
+documentation-only. Task 21 and all later work remain outside this branch.
 
 This file is the current status ledger for the LibOBS split-engine project. If an older roadmap says Task 8 is active or Task 9 is only proposed, that older status is stale. Verify this ledger against Git/source/CI whenever resuming work.
 
@@ -89,8 +100,8 @@ This file is the current status ledger for the LibOBS split-engine project. If a
 | 9 | `interaction.*` | COMPLETE | seven methods + deterministic callback fixture + same-SHA matrix + physical Windows |
 | 10 | `media.*` | COMPLETE / ACCEPTED | 11 methods, exact queued-action settlement, exact-SHA hosted and physical evidence |
 | 11 | `filter.*` | COMPLETE / ACCEPTED | `e7b34828...`, exact-SHA matrix, physical Windows, artifact and independent review PASS |
-| 12–20 | Full composition and preview output path | IN REVIEW | Phase-2 candidate on `phase2-scene-render-graph`; independent review and final hosted CI pending |
-| 21–50 | Later roadmap | NOT STARTED | Outside the Phase-2 authorization; do not begin on this branch |
+| 12–20 | Full composition and preview output path | COMPLETE / ACCEPTED | Human-approved Phase-2 candidate; exact-SHA hosted and physical evidence recorded |
+| 21–50 | Later roadmap | NOT STARTED / NOT AUTHORIZED | Outside the Phase-2 authorization; do not begin on this branch |
 
 ---
 
@@ -493,10 +504,9 @@ Record exact final SHA and acceptance evidence in this file after each completed
 
 ## 10. Immediate next status transition
 
-The next project state transition is:
+The current project state is:
 
-`Phase-1 complexity hardening accepted` -> `Phase-2 Tasks 12-20 in review`.
+`Phase-1 accepted` -> `Phase-2 Tasks 12-20 accepted`.
 
-The Phase-2 candidate must stop after the final evidence and independent
-review handoff. Task 21 and later namespaces remain not started and are not
-authorized on this branch.
+The accepted Phase-2 scope stops at Task 20. Task 21 and later namespaces
+remain not started and are not authorized on this branch.

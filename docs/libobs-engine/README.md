@@ -28,22 +28,30 @@ For Codex/Claude Code/Aider or a human engineer, read:
 
 ## Current handoff point
 
-Tasks **1–11 are accepted**. Accepted Task-10 production engine/runtime SHA is:
+Tasks **1–11 are accepted**. Phase-2 Tasks **12–20 are also accepted** by human
+approval of reviewed tip `1c71ceaf502eb622d37efc45842525967818fb6f`.
+
+The reviewed Phase-2 runtime candidate remains:
+
+`13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`
+
+The final Phase-2 acceptance commit is its documentation-only child. Accepted
+Task-10 production engine/runtime SHA is:
 
 `6a590c2985a99d186c8eecd0241acdc824d32168`
 
 Task 10 `media.*` includes a source-correlated asynchronous settlement bridge and
 the concrete contract in `engine/MEDIA_V1.md`. Task 11 `filter.*` is accepted at
 `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`; the acceptance evidence is in
-`TASK11_ACCEPTANCE.md`. Task 12 is the next planned roadmap task but is not
-authorized.
+`TASK11_ACCEPTANCE.md`. Task 21 is the next planned roadmap task but remains
+NOT STARTED / NOT AUTHORIZED.
 
 Phase-1 cyclomatic-complexity hardening is also **COMPLETE / ACCEPTED** at
 reviewed checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`. Its explicit
 human approval and final frozen-baseline evidence are recorded in
 `PHASE1_COMPLEXITY_ACCEPTANCE.md`. The runtime implementation remains
-`44243a5013007a449c1d0b9903233929bd44a141`; Task 12 remains planned and
-unauthorized.
+`44243a5013007a449c1d0b9903233929bd44a141`; Phase 2 is accepted, while Task
+21 and later remain planned and unauthorized.
 
 The additional pre-Phase-2 PowerShell script-body cleanup is **IN REVIEW** on
 `phase1-scriptbody-hardening`; its provisional evidence is in

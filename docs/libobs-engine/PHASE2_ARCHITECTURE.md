@@ -1,8 +1,9 @@
 # Engine Protocol v2 Phase 2 Architecture
 
-Status: Phase-2 Tasks 12–20 are IN REVIEW on the
-`phase2-scene-render-graph` branch; independent advisor and human acceptance
-are still pending.
+Status: Phase-2 Tasks 12–20 are ACCEPTED on the
+`phase2-scene-render-graph` branch by human approval of reviewed tip
+`1c71ceaf502eb622d37efc45842525967818fb6f`; the reviewed runtime candidate is
+`13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`.
 
 This document records the Phase-2 runtime model for Tasks 12–20. It is
 subordinate to checked-out source, the explicit Phase-2 goal, and the concrete
@@ -257,6 +258,8 @@ integration lane, while cumulative regression evidence is retained. The final
 candidate must pass the complete Task 1–20 exact-SHA matrix, complexity gate,
 package audit, two-pass review, and the mandatory physical Windows D3D11
 integration. The current evidence record is `PHASE2_ACCEPTANCE.md`, with the
-host-specific physical record in `PHASE2_PHYSICAL_EVIDENCE.md`. Phase 2 remains
-`IN REVIEW` until hosted exact-SHA evidence, independent advisor review, and
-human acceptance; this branch never starts Task 21.
+host-specific physical record in `PHASE2_PHYSICAL_EVIDENCE.md`. Phase 2 was
+accepted based on successful source review, exact-SHA automated regression,
+adversarial repair validation, complete complexity-baseline enforcement, and
+physical Windows D3D11 integration evidence. The final acceptance commit is
+documentation-only; this branch never starts Task 21.

@@ -1,6 +1,6 @@
 # LibOBS Engine Protocol v2 — Local AI Agent Handoff
 
-**Handoff date:** 2026-08-31
+**Handoff date:** 2026-09-01
 **Repository:** `YMGPwcca/obs-studio`  
 **Production branch:** `engine-protocol-v2`
 **Candidate branch:** `phase2-scene-render-graph`
@@ -12,18 +12,25 @@
 **Task-11 acceptance record:** `TASK11_ACCEPTANCE.md`
 **Accepted Phase-1 complexity hardening:** `1b2ddacbb36c39bb61fd645594f0746f106956bf`
 **Phase-1 acceptance record:** `PHASE1_COMPLEXITY_ACCEPTANCE.md`
+**Human-approved reviewed Phase-2 tip:** `1c71ceaf502eb622d37efc45842525967818fb6f`
+**Reviewed Phase-2 runtime candidate:** `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`
+**Complete Phase-2 complexity baseline:** `eb5ed120ddc3f159ce5d0d3a317fd4c741532525`
+**Phase-2 acceptance commit:** the single documentation-only child of the reviewed Phase-2 tip
 **Next roadmap task:** Task 21 — outside this Phase-2 branch and not authorized
 **Task 10 implementation status:** COMPLETE / ACCEPTED
 **Task 11 implementation status:** COMPLETE / ACCEPTED
 **Phase-1 complexity hardening status:** COMPLETE / ACCEPTED
 **Phase-1 script-body hardening status:** IN REVIEW
 **Phase-1 workflow executable hardening status:** IN REVIEW
-**Phase-2 Tasks 12-20 status:** IN REVIEW
+**Phase-2 Tasks 12-20 status:** COMPLETE / ACCEPTED
+**Phase-2 status:** ACCEPTED
+**Task 21 status:** NOT STARTED / NOT AUTHORIZED
 
 The workflow executable hardening cleanup was the tooling-only pre-Phase-2
-checkpoint. The current candidate is the explicitly authorized Phase-2 branch;
-see `PHASE2_ARCHITECTURE.md`, `PHASE2_ACCEPTANCE.md`, and
-`PHASE2_PHYSICAL_EVIDENCE.md` for its scope and evidence state.
+checkpoint. The human-approved Phase-2 candidate is recorded at the reviewed
+tip and runtime candidate above. The final acceptance commit is documentation-
+only; see `PHASE2_ARCHITECTURE.md`, `PHASE2_ACCEPTANCE.md`, and
+`PHASE2_PHYSICAL_EVIDENCE.md` for the accepted scope and evidence.
 
 This file exists so a local AI coding agent can continue the project without access to the previous ChatGPT conversation. It records project decisions, accepted behavior, verification evidence, known traps, and the required working process. **Verify everything against the checked-out source before changing it.**
 
@@ -235,8 +242,9 @@ lane, and the complete complexity-baseline freeze are present. Local Tasks
 1–11 and 12–20 lanes, package audit, and final physical evidence are recorded
 in `PHASE2_ACCEPTANCE.md` and `PHASE2_PHYSICAL_EVIDENCE.md`; hosted run
 `33513275145` passed all listed jobs at exact head
-`13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`. Phase 2 is `IN REVIEW`, not
-accepted, and Task 21+ is out of scope.
+`13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`. Human approval accepted Phase 2;
+the final acceptance commit changes documentation only, and Task 21+ remains
+out of scope and unauthorized.
 
 ## 5. Important source files today
 
@@ -618,9 +626,9 @@ The advisor WIP is preserved locally and remotely on
 implementation remains on `wip/task11-unauthorized`. Neither WIP branch is
 accepted or merged. Preserve the media bridge's separate bounded queue,
 exact-ticket settlement rules, the internal `media_time` signal contract, and
-the no-WebSocket/no-browser default allowlist. The current Phase-2 candidate
-is explicitly authorized through Task 20 and remains in review; do not begin
-Task 21 or later on this branch.
+the no-WebSocket/no-browser default allowlist. The human-approved Phase-2
+candidate is accepted through Task 20. Do not begin Task 21 or later on this
+branch.
 
 ---
 
@@ -648,7 +656,7 @@ This handoff is successful if a local agent can, using only the repository:
 
 1. explain the process/license/state boundary;
 2. explain revision/event semantics;
-3. identify Tasks 1–11 as accepted and Phase-2 Tasks 12–20 as in review;
+3. identify Tasks 1–11 and Phase-2 Tasks 12–20 as accepted;
 4. explain the Task-8 deferred update bug and why the current settlement exists;
 5. explain Task-9 transient interaction semantics and physical acceptance;
 6. explain Task-10 media action settlement, media-time limitations, and resync behavior;

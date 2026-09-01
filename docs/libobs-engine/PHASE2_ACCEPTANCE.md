@@ -1,14 +1,17 @@
 # LibOBS Engine Protocol v2 — Phase 2 Acceptance Record
 
-**Status:** Phase 2 **IN REVIEW** / ready for independent advisor review
+**Status:** Phase 2 **ACCEPTED**
 **Snapshot date:** 2026-09-01
 **Candidate branch:** `phase2-scene-render-graph`
 **Phase-2 base:** `15457fcfd7abf3f9f0ddd8f43f3f1885980de8c8`
 **Accepted Task-11 implementation parent:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
 **Previous reviewed HEAD:** `db2f878672869cf38a5d6b798bdf0044ad507595`
+**Human-approved reviewed Phase-2 tip:** `1c71ceaf502eb622d37efc45842525967818fb6f`
 **Runtime candidate SHA:** `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`
+**Final complete complexity baseline:** `eb5ed120ddc3f159ce5d0d3a317fd4c741532525`
 **Complexity measurement SHA:** `33845ef42cdb8e16cfc122b17032266ed0b9640a`
 **Final verification workflow:** `33513275145`
+**Final acceptance commit:** the single documentation-only child of the reviewed Phase-2 tip
 
 The runtime candidate includes the three repair commits, the complete
 complexity-baseline freeze, and the lease-test correction. The final physical
@@ -16,9 +19,12 @@ run and hosted exact-SHA matrix both used this committed candidate. Later
 documentation-only handoff changes do not alter the runtime candidate; the
 current branch tip must still be checked with `git rev-parse HEAD`.
 
-This record deliberately does not claim `ACCEPTED`. No production branch was
-moved, no `engine-protocol-v2` ref was advanced, and Task 21 or later was not
-started.
+This record is the accepted Phase-2 evidence record. Human approval covers
+Tasks 12–20. The final acceptance commit changes approved Markdown only; it
+does not modify the reviewed runtime candidate, complexity baseline, tests,
+workflows, or package inputs. Forced device-loss recovery remains later
+roadmap Task 44 scope, not a Phase-2 contract requirement. Task 21 and later
+remain NOT STARTED / NOT AUTHORIZED.
 
 ## Ordered Phase-2 commit chain
 
@@ -189,6 +195,12 @@ Head SHA: `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`
 The only hosted annotation was the platform Node.js 20 deprecation notice for
 the pinned `upload-artifact` action. It did not affect any job result.
 
+The final documentation-only branch-tip confirmation was workflow
+`33515365496`, attempt 2, at reviewed tip
+`1c71ceaf502eb622d37efc45842525967818fb6f`; all jobs passed. Standalone
+complexity run `33515365367` also passed at that tip. The runtime evidence
+remains the exact reviewed runtime candidate above.
+
 The standalone Phase-1 complexity workflow also passed: run
 `33513274930`, job `99873921498`, head SHA
 `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`.
@@ -266,33 +278,36 @@ frontend/browser/WebSocket/test executable leakage in the normal package.
 The physical and hosted hash tables identify different build outputs from the
 same source SHA; they are not being presented as byte-identical binaries.
 
-## Remaining debt and review boundary
+## Remaining future work and scope boundary
 
 - Hosted GitHub Actions run `33513275145` passed all final Phase-2 jobs at the
   exact runtime candidate SHA, including the new Canvas failure lane and the
   complete complexity-baseline check.
+- Human approval accepted Phase 2 at reviewed tip
+  `1c71ceaf502eb622d37efc45842525967818fb6f`; its final child commit is
+  documentation-only.
 - Forced graphics device/adapter-loss recovery is not claimed in Phase 2. The
   physical run verifies resize, Canvas video reset, resource replacement,
   adapter mismatch rejection, and clean shutdown; systematic device-loss
   reconstruction remains the separately planned Task 44 scope.
 - T-bar/UI ownership remains intentionally outside the Engine contract. The
   Studio contract exposes runtime transition semantics only.
-- No production promotion, master merge, `engine-protocol-v2` update, or Task
-  21+ work is authorized by this branch.
+- Task 21+ remains NOT STARTED / NOT AUTHORIZED. No later roadmap functionality
+  is implied by this acceptance.
 
 ## Final status
 
 ```text
 Tasks 1-11: ACCEPTED and regression-green
-Task 12: IMPLEMENTED / IN PHASE REVIEW
-Task 13: IMPLEMENTED / IN PHASE REVIEW
-Task 14: IMPLEMENTED / IN PHASE REVIEW
-Task 15: IMPLEMENTED / IN PHASE REVIEW
-Task 16: IMPLEMENTED / IN PHASE REVIEW
-Task 17: IMPLEMENTED / IN PHASE REVIEW
-Task 18: IMPLEMENTED / IN PHASE REVIEW
-Task 19: IMPLEMENTED / IN PHASE REVIEW
-Task 20: IMPLEMENTED / IN PHASE REVIEW
-Phase 2: IN REVIEW / READY FOR INDEPENDENT REVIEW
+Task 12: ACCEPTED
+Task 13: ACCEPTED
+Task 14: ACCEPTED
+Task 15: ACCEPTED
+Task 16: ACCEPTED
+Task 17: ACCEPTED
+Task 18: ACCEPTED
+Task 19: ACCEPTED
+Task 20: ACCEPTED
+Phase 2: ACCEPTED
 Task 21+: NOT STARTED / NOT AUTHORIZED
 ```
