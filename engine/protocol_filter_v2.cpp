@@ -146,6 +146,22 @@ constexpr CapabilityDescriptor kCapabilities[] = {
 	{"previewOutput.resize.v1", true},
 	{"previewOutput.getSharedTexture.v1", true},
 	{"previewOutput.releaseSharedTexture.v1", true},
+	{"transition.kindList.v1", false},
+	{"transition.kindDefaults.v1", false},
+	{"transition.kindProperties.v1", false},
+	{"transition.list.v1", false},
+	{"transition.get.v1", false},
+	{"transition.create.v1", false},
+	{"transition.remove.v1", false},
+	{"transition.rename.v1", false},
+	{"transition.getSettings.v1", false},
+	{"transition.patchSettings.v1", false},
+	{"transition.replaceSettings.v1", false},
+	{"transition.getProperties.v1", false},
+	{"transition.getDuration.v1", false},
+	{"transition.setDuration.v1", false},
+	{"transition.getState.v1", false},
+	{"transition.v1", false},
 	{"session.close.v1", false},
 	{"session.getSubscriptions.v1", false},
 	{"session.hello.v1", false},
@@ -520,8 +536,9 @@ bool handle_filter_request(Engine &engine, RevisionState &revisions, EventDispat
 } // namespace
 
 bool handle_v2_request(Engine &engine, const Config &config, RevisionState &revisions, EventDispatcher &events,
-		       const V2Request &request)
+			       const V2Request &request)
 {
+	engine.v2_sync_transition_observers();
 	if (request.method == "session.hello" || request.method == "engine.getCapabilities")
 		return handle_capability_request(engine, revisions, request);
 

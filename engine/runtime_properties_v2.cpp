@@ -333,6 +333,60 @@ bool Engine::v2_build_filter_kind_property_target(obs_data_t *requested_target, 
 	return true;
 }
 
+bool transition_kind_exists(const char *kind)
+{
+	const char *candidate = nullptr;
+	for (size_t index = 0; obs_enum_transition_types(index, &candidate); ++index) {
+		if (candidate && std::strcmp(candidate, kind) == 0)
+			return true;
+	}
+	return false;
+}
+
+bool Engine::v2_build_transition_property_target(obs_data_t *requested_target, ObsDataPtr &target,
+							 ObsDataPtr &base_settings, obs_properties_t *&properties,
+							 obs_source_t *&source, RuntimeV2Error &error)
+{
+	uint64_t handle = 0;
+	if (!read_handle_field(requested_target, "transition", handle))
+		return fail(error, "bad_request",
+				   "transition property targets require a canonical decimal target.transition handle");
+	const auto it = transitions_.find(handle);
+	if (it == transitions_.end() || !it->second.transition)
+		return fail(error, "not_found", "transition property target was not found");
+	source = it->second.transition;
+	properties = obs_source_properties(source);
+	if (!properties)
+		return fail(error, "not_available", "transition does not expose configurable libobs properties");
+	base_settings.reset(obs_source_get_settings(source));
+	target.reset(obs_data_create());
+	obs_data_set_string(target.get(), "type", "transition");
+	set_handle(target.get(), "transition", handle);
+	return true;
+}
+
+bool Engine::v2_build_transition_kind_property_target(obs_data_t *requested_target, ObsDataPtr &target,
+							     ObsDataPtr &base_settings, obs_properties_t *&properties,
+							     obs_source_t *&source, RuntimeV2Error &error)
+{
+	std::string kind;
+	bool present = false;
+	if (!read_string_field(requested_target, "kind", kind, present) || !present ||
+	    !is_safe_identifier(kind.c_str(), kMaxSourceKindBytes))
+		return fail(error, "bad_request", "transitionKind property targets require a valid target.kind identifier");
+	if (!transition_kind_exists(kind.c_str()))
+		return fail(error, "not_found", "transition kind property target is not registered");
+	properties = obs_get_source_properties(kind.c_str());
+	if (!properties)
+		return fail(error, "not_available", "transition kind does not expose configurable libobs properties");
+	base_settings.reset(obs_get_source_defaults(kind.c_str()));
+	target.reset(obs_data_create());
+	obs_data_set_string(target.get(), "type", "transitionKind");
+	obs_data_set_string(target.get(), "kind", kind.c_str());
+	source = nullptr;
+	return true;
+}
+
 bool Engine::v2_prepare_property_button(obs_data_t *params, PropertyButtonContext &context, RuntimeV2Error &error)
 {
 	if (!v2_build_property_target(params, context.target, context.settings, context.properties, context.source, error))
@@ -379,6 +433,8 @@ bool Engine::v2_build_property_target(obs_data_t *params, ObsDataPtr &target, Ob
 			{"sourceKind", &Engine::v2_build_source_kind_property_target},
 			{"filter", &Engine::v2_build_filter_property_target},
 			{"filterKind", &Engine::v2_build_filter_kind_property_target},
+			{"transition", &Engine::v2_build_transition_property_target},
+			{"transitionKind", &Engine::v2_build_transition_kind_property_target},
 		};
 	TargetBuilder builder = nullptr;
 	for (const TargetDescriptor &descriptor : builders) {

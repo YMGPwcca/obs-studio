@@ -126,7 +126,11 @@ live Preview, live selected Transition, compatible Canvas/routing, and current
 transition state before beginning. Program identity is changed and
 `program.sceneChanged` is emitted at the documented libobs transition commit
 point, not merely when a start request is accepted. Transition progress is
-telemetry and never consumes a revision per frame.
+telemetry and never consumes a revision per frame. A Transition object's
+duration is an engine-owned configuration value passed to libobs when Studio
+starts it; libobs does not expose a persistent duration property on the source
+object, so the contract has one explicit owner rather than contradictory
+copies.
 
 ## Revision and event ownership
 
@@ -144,8 +148,11 @@ The existing global revision/event invariants remain frozen:
 Scene/item/canvas/Program/Preview/Transition/Studio/PreviewOutput callbacks
 normalize and enqueue state; they never write stdout. Callback connections are
 removed before the corresponding engine map entry or libobs strong reference is
-released. Any callback whose object is already represented by a preceding
-removal event is suppressed from later serialized state events.
+released. Transition start/stop signals are first queued in a bounded observer
+and serialized by the protocol thread; a command-owned start is consumed into
+that command's result, while a later end receives its own revision. Any
+callback whose object is already represented by a preceding removal event is
+suppressed from later serialized state events.
 
 ## Runtime shutdown order
 

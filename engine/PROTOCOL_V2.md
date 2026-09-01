@@ -630,16 +630,19 @@ Runtime methods:
 - `transition.rename`
 - `transition.getSettings`
 - `transition.patchSettings`
+- `transition.replaceSettings`
+- `transition.getProperties`
 - `transition.getDuration`
 - `transition.setDuration`
 - `transition.getState`
-- `transition.trigger`
 
 Events:
 
 - `transition.created`
 - `transition.removed`
+- `transition.renamed`
 - `transition.settingsChanged`
+- `transition.durationChanged`
 - `transition.started`
 - `transition.ended`
 

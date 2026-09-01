@@ -38,10 +38,15 @@ struct CanvasEntry {
 	bool is_main = false;
 };
 
+struct TransitionV2Observer;
+
 struct TransitionEntry {
 	obs_source_t *transition = nullptr;
+	std::shared_ptr<TransitionV2Observer> observer;
+	uint32_t duration_ms = 300;
 };
 
+struct TransitionV2State;
 struct PreviewOutputV2State;
 
 struct FilterEntry {
@@ -113,6 +118,11 @@ public:
 	void v2_flush_deferred_filter_events(RevisionState::MutationGuard &guard);
 	void v2_sync_filter_observers();
 	void v2_prepare_filter_shutdown() noexcept;
+	void v2_bind_transition_events(RevisionState *revisions, EventDispatcher *events);
+	void v2_sync_transition_observers();
+	void v2_prepare_transition_shutdown() noexcept;
+	bool v2_start_transition(uint64_t handle, obs_source_t *from, obs_source_t *destination, uint32_t duration_ms,
+				RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_settle_filter_mutation(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_filter_record_update_baseline(uint64_t handle, RuntimeV2Result &result);
 	void v2_filter_forget_source(uint64_t source_id) noexcept;
@@ -331,6 +341,12 @@ private:
 	bool v2_build_filter_kind_property_target(obs_data_t *requested_target, ObsDataPtr &target,
 						 ObsDataPtr &base_settings, obs_properties_t *&properties,
 						 obs_source_t *&source, RuntimeV2Error &error);
+	bool v2_build_transition_property_target(obs_data_t *requested_target, ObsDataPtr &target,
+						 ObsDataPtr &base_settings, obs_properties_t *&properties,
+						 obs_source_t *&source, RuntimeV2Error &error);
+	bool v2_build_transition_kind_property_target(obs_data_t *requested_target, ObsDataPtr &target,
+						     ObsDataPtr &base_settings, obs_properties_t *&properties,
+						     obs_source_t *&source, RuntimeV2Error &error);
 	bool v2_prepare_property_button(obs_data_t *params, PropertyButtonContext &context, RuntimeV2Error &error);
 	bool v2_get_source(obs_data_t *params, uint64_t &handle, obs_source_t *&source, RuntimeV2Error &error) const;
 	bool v2_read_source_create_options(obs_data_t *params, std::string &kind, std::string &name,
@@ -380,6 +396,8 @@ private:
 	bool v2_get_canvas_entry(obs_data_t *params, uint64_t &handle, CanvasEntry *&entry, RuntimeV2Error &error);
 	bool v2_get_scene_entry(obs_data_t *params, uint64_t &handle, obs_scene_t *&scene, RuntimeV2Error &error) const;
 	bool v2_get_item_entry(obs_data_t *params, uint64_t &handle, ItemEntry *&entry, RuntimeV2Error &error);
+	bool v2_get_transition_entry(obs_data_t *params, uint64_t &handle, TransitionEntry *&entry,
+					 RuntimeV2Error &error);
 	bool v2_register_scene_item(uint64_t scene_id, uint64_t parent_group_id, obs_sceneitem_t *item,
 					std::vector<uint64_t> &added, RuntimeV2Error &error);
 	bool v2_register_scene_items(uint64_t scene_id, obs_scene_t *scene, std::vector<uint64_t> &added,
@@ -440,6 +458,7 @@ private:
 	std::shared_ptr<InteractionV2State> interaction_v2_state_;
 	std::shared_ptr<MediaV2State> media_v2_state_;
 	std::shared_ptr<FilterV2State> filter_v2_state_;
+	std::shared_ptr<TransitionV2State> transition_v2_state_;
 };
 
 } // namespace obs_engine

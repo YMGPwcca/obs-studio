@@ -73,6 +73,21 @@ enum class Phase2Method {
 	PreviewOutputResize,
 	PreviewOutputGetSharedTexture,
 	PreviewOutputReleaseSharedTexture,
+	TransitionKindList,
+	TransitionKindDefaults,
+	TransitionKindProperties,
+	TransitionList,
+	TransitionGet,
+	TransitionCreate,
+	TransitionRemove,
+	TransitionRename,
+	TransitionGetSettings,
+	TransitionPatchSettings,
+	TransitionReplaceSettings,
+	TransitionGetProperties,
+	TransitionGetDuration,
+	TransitionSetDuration,
+	TransitionGetState,
 	Unknown,
 };
 
@@ -118,6 +133,21 @@ constexpr Phase2MethodName kMethods[] = {
 	{"previewOutput.resize", Phase2Method::PreviewOutputResize},
 	{"previewOutput.getSharedTexture", Phase2Method::PreviewOutputGetSharedTexture},
 	{"previewOutput.releaseSharedTexture", Phase2Method::PreviewOutputReleaseSharedTexture},
+	{"transition.kindList", Phase2Method::TransitionKindList},
+	{"transition.kindDefaults", Phase2Method::TransitionKindDefaults},
+	{"transition.kindProperties", Phase2Method::TransitionKindProperties},
+	{"transition.list", Phase2Method::TransitionList},
+	{"transition.get", Phase2Method::TransitionGet},
+	{"transition.create", Phase2Method::TransitionCreate},
+	{"transition.remove", Phase2Method::TransitionRemove},
+	{"transition.rename", Phase2Method::TransitionRename},
+	{"transition.getSettings", Phase2Method::TransitionGetSettings},
+	{"transition.patchSettings", Phase2Method::TransitionPatchSettings},
+	{"transition.replaceSettings", Phase2Method::TransitionReplaceSettings},
+	{"transition.getProperties", Phase2Method::TransitionGetProperties},
+	{"transition.getDuration", Phase2Method::TransitionGetDuration},
+	{"transition.setDuration", Phase2Method::TransitionSetDuration},
+	{"transition.getState", Phase2Method::TransitionGetState},
 };
 
 Phase2Method classify(std::string_view method)
@@ -177,6 +207,13 @@ bool mutating(Phase2Method method)
 	case Phase2Method::PreviewOutputDestroy:
 	case Phase2Method::PreviewOutputSetEnabled:
 	case Phase2Method::PreviewOutputResize:
+		return true;
+	case Phase2Method::TransitionCreate:
+	case Phase2Method::TransitionRemove:
+	case Phase2Method::TransitionRename:
+	case Phase2Method::TransitionPatchSettings:
+	case Phase2Method::TransitionReplaceSettings:
+	case Phase2Method::TransitionSetDuration:
 		return true;
 	default:
 		return false;
@@ -310,6 +347,36 @@ Handler handler_for(Phase2Method method)
 		return &Engine::v2_preview_output_get_shared_texture;
 	case Phase2Method::PreviewOutputReleaseSharedTexture:
 		return &Engine::v2_preview_output_release_shared_texture;
+	case Phase2Method::TransitionKindList:
+		return &Engine::v2_transition_kind_list;
+	case Phase2Method::TransitionKindDefaults:
+		return &Engine::v2_transition_kind_defaults;
+	case Phase2Method::TransitionKindProperties:
+		return &Engine::v2_transition_kind_properties;
+	case Phase2Method::TransitionList:
+		return &Engine::v2_transition_list;
+	case Phase2Method::TransitionGet:
+		return &Engine::v2_transition_get;
+	case Phase2Method::TransitionCreate:
+		return &Engine::v2_transition_create;
+	case Phase2Method::TransitionRemove:
+		return &Engine::v2_transition_remove;
+	case Phase2Method::TransitionRename:
+		return &Engine::v2_transition_rename;
+	case Phase2Method::TransitionGetSettings:
+		return &Engine::v2_transition_get_settings;
+	case Phase2Method::TransitionPatchSettings:
+		return &Engine::v2_transition_patch_settings;
+	case Phase2Method::TransitionReplaceSettings:
+		return &Engine::v2_transition_replace_settings;
+	case Phase2Method::TransitionGetProperties:
+		return &Engine::v2_transition_get_properties;
+	case Phase2Method::TransitionGetDuration:
+		return &Engine::v2_transition_get_duration;
+	case Phase2Method::TransitionSetDuration:
+		return &Engine::v2_transition_set_duration;
+	case Phase2Method::TransitionGetState:
+		return &Engine::v2_transition_get_state;
 	case Phase2Method::Unknown:
 		return nullptr;
 	}
