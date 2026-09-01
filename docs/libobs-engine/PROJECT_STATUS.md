@@ -64,9 +64,10 @@ Phase-2 implementation lanes, the Tasks 1–11 regression matrix, package audit,
 and final physical integration are recorded in `PHASE2_ACCEPTANCE.md` and
 `PHASE2_PHYSICAL_EVIDENCE.md` from the local Windows D3D11 host. The branch
 also contains the reproducible `.github/workflows/engine-protocol-v2-phase2.yaml`
-hosted matrix; its exact-SHA run and independent advisor review remain pending
-after push. Phase 2 remains `IN REVIEW`, not accepted. Task 21 and all later
-work are outside this branch.
+hosted matrix; run `33495486309` passed the exact-SHA complexity, regression,
+and Tasks 12–20 jobs at head `833df6e59408ff25aec0c4de432726253be52914`.
+Independent advisor review remains pending. Phase 2 remains `IN REVIEW`, not
+accepted. Task 21 and all later work are outside this branch.
 
 This file is the current status ledger for the LibOBS split-engine project. If an older roadmap says Task 8 is active or Task 9 is only proposed, that older status is stale. Verify this ledger against Git/source/CI whenever resuming work.
 

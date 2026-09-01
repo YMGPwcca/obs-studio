@@ -77,8 +77,9 @@ and [`PREVIEW_OUTPUT_V1.md`](../../engine/PREVIEW_OUTPUT_V1.md).
 
 All local runtime lanes used the audited Windows artifact from the runtime
 implementation checkpoint above. The exact-SHA hosted workflow is
-`.github/workflows/engine-protocol-v2-phase2.yaml`; its hosted run was pending
-at the time this record was first prepared and must be recorded after push.
+`.github/workflows/engine-protocol-v2-phase2.yaml`. Run `33495486309` passed at
+head `833df6e59408ff25aec0c4de432726253be52914`; the job IDs are recorded
+below. Any later evidence-only commit preserves the same runtime source scope.
 
 | Lane | Local result | Evidence |
 |---|---|---|
@@ -119,6 +120,29 @@ Tasks 1-11 exact-SHA regression matrix: PASS
 
 The Phase-2 lane runner passed Tasks 12–20 on the same audited artifact. The
 normal package audit passed before and after fixture use.
+
+## Hosted exact-SHA matrix
+
+Workflow run: [33495486309](https://github.com/YMGPwcca/obs-studio/actions/runs/33495486309)
+
+Head SHA: `833df6e59408ff25aec0c4de432726253be52914`
+
+| Hosted lane | Job ID | Result |
+|---|---:|---|
+| Complexity self-tests and gate | `99816569753` | PASS |
+| Tasks 1–11 same-SHA regression matrix | `99816569902` | PASS |
+| Task 12 | `99820728099` | PASS |
+| Task 13 | `99820728229` | PASS |
+| Task 14 | `99820728196` | PASS |
+| Task 15 | `99820728101` | PASS |
+| Task 16 | `99820728090` | PASS |
+| Task 17 | `99820728119` | PASS |
+| Task 18 | `99820728062` | PASS |
+| Task 19 | `99820728145` | PASS |
+| Task 20 | `99820728248` | PASS |
+
+The only hosted annotation was the platform Node.js 20 deprecation notice for
+the pinned `upload-artifact` action. It did not affect any job result.
 
 ## Complexity evidence
 
@@ -164,8 +188,9 @@ frontend/browser/WebSocket/test executable leakage in the normal package.
 
 ## Remaining debt and review boundary
 
-- Hosted GitHub Actions exact-SHA evidence must be recorded after the branch is
-  pushed. Local evidence does not substitute for that hosted run.
+- Hosted GitHub Actions run `33495486309` passed the exact pushed runtime
+  candidate; the final response records the follow-up run for this evidence
+  record's branch tip.
 - Forced graphics device/adapter-loss recovery is not claimed in Phase 2. The
   physical run verifies resize, Canvas video reset, resource replacement,
   adapter mismatch rejection, and clean shutdown; systematic device-loss
