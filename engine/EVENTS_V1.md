@@ -89,6 +89,15 @@ Telemetry is explicitly lossy and opt-in.
 - Pending telemetry may be evicted to make room for a canonical state event.
 - Telemetry coalescing/drop/eviction does not itself emit `session.resyncRequired`, because telemetry is not canonical state.
 
+`transition.progress` is the bounded transition telemetry stream. It requires
+an exact `transition.progress` or matching `transition.*` subscription with
+`telemetry: true`, is sampled at approximately 10 Hz from the render path, and
+is published through the same bounded dispatcher. It carries the canonical
+transition handle, finite normalized `progress` in `0..1`, and
+`state:"running"`. It never consumes a mutation revision. A failed nonblocking
+telemetry enqueue is allowed to drop the sample and must not block rendering or
+request a canonical resync.
+
 ## Ordering
 
 The protocol writer is the only component that writes complete stdout lines after startup. Responses and events therefore cannot interleave bytes.

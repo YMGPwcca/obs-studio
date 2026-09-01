@@ -13,6 +13,7 @@ $script:Wire = [System.Collections.Generic.List[object]]::new()
 $script:NextSequence = [uint64]1
 $script:LastResponseIndex = -1
 $script:LastMessage = $null
+$script:ProgressEvents = [System.Collections.Generic.List[object]]::new()
 
 function Fail-Task18([string] $Message) { throw "Task 18: $Message" }
 
@@ -94,15 +95,35 @@ function Assert-Error($Response, [string] $Code, [int64] $Revision, [string] $La
     if ($Response.status.ok -or [string]$Response.status.code -ne $Code -or [int64]$Response.revision -ne $Revision) { Fail-Task18 "$Label did not return $Code at revision $Revision." }
 }
 
-function Read-Task18Event([string] $Name, [int64] $Revision, [bool] $AllowBeforeResponse = $false) {
-    if ($script:Events.Count -gt 0) { $event = $script:Events[0]; $script:Events.RemoveAt(0) } else { $event = Read-Task18Message }
-    if ($event.op -ne 'event' -or [string]$event.event -ne $Name -or [uint64]$event.seq -ne $script:NextSequence -or [int64]$event.revision -ne $Revision) { Fail-Task18 "unexpected event; expected $Name at revision $Revision." }
+function Take-Task18Event {
+    if ($script:Events.Count -gt 0) { $event = $script:Events[0]; $script:Events.RemoveAt(0); return $event }
+    return Read-Task18Message
+}
+
+function Record-Task18Progress($Event) {
+    if ($Event.op -ne 'event' -or [uint64]$Event.seq -ne $script:NextSequence -or $Event.telemetry -ne $true) { Fail-Task18 'transition.progress envelope was invalid.' }
+    $script:ProgressEvents.Add($Event)
     $script:NextSequence++
-    if (-not $AllowBeforeResponse) {
-        $wireEvent = @($script:Wire | Where-Object { $_.Seq -eq [uint64]$event.seq }) | Select-Object -First 1
-        if ($null -eq $wireEvent -or $wireEvent.Index -le $script:LastResponseIndex) { Fail-Task18 "event $Name preceded its response." }
+}
+
+function Assert-Task18ExpectedEvent($Event, [string] $Name, [int64] $Revision) {
+    if ($Event.op -ne 'event' -or [string]$Event.event -ne $Name -or [uint64]$Event.seq -ne $script:NextSequence -or [int64]$Event.revision -ne $Revision) { Fail-Task18 "unexpected event; expected $Name at revision $Revision." }
+}
+
+function Assert-Task18EventAfterResponse($Event, [string] $Name) {
+    $wireEvent = @($script:Wire | Where-Object { $_.Seq -eq [uint64]$Event.seq }) | Select-Object -First 1
+    if ($null -eq $wireEvent -or $wireEvent.Index -le $script:LastResponseIndex) { Fail-Task18 "event $Name preceded its response." }
+}
+
+function Read-Task18Event([string] $Name, [int64] $Revision, [bool] $AllowBeforeResponse = $false) {
+    while ($true) {
+        $event = Take-Task18Event
+        if ([string]$event.event -eq 'transition.progress') { Record-Task18Progress $event; continue }
+        Assert-Task18ExpectedEvent $event $Name $Revision
+        $script:NextSequence++
+        if (-not $AllowBeforeResponse) { Assert-Task18EventAfterResponse $event $Name }
+        return $event
     }
-    return $event
 }
 
 function Invoke-Task18Bootstrap {
@@ -151,17 +172,26 @@ function Invoke-Task18TransitionSetup {
     $duration = Send-Task18Guarded 's-duration' 'studio.setTransitionDuration' @{ durationMs = 750 } $script:T18Revision
     Assert-Ok $duration ($duration.GuardRevision + 1) 'set Studio duration'
     $script:T18Revision = [int64]$duration.revision
-    Read-Task18Event 'studio.transitionDurationChanged' $script:T18Revision | Out-Null
+    Read-Task18Event 'transition.durationChanged' $script:T18Revision | Out-Null
     $transitionDuration = Send-Task18Request @{ op = 'request'; id = 's-duration-read'; method = 'transition.getDuration'; params = @{ transition = $script:T18TransitionHandle } }
     Assert-Ok $transitionDuration $script:T18Revision 'transition duration readback'
     if ([int]$transitionDuration.data.durationMs -ne 750) { Fail-Task18 'Studio duration did not update the Transition object.' }
+    $directDuration = Send-Task18Guarded 's-direct-duration' 'transition.setDuration' @{ transition = $script:T18TransitionHandle; durationMs = 900 } $script:T18Revision
+    Assert-Ok $directDuration ($directDuration.GuardRevision + 1) 'direct Transition duration'
+    $script:T18Revision = [int64]$directDuration.revision
+    Read-Task18Event 'transition.durationChanged' $script:T18Revision | Out-Null
+    $studioDuration = Send-Task18Request @{ op = 'request'; id = 's-studio-duration-read'; method = 'studio.getTransitionDuration' }
+    Assert-Ok $studioDuration $script:T18Revision 'Studio duration readback'
+    if ([int]$studioDuration.data.durationMs -ne 900) { Fail-Task18 'Studio duration getter disagreed with direct Transition setter.' }
+    $durationNoop = Send-Task18Guarded 's-duration-noop' 'transition.setDuration' @{ transition = $script:T18TransitionHandle; durationMs = 900 } $script:T18Revision
+    Assert-Ok $durationNoop $script:T18Revision 'equal Transition duration no-op'
     $enable = Send-Task18Guarded 's-enable' 'studio.setEnabled' @{ enabled = $true } $script:T18Revision
     Assert-Ok $enable ($enable.GuardRevision + 1) 'enable Studio'
     $script:T18Revision = [int64]$enable.revision
     Read-Task18Event 'studio.enabledChanged' $script:T18Revision | Out-Null
 }
 
-function Invoke-Task18FirstTransition {
+function Invoke-Task18DirectProgramChanges {
     $programC = Send-Task18Guarded 's-program-c' 'program.setScene' @{ scene = [string]$script:T18SceneC.data.scene } $script:T18Revision
     Assert-Ok $programC ($programC.GuardRevision + 1) 'direct Program change with Studio enabled'
     $script:T18Revision = [int64]$programC.revision
@@ -170,22 +200,119 @@ function Invoke-Task18FirstTransition {
     Assert-Ok $programA2 ($programA2.GuardRevision + 1) 'restore Program A with Studio enabled'
     $script:T18Revision = [int64]$programA2.revision
     Read-Task18Event 'program.sceneChanged' $script:T18Revision | Out-Null
+}
+
+function Assert-Task18RunningProgram($Running) {
+    if (-not $Running.status.ok -or [string]$Running.data.scene -ne [string]$script:T18SceneA.data.scene -or -not $Running.data.transitioning) { Fail-Task18 'Program did not remain logically on Scene A while transitioning.' }
+}
+
+function Assert-Task18FirstCompletion($ProgramEnd, $Program) {
+    if ([string]$ProgramEnd.data.scene -ne [string]$script:T18SceneB.data.scene -or [string]$ProgramEnd.data.previousScene -ne [string]$script:T18SceneA.data.scene) { Fail-Task18 'Program completion event had the wrong destination.' }
+    if ([string]$Program.data.scene -ne [string]$script:T18SceneB.data.scene -or $Program.data.transitioning) { Fail-Task18 'Program did not commit Scene B after transition completion.' }
+}
+
+function Invoke-Task18FirstTransition {
+    Invoke-Task18DirectProgramChanges
     $start = Send-Task18Guarded 's-start' 'studio.transition' $null $script:T18Revision
     Assert-Ok $start ($start.GuardRevision + 1) 'Studio transition start'
     $script:T18Revision = [int64]$start.revision
     Read-Task18Event 'transition.started' $script:T18Revision | Out-Null
     $running = Send-Task18Request @{ op = 'request'; id = 's-running'; method = 'program.getScene' }
-    if (-not $running.status.ok -or [string]$running.data.scene -ne [string]$script:T18SceneA.data.scene -or -not $running.data.transitioning) { Fail-Task18 'Program did not remain logically on Scene A while transitioning.' }
+    Assert-Task18RunningProgram $running
     Start-Sleep -Milliseconds 1200
     $settled = Send-Task18Request @{ op = 'request'; id = 's-settled'; method = 'studio.getEnabled' }
     if (-not $settled.status.ok -or $settled.data.transitioning) { Fail-Task18 'Studio transition did not settle.' }
     $script:T18Revision = [int64]$settled.revision
     $programEnd = Read-Task18Event 'program.sceneChanged' $script:T18Revision $true
     Read-Task18Event 'transition.ended' $script:T18Revision $true | Out-Null
-    if ([string]$programEnd.data.scene -ne [string]$script:T18SceneB.data.scene -or [string]$programEnd.data.previousScene -ne [string]$script:T18SceneA.data.scene) { Fail-Task18 'Program completion event had the wrong destination.' }
     $programB = Send-Task18Request @{ op = 'request'; id = 's-program-b'; method = 'program.getScene' }
     Assert-Ok $programB $script:T18Revision 'Program after transition'
-    if ([string]$programB.data.scene -ne [string]$script:T18SceneB.data.scene -or $programB.data.transitioning) { Fail-Task18 'Program did not commit Scene B after transition completion.' }
+    Assert-Task18FirstCompletion $programEnd $programB
+    if ($script:ProgressEvents.Count -ne 0) { Fail-Task18 'transition.progress was delivered without telemetry opt-in.' }
+}
+
+function Assert-Task18IdleAgreement {
+    $studio = Send-Task18Request @{ op = 'request'; id = 's-cancel-studio'; method = 'studio.getEnabled' }
+    Assert-Ok $studio $script:T18Revision 'Studio after cancellation'
+    if ($studio.data.transitioning) { Fail-Task18 'Studio remained running after Program cancellation.' }
+    $transition = Send-Task18Request @{ op = 'request'; id = 's-cancel-transition'; method = 'transition.getState'; params = @{ transition = $script:T18TransitionHandle } }
+    Assert-Ok $transition $script:T18Revision 'Transition after cancellation'
+    if ([string]$transition.data.state -ne 'idle' -or $transition.data.active) { Fail-Task18 'Transition state remained active after cancellation.' }
+    $program = Send-Task18Request @{ op = 'request'; id = 's-cancel-program'; method = 'program.getScene' }
+    Assert-Ok $program $script:T18Revision 'Program after cancellation'
+    if ([string]$program.data.scene -ne [string]$script:T18SceneC.data.scene -or $program.data.transitioning) { Fail-Task18 'Program did not remain on cancellation Scene C.' }
+}
+
+function Invoke-Task18CancellationChecks {
+    $restoreA = Send-Task18Guarded 's-cancel-restore-a' 'program.setScene' @{ scene = [string]$script:T18SceneA.data.scene } $script:T18Revision
+    Assert-Ok $restoreA ($restoreA.GuardRevision + 1) 'restore Program A before cancellation'
+    $script:T18Revision = [int64]$restoreA.revision
+    Read-Task18Event 'program.sceneChanged' $script:T18Revision | Out-Null
+    $start = Send-Task18Guarded 's-cancel-start' 'studio.transition' $null $script:T18Revision
+    Assert-Ok $start ($start.GuardRevision + 1) 'start cancellation transition'
+    $script:T18Revision = [int64]$start.revision
+    Read-Task18Event 'transition.started' $script:T18Revision | Out-Null
+    $cancel = Send-Task18Guarded 's-cancel-program-c' 'program.setScene' @{ scene = [string]$script:T18SceneC.data.scene } $script:T18Revision
+    Assert-Ok $cancel ($cancel.GuardRevision + 1) 'cancel transition with Program C'
+    $script:T18Revision = [int64]$cancel.revision
+    $programEnd = Read-Task18Event 'program.sceneChanged' $script:T18Revision
+    $transitionEnd = Read-Task18Event 'transition.ended' $script:T18Revision
+    if ([string]$programEnd.data.scene -ne [string]$script:T18SceneC.data.scene -or [string]$programEnd.data.previousScene -ne [string]$script:T18SceneA.data.scene) { Fail-Task18 'Cancellation Program event had the wrong current or previous Scene.' }
+    if ([string]$transitionEnd.data.transition -ne $script:T18TransitionHandle -or [string]$transitionEnd.data.state -ne 'idle') { Fail-Task18 'Cancellation transition.ended identified the wrong transition or state.' }
+    Start-Sleep -Milliseconds 1200
+    Assert-Task18IdleAgreement
+    if (@($script:Events | Where-Object { [string]$_.event -eq 'transition.ended' }).Count -ne 0) { Fail-Task18 'Cancellation produced a delayed duplicate transition.ended.' }
+
+    $duration = Send-Task18Guarded 's-race-duration' 'transition.setDuration' @{ transition = $script:T18TransitionHandle; durationMs = 600 } $script:T18Revision
+    Assert-Ok $duration ($duration.GuardRevision + 1) 'near-completion duration'
+    $script:T18Revision = [int64]$duration.revision
+    Read-Task18Event 'transition.durationChanged' $script:T18Revision | Out-Null
+    $restoreA2 = Send-Task18Guarded 's-race-restore-a' 'program.setScene' @{ scene = [string]$script:T18SceneA.data.scene } $script:T18Revision
+    Assert-Ok $restoreA2 ($restoreA2.GuardRevision + 1) 'restore Program A before near-completion race'
+    $script:T18Revision = [int64]$restoreA2.revision
+    Read-Task18Event 'program.sceneChanged' $script:T18Revision | Out-Null
+    $raceStart = Send-Task18Guarded 's-race-start' 'studio.transition' $null $script:T18Revision
+    Assert-Ok $raceStart ($raceStart.GuardRevision + 1) 'near-completion transition start'
+    $script:T18Revision = [int64]$raceStart.revision
+    Read-Task18Event 'transition.started' $script:T18Revision | Out-Null
+    Start-Sleep -Milliseconds 500
+    $raceCancel = Send-Task18Guarded 's-race-cancel' 'program.setScene' @{ scene = [string]$script:T18SceneC.data.scene } $script:T18Revision
+    Assert-Ok $raceCancel ($raceCancel.GuardRevision + 1) 'near-completion Program cancellation'
+    $script:T18Revision = [int64]$raceCancel.revision
+    Read-Task18Event 'program.sceneChanged' $script:T18Revision | Out-Null
+    Read-Task18Event 'transition.ended' $script:T18Revision | Out-Null
+    Start-Sleep -Milliseconds 1200
+    Assert-Task18IdleAgreement
+    if (@($script:Events | Where-Object { [string]$_.event -eq 'transition.ended' }).Count -ne 0) { Fail-Task18 'Near-completion cancellation produced a duplicate transition.ended.' }
+    Write-Output 'Task 18 cancellation and near-completion race: PASS'
+}
+
+function Enable-Task18TransitionTelemetry {
+    $telemetry = Send-Task18Request @{ op = 'request'; id = 's-progress-subscribe'; method = 'session.subscribe'; params = @{ subscriptions = @(@{ pattern = 'transition.*'; telemetry = $true }) } }
+    Assert-Ok $telemetry $script:T18Revision 'transition telemetry subscription'
+}
+
+function Assert-Task18SecondTransitionState($Settled) {
+    if (-not $Settled.status.ok -or [string]$Settled.data.scene -ne [string]$script:T18SceneA.data.scene -or $Settled.data.transitioning) { Fail-Task18 'transition did not complete after Studio was disabled.' }
+}
+
+function Assert-Task18ProgressSample($Sample, [ref] $Maximum) {
+    if ([string]$Sample.data.transition -ne $script:T18TransitionHandle -or [string]$Sample.data.state -ne 'running') { Fail-Task18 'transition.progress identified the wrong transition state.' }
+    $value = [double]$Sample.data.progress
+    if ([double]::IsNaN($value) -or [double]::IsInfinity($value) -or $value -lt 0.0 -or $value -gt 1.0) { Fail-Task18 'transition.progress was outside the finite 0..1 range.' }
+    if ($value -gt $Maximum.Value) { $Maximum.Value = $value }
+    if ([int64]$Sample.revision -gt $script:T18Revision) { Fail-Task18 'transition.progress advanced beyond the settled engine revision.' }
+}
+
+function Assert-Task18ProgressSamples($Samples, [int64] $MaximumRevision) {
+    if ($Samples.Count -eq 0) { Fail-Task18 'transition.progress was not delivered after telemetry opt-in.' }
+    $maximum = 0.0
+    foreach ($sample in $Samples) {
+        Assert-Task18ProgressSample $sample ([ref]$maximum)
+        if ([int64]$sample.revision -gt $MaximumRevision) { Fail-Task18 'transition.progress consumed a later mutation revision.' }
+    }
+    if ($maximum -le 0.0) { Fail-Task18 'transition.progress did not advance while Studio was running.' }
+    if (@($script:Events | Where-Object { [string]$_.event -eq 'session.resyncRequired' }).Count -ne 0) { Fail-Task18 'telemetry delivery caused an unexpected state resync.' }
 }
 
 function Invoke-Task18SecondTransition {
@@ -193,22 +320,28 @@ function Invoke-Task18SecondTransition {
     Assert-Ok $previewA ($previewA.GuardRevision + 1) 'Preview A'
     $script:T18Revision = [int64]$previewA.revision
     Read-Task18Event 'preview.sceneChanged' $script:T18Revision | Out-Null
+    $progressBefore = $script:ProgressEvents.Count
+    Enable-Task18TransitionTelemetry
     $startAgain = Send-Task18Guarded 's-start-again' 'studio.transition' $null $script:T18Revision
     Assert-Ok $startAgain ($startAgain.GuardRevision + 1) 'second Studio transition start'
     $script:T18Revision = [int64]$startAgain.revision
     Read-Task18Event 'transition.started' $script:T18Revision | Out-Null
     $disable = Send-Task18Guarded 's-disable-running' 'studio.setEnabled' @{ enabled = $false } $script:T18Revision
     Assert-Ok $disable ($disable.GuardRevision + 1) 'disable Studio while running'
+    $disableRevision = [int64]$disable.revision
     $script:T18Revision = [int64]$disable.revision
     Read-Task18Event 'studio.enabledChanged' $script:T18Revision | Out-Null
     $busy = Send-Task18Request @{ op = 'request'; id = 's-busy'; method = 'studio.transition' }
     Assert-Error $busy 'invalid_state' $script:T18Revision 'transition while Studio disabled'
     Start-Sleep -Milliseconds 1200
     $settledAgain = Send-Task18Request @{ op = 'request'; id = 's-settled-again'; method = 'program.getScene' }
-    if (-not $settledAgain.status.ok -or [string]$settledAgain.data.scene -ne [string]$script:T18SceneA.data.scene -or $settledAgain.data.transitioning) { Fail-Task18 'transition did not complete after Studio was disabled.' }
+    Assert-Task18SecondTransitionState $settledAgain
+    if ([int64]$settledAgain.revision -ne $disableRevision + 1) { Fail-Task18 'transition.progress consumed a mutation revision.' }
     $script:T18Revision = [int64]$settledAgain.revision
     Read-Task18Event 'program.sceneChanged' $script:T18Revision $true | Out-Null
     Read-Task18Event 'transition.ended' $script:T18Revision $true | Out-Null
+    $progress = @($script:ProgressEvents | Select-Object -Skip $progressBefore)
+    Assert-Task18ProgressSamples $progress $disableRevision
 }
 
 function Invoke-Task18Cleanup {
@@ -238,6 +371,7 @@ function Invoke-Task18Scenario {
     Invoke-Task18Bootstrap
     Invoke-Task18TransitionSetup
     Invoke-Task18FirstTransition
+    Invoke-Task18CancellationChecks
     Invoke-Task18SecondTransition
     Invoke-Task18Cleanup
 }

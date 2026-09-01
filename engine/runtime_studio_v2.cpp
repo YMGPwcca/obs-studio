@@ -148,19 +148,12 @@ bool Engine::v2_studio_set_transition_duration(obs_data_t *params, RuntimeV2Resu
 	if (!phase2_read_integer(params, "durationMs", duration, present) || !present || duration < 0 ||
 	    duration > kMaxStudioTransitionDurationMs)
 		return phase2_fail(error, "bad_request", "params.durationMs is outside the supported Studio range");
-	if (it->second.duration_ms == static_cast<uint32_t>(duration)) {
-		return v2_studio_get_transition_duration(params, result, error);
-	}
-	it->second.duration_ms = static_cast<uint32_t>(duration);
+	if (!v2_update_transition_duration(studio_transition_, static_cast<uint32_t>(duration), result, error))
+		return false;
 	ObsDataPtr data(obs_data_create());
 	phase2_set_handle(data.get(), "transition", studio_transition_);
-	obs_data_set_int(data.get(), "durationMs", it->second.duration_ms);
+	obs_data_set_int(data.get(), "durationMs", static_cast<uint32_t>(duration));
 	result.data = std::move(data);
-	ObsDataPtr event_data(obs_data_create());
-	phase2_set_handle(event_data.get(), "transition", studio_transition_);
-	obs_data_set_int(event_data.get(), "durationMs", it->second.duration_ms);
-	phase2_append_event(result, "studio.transitionDurationChanged", std::move(event_data));
-	result.mutated = true;
 	return true;
 }
 
@@ -185,7 +178,8 @@ bool Engine::begin_studio_transition(uint64_t program_scene, uint64_t preview_sc
 	studio_transition_destination_scene_ = preview_scene;
 	const auto main_it = canvases_.find(main_canvas_);
 	if (main_it == canvases_.end() || !main_it->second.canvas) {
-		v2_cancel_studio_transition();
+		uint64_t cancelled_transition = 0;
+		v2_cancel_studio_transition(cancelled_transition);
 		if (program_source)
 			obs_source_release(program_source);
 		obs_source_release(preview_source);

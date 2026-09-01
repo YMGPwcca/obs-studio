@@ -434,6 +434,7 @@ function Invoke-P2TransitionPhysical {
     $script:P2Revision = [int64]$create.revision
     Read-P2PhysicalEvent 'transition.created' $script:P2Revision | Out-Null
     $transition = [string]$create.data.transition
+    $script:P2Graph.Transition = $transition
     $select = Send-P2PhysicalGuarded 'p-transition-select' 'studio.setTransition' @{ transition = $transition } $script:P2Revision
     Assert-P2PhysicalOk $select ($select.GuardRevision + 1) 'studio.setTransition'
     $script:P2Revision = [int64]$select.revision
@@ -441,7 +442,7 @@ function Invoke-P2TransitionPhysical {
     $duration = Send-P2PhysicalGuarded 'p-transition-duration' 'studio.setTransitionDuration' @{ durationMs = 750 } $script:P2Revision
     Assert-P2PhysicalOk $duration ($duration.GuardRevision + 1) 'studio duration'
     $script:P2Revision = [int64]$duration.revision
-    Read-P2PhysicalEvent 'studio.transitionDurationChanged' $script:P2Revision | Out-Null
+    Read-P2PhysicalEvent 'transition.durationChanged' $script:P2Revision | Out-Null
     $enable = Send-P2PhysicalGuarded 'p-studio-enable' 'studio.setEnabled' @{ enabled = $true } $script:P2Revision
     Assert-P2PhysicalOk $enable ($enable.GuardRevision + 1) 'studio.setEnabled'
     $script:P2Revision = [int64]$enable.revision
@@ -474,6 +475,66 @@ function Invoke-P2TransitionPhysical {
     Assert-P2PhysicalReadOk $releaseProgram 'transition Program release'
     Assert-P2PhysicalReadOk $releasePreview 'transition Preview release'
     Write-Output 'Physical Scene -> Canvas -> Preview -> Transition -> Program flow: PASS'
+}
+
+function Start-P2PhysicalCancellationTransition {
+    $restore = Send-P2PhysicalGuarded 'p-cancel-restore-main' 'program.setScene' @{ scene = $script:P2Graph.Main } $script:P2Revision
+    Assert-P2PhysicalOk $restore ($restore.GuardRevision + 1) 'restore Program before cancellation'
+    $script:P2Revision = [int64]$restore.revision
+    Read-P2PhysicalEvent 'program.sceneChanged' $script:P2Revision | Out-Null
+
+    $duration = Send-P2PhysicalGuarded 'p-cancel-duration' 'transition.setDuration' @{ transition = $script:P2Graph.Transition; durationMs = 600 } $script:P2Revision
+    Assert-P2PhysicalOk $duration ($duration.GuardRevision + 1) 'cancellation transition duration'
+    $script:P2Revision = [int64]$duration.revision
+    Read-P2PhysicalEvent 'transition.durationChanged' $script:P2Revision | Out-Null
+
+    $descriptor = Send-P2PhysicalRequest @{ op = 'request'; id = 'p-cancel-program-get'; method = 'previewOutput.getSharedTexture'; params = @{ previewOutput = [string]$script:P2Outputs.Program.previewOutput } }
+    Assert-P2PhysicalOk $descriptor $script:P2Revision 'cancellation Program shared texture'
+    $runner = New-P2PhysicalConsumer $descriptor.data 90
+    Start-Sleep -Milliseconds 100
+    $start = Send-P2PhysicalGuarded 'p-cancel-start' 'studio.transition' $null $script:P2Revision
+    Assert-P2PhysicalOk $start ($start.GuardRevision + 1) 'start physical cancellation transition'
+    $script:P2Revision = [int64]$start.revision
+    Read-P2PhysicalEvent 'transition.started' $script:P2Revision | Out-Null
+    return [pscustomobject]@{ Descriptor = $descriptor; Runner = $runner }
+}
+
+function Assert-P2PhysicalCancellationEvents($ProgramEvent, $EndedEvent) {
+    if ([string]$ProgramEvent.data.scene -ne [string]$script:P2Graph.Scene -or [string]$ProgramEvent.data.previousScene -ne [string]$script:P2Graph.Main) { Fail-P2Physical 'physical cancellation Program event had the wrong current or previous Scene.' }
+    if ([string]$EndedEvent.data.transition -ne [string]$script:P2Graph.Transition -or [string]$EndedEvent.data.state -ne 'idle') { Fail-P2Physical 'physical cancellation transition.ended was not canonical.' }
+}
+
+function Assert-P2PhysicalCancellationSettled {
+    $idle = Send-P2PhysicalRequest @{ op = 'request'; id = 'p-cancel-idle'; method = 'studio.getEnabled' }
+    Assert-P2PhysicalReadOk $idle 'physical cancellation idle state'
+    if ($idle.data.transitioning) { Fail-P2Physical 'Studio remained running after physical cancellation.' }
+    $state = Send-P2PhysicalRequest @{ op = 'request'; id = 'p-cancel-transition-state'; method = 'transition.getState'; params = @{ transition = $script:P2Graph.Transition } }
+    Assert-P2PhysicalReadOk $state 'physical cancellation transition state'
+    if ([string]$state.data.state -ne 'idle' -or $state.data.active) { Fail-P2Physical 'Transition remained active after physical cancellation.' }
+    $program = Send-P2PhysicalRequest @{ op = 'request'; id = 'p-cancel-program-state'; method = 'program.getScene' }
+    Assert-P2PhysicalReadOk $program 'physical cancellation Program state'
+    if ([string]$program.data.scene -ne [string]$script:P2Graph.Scene -or $program.data.transitioning) { Fail-P2Physical 'Program did not remain on the cancellation Scene.' }
+    if (@($script:P2Events | Where-Object { [string]$_.event -eq 'transition.ended' }).Count -ne 0) { Fail-P2Physical 'physical cancellation produced a delayed duplicate transition.ended.' }
+}
+
+function Invoke-P2TransitionCancellationPhysical {
+    $setup = Start-P2PhysicalCancellationTransition
+    $cancel = Send-P2PhysicalGuarded 'p-cancel-program-scene' 'program.setScene' @{ scene = $script:P2Graph.Scene } $script:P2Revision
+    Assert-P2PhysicalOk $cancel ($cancel.GuardRevision + 1) 'cancel physical transition with Program Scene'
+    $script:P2Revision = [int64]$cancel.revision
+    $programEvent = Read-P2PhysicalEvent 'program.sceneChanged' $script:P2Revision
+    $endedEvent = Read-P2PhysicalEvent 'transition.ended' $script:P2Revision
+    Assert-P2PhysicalCancellationEvents $programEvent $endedEvent
+
+    $evidence = Wait-P2PhysicalConsumer $setup.Runner 'cancelled transition Program'
+    $evidence | Add-Member -NotePropertyName resourceGeneration -NotePropertyValue ([string]$setup.Descriptor.data.resourceGeneration) -Force
+    Assert-P2PhysicalColor $evidence 'cancelled transition Program' 0 255 0 $true
+    Start-Sleep -Milliseconds 1200
+    Assert-P2PhysicalCancellationSettled
+    $release = Send-P2PhysicalRequest @{ op = 'request'; id = 'p-cancel-release'; method = 'previewOutput.releaseSharedTexture'; params = @{ previewOutput = [string]$script:P2Outputs.Program.previewOutput } }
+    Assert-P2PhysicalReadOk $release 'cancelled transition Program release'
+    Write-Output ("Physical transition cancellation evidence: " + ($evidence | ConvertTo-Json -Compress -Depth 10))
+    Write-Output 'Physical Studio transition cancellation/interruption: PASS'
 }
 
 function Invoke-P2ResourceRecreation {
@@ -562,6 +623,7 @@ function Invoke-P2PhysicalScenario {
     Invoke-P2GraphComposition
     Invoke-P2StaticOutputs
     Invoke-P2TransitionPhysical
+    Invoke-P2TransitionCancellationPhysical
     Invoke-P2ResourceRecreation
     Invoke-P2PhysicalCleanup
 }

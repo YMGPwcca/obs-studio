@@ -6,6 +6,7 @@
 #include <cctype>
 #include <condition_variable>
 #include <cstring>
+#include <cmath>
 #include <deque>
 #include <limits>
 #include <memory>
@@ -48,6 +49,7 @@ constexpr size_t kMaxTransitionKindBytes = 128;
 constexpr size_t kMaxTransitionNameBytes = 256;
 constexpr size_t kMaxTransitionPendingSignals = 64;
 constexpr uint32_t kMaxTransitionDurationMs = 600000;
+constexpr uint64_t kTransitionProgressIntervalNs = 100000000;
 
 bool safe_transition_identifier(const std::string &value)
 {
@@ -212,12 +214,20 @@ void set_transition_source_identities(const Engine &engine, obs_data_t *data, co
 		obs_source_release(source_b);
 }
 
+double normalized_transition_progress(obs_source_t *transition)
+{
+	if (!transition || !obs_transition_is_active(transition))
+		return 0.0;
+	const float raw_progress = obs_transition_get_time(transition);
+	return std::isfinite(raw_progress) ? std::clamp(static_cast<double>(raw_progress), 0.0, 1.0) : 0.0;
+}
+
 void set_transition_state(ObsDataPtr &data, const TransitionEntry &entry)
 {
 	const bool active = entry.transition && obs_transition_is_active(entry.transition);
 	obs_data_set_string(data.get(), "state", active ? "running" : "idle");
 	obs_data_set_bool(data.get(), "active", active);
-	obs_data_set_double(data.get(), "progress", active ? obs_transition_get_time(entry.transition) : 0.0);
+	obs_data_set_double(data.get(), "progress", normalized_transition_progress(entry.transition));
 }
 
 ObsDataPtr make_transition_event_data(uint64_t handle, const char *state)
@@ -311,6 +321,29 @@ void drain_transition_observer(const std::shared_ptr<TransitionV2Observer> &obse
 	observer->pending.clear();
 	overflow = observer->overflow;
 	observer->overflow = false;
+}
+
+bool snapshot_active_transition(const std::shared_ptr<TransitionV2State> &state, uint64_t &handle,
+					obs_source_t *&transition, RevisionState *&revisions, EventDispatcher *&events)
+{
+	if (!state)
+		return false;
+	std::lock_guard<std::mutex> state_lock(state->mutex);
+	if (!state->accepting || !state->revisions || !state->events)
+		return false;
+	for (const auto &[candidate_handle, observer] : state->observers) {
+		if (!observer)
+			continue;
+		std::lock_guard<std::mutex> observer_lock(observer->mutex);
+		if (!observer->accepting || !observer->running || !observer->transition)
+			continue;
+		handle = candidate_handle;
+		transition = obs_source_get_ref(observer->transition);
+		revisions = state->revisions;
+		events = state->events;
+		return transition != nullptr;
+	}
+	return false;
 }
 
 } // namespace
@@ -667,15 +700,24 @@ bool Engine::v2_transition_set_duration(obs_data_t *params, RuntimeV2Result &res
 	if (!phase2_read_integer(params, "durationMs", duration, present) || !present || duration < 0 ||
 	    duration > kMaxTransitionDurationMs)
 		return phase2_fail(error, "bad_request", "params.durationMs is outside the supported transition range");
-	if (entry->duration_ms == static_cast<uint32_t>(duration)) {
-		result.data = make_transition_summary(*this, handle, *entry);
-		return true;
-	}
-	entry->duration_ms = static_cast<uint32_t>(duration);
+	if (!v2_update_transition_duration(handle, static_cast<uint32_t>(duration), result, error))
+		return false;
 	result.data = make_transition_summary(*this, handle, *entry);
+	return true;
+}
+
+bool Engine::v2_update_transition_duration(uint64_t handle, uint32_t duration, RuntimeV2Result &result,
+						 RuntimeV2Error &error)
+{
+	const auto it = transitions_.find(handle);
+	if (it == transitions_.end() || !it->second.transition)
+		return phase2_fail(error, "not_found", "transition handle was not found");
+	if (it->second.duration_ms == duration)
+		return true;
+	it->second.duration_ms = duration;
 	ObsDataPtr event_data(obs_data_create());
 	phase2_set_handle(event_data.get(), "transition", handle);
-	obs_data_set_int(event_data.get(), "durationMs", entry->duration_ms);
+	obs_data_set_int(event_data.get(), "durationMs", duration);
 	phase2_append_event(result, "transition.durationChanged", std::move(event_data));
 	result.mutated = true;
 	return true;
@@ -735,6 +777,30 @@ void Engine::v2_sync_transition_observers()
 		sync_transition_observer(observer, *revisions, *events);
 }
 
+void Engine::v2_publish_transition_progress() noexcept
+{
+	if (!transition_v2_state_)
+		return;
+	const uint64_t frame_time = obs_get_video_frame_time();
+	if (transition_progress_last_frame_time_ != 0 &&
+	    (frame_time < transition_progress_last_frame_time_ ||
+	     frame_time - transition_progress_last_frame_time_ < kTransitionProgressIntervalNs))
+		return;
+	uint64_t handle = 0;
+	obs_source_t *transition = nullptr;
+	RevisionState *revisions = nullptr;
+	EventDispatcher *events = nullptr;
+	if (!snapshot_active_transition(transition_v2_state_, handle, transition, revisions, events))
+		return;
+	transition_progress_last_frame_time_ = frame_time;
+	ObsDataPtr data(obs_data_create());
+	phase2_set_handle(data.get(), "transition", handle);
+	obs_data_set_double(data.get(), "progress", normalized_transition_progress(transition));
+	obs_data_set_string(data.get(), "state", "running");
+	events->try_publish_telemetry("transition.progress", revisions->current(), data.get());
+	obs_source_release(transition);
+}
+
 void Engine::sync_transition_observer(const std::shared_ptr<TransitionV2Observer> &observer, RevisionState &revisions,
 					      EventDispatcher &events)
 {
@@ -791,24 +857,36 @@ void Engine::finish_studio_transition(uint64_t revision, const TransitionV2Obser
 	events.publish(EngineEventKind::State, "program.sceneChanged", revision, program_data.get());
 }
 
-void Engine::v2_cancel_studio_transition() noexcept
+bool Engine::v2_cancel_studio_transition(uint64_t &cancelled_transition) noexcept
 {
+	cancelled_transition = 0;
 	if (!studio_transition_active_)
-		return;
+		return false;
+	cancelled_transition = studio_transition_;
 	const auto it = transitions_.find(studio_transition_);
-	if (it != transitions_.end() && it->second.transition) {
-		if (obs_transition_is_active(it->second.transition))
-			obs_transition_force_stop(it->second.transition);
-		obs_transition_clear(it->second.transition);
-		if (it->second.observer) {
-			std::lock_guard<std::mutex> lock(it->second.observer->mutex);
-			it->second.observer->running = false;
-			it->second.observer->pending.clear();
-		}
+	if (it == transitions_.end() || !it->second.transition || !it->second.observer || cancelled_transition == 0) {
+		return false;
+	}
+	const auto observer = it->second.observer;
+	{
+		std::lock_guard<std::mutex> lock(observer->mutex);
+		observer->accepting = false;
+	}
+	if (obs_transition_is_active(it->second.transition))
+		obs_transition_force_stop(it->second.transition);
+	obs_transition_clear(it->second.transition);
+	{
+		std::unique_lock<std::mutex> lock(observer->mutex);
+		observer->callback_cv.wait(lock, [&] { return observer->callbacks_inflight == 0; });
+		observer->running = false;
+		observer->pending.clear();
+		observer->overflow = false;
+		observer->accepting = true;
 	}
 	studio_transition_active_ = false;
 	studio_transition_from_scene_ = 0;
 	studio_transition_destination_scene_ = 0;
+	return true;
 }
 
 void Engine::v2_prepare_transition_shutdown() noexcept

@@ -6,6 +6,14 @@
 namespace obs_engine {
 namespace {
 
+ObsDataPtr make_cancelled_transition_event_data(uint64_t transition)
+{
+	ObsDataPtr data(obs_data_create());
+	phase2_set_handle(data.get(), "transition", transition);
+	obs_data_set_string(data.get(), "state", "idle");
+	return data;
+}
+
 void set_nullable_handle(obs_data_t *data, const char *name, uint64_t handle)
 {
 	if (handle != 0)
@@ -70,12 +78,27 @@ bool Engine::v2_program_set_scene(obs_data_t *params, RuntimeV2Result &result, R
 	uint64_t requested = 0;
 	if (!read_program_scene_request(params, scenes_, requested, error))
 		return false;
-	if (studio_transition_active_)
-		v2_cancel_studio_transition();
-	return apply_program_scene_route(requested, result, error);
+	uint64_t cancelled_transition = 0;
+	const bool was_transitioning = studio_transition_active_;
+	const uint64_t logical_previous_scene = program_scene_;
+	if (was_transitioning) {
+		const auto main_it = canvases_.find(main_canvas_);
+		if (main_it == canvases_.end() || !main_it->second.canvas)
+			return phase2_fail(error, "internal_error", "Main Canvas is not registered");
+	}
+	if (was_transitioning && !v2_cancel_studio_transition(cancelled_transition))
+		return phase2_fail(error, "invalid_state", "Studio transition cancellation lost its owner");
+	if (!apply_program_scene_route(requested, result, error, logical_previous_scene, was_transitioning))
+		return false;
+	if (cancelled_transition != 0) {
+		result.mutated = true;
+		phase2_append_event(result, "transition.ended", make_cancelled_transition_event_data(cancelled_transition));
+	}
+	return true;
 }
 
-bool Engine::apply_program_scene_route(uint64_t requested, RuntimeV2Result &result, RuntimeV2Error &error)
+bool Engine::apply_program_scene_route(uint64_t requested, RuntimeV2Result &result, RuntimeV2Error &error,
+				       uint64_t previous_scene_override, bool has_previous_scene_override)
 {
 	const auto main_it = canvases_.find(main_canvas_);
 	if (main_it == canvases_.end() || !main_it->second.canvas)
@@ -85,7 +108,7 @@ bool Engine::apply_program_scene_route(uint64_t requested, RuntimeV2Result &resu
 		desired = obs_scene_get_source(scenes_.at(requested));
 	obs_source_t *current = obs_canvas_get_channel(main_it->second.canvas, 0);
 	const bool unchanged = current == desired;
-	const uint64_t previous = v2_scene_handle_for_pointer(current);
+	const uint64_t previous = has_previous_scene_override ? previous_scene_override : v2_scene_handle_for_pointer(current);
 	if (current)
 		obs_source_release(current);
 	if (unchanged) {

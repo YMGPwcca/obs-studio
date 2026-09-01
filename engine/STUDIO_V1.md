@@ -26,8 +26,9 @@ still commits the destination Program Scene safely. A disabled Studio rejects
 
 `studio.setTransition` accepts a canonical transition handle or JSON null. A
 selected/running transition cannot be replaced while active. Duration methods
-operate on the selected Transition's single engine-owned `durationMs` value;
-Studio passes that value to `obs_transition_start`, so no second contradictory
+operate on the selected Transition's single engine-owned `durationMs` value.
+Both setters publish the canonical `transition.durationChanged` event; Studio
+passes that value to `obs_transition_start`, so no second contradictory
 duration cache exists.
 
 ## Preview-to-Program transition
@@ -55,9 +56,14 @@ Program event has the destination in `scene` and the prior Program in
 `previousScene`. Transition progress is telemetry and never creates a revision
 per frame.
 
-Direct `program.setScene` remains immediate even while Studio is enabled; it
-cancels any active Studio transition before applying the requested Program
-route. Removing a selected Transition returns `object_in_use`.
+Direct `program.setScene` remains immediate even while Studio is enabled. If a
+Studio transition is active, the command synchronously stops and clears the
+real libobs transition, suppresses its callback settlement, applies the
+requested Program route, and owns one command revision containing
+`program.sceneChanged` followed by exactly one `transition.ended`. The
+`program.sceneChanged.previousScene` value is the logical Program Scene from
+before the transition, not the temporary transition source. Removing a
+selected Transition returns `object_in_use`.
 
 ## Events and errors
 
@@ -66,8 +72,10 @@ Canonical Studio events are:
 ```text
 studio.enabledChanged
 studio.transitionChanged
-studio.transitionDurationChanged
 ```
+
+`studio.setTransitionDuration` is a convenience setter for the selected
+Transition and does not emit a Studio duration alias.
 
 Program and Preview keep ownership of `program.sceneChanged` and
 `preview.sceneChanged`; Studio does not emit aliases for them. Stable errors

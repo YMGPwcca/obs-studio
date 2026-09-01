@@ -2,6 +2,7 @@
 
 #include <obs.h>
 
+#include <atomic>
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
@@ -54,6 +55,11 @@ public:
 
 	EventPublishResult publish(EngineEventKind kind, std::string_view event_name, uint64_t revision,
 				   obs_data_t *data = nullptr);
+	// Telemetry from graphics/callback contexts must not wait behind the
+	// protocol writer or a slow controller. The bounded queue still coalesces
+	// and drops this class independently from canonical state events.
+	EventPublishResult try_publish_telemetry(std::string_view event_name, uint64_t revision,
+						 obs_data_t *data = nullptr) noexcept;
 	void require_resync_due_to_overflow(uint64_t revision) noexcept;
 	void require_resync_after_queued_events(uint64_t revision) noexcept;
 
@@ -87,7 +93,7 @@ private:
 	bool resync_pending_ = false;
 	uint64_t resync_revision_ = 0;
 	uint64_t next_seq_ = 1;
-	uint64_t dropped_telemetry_ = 0;
+	std::atomic<uint64_t> dropped_telemetry_ = 0;
 };
 
 } // namespace obs_engine

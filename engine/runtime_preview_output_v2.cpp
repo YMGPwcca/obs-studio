@@ -495,8 +495,7 @@ ObsDataPtr make_preview_output_info(const PreviewOutputV2State &state)
 	}
 	obs_data_set_int(data.get(), "frameSequence",
 			static_cast<long long>(std::min<uint64_t>(state.frame_sequence.load(std::memory_order_relaxed),
-									 std::numeric_limits<long long>::max())));
-	obs_data_set_bool(data.get(), "consumerAttached", state.consumer_attached);
+										 std::numeric_limits<long long>::max())));
 	return data;
 }
 
@@ -1240,6 +1239,7 @@ void Engine::v2_render_preview_outputs(uint32_t base_width, uint32_t base_height
 	if (preview_render_frame_ == frame)
 		return;
 	preview_render_frame_ = frame;
+	v2_publish_transition_progress();
 
 	const PreviewRenderBatch batch = collect_preview_render_batch(preview_outputs_, preview_outputs_mutex_);
 	if (batch.jobs.empty())

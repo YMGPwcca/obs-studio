@@ -152,6 +152,18 @@ function Assert-ColorEvidence($Evidence, [bool] $ExpectChanged, [bool] $ExpectBl
     }
 }
 
+function Assert-Task17ProgramDescriptor($Descriptor) {
+    if (-not $Descriptor.status.ok -or [int64]$Descriptor.revision -lt $script:T17Revision) { Fail-Task17 'get program shared texture failed or regressed the revision.' }
+    if ([string]$Descriptor.data.sharedTexture.type -ne 'd3d11LegacySharedHandle' -or [string]$Descriptor.data.sharedTexture.openApi -ne 'ID3D11Device::OpenSharedResource' -or -not $Descriptor.data.sharedTexture.controllerMustNotClose) { Fail-Task17 'shared texture descriptor did not preserve the documented legacy handle contract.' }
+    if ([string]$Descriptor.data.synchronization.type -ne 'keyedMutex' -or [int]$Descriptor.data.synchronization.consumerAcquireKey -ne 1 -or [int]$Descriptor.data.synchronization.consumerReleaseKey -ne 0) { Fail-Task17 'keyed mutex synchronization descriptor was incorrect.' }
+    if ($Descriptor.data.PSObject.Properties['consumerAttached']) { Fail-Task17 'lease state leaked into the canonical shared-texture descriptor.' }
+}
+
+function Assert-Task17LeaseInfo($Info, [string] $Label) {
+    Assert-Ok $Info $script:T17Revision $Label
+    if ($Info.data.PSObject.Properties['consumerAttached']) { Fail-Task17 'lease state leaked into PreviewOutput.getInfo.' }
+}
+
 function Invoke-Task17Bootstrap {
     Start-Task17Engine $InstallRoot
     $ready = Read-Task17Message
@@ -206,9 +218,9 @@ function Invoke-Task17OutputSetup {
     Read-Task17Event 'previewOutput.created' $previewOutputRevision | Out-Null
     $script:T17Revision = $previewOutputRevision
     $script:T17ProgramDescriptor = Send-Task17Request @{ op = 'request'; id = 't17-get-shared'; method = 'previewOutput.getSharedTexture'; params = @{ previewOutput = $script:T17ProgramOutputHandle } }
-    if (-not $script:T17ProgramDescriptor.status.ok -or [int64]$script:T17ProgramDescriptor.revision -lt $script:T17Revision) { Fail-Task17 'get program shared texture failed or regressed the revision.' }
-    if ([string]$script:T17ProgramDescriptor.data.sharedTexture.type -ne 'd3d11LegacySharedHandle' -or [string]$script:T17ProgramDescriptor.data.sharedTexture.openApi -ne 'ID3D11Device::OpenSharedResource' -or -not $script:T17ProgramDescriptor.data.sharedTexture.controllerMustNotClose) { Fail-Task17 'shared texture descriptor did not preserve the documented legacy handle contract.' }
-    if ([string]$script:T17ProgramDescriptor.data.synchronization.type -ne 'keyedMutex' -or [int]$script:T17ProgramDescriptor.data.synchronization.consumerAcquireKey -ne 1 -or [int]$script:T17ProgramDescriptor.data.synchronization.consumerReleaseKey -ne 0) { Fail-Task17 'keyed mutex synchronization descriptor was incorrect.' }
+    Assert-Task17ProgramDescriptor $script:T17ProgramDescriptor
+    $leaseInfo = Send-Task17Request @{ op = 'request'; id = 't17-lease-info'; method = 'previewOutput.getInfo'; params = @{ previewOutput = $script:T17ProgramOutputHandle } }
+    Assert-Task17LeaseInfo $leaseInfo 'getInfo during shared-texture lease'
     $script:T17InitialGeneration = [string]$script:T17ProgramDescriptor.data.resourceGeneration
     $script:T17Revision = [int64]$script:T17ProgramDescriptor.revision
     Start-Task17Consumer $ConsumerPath $script:T17ProgramDescriptor.data 90
@@ -251,6 +263,8 @@ function Invoke-Task17ResourceChecks {
     $script:T17SecondEvidence = Wait-Task17Consumer
     Assert-ColorEvidence $script:T17SecondEvidence $false $true 'resized shared-texture consumer'
     Assert-Ok (Send-Task17Request @{ op = 'request'; id = 't17-release-2'; method = 'previewOutput.releaseSharedTexture'; params = @{ previewOutput = $script:T17ProgramOutputHandle } }) $script:T17Revision 'release resized shared texture'
+    $postLeaseInfo = Send-Task17Request @{ op = 'request'; id = 't17-post-lease-info'; method = 'previewOutput.getInfo'; params = @{ previewOutput = $script:T17ProgramOutputHandle } }
+    Assert-Task17LeaseInfo $postLeaseInfo 'getInfo after shared-texture lease'
     $disable = Send-Task17GuardedRequest 't17-disable' 'previewOutput.setEnabled' @{ previewOutput = $script:T17ProgramOutputHandle; enabled = $false } $script:T17Revision
     $disableRevision = [int64]$disable.GuardRevision + 1
     Assert-Ok $disable $disableRevision 'disable PreviewOutput'

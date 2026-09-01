@@ -172,8 +172,8 @@ bool setup_telemetry_policy(obs_engine::EventDispatcher &events, std::string &er
 	if (!require(events.subscribe({{"meter.*", false}, {"engine.*", false}}, error),
 		     "telemetry-disabled subscription rejected"))
 		return false;
-	if (!require(events.publish(EngineEventKind::Telemetry, "meter.level", 1) == EventPublishResult::NotSubscribed,
-		     "telemetry was delivered without explicit opt-in"))
+	if (!require(events.try_publish_telemetry("meter.level", 1) == EventPublishResult::NotSubscribed,
+			 "telemetry was delivered without explicit opt-in"))
 		return false;
 	if (!require(events.subscribe({{"meter.*", true}}, error), "telemetry opt-in upgrade rejected"))
 		return false;
@@ -204,14 +204,14 @@ bool test_telemetry_policy()
 	if (!setup_telemetry_policy(events, error))
 		return false;
 
-	if (!require(events.publish(EngineEventKind::Telemetry, "meter.level", 1) == EventPublishResult::Enqueued,
-		     "first telemetry event was not enqueued") ||
+	if (!require(events.try_publish_telemetry("meter.level", 1) == EventPublishResult::Enqueued,
+			 "first telemetry event was not enqueued") ||
 	    !require(events.publish(EngineEventKind::State, "engine.changed", 2) == EventPublishResult::Enqueued,
-		     "interleaved state event was not enqueued") ||
-	    !require(events.publish(EngineEventKind::Telemetry, "meter.level", 3) == EventPublishResult::Coalesced,
-		     "same-name telemetry was not coalesced") ||
-	    !require(events.publish(EngineEventKind::Telemetry, "meter.other", 4) == EventPublishResult::DroppedTelemetry,
-		     "full telemetry queue did not drop independently"))
+			 "interleaved state event was not enqueued") ||
+	    !require(events.try_publish_telemetry("meter.level", 3) == EventPublishResult::Coalesced,
+			 "same-name telemetry was not coalesced") ||
+	    !require(events.try_publish_telemetry("meter.other", 4) == EventPublishResult::DroppedTelemetry,
+			 "full telemetry queue did not drop independently"))
 		return false;
 
 	events.start();

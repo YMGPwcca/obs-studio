@@ -605,7 +605,6 @@ Events:
 - `preview.sceneChanged`
 - `studio.enabledChanged`
 - `studio.transitionChanged`
-- `studio.transitionDurationChanged`
 
 ## 22. Transition API
 
@@ -639,6 +638,10 @@ Events:
 - `transition.durationChanged`
 - `transition.started`
 - `transition.ended`
+
+`transition.progress` is an opt-in, lossy telemetry event. It is sampled at a
+bounded rate, carries a finite normalized progress value, and does not consume
+a mutation revision.
 
 ## 23. Preview output API
 

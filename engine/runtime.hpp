@@ -123,9 +123,12 @@ public:
 	void sync_transition_observer(const std::shared_ptr<TransitionV2Observer> &observer, RevisionState &revisions,
 					      EventDispatcher &events);
 	void v2_prepare_transition_shutdown() noexcept;
-	void v2_cancel_studio_transition() noexcept;
+	bool v2_cancel_studio_transition(uint64_t &cancelled_transition) noexcept;
+	void v2_publish_transition_progress() noexcept;
 	bool v2_start_transition(uint64_t handle, obs_source_t *from, obs_source_t *destination, uint32_t duration_ms,
 				RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_update_transition_duration(uint64_t handle, uint32_t duration, RuntimeV2Result &result,
+					   RuntimeV2Error &error);
 	bool v2_settle_filter_mutation(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_filter_record_update_baseline(uint64_t handle, RuntimeV2Result &result);
 	void v2_filter_forget_source(uint64_t source_id) noexcept;
@@ -439,7 +442,8 @@ private:
 	void remove_items_for_scene(uint64_t scene_id);
 	bool start_runtime();
 	uint64_t v2_current_program_scene() const;
-	bool apply_program_scene_route(uint64_t requested, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool apply_program_scene_route(uint64_t requested, RuntimeV2Result &result, RuntimeV2Error &error,
+				      uint64_t previous_scene_override = 0, bool has_previous_scene_override = false);
 	bool begin_studio_transition(uint64_t program_scene, uint64_t preview_scene, obs_source_t *preview_source,
 					     RuntimeV2Result &result, RuntimeV2Error &error);
 	ObsDataPtr v2_program_data(uint64_t scene_handle) const;
@@ -482,6 +486,7 @@ private:
 	bool preview_render_callback_registered_ = false;
 	bool preview_output_capable_ = false;
 	uint64_t preview_render_frame_ = UINT64_MAX;
+	uint64_t transition_progress_last_frame_time_ = 0;
 	FilterMap filters_;
 	std::unordered_map<obs_source_t *, uint64_t> filter_handles_;
 	std::shared_ptr<SourceV2State> source_v2_state_;

@@ -120,7 +120,10 @@ allocation alive until its own D3D reference is released.
 `previewOutput.enabledChanged`; disabled outputs retain their descriptor but
 produce no frames. `previewOutput.getInfo`, `getSharedTexture`, and
 `releaseSharedTexture` are read/resource-lease operations and do not consume a
-mutation revision.
+mutation revision. The internal consumer attachment is ephemeral lease state;
+it is intentionally absent from the canonical `getInfo`, `list`, and resource
+descriptor payloads, so lease acquisition/release cannot change a
+revision-governed reconstruction result.
 
 ## Stable errors and exclusions
 

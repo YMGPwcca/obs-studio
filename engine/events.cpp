@@ -251,6 +251,32 @@ EventPublishResult EventDispatcher::publish(EngineEventKind kind, std::string_vi
 	return enqueue_event_locked(std::move(pending));
 }
 
+EventPublishResult EventDispatcher::try_publish_telemetry(std::string_view event_name, uint64_t revision,
+								  obs_data_t *data) noexcept
+{
+	try {
+		if (!is_event_name(event_name))
+			return EventPublishResult::InvalidEvent;
+		PendingEvent pending;
+		pending.kind = EngineEventKind::Telemetry;
+		pending.name.assign(event_name);
+		pending.revision = revision;
+		pending.data_json = data_to_json(data);
+		std::unique_lock lock(mutex_, std::try_to_lock);
+		if (!lock.owns_lock()) {
+			++dropped_telemetry_;
+			return EventPublishResult::DroppedTelemetry;
+		}
+		if (stopping_)
+			return EventPublishResult::Stopped;
+		if (!matches_locked(EngineEventKind::Telemetry, event_name))
+			return EventPublishResult::NotSubscribed;
+		return enqueue_telemetry_locked(std::move(pending));
+	} catch (...) {
+		return EventPublishResult::DroppedTelemetry;
+	}
+}
+
 void EventDispatcher::require_resync_due_to_overflow(uint64_t revision) noexcept
 {
 	try {
