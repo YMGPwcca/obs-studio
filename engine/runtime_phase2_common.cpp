@@ -148,6 +148,41 @@ bool phase2_read_handle(obs_data_t *data, const char *name, uint64_t &out)
 	return phase2_read_string(data, name, value, present) && present && phase2_parse_handle(value, out);
 }
 
+bool phase2_read_nullable_handle(obs_data_t *data, const char *name, uint64_t &out, bool &is_null, bool &present)
+{
+	out = 0;
+	is_null = false;
+	obs_data_item_t *item = obs_data_item_byname(data, name);
+	if (!item) {
+		present = false;
+		return true;
+	}
+	present = true;
+	const enum obs_data_type type = obs_data_item_gettype(item);
+	if (type == OBS_DATA_NULL) {
+		is_null = true;
+		obs_data_item_release(&item);
+		return true;
+	}
+	if (type == OBS_DATA_OBJECT) {
+		ObsDataPtr object(obs_data_item_get_obj(item));
+		obs_data_item_release(&item);
+		if (!object) {
+			is_null = true;
+			return true;
+		}
+		return false;
+	}
+	if (type != OBS_DATA_STRING) {
+		obs_data_item_release(&item);
+		return false;
+	}
+	const char *value = obs_data_item_get_string(item);
+	const bool valid = value && phase2_parse_handle(value, out);
+	obs_data_item_release(&item);
+	return valid;
+}
+
 void phase2_set_handle(obs_data_t *data, const char *name, uint64_t handle)
 {
 	const std::string value = std::to_string(handle);

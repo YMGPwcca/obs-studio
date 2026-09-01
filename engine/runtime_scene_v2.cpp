@@ -12,6 +12,14 @@ namespace {
 
 constexpr size_t kMaxSceneNameBytes = 256;
 
+void set_nullable_handle(obs_data_t *data, const char *name, uint64_t handle)
+{
+	if (handle != 0)
+		phase2_set_handle(data, name, handle);
+	else
+		obs_data_set_obj(data, name, nullptr);
+}
+
 struct SceneItemDiscovery {
 	Engine *engine = nullptr;
 	uint64_t scene_id = 0;
@@ -613,6 +621,8 @@ bool Engine::v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, Runtim
 		return false;
 	const uint64_t canvas_handle = scene_canvases_.contains(handle) ? scene_canvases_.at(handle) : 0;
 	const std::vector<uint64_t> all_items = v2_item_handles_for_scene(handle);
+	const bool program_was_scene = v2_current_program_scene() == handle;
+	const bool preview_was_scene = preview_scene_ == handle;
 	std::vector<uint64_t> item_handles = all_items;
 	std::stable_sort(item_handles.begin(), item_handles.end(), [&](uint64_t left, uint64_t right) {
 		const bool left_group = items_.contains(left) && items_.at(left).is_group;
@@ -623,16 +633,23 @@ bool Engine::v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, Runtim
 	});
 
 	result.data = v2_scene_summary(handle, scene);
-	if (program_scene_ == handle) {
+	if (program_was_scene) {
+		auto main_it = canvases_.find(main_canvas_);
+		if (main_it != canvases_.end() && main_it->second.canvas)
+			obs_canvas_set_channel(main_it->second.canvas, 0, nullptr);
+		program_scene_ = 0;
 		ObsDataPtr event_data(obs_data_create());
-		phase2_set_handle(event_data.get(), "previousScene", handle);
-		obs_data_set_bool(event_data.get(), "sceneIsNull", true);
+		set_nullable_handle(event_data.get(), "scene", 0);
+		set_nullable_handle(event_data.get(), "previousScene", handle);
+		if (main_canvas_ != 0)
+			phase2_set_handle(event_data.get(), "canvas", main_canvas_);
 		phase2_append_event(result, "program.sceneChanged", std::move(event_data));
 	}
-	if (preview_scene_ == handle) {
+	if (preview_was_scene) {
+		preview_scene_ = 0;
 		ObsDataPtr event_data(obs_data_create());
-		phase2_set_handle(event_data.get(), "previousScene", handle);
-		obs_data_set_bool(event_data.get(), "sceneIsNull", true);
+		set_nullable_handle(event_data.get(), "scene", 0);
+		set_nullable_handle(event_data.get(), "previousScene", handle);
 		phase2_append_event(result, "preview.sceneChanged", std::move(event_data));
 	}
 	if (!v2_append_item_removal_events(item_handles, result, error))
@@ -643,14 +660,6 @@ bool Engine::v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, Runtim
 		phase2_set_handle(removed_event.get(), "canvas", canvas_handle);
 	phase2_append_event(result, "scene.removed", std::move(removed_event));
 
-	if (program_scene_ == handle) {
-		auto main_it = canvases_.find(main_canvas_);
-		if (main_it != canvases_.end())
-			obs_canvas_set_channel(main_it->second.canvas, 0, nullptr);
-		program_scene_ = 0;
-	}
-	if (preview_scene_ == handle)
-		preview_scene_ = 0;
 	for (const uint64_t item_handle : item_handles) {
 		auto item_it = items_.find(item_handle);
 		if (item_it != items_.end())

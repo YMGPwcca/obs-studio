@@ -395,6 +395,9 @@ private:
 	private:
 	void remove_items_for_source(uint64_t source_id);
 	void remove_items_for_scene(uint64_t scene_id);
+	uint64_t v2_current_program_scene() const;
+	ObsDataPtr v2_program_data(uint64_t scene_handle) const;
+	ObsDataPtr v2_preview_data() const;
 	bool initialize_phase2_runtime();
 	void shutdown_phase2_runtime() noexcept;
 	bool prepare_startup_environment();

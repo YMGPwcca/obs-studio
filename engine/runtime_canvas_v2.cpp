@@ -636,6 +636,8 @@ bool Engine::v2_canvas_set_channel(obs_data_t *params, RuntimeV2Result &result, 
 	uint32_t channel = 0;
 	if (!read_channel_index(params, channel, error))
 		return false;
+	if (entry->is_main && channel == 0)
+		return phase2_fail(error, "invalid_state", "Main Canvas channel 0 is owned by program.setScene");
 	CanvasTarget target;
 	if (!read_canvas_target(*this, params, target, error))
 		return false;

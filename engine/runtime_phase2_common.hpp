@@ -20,6 +20,7 @@ bool phase2_read_array(obs_data_t *data, const char *name, ObsArrayPtr &out, boo
 
 bool phase2_parse_handle(std::string_view value, uint64_t &out);
 bool phase2_read_handle(obs_data_t *data, const char *name, uint64_t &out);
+bool phase2_read_nullable_handle(obs_data_t *data, const char *name, uint64_t &out, bool &is_null, bool &present);
 void phase2_set_handle(obs_data_t *data, const char *name, uint64_t handle);
 
 ObsDataPtr phase2_clone_data(obs_data_t *data);

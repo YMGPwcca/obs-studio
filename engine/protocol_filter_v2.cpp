@@ -131,6 +131,8 @@ constexpr CapabilityDescriptor kCapabilities[] = {
 	{"canvas.rename.v1", true},
 	{"canvas.getChannel.v1", true},
 	{"canvas.setChannel.v1", true},
+	{"program.getScene.v1", false},
+	{"program.setScene.v1", false},
 	{"session.close.v1", false},
 	{"session.getSubscriptions.v1", false},
 	{"session.hello.v1", false},

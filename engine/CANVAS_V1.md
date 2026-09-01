@@ -100,7 +100,8 @@ Supported target types are `source`, `scene`, and null. `canvas.getChannel`
 returns the canonical tagged target and obtains/releases a strong libobs source
 reference during the query. libobs performs the channel's source refcount and
 activation/deactivation work. Program routing uses the Main Canvas channel but
-is owned by `program.*`; Canvas channel APIs do not redefine Studio Preview.
+is owned by `program.*`; `canvas.setChannel` therefore rejects Main Canvas
+channel `0`, and Canvas channel APIs do not redefine Studio Preview.
 
 ## Events, revisions, errors
 

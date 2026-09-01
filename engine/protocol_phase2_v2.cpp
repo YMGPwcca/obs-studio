@@ -61,6 +61,8 @@ enum class Phase2Method {
 	CanvasGetChannel,
 	CanvasSetChannel,
 	CanvasGetFlags,
+	ProgramGetScene,
+	ProgramSetScene,
 	Unknown,
 };
 
@@ -96,6 +98,7 @@ constexpr Phase2MethodName kMethods[] = {
 	{"canvas.setVideoSettings", Phase2Method::CanvasSetVideoSettings},
 	{"canvas.listScenes", Phase2Method::CanvasListScenes}, {"canvas.getChannel", Phase2Method::CanvasGetChannel},
 	{"canvas.setChannel", Phase2Method::CanvasSetChannel}, {"canvas.getFlags", Phase2Method::CanvasGetFlags},
+	{"program.getScene", Phase2Method::ProgramGetScene}, {"program.setScene", Phase2Method::ProgramSetScene},
 };
 
 Phase2Method classify(std::string_view method)
@@ -146,6 +149,8 @@ bool mutating(Phase2Method method)
 	case Phase2Method::CanvasRename:
 	case Phase2Method::CanvasSetVideoSettings:
 	case Phase2Method::CanvasSetChannel:
+		return true;
+	case Phase2Method::ProgramSetScene:
 		return true;
 	default:
 		return false;
@@ -255,6 +260,10 @@ Handler handler_for(Phase2Method method)
 		return &Engine::v2_canvas_set_channel;
 	case Phase2Method::CanvasGetFlags:
 		return &Engine::v2_canvas_get_flags;
+	case Phase2Method::ProgramGetScene:
+		return &Engine::v2_program_get_scene;
+	case Phase2Method::ProgramSetScene:
+		return &Engine::v2_program_set_scene;
 	case Phase2Method::Unknown:
 		return nullptr;
 	}
