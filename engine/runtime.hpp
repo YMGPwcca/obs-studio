@@ -19,6 +19,8 @@ namespace obs_engine {
 
 class EventDispatcher;
 struct AudioV2State;
+struct HotkeyV2State;
+struct HotkeyOwnedContext;
 struct InteractionV2State;
 struct MediaV2State;
 struct MediaV2Observer;
@@ -101,6 +103,26 @@ public:
 	void v2_flush_deferred_source_events(RevisionState::MutationGuard &guard);
 	void v2_sync_source_observers();
 	void v2_prepare_shutdown() noexcept;
+	void v2_bind_hotkey_events(RevisionState *revisions, EventDispatcher *events);
+	void v2_prepare_hotkey_shutdown() noexcept;
+	void v2_register_audio_hotkey(uint64_t source_handle);
+	void v2_forget_audio_hotkey(uint64_t source_handle) noexcept;
+	uint64_t v2_hotkey_owned_source_handle(size_t hotkey_id) const;
+	void v2_hotkey_toggle_audio_mute(uint64_t source_handle) noexcept;
+
+	bool v2_hotkey_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_hotkey_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_hotkey_get_bindings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_hotkey_set_bindings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_hotkey_clear_bindings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_hotkey_trigger(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_hotkey_get_key_name(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_hotkey_get_key_combination_name(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_hotkey_get_conflicts(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_hotkey_get_background_capture(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_hotkey_set_background_capture(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_hotkey_export(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_hotkey_import(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	void v2_bind_audio_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_begin_audio_event_capture(RuntimeV2Result &result);
 	void v2_wait_for_audio_event_callbacks();
@@ -525,6 +547,7 @@ private:
 	std::unordered_map<obs_source_t *, uint64_t> filter_handles_;
 	std::shared_ptr<SourceV2State> source_v2_state_;
 	std::shared_ptr<AudioV2State> audio_v2_state_;
+	std::shared_ptr<HotkeyV2State> hotkey_v2_state_;
 	std::shared_ptr<InteractionV2State> interaction_v2_state_;
 	std::shared_ptr<MediaV2State> media_v2_state_;
 	std::shared_ptr<FilterV2State> filter_v2_state_;

@@ -67,6 +67,51 @@ constexpr AudioMethodName kAudioMethods[] = {
 	{"audio.unsubscribeMeters", AudioMethod::UnsubscribeMeters},
 };
 
+enum class HotkeyMethod {
+	List,
+	Get,
+	GetBindings,
+	SetBindings,
+	ClearBindings,
+	Trigger,
+	GetKeyName,
+	GetKeyCombinationName,
+	GetConflicts,
+	GetBackgroundCapture,
+	SetBackgroundCapture,
+	Export,
+	Import,
+	Unknown,
+};
+
+struct Phase3Dispatch {
+	AudioMethod audio = AudioMethod::Unknown;
+	HotkeyMethod hotkey = HotkeyMethod::Unknown;
+	bool is_hotkey = false;
+	bool mutating = false;
+};
+
+struct HotkeyMethodName {
+	std::string_view name;
+	HotkeyMethod method;
+};
+
+constexpr HotkeyMethodName kHotkeyMethods[] = {
+	{"hotkey.list", HotkeyMethod::List},
+	{"hotkey.get", HotkeyMethod::Get},
+	{"hotkey.getBindings", HotkeyMethod::GetBindings},
+	{"hotkey.setBindings", HotkeyMethod::SetBindings},
+	{"hotkey.clearBindings", HotkeyMethod::ClearBindings},
+	{"hotkey.trigger", HotkeyMethod::Trigger},
+	{"hotkey.getKeyName", HotkeyMethod::GetKeyName},
+	{"hotkey.getKeyCombinationName", HotkeyMethod::GetKeyCombinationName},
+	{"hotkey.getConflicts", HotkeyMethod::GetConflicts},
+	{"hotkey.getBackgroundCapture", HotkeyMethod::GetBackgroundCapture},
+	{"hotkey.setBackgroundCapture", HotkeyMethod::SetBackgroundCapture},
+	{"hotkey.export", HotkeyMethod::Export},
+	{"hotkey.import", HotkeyMethod::Import},
+};
+
 constexpr AudioMethod kMutatingMethods[] = {
 	AudioMethod::SetMute,
 	AudioMethod::ToggleMute,
@@ -79,6 +124,14 @@ constexpr AudioMethod kMutatingMethods[] = {
 	AudioMethod::SetPushToTalk,
 	AudioMethod::SetPushToMute,
 	AudioMethod::SetMonitoringDevice,
+};
+
+constexpr HotkeyMethod kHotkeyMutatingMethods[] = {
+	HotkeyMethod::SetBindings,
+	HotkeyMethod::ClearBindings,
+	HotkeyMethod::Trigger,
+	HotkeyMethod::SetBackgroundCapture,
+	HotkeyMethod::Import,
 };
 
 using AudioMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
@@ -112,6 +165,29 @@ constexpr AudioHandlerEntry kHandlers[] = {
 	{AudioMethod::UnsubscribeMeters, &Engine::v2_audio_unsubscribe_meters},
 };
 
+using HotkeyMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
+
+struct HotkeyHandlerEntry {
+	HotkeyMethod method;
+	HotkeyMethodHandler handler;
+};
+
+constexpr HotkeyHandlerEntry kHotkeyHandlers[] = {
+	{HotkeyMethod::List, &Engine::v2_hotkey_list},
+	{HotkeyMethod::Get, &Engine::v2_hotkey_get},
+	{HotkeyMethod::GetBindings, &Engine::v2_hotkey_get_bindings},
+	{HotkeyMethod::SetBindings, &Engine::v2_hotkey_set_bindings},
+	{HotkeyMethod::ClearBindings, &Engine::v2_hotkey_clear_bindings},
+	{HotkeyMethod::Trigger, &Engine::v2_hotkey_trigger},
+	{HotkeyMethod::GetKeyName, &Engine::v2_hotkey_get_key_name},
+	{HotkeyMethod::GetKeyCombinationName, &Engine::v2_hotkey_get_key_combination_name},
+	{HotkeyMethod::GetConflicts, &Engine::v2_hotkey_get_conflicts},
+	{HotkeyMethod::GetBackgroundCapture, &Engine::v2_hotkey_get_background_capture},
+	{HotkeyMethod::SetBackgroundCapture, &Engine::v2_hotkey_set_background_capture},
+	{HotkeyMethod::Export, &Engine::v2_hotkey_export},
+	{HotkeyMethod::Import, &Engine::v2_hotkey_import},
+};
+
 AudioMethod classify(std::string_view name)
 {
 	for (const AudioMethodName &entry : kAudioMethods) {
@@ -121,9 +197,27 @@ AudioMethod classify(std::string_view name)
 	return AudioMethod::Unknown;
 }
 
+HotkeyMethod classify_hotkey(std::string_view name)
+{
+	for (const HotkeyMethodName &entry : kHotkeyMethods) {
+		if (entry.name == name)
+			return entry.method;
+	}
+	return HotkeyMethod::Unknown;
+}
+
 bool is_mutating(AudioMethod method)
 {
 	for (const AudioMethod candidate : kMutatingMethods) {
+		if (candidate == method)
+			return true;
+	}
+	return false;
+}
+
+bool is_mutating(HotkeyMethod method)
+{
+	for (const HotkeyMethod candidate : kHotkeyMutatingMethods) {
 		if (candidate == method)
 			return true;
 	}
@@ -137,6 +231,26 @@ AudioMethodHandler handler_for(AudioMethod method)
 			return entry.handler;
 	}
 	return nullptr;
+}
+
+HotkeyMethodHandler hotkey_handler_for(HotkeyMethod method)
+{
+	for (const HotkeyHandlerEntry &entry : kHotkeyHandlers) {
+		if (entry.method == method)
+			return entry.handler;
+	}
+	return nullptr;
+}
+
+bool classify_phase3(std::string_view name, Phase3Dispatch &dispatch)
+{
+	dispatch.audio = classify(name);
+	dispatch.hotkey = classify_hotkey(name);
+	if (dispatch.audio == AudioMethod::Unknown && dispatch.hotkey == HotkeyMethod::Unknown)
+		return false;
+	dispatch.is_hotkey = dispatch.hotkey != HotkeyMethod::Unknown;
+	dispatch.mutating = dispatch.is_hotkey ? is_mutating(dispatch.hotkey) : is_mutating(dispatch.audio);
+	return true;
 }
 
 bool reject_read_guard(const V2Request &request, uint64_t revision)
@@ -190,11 +304,11 @@ private:
 	bool active_ = true;
 };
 
-bool prepare(const V2Request &request, AudioMethod method, Engine &engine, RevisionState &revisions,
+bool prepare(const V2Request &request, bool mutating, Engine &engine, RevisionState &revisions,
 		     RuntimeV2Result &result, std::optional<Phase3CaptureScope> &capture,
 		     std::optional<RevisionState::MutationGuard> &guard)
 {
-	if (is_mutating(method)) {
+	if (mutating) {
 		capture.emplace(engine, result);
 		guard.emplace(revisions.lock_mutation());
 		engine.v2_drain_deferred_source_events(*guard);
@@ -214,8 +328,8 @@ bool prepare(const V2Request &request, AudioMethod method, Engine &engine, Revis
 	return true;
 }
 
-bool execute(Engine &engine, AudioMethod method, const V2Request &request, RuntimeV2Result &result,
-		      RuntimeV2Error &error)
+bool execute_audio(Engine &engine, AudioMethod method, const V2Request &request, RuntimeV2Result &result,
+			   RuntimeV2Error &error)
 {
 	const AudioMethodHandler handler = handler_for(method);
 	if (!handler) {
@@ -224,6 +338,25 @@ bool execute(Engine &engine, AudioMethod method, const V2Request &request, Runti
 		return false;
 	}
 	return (engine.*handler)(request.params.get(), result, error);
+}
+
+bool execute_hotkey(Engine &engine, HotkeyMethod method, const V2Request &request, RuntimeV2Result &result,
+			    RuntimeV2Error &error)
+{
+	const HotkeyMethodHandler handler = hotkey_handler_for(method);
+	if (!handler) {
+		error.code = "internal_error";
+		error.message = "hotkey method dispatch failed";
+		return false;
+	}
+	return (engine.*handler)(request.params.get(), result, error);
+}
+
+bool execute_phase3(Engine &engine, const Phase3Dispatch &dispatch, const V2Request &request,
+			   RuntimeV2Result &result, RuntimeV2Error &error)
+{
+	return dispatch.is_hotkey ? execute_hotkey(engine, dispatch.hotkey, request, result, error)
+				 : execute_audio(engine, dispatch.audio, request, result, error);
 }
 
 void publish_events(EventDispatcher &events, uint64_t revision, RuntimeV2Result &result)
@@ -238,7 +371,7 @@ void fail_phase3_request(const V2Request &request, RevisionState &revisions, Run
 {
 	if (error.code.empty()) {
 		error.code = "internal_error";
-		error.message = "audio dispatch failed";
+		error.message = "Phase 3 dispatch failed";
 	}
 	send_v2_error(request.id, error.code.c_str(), error.message.c_str(), nullptr,
 		      guard ? guard->current() : revisions.current());
@@ -254,7 +387,7 @@ bool commit_phase3_result(RuntimeV2Result &result, std::optional<RevisionState::
 		return true;
 	if (!guard) {
 		error.code = "internal_error";
-		error.message = "read-only audio method mutated engine state";
+		error.message = "read-only Phase 3 method mutated engine state";
 		return false;
 	}
 	revision = guard->commit_mutation();
@@ -265,24 +398,26 @@ bool commit_phase3_result(RuntimeV2Result &result, std::optional<RevisionState::
 
 bool is_phase3_method(std::string_view method)
 {
-	return classify(method) != AudioMethod::Unknown;
+	return classify(method) != AudioMethod::Unknown || classify_hotkey(method) != HotkeyMethod::Unknown;
 }
 
 bool handle_phase3_request(Engine &engine, RevisionState &revisions, EventDispatcher &events,
 			   const V2Request &request)
 {
-	const AudioMethod method = classify(request.method);
-	if (method == AudioMethod::Unknown)
+	Phase3Dispatch dispatch;
+	if (!classify_phase3(request.method, dispatch))
 		return false;
 
 	RuntimeV2Result result;
 	RuntimeV2Error error;
 	std::optional<Phase3CaptureScope> capture;
 	std::optional<RevisionState::MutationGuard> guard;
-	if (!prepare(request, method, engine, revisions, result, capture, guard))
+	if (!prepare(request, dispatch.mutating, engine, revisions, result, capture, guard))
 		return true;
 
-	const bool succeeded = execute(engine, method, request, result, error);
+	const bool succeeded = execute_phase3(engine, dispatch, request, result, error);
+	if (dispatch.hotkey == HotkeyMethod::Trigger && !result.events.empty())
+		result.mutated = true;
 	engine.v2_sync_source_observers();
 	if (!succeeded) {
 		fail_phase3_request(request, revisions, error, capture, guard);

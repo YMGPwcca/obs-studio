@@ -1,0 +1,46 @@
+name: Engine Protocol v2 Task 22 Verification
+
+on:
+  push:
+    branches:
+      - phase3-output-stack
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hotkey-v1:
+    name: Build and verify hotkey namespace
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Build Windows minimal runtime
+        uses: ./.github/actions/build-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
+      - name: Audit normal package
+        shell: pwsh
+        run: '& .github/scripts/engine-protocol-v2-task22-package-audit.ps1 -InstallRoot (Resolve-Path ''build_x64/install'')'
+      - name: Build CI-only hotkey fixture
+        shell: pwsh
+        run: '& .github/scripts/engine-protocol-v2-task22-build-fixture.ps1'
+      - name: Stage CI-only hotkey fixture
+        shell: pwsh
+        run: '& .github/scripts/engine-protocol-v2-task22-stage-fixture.ps1 -InstallRoot (Resolve-Path ''build_x64/install'') -FixtureBinary (Resolve-Path ''build_x64/engine/RelWithDebInfo/task22-hotkey-source.dll'')'
+      - name: Run Task 22 hotkey integration
+        shell: pwsh
+        run: '& .github/scripts/engine-protocol-v2-task22.ps1 -InstallRoot (Resolve-Path ''build_x64/install'')'
+      - name: Remove CI-only hotkey fixture
+        if: always()
+        shell: pwsh
+        run: '& .github/scripts/engine-protocol-v2-task22-remove-fixture.ps1 -InstallRoot (Resolve-Path ''build_x64/install'')'
+      - name: Audit package after fixture cleanup
+        if: always()
+        shell: pwsh
+        run: '& .github/scripts/engine-protocol-v2-task22-package-audit.ps1 -InstallRoot (Resolve-Path ''build_x64/install'')'

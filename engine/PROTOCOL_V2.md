@@ -735,14 +735,16 @@ Methods:
 - `hotkey.getKeyName`
 - `hotkey.getKeyCombinationName`
 - `hotkey.getConflicts`
+- `hotkey.getBackgroundCapture`
 - `hotkey.setBackgroundCapture`
 - `hotkey.export`
 - `hotkey.import`
 
 Events:
 
-- `hotkey.triggered`
 - `hotkey.bindingsChanged`
+- `hotkey.backgroundCaptureChanged`
+- `hotkey.triggered` (telemetry)
 
 ## 26. Encoder API
 

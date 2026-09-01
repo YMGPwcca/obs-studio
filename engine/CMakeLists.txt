@@ -6,6 +6,7 @@ target_sources(
     config.cpp
     config.hpp
     runtime_audio_v2.cpp
+    runtime_hotkey_v2.cpp
     events.cpp
     events.hpp
     host.cpp
@@ -157,6 +158,20 @@ target_compile_features(obs-engine-task21-audio-plugin PRIVATE cxx_std_20)
 target_compile_definitions(
   obs-engine-task21-audio-plugin
   PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+)
+
+# Task 22 deterministic hotkey registerers. The fixture contains only
+# frontend/source hotkeys and is staged exclusively by the Task-22 lane.
+add_library(obs-engine-task22-hotkey-plugin MODULE EXCLUDE_FROM_ALL task22_hotkey_plugin.cpp)
+target_compile_features(obs-engine-task22-hotkey-plugin PRIVATE cxx_std_20)
+target_compile_definitions(
+  obs-engine-task22-hotkey-plugin
+  PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+)
+target_link_libraries(obs-engine-task22-hotkey-plugin PRIVATE OBS::libobs)
+set_target_properties(
+  obs-engine-task22-hotkey-plugin
+  PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task22-hotkey-source"
 )
 target_link_libraries(obs-engine-task21-audio-plugin PRIVATE OBS::libobs)
 set_target_properties(

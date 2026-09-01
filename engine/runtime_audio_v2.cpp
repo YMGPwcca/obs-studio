@@ -1213,10 +1213,14 @@ void Engine::v2_sync_audio_observers()
 	std::vector<std::shared_ptr<AudioV2Observer>> retire;
 	std::vector<std::pair<uint64_t, obs_source_t *>> add;
 	collect_audio_observer_changes(*audio_v2_state_, sources_, add, retire);
-	for (const auto &[handle, source] : add)
+	for (const auto &[handle, source] : add) {
 		add_audio_observer(*audio_v2_state_, sources_, handle, source, retire);
-	for (auto &observer : retire)
+		v2_register_audio_hotkey(handle);
+	}
+	for (auto &observer : retire) {
+		v2_forget_audio_hotkey(observer->handle);
 		disconnect_audio_observer(*observer);
+	}
 	if (!retire.empty()) {
 		std::lock_guard lock(audio_v2_state_->mutex);
 		audio_v2_state_->retired.insert(audio_v2_state_->retired.end(), retire.begin(), retire.end());
@@ -1236,6 +1240,7 @@ void Engine::v2_audio_forget_source(uint64_t handle) noexcept
 			audio_v2_state_->observers.erase(observer_it);
 		}
 	}
+	v2_forget_audio_hotkey(handle);
 	if (observer)
 		disconnect_audio_observer(*observer);
 	for (;;) {
