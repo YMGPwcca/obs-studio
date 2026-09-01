@@ -244,6 +244,27 @@ uint64_t Engine::v2_source_handle_for_pointer(const obs_source_t *source) const
 	return 0;
 }
 
+obs_source_t *Engine::v2_source_for_handle(uint64_t handle) const
+{
+	const auto it = sources_.find(handle);
+	return it == sources_.end() ? nullptr : it->second;
+}
+
+obs_scene_t *Engine::v2_scene_for_handle(uint64_t handle) const
+{
+	const auto it = scenes_.find(handle);
+	return it == scenes_.end() ? nullptr : it->second;
+}
+
+uint64_t Engine::v2_scene_handle_for_pointer(const obs_source_t *source) const
+{
+	for (const auto &[handle, scene] : scenes_) {
+		if (scene && obs_scene_get_source(scene) == source)
+			return handle;
+	}
+	return 0;
+}
+
 bool Engine::v2_register_scene_item(uint64_t scene_id, uint64_t parent_group_id, obs_sceneitem_t *item,
 					std::vector<uint64_t> &added, RuntimeV2Error &error)
 {

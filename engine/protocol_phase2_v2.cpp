@@ -49,6 +49,18 @@ enum class Phase2Method {
 	ItemAddToGroup,
 	ItemRemoveFromGroup,
 	ItemGetChildren,
+	CanvasList,
+	CanvasGetMain,
+	CanvasGet,
+	CanvasCreate,
+	CanvasRemove,
+	CanvasRename,
+	CanvasGetVideoSettings,
+	CanvasSetVideoSettings,
+	CanvasListScenes,
+	CanvasGetChannel,
+	CanvasSetChannel,
+	CanvasGetFlags,
 	Unknown,
 };
 
@@ -77,6 +89,13 @@ constexpr Phase2MethodName kMethods[] = {
 	{"item.createGroup", Phase2Method::ItemCreateGroup}, {"item.ungroup", Phase2Method::ItemUngroup},
 	{"item.addToGroup", Phase2Method::ItemAddToGroup}, {"item.removeFromGroup", Phase2Method::ItemRemoveFromGroup},
 	{"item.getChildren", Phase2Method::ItemGetChildren},
+	{"canvas.list", Phase2Method::CanvasList}, {"canvas.getMain", Phase2Method::CanvasGetMain},
+	{"canvas.get", Phase2Method::CanvasGet}, {"canvas.create", Phase2Method::CanvasCreate},
+	{"canvas.remove", Phase2Method::CanvasRemove}, {"canvas.rename", Phase2Method::CanvasRename},
+	{"canvas.getVideoSettings", Phase2Method::CanvasGetVideoSettings},
+	{"canvas.setVideoSettings", Phase2Method::CanvasSetVideoSettings},
+	{"canvas.listScenes", Phase2Method::CanvasListScenes}, {"canvas.getChannel", Phase2Method::CanvasGetChannel},
+	{"canvas.setChannel", Phase2Method::CanvasSetChannel}, {"canvas.getFlags", Phase2Method::CanvasGetFlags},
 };
 
 Phase2Method classify(std::string_view method)
@@ -121,6 +140,12 @@ bool mutating(Phase2Method method)
 	case Phase2Method::ItemUngroup:
 	case Phase2Method::ItemAddToGroup:
 	case Phase2Method::ItemRemoveFromGroup:
+		return true;
+	case Phase2Method::CanvasCreate:
+	case Phase2Method::CanvasRemove:
+	case Phase2Method::CanvasRename:
+	case Phase2Method::CanvasSetVideoSettings:
+	case Phase2Method::CanvasSetChannel:
 		return true;
 	default:
 		return false;
@@ -206,6 +231,30 @@ Handler handler_for(Phase2Method method)
 		return &Engine::v2_item_remove_from_group;
 	case Phase2Method::ItemGetChildren:
 		return &Engine::v2_item_get_children;
+	case Phase2Method::CanvasList:
+		return &Engine::v2_canvas_list;
+	case Phase2Method::CanvasGetMain:
+		return &Engine::v2_canvas_get_main;
+	case Phase2Method::CanvasGet:
+		return &Engine::v2_canvas_get;
+	case Phase2Method::CanvasCreate:
+		return &Engine::v2_canvas_create;
+	case Phase2Method::CanvasRemove:
+		return &Engine::v2_canvas_remove;
+	case Phase2Method::CanvasRename:
+		return &Engine::v2_canvas_rename;
+	case Phase2Method::CanvasGetVideoSettings:
+		return &Engine::v2_canvas_get_video_settings;
+	case Phase2Method::CanvasSetVideoSettings:
+		return &Engine::v2_canvas_set_video_settings;
+	case Phase2Method::CanvasListScenes:
+		return &Engine::v2_canvas_list_scenes;
+	case Phase2Method::CanvasGetChannel:
+		return &Engine::v2_canvas_get_channel;
+	case Phase2Method::CanvasSetChannel:
+		return &Engine::v2_canvas_set_channel;
+	case Phase2Method::CanvasGetFlags:
+		return &Engine::v2_canvas_get_flags;
 	case Phase2Method::Unknown:
 		return nullptr;
 	}

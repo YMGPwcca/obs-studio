@@ -385,6 +385,9 @@ private:
 	std::vector<uint64_t> v2_scene_ordered_item_handles(uint64_t scene_id, obs_scene_t *scene) const;
 	uint64_t v2_item_handle_for_pointer(const obs_sceneitem_t *item) const;
 	uint64_t v2_source_handle_for_pointer(const obs_source_t *source) const;
+	obs_source_t *v2_source_for_handle(uint64_t handle) const;
+	obs_scene_t *v2_scene_for_handle(uint64_t handle) const;
+	uint64_t v2_scene_handle_for_pointer(const obs_source_t *source) const;
 	ObsDataPtr v2_scene_summary(uint64_t handle, obs_scene_t *scene) const;
 	ObsDataPtr v2_item_summary(uint64_t handle, const ItemEntry &entry) const;
 	void v2_release_canvas_registry() noexcept;
