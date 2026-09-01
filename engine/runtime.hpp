@@ -18,6 +18,7 @@
 namespace obs_engine {
 
 class EventDispatcher;
+struct AudioV2State;
 struct InteractionV2State;
 struct MediaV2State;
 struct MediaV2Observer;
@@ -100,6 +101,38 @@ public:
 	void v2_flush_deferred_source_events(RevisionState::MutationGuard &guard);
 	void v2_sync_source_observers();
 	void v2_prepare_shutdown() noexcept;
+	void v2_bind_audio_events(RevisionState *revisions, EventDispatcher *events);
+	void v2_begin_audio_event_capture(RuntimeV2Result &result);
+	void v2_wait_for_audio_event_callbacks();
+	void v2_end_audio_event_capture() noexcept;
+	void v2_drain_deferred_audio_events(RevisionState::MutationGuard &guard);
+	void v2_flush_deferred_audio_events(RevisionState::MutationGuard &guard);
+	void v2_sync_audio_observers();
+	void v2_prepare_audio_shutdown() noexcept;
+	void v2_audio_forget_source(uint64_t handle) noexcept;
+
+	bool v2_audio_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_set_mute(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_toggle_mute(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_get_volume(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_set_volume(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_set_volume_db(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_set_balance(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_set_sync_offset(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_get_monitoring_enabled(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_set_monitoring_enabled(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_get_tracks(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_set_tracks(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_get_push_to_talk(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_set_push_to_talk(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_get_push_to_mute(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_set_push_to_mute(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_list_monitoring_devices(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_get_monitoring_device(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_set_monitoring_device(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_subscribe_meters(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_audio_unsubscribe_meters(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_get_audio_source(obs_data_t *params, uint64_t &handle, obs_source_t *&source, RuntimeV2Error &error) const;
 	void v2_settle_source_mutation(obs_data_t *params, RuntimeV2Result &result);
 	void v2_normalize_source_kind_metadata(RuntimeV2Result &result);
 	void v2_bind_media_events(RevisionState *revisions, EventDispatcher *events);
@@ -460,6 +493,7 @@ private:
 	void shutdown_phase2_runtime() noexcept;
 	bool prepare_startup_environment();
 	bool reset_video();
+	bool reset_audio();
 	bool load_runtime_modules();
 	void shutdown();
 
@@ -490,6 +524,7 @@ private:
 	FilterMap filters_;
 	std::unordered_map<obs_source_t *, uint64_t> filter_handles_;
 	std::shared_ptr<SourceV2State> source_v2_state_;
+	std::shared_ptr<AudioV2State> audio_v2_state_;
 	std::shared_ptr<InteractionV2State> interaction_v2_state_;
 	std::shared_ptr<MediaV2State> media_v2_state_;
 	std::shared_ptr<FilterV2State> filter_v2_state_;

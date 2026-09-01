@@ -1,6 +1,7 @@
 #include "protocol_v2.hpp"
 
 #include "events.hpp"
+#include "protocol_phase3_v2.hpp"
 #include "protocol_phase2_v2.hpp"
 #include "revision.hpp"
 #include "runtime.hpp"
@@ -105,6 +106,28 @@ constexpr CapabilityDescriptor kCapabilities[] = {
 	{"media.stop.v1", false},
 	{"media.togglePause.v1", false},
 	{"media.v1", false},
+	{"audio.v1", false},
+	{"audio.get.v1", false},
+	{"audio.setMute.v1", false},
+	{"audio.toggleMute.v1", false},
+	{"audio.getVolume.v1", false},
+	{"audio.setVolume.v1", false},
+	{"audio.setVolumeDb.v1", false},
+	{"audio.setBalance.v1", false},
+	{"audio.setSyncOffset.v1", false},
+	{"audio.getMonitoringEnabled.v1", false},
+	{"audio.setMonitoringEnabled.v1", false},
+	{"audio.getTracks.v1", false},
+	{"audio.setTracks.v1", false},
+	{"audio.getPushToTalk.v1", false},
+	{"audio.setPushToTalk.v1", false},
+	{"audio.getPushToMute.v1", false},
+	{"audio.setPushToMute.v1", false},
+	{"audio.listMonitoringDevices.v1", false},
+	{"audio.getMonitoringDevice.v1", false},
+	{"audio.setMonitoringDevice.v1", false},
+	{"audio.subscribeMeters.v1", false},
+	{"audio.unsubscribeMeters.v1", false},
 	{"properties.v1", false},
 	{"properties.get.v1", false},
 	{"properties.getListItems.v1", false},
@@ -573,6 +596,8 @@ bool handle_v2_request(Engine &engine, const Config &config, RevisionState &revi
 	const FilterMethod filter_method = classify_filter_method(request.method);
 	if (filter_method != FilterMethod::Unknown)
 		return handle_filter_request(engine, revisions, events, request, filter_method);
+	if (is_phase3_method(request.method))
+		return handle_phase3_request(engine, revisions, events, request);
 
 	if (is_phase2_method(request.method))
 		return handle_phase2_request(engine, revisions, events, request);

@@ -435,6 +435,7 @@ bool Engine::v2_source_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 			     make_item_identity(item_handle, item_it->second.scene_id, item_it->second.source_id));
 	}
 	v2_filter_prepare_parent_removal(handle, result);
+	v2_audio_forget_source(handle);
 	v2_preview_output_invalidate_source(handle, result);
 	ObsDataPtr source_event(obs_data_create());
 	set_handle(source_event.get(), "source", handle);

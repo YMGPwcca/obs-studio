@@ -140,6 +140,18 @@ bool Engine::reset_video()
 	return true;
 }
 
+bool Engine::reset_audio()
+{
+	obs_audio_info audio = {};
+	audio.samples_per_sec = 48000;
+	audio.speakers = SPEAKERS_STEREO;
+	if (!obs_reset_audio(&audio)) {
+		std::fprintf(stderr, "obs-engine: obs_reset_audio failed\n");
+		return false;
+	}
+	return true;
+}
+
 bool Engine::load_runtime_modules()
 {
 	obs_module_failure_info failures = {};
@@ -172,7 +184,8 @@ bool Engine::start()
 
 bool Engine::start_runtime()
 {
-	return prepare_startup_environment() && reset_video() && load_runtime_modules() && initialize_phase2_runtime();
+	return prepare_startup_environment() && reset_video() && reset_audio() && load_runtime_modules() &&
+	       initialize_phase2_runtime();
 }
 
 bool Engine::handle(obs_data_t *request)

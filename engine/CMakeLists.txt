@@ -5,6 +5,7 @@ target_sources(
   PRIVATE
     config.cpp
     config.hpp
+    runtime_audio_v2.cpp
     events.cpp
     events.hpp
     host.cpp
@@ -17,6 +18,8 @@ target_sources(
     protocol_filter_v2.cpp
     protocol_phase2_v2.cpp
     protocol_phase2_v2.hpp
+    protocol_phase3_v2.cpp
+    protocol_phase3_v2.hpp
     protocol_v2.cpp
     protocol_v2.hpp
     revision.hpp
@@ -145,6 +148,20 @@ target_link_libraries(obs-engine-task11-filter-plugin PRIVATE OBS::libobs)
 set_target_properties(
   obs-engine-task11-filter-plugin
   PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task11-filter-source"
+)
+
+# Task 21 deterministic audio source. It is built and staged only by the
+# Task-21 integration workflow and has no install rule.
+add_library(obs-engine-task21-audio-plugin MODULE EXCLUDE_FROM_ALL task21_audio_source.cpp)
+target_compile_features(obs-engine-task21-audio-plugin PRIVATE cxx_std_20)
+target_compile_definitions(
+  obs-engine-task21-audio-plugin
+  PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+)
+target_link_libraries(obs-engine-task21-audio-plugin PRIVATE OBS::libobs)
+set_target_properties(
+  obs-engine-task21-audio-plugin
+  PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task21-audio-source"
 )
 
 # Restrict implicit dependent-DLL resolution before main() runs. 0xA00 is

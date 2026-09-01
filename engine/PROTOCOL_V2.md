@@ -696,16 +696,19 @@ Methods:
 - `audio.setTracks`
 - `audio.getTracks`
 - `audio.setPushToTalk`
-- `audio.setPushToTalkDelay`
 - `audio.setPushToMute`
-- `audio.setPushToMuteDelay`
-- `audio.setPeakMeterMode`
 - `audio.subscribeMeters`
 - `audio.unsubscribeMeters`
+- `audio.listMonitoringDevices`
 - `audio.getMonitoringDevice`
 - `audio.setMonitoringDevice`
 
-Meter subscriptions specify a maximum delivery rate. Meter events are telemetry and may be coalesced.
+Meter subscriptions specify a maximum delivery rate and a per-subscription
+peak mode. Meter events are telemetry and may be coalesced. The protocol uses
+logical one-based audio tracks represented by bounded object entries because
+the current libobs data-array container stores object values. Zero multiplier
+is represented with a documented finite dB floor; NaN and infinity never cross
+the protocol boundary.
 
 Events:
 
@@ -715,8 +718,9 @@ Events:
 - `audio.syncOffsetChanged`
 - `audio.monitoringChanged`
 - `audio.tracksChanged`
-- `audio.meter`
+- `audio.gatingChanged`
 - `audio.monitoringDeviceChanged`
+- `audio.meter`
 
 ## 25. Hotkey API
 
