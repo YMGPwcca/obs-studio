@@ -43,4 +43,4 @@ jobs:
           LIZARD_PATH: ${{ runner.temp }}/libobs-lizard
         run: |
           $ErrorActionPreference = 'Stop'
-          & pwsh -NoProfile -File tools/check-complexity.ps1 -Mode Check -LizardPythonPath $env:LIZARD_PATH
+          & pwsh -NoProfile -File tools/check-complexity.ps1 -Mode Check -RequireCompleteBaseline -LizardPythonPath $env:LIZARD_PATH

@@ -11,7 +11,8 @@ param(
     [string] $BaselinePath = 'complexity-after.json',
     [string] $AllowlistPath = 'complexity-exceptions.json',
     [string] $IdentityMigrationsPath = 'complexity-identity-migrations.json',
-    [string] $LizardPythonPath = ''
+    [string] $LizardPythonPath = '',
+    [switch] $RequireCompleteBaseline
 )
 
 $ErrorActionPreference = 'Stop'
@@ -2390,6 +2391,29 @@ function Find-BeforeMetric {
     return $null
 }
 
+function Get-EnforcedContinuitySummary {
+    param(
+        [Parameter(Mandatory = $true)] [object[]] $CurrentMetrics,
+        [Parameter(Mandatory = $true)] [hashtable] $BaselineByKey,
+        [Parameter(Mandatory = $true)] [hashtable] $ScopeByPath,
+        [Parameter(Mandatory = $true)] [object] $Continuity
+    )
+
+    $current = @(Get-EnforcedScopeMetrics $CurrentMetrics)
+    $matched = 0
+    foreach ($metric in $current) {
+        $baseline = Find-BeforeMetric $metric $BaselineByKey $ScopeByPath[[string] $metric.file] $Continuity.byCurrentKey
+        if ($null -ne $baseline) {
+            $matched++
+        }
+    }
+    return [pscustomobject]@{
+        current    = $current.Count
+        matched    = $matched
+        unbaselined = $current.Count - $matched
+    }
+}
+
 function Get-ComparisonLabel {
     param([Parameter(Mandatory = $true)] [string] $Name)
 
@@ -3483,6 +3507,7 @@ function Invoke-CheckMode {
     $allowlist = Get-ComplexityAllowlist $AllowlistPath
     $baselineByKey = New-MetricKeyMap @($baseline.functions) 'accepted complexity baseline'
     Assert-IdentityMigrationTargets $Context.Measurement.Continuity $Context.Measurement.AllFunctions $Context.Scope.ByPath $baselineByKey
+    $continuity = Get-EnforcedContinuitySummary $Context.Measurement.Metrics $baselineByKey $Context.Scope.ByPath $Context.Measurement.Continuity
     $violations = [System.Collections.Generic.List[string]]::new()
     foreach ($identityViolation in (Get-UnmigratedIdentityViolations $Context.Measurement.AllFunctions $baselineByKey $Context.Scope.ByPath $Context.Measurement.Continuity)) {
         $violations.Add($identityViolation)
@@ -3493,6 +3518,12 @@ function Invoke-CheckMode {
         foreach ($violation in (Get-CheckMetricViolations $metric $baselineMetric $exception)) {
             $violations.Add($violation)
         }
+    }
+    Write-Output "current enforced scopes: $($continuity.current)"
+    Write-Output "baseline/continuity matched scopes: $($continuity.matched)"
+    Write-Output "unbaselined enforced scopes: $($continuity.unbaselined)"
+    if ($RequireCompleteBaseline -and $continuity.unbaselined -ne 0) {
+        $violations.Add("Complete complexity baseline required: $($continuity.unbaselined) enforced scopes are unbaselined.")
     }
     Write-Output ((Format-StatTable (Get-Statistics $Context.Measurement.Metrics)))
     Write-Output ((Format-ScopeStatTable (Get-Statistics $Context.Measurement.Metrics 'script-body') 'Script bodies'))
@@ -3532,4 +3563,4 @@ function Invoke-ComplexityRun {
     Invoke-ComplexityMode $Mode $context
 }
 
-$null = Invoke-ComplexityRun
+Invoke-ComplexityRun

@@ -36,6 +36,10 @@ function Trust-FixtureBaseline {
     $replacement = "`$acceptedBaselineBlob = '$hash'"
     $updatedChecker = $checker.Replace($match.Value, $replacement)
     Write-FixtureText $checkerPath $updatedChecker
+    # Production pins are committed before the strict check. Hide this
+    # fixture-only in-place pin from its synthetic working-tree diff so the
+    # strict completeness assertion measures the same post-freeze source set.
+    Invoke-FixtureGit $Scenario.Directory @('update-index', '--assume-unchanged', '--', 'tools/check-complexity.ps1') | Out-Null
 }
 
 function Invoke-FixtureGit {
@@ -61,7 +65,8 @@ function Get-FixtureHead {
 function Invoke-ComplexityChecker {
     param(
         [Parameter(Mandatory = $true)] [object] $Scenario,
-        [Parameter(Mandatory = $true)] [ValidateSet('Baseline', 'After', 'Check')] [string] $Mode
+        [Parameter(Mandatory = $true)] [ValidateSet('Baseline', 'After', 'Check')] [string] $Mode,
+        [switch] $RequireCompleteBaseline
     )
 
     $directory = [string] $Scenario.Directory
@@ -78,6 +83,9 @@ function Invoke-ComplexityChecker {
     )
     if ($LizardPythonPath) {
         $arguments += @('-LizardPythonPath', $LizardPythonPath)
+    }
+    if ($RequireCompleteBaseline) {
+        $arguments += '-RequireCompleteBaseline'
     }
     $output = @(& pwsh @arguments 2>&1)
     return [pscustomobject]@{
@@ -118,6 +126,22 @@ function Assert-CheckerFailure {
         $detail = $detail.Substring(0, 320) + '...'
     }
     Write-Output "${Label}: expected FAIL (exit $($Result.ExitCode)): $detail"
+}
+
+function Assert-CompleteBaselineSummary {
+    param(
+        [Parameter(Mandatory = $true)] [object] $Result,
+        [Parameter(Mandatory = $true)] [string] $Label
+    )
+
+    $current = [regex]::Match($Result.Output, 'current enforced scopes:\s*(\d+)')
+    $matched = [regex]::Match($Result.Output, 'baseline/continuity matched scopes:\s*(\d+)')
+    $unbaselined = [regex]::Match($Result.Output, 'unbaselined enforced scopes:\s*(\d+)')
+    if (-not $current.Success -or -not $matched.Success -or -not $unbaselined.Success -or
+        $current.Groups[1].Value -ne $matched.Groups[1].Value -or $unbaselined.Groups[1].Value -ne '0') {
+        throw "$Label did not report a complete baseline summary (exit=$($Result.ExitCode), outputLength=$($Result.Output.Length)).`n$($Result.Output)"
+    }
+    Write-Output "${Label}: complete baseline current=$($current.Groups[1].Value) matched=$($matched.Groups[1].Value) unbaselined=0"
 }
 
 function Get-ReportFunctionMetric {
@@ -669,8 +693,9 @@ try {
     Assert-FunctionMeasured $caseURegressed 'src/accepted.cpp' 'post_hardening_function' 'CASE U frozen function regression'
     Assert-CheckerFailure $caseURegressed 'CASE U frozen CC 2 to CC 3 regression' 'baseline 2'
     Commit-FixtureFile $caseU 'src/accepted.cpp' (New-IfChain 'post_hardening_function' 'int' 1) 'fixture restore frozen post-hardening function'
-    $caseUPass = Invoke-ComplexityChecker $caseU 'Check'
+    $caseUPass = Invoke-ComplexityChecker $caseU 'Check' -RequireCompleteBaseline
     Assert-FunctionMeasured $caseUPass 'src/accepted.cpp' 'post_hardening_function' 'CASE U frozen function at baseline'
+    Assert-CompleteBaselineSummary $caseUPass 'CASE U complete baseline summary'
     Assert-CheckerPass $caseUPass 'CASE U frozen CC 2 remains passing'
 
     $caseV = New-Fixture 'case-v-new-script-body-bad'
