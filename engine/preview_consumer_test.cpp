@@ -129,9 +129,10 @@ bool select_adapter(IDXGIFactory1 *factory, const LUID &expected, ComPtr<IDXGIAd
 		const HRESULT hr = factory->EnumAdapters1(index, candidate.GetAddressOf());
 		if (hr == DXGI_ERROR_NOT_FOUND)
 			break;
-		if (FAILED(hr))
+		if (FAILED(hr)) {
 			fail("EnumAdapters1 failed", hr);
 			return false;
+		}
 		DXGI_ADAPTER_DESC1 description = {};
 		if (FAILED(candidate->GetDesc1(&description)))
 			continue;
