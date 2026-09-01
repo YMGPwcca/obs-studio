@@ -15,7 +15,7 @@
     }
   ],
   "operatorAuthoredCommitCountInLineage": 64,
-  "operatorAuthoredCodeCommitCountInScope": 144,
+  "operatorAuthoredCodeCommitCountInScope": 146,
   "operatorAuthoredCommits": [
     {
       "hash": "ffffcfd1a65677a16d9ec596103d99bde080deb8",
@@ -1223,12 +1223,13 @@
       "path": ".github/scripts/engine-protocol-v2-task21.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 1,
+      "operatorCommitCount": 2,
       "operatorCommits": [
-        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20",
+        "df89f5e16dfa143b93857f2e6fab697bcb5eb35d"
       ],
       "operatorBlameLineCount": 0,
-      "scopedFunctionCount": 26,
+      "scopedFunctionCount": 27,
       "currentFunctionKeys": [
         "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Fail-Task21|Fail-Task21",
         "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Start-Task21Engine|Start-Task21Engine",
@@ -1245,6 +1246,7 @@
         "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Read-Task21Meter|Read-Task21Meter",
         "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Wait-Task21StereoLayout|Wait-Task21StereoLayout",
         "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Request|Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Request-Task21UnGuarded|Request-Task21UnGuarded",
         "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Assert-Task21Capabilities|Assert-Task21Capabilities",
         "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Get-Task21Kinds|Get-Task21Kinds",
         "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Initialize-Task21Session|Initialize-Task21Session",
@@ -3951,7 +3953,7 @@
       "path": "tools/check-complexity.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 29,
+      "operatorCommitCount": 30,
       "operatorCommits": [
         "a6b2b65df6cbcb289e4b81af1ca898a5397c3992",
         "979148802c665938cd7532c4c50fedf9259d725e",
@@ -3981,7 +3983,8 @@
         "5206d23c90943968b6667ebd5837ed80670bf0d0",
         "55aca3debcc6a08a28ddaac589e3f08cf18a147c",
         "13faf231012b1f9ac23ebc000b4fb4260e7c2ff8",
-        "34cf254206e684997d9ad78d76fd187fd0188dc0"
+        "34cf254206e684997d9ad78d76fd187fd0188dc0",
+        "50df18f16160f5c8a4c31dbd0bb4ac71cfa45f21"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 165,

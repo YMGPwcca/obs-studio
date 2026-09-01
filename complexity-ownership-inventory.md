@@ -9,7 +9,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 
 - GitHub account: **YMGPwcca**
 - Author-authored commits in accepted lineage: **64**
-- Author-authored commits touching current executable scope: **144**
+- Author-authored commits touching current executable scope: **146**
 
 | Author name | Author email |
 |---|---|
@@ -54,7 +54,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `.github/scripts/engine-protocol-v2-task21-package-audit.ps1` | PowerShell | A | 1 | 0 | 0 |
 | `.github/scripts/engine-protocol-v2-task21-remove-fixture.ps1` | PowerShell | A | 1 | 0 | 0 |
 | `.github/scripts/engine-protocol-v2-task21-stage-fixture.ps1` | PowerShell | A | 1 | 0 | 0 |
-| `.github/scripts/engine-protocol-v2-task21.ps1` | PowerShell | A | 1 | 0 | 26 |
+| `.github/scripts/engine-protocol-v2-task21.ps1` | PowerShell | A | 2 | 0 | 27 |
 | `.github/scripts/engine-protocol-v2-task22-build-fixture.ps1` | PowerShell | A | 1 | 0 | 0 |
 | `.github/scripts/engine-protocol-v2-task22-package-audit.ps1` | PowerShell | A | 1 | 0 | 0 |
 | `.github/scripts/engine-protocol-v2-task22-remove-fixture.ps1` | PowerShell | A | 1 | 0 | 0 |
@@ -136,7 +136,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `libobs/obs-source-media-internal.h` | C/C++ | A | 1 | 34 | 0 |
 | `libobs/obs-source.c` | C/C++ | M | 4 | 164 | 22 |
 | `plugins/win-capture/plugin-main.c` | C/C++ | M | 2 | 42 | 6 |
-| `tools/check-complexity.ps1` | PowerShell | A | 29 | 0 | 165 |
+| `tools/check-complexity.ps1` | PowerShell | A | 30 | 0 | 165 |
 | `tools/check-complexity.tests.ps1` | PowerShell | A | 24 | 0 | 23 |
 
 ## Non-CC changed paths
