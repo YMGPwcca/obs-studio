@@ -15,7 +15,7 @@
     }
   ],
   "operatorAuthoredCommitCountInLineage": 64,
-  "operatorAuthoredCodeCommitCountInScope": 98,
+  "operatorAuthoredCodeCommitCountInScope": 135,
   "operatorAuthoredCommits": [
     {
       "hash": "ffffcfd1a65677a16d9ec596103d99bde080deb8",
@@ -404,6 +404,111 @@
   ],
   "cyclomaticTargetFiles": [
     {
+      "path": ".github/scripts/engine-protocol-v2-phase2-lane.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 1,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-lane.ps1|Invoke-Phase2Lane|Invoke-Phase2Lane"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-phase2-package-audit.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 1,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-package-audit.ps1|Invoke-Phase2PackageAudit|Invoke-Phase2PackageAudit"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-phase2-physical.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "782551e733bd589d15072c351d251013e7b90317",
+        "2a974c55b700826459c0aa6736a9d06526db9d06",
+        "ba88ff308df6d217c7a42a0739459ad6582abdf2"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 43,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Fail-P2Physical|Fail-P2Physical",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Start-P2PhysicalEngine|Start-P2PhysicalEngine",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Stop-P2PhysicalEngine|Stop-P2PhysicalEngine",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Read-P2PhysicalMessage|Read-P2PhysicalMessage",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Send-P2PhysicalRequest|Send-P2PhysicalRequest",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Send-P2PhysicalGuarded|Send-P2PhysicalGuarded",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Assert-P2PhysicalOk|Assert-P2PhysicalOk",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Test-P2PhysicalAllowedDiagnostic|Test-P2PhysicalAllowedDiagnostic",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Assert-P2PhysicalStderr|Assert-P2PhysicalStderr",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Test-P2PhysicalAmbientEvent|Test-P2PhysicalAmbientEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Take-P2PhysicalEvent|Take-P2PhysicalEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Test-P2PhysicalEventSequence|Test-P2PhysicalEventSequence",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Test-P2PhysicalExpectedEvent|Test-P2PhysicalExpectedEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Assert-P2PhysicalAmbientSequence|Assert-P2PhysicalAmbientSequence",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Assert-P2PhysicalEventOrder|Assert-P2PhysicalEventOrder",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Read-P2PhysicalEvent|Read-P2PhysicalEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Sync-P2PhysicalReadRevision|Sync-P2PhysicalReadRevision",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Assert-P2PhysicalReadOk|Assert-P2PhysicalReadOk",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Read-P2PhysicalEventsThrough|Read-P2PhysicalEventsThrough",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|New-P2PhysicalConsumer|New-P2PhysicalConsumer",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Wait-P2PhysicalConsumer|Wait-P2PhysicalConsumer",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Assert-P2PhysicalAdapterMismatch|Assert-P2PhysicalAdapterMismatch",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Assert-P2PhysicalColor|Assert-P2PhysicalColor",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|New-P2GraphCanvas|New-P2GraphCanvas",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|New-P2GraphScene|New-P2GraphScene",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|New-P2GraphSource|New-P2GraphSource",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|New-P2GraphItem|New-P2GraphItem",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Invoke-P2PhysicalItemMutation|Invoke-P2PhysicalItemMutation",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Invoke-P2PhysicalItemCoverage|Invoke-P2PhysicalItemCoverage",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Invoke-P2GraphComposition|Invoke-P2GraphComposition",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|New-P2PhysicalOutput|New-P2PhysicalOutput",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Test-P2PhysicalOutput|Test-P2PhysicalOutput",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Invoke-P2StaticOutputs|Invoke-P2StaticOutputs",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Invoke-P2TransitionPhysical|Invoke-P2TransitionPhysical",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Start-P2PhysicalCancellationTransition|Start-P2PhysicalCancellationTransition",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Assert-P2PhysicalCancellationEvents|Assert-P2PhysicalCancellationEvents",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Assert-P2PhysicalCancellationSettled|Assert-P2PhysicalCancellationSettled",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Invoke-P2TransitionCancellationPhysical|Invoke-P2TransitionCancellationPhysical",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Invoke-P2ResourceRecreation|Invoke-P2ResourceRecreation",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Remove-P2GraphSource|Remove-P2GraphSource",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Remove-P2GraphScene|Remove-P2GraphScene",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Invoke-P2PhysicalCleanup|Invoke-P2PhysicalCleanup",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-physical.ps1|Invoke-P2PhysicalScenario|Invoke-P2PhysicalScenario"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-phase2-regression.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 6,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-regression.ps1|Invoke-RequiredScript|Invoke-RequiredScript",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-regression.ps1|Invoke-Task8Regression|Invoke-Task8Regression",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-regression.ps1|Invoke-Task9Regression|Invoke-Task9Regression",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-regression.ps1|Invoke-Task10Regression|Invoke-Task10Regression",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-regression.ps1|Invoke-Task11Regression|Invoke-Task11Regression",
+        "powershell|function|.github/scripts/engine-protocol-v2-phase2-regression.ps1|Invoke-Phase2Regression|Invoke-Phase2Regression"
+      ]
+    },
+    {
       "path": ".github/scripts/engine-protocol-v2-task1-footprint.ps1",
       "language": "PowerShell",
       "status": "A",
@@ -503,12 +608,13 @@
       "path": ".github/scripts/engine-protocol-v2-task10.ps1",
       "language": "PowerShell",
       "status": "M",
-      "operatorCommitCount": 4,
+      "operatorCommitCount": 5,
       "operatorCommits": [
         "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
         "6a590c2985a99d186c8eecd0241acdc824d32168",
         "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
-        "1a71cc3a4287a7b5aac51ce86975023594df3b74"
+        "1a71cc3a4287a7b5aac51ce86975023594df3b74",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
       ],
       "operatorBlameLineCount": 610,
       "scopedFunctionCount": 28,
@@ -621,11 +727,12 @@
       "path": ".github/scripts/engine-protocol-v2-task11-timeout-race.ps1",
       "language": "PowerShell",
       "status": "M",
-      "operatorCommitCount": 3,
+      "operatorCommitCount": 4,
       "operatorCommits": [
         "fd8d56dbdaff0a7e23f9900864c83dd3fd2ebab2",
         "be4a7aeddfb8221140e5df45dc4ae4f1ec7f63ca",
-        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a"
+        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
       ],
       "operatorBlameLineCount": 266,
       "scopedFunctionCount": 15,
@@ -651,13 +758,14 @@
       "path": ".github/scripts/engine-protocol-v2-task11.ps1",
       "language": "PowerShell",
       "status": "M",
-      "operatorCommitCount": 5,
+      "operatorCommitCount": 6,
       "operatorCommits": [
         "1370346aef34d7d4c6aa0c03e446b73a69d20a92",
         "fbab77143a84bc101e9444f0dd2a516aab8d008a",
         "be4a7aeddfb8221140e5df45dc4ae4f1ec7f63ca",
         "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
-        "932acc45235d5b4c63ec86a2ead0cdc6c1942a7d"
+        "932acc45235d5b4c63ec86a2ead0cdc6c1942a7d",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
       ],
       "operatorBlameLineCount": 907,
       "scopedFunctionCount": 46,
@@ -711,6 +819,295 @@
       ]
     },
     {
+      "path": ".github/scripts/engine-protocol-v2-task12.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "6be51d166b03474765d0f8242af441c61748a03f",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 12,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task12.ps1|Fail-Task12|Fail-Task12",
+        "powershell|function|.github/scripts/engine-protocol-v2-task12.ps1|Start-Task12Engine|Start-Task12Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task12.ps1|Stop-Task12Engine|Stop-Task12Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task12.ps1|Read-Task12Message|Read-Task12Message",
+        "powershell|function|.github/scripts/engine-protocol-v2-task12.ps1|Send-Task12Request|Send-Task12Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task12.ps1|Assert-Task12Ok|Assert-Task12Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task12.ps1|Assert-Task12Error|Assert-Task12Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task12.ps1|Read-Task12Event|Read-Task12Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task12.ps1|Invoke-Task12Bootstrap|Invoke-Task12Bootstrap",
+        "powershell|function|.github/scripts/engine-protocol-v2-task12.ps1|Invoke-Task12SceneLifecycle|Invoke-Task12SceneLifecycle",
+        "powershell|function|.github/scripts/engine-protocol-v2-task12.ps1|Invoke-Task12Cleanup|Invoke-Task12Cleanup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task12.ps1|Invoke-Task12Scenario|Invoke-Task12Scenario"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task13.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "141906c4249d1ecdbf4e79188dbcb8016d04a3c2",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 15,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Fail-Task13|Fail-Task13",
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Start-Task13Engine|Start-Task13Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Stop-Task13Engine|Stop-Task13Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Read-Task13Message|Read-Task13Message",
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Send-Task13Request|Send-Task13Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Read-Task13Event|Read-Task13Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Invoke-Task13Bootstrap|Invoke-Task13Bootstrap",
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Invoke-Task13TransformChecks|Invoke-Task13TransformChecks",
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Invoke-Task13PropertyChecks|Invoke-Task13PropertyChecks",
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Invoke-Task13OrderingChecks|Invoke-Task13OrderingChecks",
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Invoke-Task13GroupingChecks|Invoke-Task13GroupingChecks",
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Invoke-Task13Cleanup|Invoke-Task13Cleanup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task13.ps1|Invoke-Task13Scenario|Invoke-Task13Scenario"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task14-canvas-failure-lane.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "71e65a5b4bbf63347ebc67b01593a49ed38095cd"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 2,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure-lane.ps1|Select-Phase2CanvasFailureGenerator|Select-Phase2CanvasFailureGenerator",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure-lane.ps1|Invoke-Phase2CanvasFailureLane|Invoke-Phase2CanvasFailureLane"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task14-canvas-failure.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "71e65a5b4bbf63347ebc67b01593a49ed38095cd"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 16,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Fail-Task14CanvasFailure|Fail-Task14CanvasFailure",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Start-Task14CanvasFailureEngine|Start-Task14CanvasFailureEngine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Stop-Task14CanvasFailureEngine|Stop-Task14CanvasFailureEngine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Read-Task14CanvasFailureMessage|Read-Task14CanvasFailureMessage",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Send-Task14CanvasFailureRequest|Send-Task14CanvasFailureRequest",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Send-Task14CanvasFailureGuarded|Send-Task14CanvasFailureGuarded",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Assert-Task14CanvasFailureOk|Assert-Task14CanvasFailureOk",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Assert-Task14CanvasFailureError|Assert-Task14CanvasFailureError",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Assert-Task14CanvasFailureReadOk|Assert-Task14CanvasFailureReadOk",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Read-Task14CanvasFailureEvent|Read-Task14CanvasFailureEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Read-Task14CanvasFailureEventsThrough|Read-Task14CanvasFailureEventsThrough",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Assert-Task14CanvasFailureNoEvents|Assert-Task14CanvasFailureNoEvents",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Start-Task14CanvasFailureConsumer|Start-Task14CanvasFailureConsumer",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Read-Task14CanvasFailureConsumer|Read-Task14CanvasFailureConsumer",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Assert-Task14CanvasFailureLeaseShape|Assert-Task14CanvasFailureLeaseShape",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1|Invoke-Task14CanvasFailureScenario|Invoke-Task14CanvasFailureScenario"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task14.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "47ddc99c15f95de87a895d3e1ca3dd66bac3befe",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 13,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task14.ps1|Fail-Task14|Fail-Task14",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14.ps1|Start-Task14Engine|Start-Task14Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14.ps1|Stop-Task14Engine|Stop-Task14Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14.ps1|Read-Task14Message|Read-Task14Message",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14.ps1|Send-Task14Request|Send-Task14Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14.ps1|Read-Task14Event|Read-Task14Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14.ps1|Invoke-Task14Bootstrap|Invoke-Task14Bootstrap",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14.ps1|Invoke-Task14CanvasSetup|Invoke-Task14CanvasSetup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14.ps1|Invoke-Task14CanvasOperations|Invoke-Task14CanvasOperations",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14.ps1|Invoke-Task14Cleanup|Invoke-Task14Cleanup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task14.ps1|Invoke-Task14Scenario|Invoke-Task14Scenario"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task15.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "94c52dc5d0728ea4bd75efa95a04568f614eebdf",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 14,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task15.ps1|Fail-Task15|Fail-Task15",
+        "powershell|function|.github/scripts/engine-protocol-v2-task15.ps1|Start-Task15Engine|Start-Task15Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task15.ps1|Stop-Task15Engine|Stop-Task15Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task15.ps1|Read-Task15Message|Read-Task15Message",
+        "powershell|function|.github/scripts/engine-protocol-v2-task15.ps1|Send-Task15Request|Send-Task15Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task15.ps1|Send-Task15Legacy|Send-Task15Legacy",
+        "powershell|function|.github/scripts/engine-protocol-v2-task15.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task15.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task15.ps1|Read-Task15Event|Read-Task15Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task15.ps1|Invoke-Task15Bootstrap|Invoke-Task15Bootstrap",
+        "powershell|function|.github/scripts/engine-protocol-v2-task15.ps1|Invoke-Task15ProgramRouting|Invoke-Task15ProgramRouting",
+        "powershell|function|.github/scripts/engine-protocol-v2-task15.ps1|Invoke-Task15LegacyAndRemoval|Invoke-Task15LegacyAndRemoval",
+        "powershell|function|.github/scripts/engine-protocol-v2-task15.ps1|Invoke-Task15Cleanup|Invoke-Task15Cleanup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task15.ps1|Invoke-Task15Scenario|Invoke-Task15Scenario"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task16.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "438ee2328c8f82f363ef551e8ff85b96b1e076d6",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 13,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task16.ps1|Fail-Task16|Fail-Task16",
+        "powershell|function|.github/scripts/engine-protocol-v2-task16.ps1|Start-Task16Engine|Start-Task16Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task16.ps1|Stop-Task16Engine|Stop-Task16Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task16.ps1|Read-Task16Message|Read-Task16Message",
+        "powershell|function|.github/scripts/engine-protocol-v2-task16.ps1|Send-Task16Request|Send-Task16Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task16.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task16.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task16.ps1|Read-Task16Event|Read-Task16Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task16.ps1|Invoke-Task16Bootstrap|Invoke-Task16Bootstrap",
+        "powershell|function|.github/scripts/engine-protocol-v2-task16.ps1|Invoke-Task16RouteSetup|Invoke-Task16RouteSetup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task16.ps1|Invoke-Task16IndependenceChecks|Invoke-Task16IndependenceChecks",
+        "powershell|function|.github/scripts/engine-protocol-v2-task16.ps1|Invoke-Task16CleanupChecks|Invoke-Task16CleanupChecks",
+        "powershell|function|.github/scripts/engine-protocol-v2-task16.ps1|Invoke-Task16Scenario|Invoke-Task16Scenario"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task17.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "cde3063445f7a8977b40a09cab3e547203657d68",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
+        "ba88ff308df6d217c7a42a0739459ad6582abdf2"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 23,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Fail-Task17|Fail-Task17",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Start-Task17Engine|Start-Task17Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Stop-Task17Engine|Stop-Task17Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Read-Task17Message|Read-Task17Message",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Send-Task17Request|Send-Task17Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Send-Task17GuardedRequest|Send-Task17GuardedRequest",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Read-Task17Event|Read-Task17Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Start-Task17Consumer|Start-Task17Consumer",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Wait-Task17Consumer|Wait-Task17Consumer",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Assert-ColorEvidence|Assert-ColorEvidence",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Assert-Task17ProgramDescriptor|Assert-Task17ProgramDescriptor",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Assert-Task17LeaseInfo|Assert-Task17LeaseInfo",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Invoke-Task17Bootstrap|Invoke-Task17Bootstrap",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Invoke-Task17ColorSetup|Invoke-Task17ColorSetup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Invoke-Task17OutputSetup|Invoke-Task17OutputSetup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Invoke-Task17RouteSwitch|Invoke-Task17RouteSwitch",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Invoke-Task17ResourceChecks|Invoke-Task17ResourceChecks",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Invoke-Task17Cleanup|Invoke-Task17Cleanup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Invoke-Task17Scenario|Invoke-Task17Scenario",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Write-Task17FailureDetails|Write-Task17FailureDetails",
+        "powershell|function|.github/scripts/engine-protocol-v2-task17.ps1|Invoke-Task17FailureCleanup|Invoke-Task17FailureCleanup"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task18.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "42c724c1d247bc64f15475c3edc1d39393ba2f7c",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
+        "ba88ff308df6d217c7a42a0739459ad6582abdf2"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 28,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Fail-Task18|Fail-Task18",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Start-Task18Engine|Start-Task18Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Stop-Task18Engine|Stop-Task18Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Read-Task18Message|Read-Task18Message",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Send-Task18Request|Send-Task18Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Send-Task18Guarded|Send-Task18Guarded",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Take-Task18Event|Take-Task18Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Record-Task18Progress|Record-Task18Progress",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Assert-Task18ExpectedEvent|Assert-Task18ExpectedEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Assert-Task18EventAfterResponse|Assert-Task18EventAfterResponse",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Read-Task18Event|Read-Task18Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Invoke-Task18Bootstrap|Invoke-Task18Bootstrap",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Invoke-Task18TransitionSetup|Invoke-Task18TransitionSetup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Invoke-Task18DirectProgramChanges|Invoke-Task18DirectProgramChanges",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Assert-Task18RunningProgram|Assert-Task18RunningProgram",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Assert-Task18FirstCompletion|Assert-Task18FirstCompletion",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Invoke-Task18FirstTransition|Invoke-Task18FirstTransition",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Assert-Task18IdleAgreement|Assert-Task18IdleAgreement",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Invoke-Task18CancellationChecks|Invoke-Task18CancellationChecks",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Enable-Task18TransitionTelemetry|Enable-Task18TransitionTelemetry",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Assert-Task18SecondTransitionState|Assert-Task18SecondTransitionState",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Assert-Task18ProgressSample|Assert-Task18ProgressSample",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Assert-Task18ProgressSamples|Assert-Task18ProgressSamples",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Invoke-Task18SecondTransition|Invoke-Task18SecondTransition",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Invoke-Task18Cleanup|Invoke-Task18Cleanup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task18.ps1|Invoke-Task18Scenario|Invoke-Task18Scenario"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task19.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "aee7464375c7c875b6c407e0f909546e990d3355",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 13,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task19.ps1|Fail-Task19|Fail-Task19",
+        "powershell|function|.github/scripts/engine-protocol-v2-task19.ps1|Start-Task19Engine|Start-Task19Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task19.ps1|Stop-Task19Engine|Stop-Task19Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task19.ps1|Read-Task19Message|Read-Task19Message",
+        "powershell|function|.github/scripts/engine-protocol-v2-task19.ps1|Send-Task19Request|Send-Task19Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task19.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task19.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task19.ps1|Read-Task19Event|Read-Task19Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task19.ps1|Invoke-Task19Bootstrap|Invoke-Task19Bootstrap",
+        "powershell|function|.github/scripts/engine-protocol-v2-task19.ps1|Invoke-Task19TransitionSetup|Invoke-Task19TransitionSetup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task19.ps1|Invoke-Task19TransitionMutations|Invoke-Task19TransitionMutations",
+        "powershell|function|.github/scripts/engine-protocol-v2-task19.ps1|Invoke-Task19Cleanup|Invoke-Task19Cleanup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task19.ps1|Invoke-Task19Scenario|Invoke-Task19Scenario"
+      ]
+    },
+    {
       "path": ".github/scripts/engine-protocol-v2-task2-framing.ps1",
       "language": "PowerShell",
       "status": "A",
@@ -741,21 +1138,57 @@
       ]
     },
     {
-      "path": ".github/scripts/engine-protocol-v2-task3-capabilities.ps1",
+      "path": ".github/scripts/engine-protocol-v2-task20.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 1,
+      "operatorCommitCount": 2,
       "operatorCommits": [
-        "a667b0247ef285c1d00f29c6865f78fa5dded8a0"
+        "0748d0f323d1b2ee9a4403b01004718e4cbf6f99",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 19,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Fail-Task20|Fail-Task20",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Start-Task20Engine|Start-Task20Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Stop-Task20Engine|Stop-Task20Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Read-Task20Message|Read-Task20Message",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Send-Task20Request|Send-Task20Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Send-Task20Guarded|Send-Task20Guarded",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Read-Task20Event|Read-Task20Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Read-Task20EventsThrough|Read-Task20EventsThrough",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Invoke-Task20Bootstrap|Invoke-Task20Bootstrap",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Invoke-Task20GraphSetup|Invoke-Task20GraphSetup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Invoke-Task20SourceSetup|Invoke-Task20SourceSetup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Invoke-Task20OutputSetup|Invoke-Task20OutputSetup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Invoke-Task20RetargetAndReset|Invoke-Task20RetargetAndReset",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Invoke-Task20InvalidationChecks|Invoke-Task20InvalidationChecks",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Invoke-Task20CanvasCleanup|Invoke-Task20CanvasCleanup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Invoke-Task20FinalCleanup|Invoke-Task20FinalCleanup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task20.ps1|Invoke-Task20Scenario|Invoke-Task20Scenario"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task3-capabilities.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "a667b0247ef285c1d00f29c6865f78fa5dded8a0",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 21,
       "currentFunctionKeys": [
         "powershell|function|.github/scripts/engine-protocol-v2-task3-capabilities.ps1|Initialize-Task3Diagnostics|Initialize-Task3Diagnostics",
         "powershell|function|.github/scripts/engine-protocol-v2-task3-capabilities.ps1|Start-Task3Engine|Start-Task3Engine",
         "powershell|function|.github/scripts/engine-protocol-v2-task3-capabilities.ps1|Read-Task3EngineMessage|Read-Task3EngineMessage",
         "powershell|function|.github/scripts/engine-protocol-v2-task3-capabilities.ps1|Send-Task3Request|Send-Task3Request",
         "powershell|function|.github/scripts/engine-protocol-v2-task3-capabilities.ps1|Get-Task3CapabilityNames|Get-Task3CapabilityNames",
+        "powershell|function|.github/scripts/engine-protocol-v2-task3-capabilities.ps1|Test-Task3AllowedExperimentalCapability|Test-Task3AllowedExperimentalCapability",
+        "powershell|function|.github/scripts/engine-protocol-v2-task3-capabilities.ps1|Assert-Task3CapabilityExperimentStatus|Assert-Task3CapabilityExperimentStatus",
         "powershell|function|.github/scripts/engine-protocol-v2-task3-capabilities.ps1|Assert-Task3Hello|Assert-Task3Hello",
         "powershell|function|.github/scripts/engine-protocol-v2-task3-capabilities.ps1|Assert-Task3HelloCapabilities|Assert-Task3HelloCapabilities",
         "powershell|function|.github/scripts/engine-protocol-v2-task3-capabilities.ps1|Assert-Task3CapabilitiesResponse|Assert-Task3CapabilitiesResponse",
@@ -849,17 +1282,22 @@
       "path": ".github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 2,
+      "operatorCommitCount": 3,
       "operatorCommits": [
         "a667b0247ef285c1d00f29c6865f78fa5dded8a0",
-        "e630ec8e1b80cd4ef4cd840df7485d430d162c83"
+        "e630ec8e1b80cd4ef4cd840df7485d430d162c83",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
       ],
       "operatorBlameLineCount": 0,
-      "scopedFunctionCount": 31,
+      "scopedFunctionCount": 35,
       "currentFunctionKeys": [
         "powershell|function|.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1|Initialize-Task6Runtime|Initialize-Task6Runtime",
         "powershell|function|.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1|Read-Task6EngineMessage|Read-Task6EngineMessage",
         "powershell|function|.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1|Send-Task6Request|Send-Task6Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1|Read-Task6Response|Read-Task6Response",
+        "powershell|function|.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1|Get-Task6NextEvent|Get-Task6NextEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1|Assert-Task6EventEnvelope|Assert-Task6EventEnvelope",
+        "powershell|function|.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1|Read-Task6NamedEvent|Read-Task6NamedEvent",
         "powershell|function|.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1|Read-Task6StateEvent|Read-Task6StateEvent",
         "powershell|function|.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1|Assert-Task6CanonicalHandle|Assert-Task6CanonicalHandle",
         "powershell|function|.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1|Assert-Task6Capabilities|Assert-Task6Capabilities",
@@ -1029,6 +1467,20 @@
       ]
     },
     {
+      "path": ".github/scripts/engine-protocol-v2-task8-remove-fixture.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 1,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task8-remove-fixture.ps1|Invoke-Task8FixtureRemove|Invoke-Task8FixtureRemove"
+      ]
+    },
+    {
       "path": ".github/scripts/engine-protocol-v2-task8-source-smoke.ps1",
       "language": "PowerShell",
       "status": "A",
@@ -1136,10 +1588,11 @@
       "path": ".github/scripts/engine-protocol-v2-task9.ps1",
       "language": "PowerShell",
       "status": "M",
-      "operatorCommitCount": 2,
+      "operatorCommitCount": 3,
       "operatorCommits": [
         "f59d6b6c87b7ca789adb6c55bc0a9c8e4ce361dc",
-        "0da7e1fb0e726a01967556a2fcfcaa9ec4ce861a"
+        "0da7e1fb0e726a01967556a2fcfcaa9ec4ce861a",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
       ],
       "operatorBlameLineCount": 346,
       "scopedFunctionCount": 15,
@@ -1165,11 +1618,12 @@
       "path": "engine/config.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 3,
+      "operatorCommitCount": 4,
       "operatorCommits": [
         "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
         "d47733b98421332ac54e26a671824230e49169c8",
-        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a"
+        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
+        "71e65a5b4bbf63347ebc67b01593a49ed38095cd"
       ],
       "operatorBlameLineCount": 102,
       "scopedFunctionCount": 7,
@@ -1186,13 +1640,14 @@
     {
       "path": "engine/config.hpp",
       "language": "C/C++",
-      "status": "A",
-      "operatorCommitCount": 4,
+      "status": "M",
+      "operatorCommitCount": 5,
       "operatorCommits": [
         "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
         "b7b905ee67b3c73c5366e398327378e0f35a0b7c",
         "08010cdc6e58a0ff2760fd58bc813227487876cd",
-        "2744b3bcbbdef6e24f108c6c70cc213282e95607"
+        "2744b3bcbbdef6e24f108c6c70cc213282e95607",
+        "71e65a5b4bbf63347ebc67b01593a49ed38095cd"
       ],
       "operatorBlameLineCount": 46,
       "scopedFunctionCount": 0,
@@ -1202,11 +1657,12 @@
       "path": "engine/events_test.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 3,
+      "operatorCommitCount": 4,
       "operatorCommits": [
         "435e176a49aa13348fd810dff5c0040732d5a9c3",
         "6a590c2985a99d186c8eecd0241acdc824d32168",
-        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a"
+        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
+        "ba88ff308df6d217c7a42a0739459ad6582abdf2"
       ],
       "operatorBlameLineCount": 216,
       "scopedFunctionCount": 16,
@@ -1233,16 +1689,17 @@
       "path": "engine/events.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 5,
+      "operatorCommitCount": 6,
       "operatorCommits": [
         "435e176a49aa13348fd810dff5c0040732d5a9c3",
         "f13431c2dd72109b9ec8dbebb3c0174f7d119a15",
         "6a590c2985a99d186c8eecd0241acdc824d32168",
         "36017d2b0f60abd6e7ca85ac5a2fbdd7bc7bff05",
-        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a"
+        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
+        "ba88ff308df6d217c7a42a0739459ad6582abdf2"
       ],
       "operatorBlameLineCount": 363,
-      "scopedFunctionCount": 24,
+      "scopedFunctionCount": 25,
       "currentFunctionKeys": [
         "cpp|function|engine/events.cpp|obs_engine::is_event_name_character|obs_engine::is_event_name_character( unsigned char ch)",
         "cpp|function|engine/events.cpp|obs_engine::is_event_name|obs_engine::is_event_name( std :: string_view value)",
@@ -1262,6 +1719,7 @@
         "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::enqueue_state_locked|obs_engine::EventDispatcher::enqueue_state_locked( PendingEvent pending)",
         "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::enqueue_event_locked|obs_engine::EventDispatcher::enqueue_event_locked( PendingEvent pending)",
         "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::publish|obs_engine::EventDispatcher::publish( EngineEventKind kind , std :: string_view event_name , uint64_t revision , obs_data_t * data)",
+        "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::try_publish_telemetry|obs_engine::EventDispatcher::try_publish_telemetry( std :: string_view event_name , uint64_t revision , obs_data_t * data)",
         "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::require_resync_due_to_overflow|obs_engine::EventDispatcher::require_resync_due_to_overflow( uint64_t revision)",
         "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::require_resync_after_queued_events|obs_engine::EventDispatcher::require_resync_after_queued_events( uint64_t revision)",
         "cpp|function|engine/events.cpp|obs_engine::EventDispatcher::wait_for_next_event|obs_engine::EventDispatcher::wait_for_next_event( PendingEvent & event , uint64_t & resync_revision)",
@@ -1274,13 +1732,14 @@
       "path": "engine/events.hpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 5,
+      "operatorCommitCount": 6,
       "operatorCommits": [
         "435e176a49aa13348fd810dff5c0040732d5a9c3",
         "f13431c2dd72109b9ec8dbebb3c0174f7d119a15",
         "6a590c2985a99d186c8eecd0241acdc824d32168",
         "36017d2b0f60abd6e7ca85ac5a2fbdd7bc7bff05",
-        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a"
+        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
+        "ba88ff308df6d217c7a42a0739459ad6582abdf2"
       ],
       "operatorBlameLineCount": 87,
       "scopedFunctionCount": 0,
@@ -1335,6 +1794,46 @@
       "operatorBlameLineCount": 13,
       "scopedFunctionCount": 0,
       "currentFunctionKeys": []
+    },
+    {
+      "path": "engine/phase2_test_hooks.hpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "71e65a5b4bbf63347ebc67b01593a49ed38095cd"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": "engine/preview_consumer_test.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "cde3063445f7a8977b40a09cab3e547203657d68",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
+        "95214baed67950c430dc1fd1a0411d69c761f999"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 13,
+      "currentFunctionKeys": [
+        "cpp|function|engine/preview_consumer_test.cpp|argument|argument( std :: string_view value , std :: string_view name , std :: string & out)",
+        "cpp|function|engine/preview_consumer_test.cpp|parse_unsigned|parse_unsigned( std :: string_view value , uint64_t & out , int base)",
+        "cpp|function|engine/preview_consumer_test.cpp|parse_luid|parse_luid( std :: string_view value , LUID & out)",
+        "cpp|function|engine/preview_consumer_test.cpp|fnv1a_rows|fnv1a_rows( const D3D11_MAPPED_SUBRESOURCE & mapped , uint32_t width , uint32_t height , uint8_t center [ 4 ])",
+        "cpp|function|engine/preview_consumer_test.cpp|fail|fail( const char * message , HRESULT hr = S_OK)",
+        "cpp|function|engine/preview_consumer_test.cpp|parse_consumer_option|parse_consumer_option( std :: string_view arg , ConsumerOptions & options)",
+        "cpp|function|engine/preview_consumer_test.cpp|parse_consumer_options|parse_consumer_options( int argc , char ** argv , ConsumerOptions & options)",
+        "cpp|function|engine/preview_consumer_test.cpp|select_adapter|select_adapter( IDXGIFactory1 * factory , const LUID & expected , ComPtr<IDXGIAdapter1> & selected)",
+        "cpp|function|engine/preview_consumer_test.cpp|create_consumer_resources|create_consumer_resources( const ConsumerOptions & options , IDXGIAdapter1 * adapter , ComPtr<ID3D11Device> & device , ComPtr<ID3D11DeviceContext> & context , ComPtr<ID3D11Texture2D> & shared , ComPtr<IDXGIKeyedMutex> & keyed_mutex , ComPtr<ID3D11Texture2D> & staging)",
+        "cpp|function|engine/preview_consumer_test.cpp|collect_consumer_frames|collect_consumer_frames( const ConsumerOptions & options , ID3D11DeviceContext * context , ID3D11Texture2D * shared , IDXGIKeyedMutex * keyed_mutex , ID3D11Texture2D * staging , const D3D11_TEXTURE2D_DESC & description , std :: vector<uint64_t> & checksums , uint8_t(&first_center) [ 4 ] , uint8_t(&last_center) [ 4 ] , uint64_t & timeouts)",
+        "cpp|function|engine/preview_consumer_test.cpp|count_unique_checksums|count_unique_checksums( const std :: vector<uint64_t> & checksums)",
+        "cpp|function|engine/preview_consumer_test.cpp|print_consumer_evidence|print_consumer_evidence( const std :: vector<uint64_t> & checksums , uint64_t timeouts , uint64_t unique , const uint8_t(&first_center) [ 4 ] , const uint8_t(&last_center) [ 4 ])",
+        "cpp|function|engine/preview_consumer_test.cpp|main|main( int argc , char ** argv)"
+      ]
     },
     {
       "path": "engine/properties_sensitive.cpp",
@@ -1470,22 +1969,34 @@
       "path": "engine/protocol_filter_v2.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 4,
+      "operatorCommitCount": 14,
       "operatorCommits": [
         "bb227ad223b21d42c6381f6765213a36d2fa2665",
         "fbab77143a84bc101e9444f0dd2a516aab8d008a",
         "80a286d7a69ff55a53875bdfc9c5beb0c51b3909",
-        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a"
+        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
+        "6be51d166b03474765d0f8242af441c61748a03f",
+        "141906c4249d1ecdbf4e79188dbcb8016d04a3c2",
+        "47ddc99c15f95de87a895d3e1ca3dd66bac3befe",
+        "94c52dc5d0728ea4bd75efa95a04568f614eebdf",
+        "438ee2328c8f82f363ef551e8ff85b96b1e076d6",
+        "cde3063445f7a8977b40a09cab3e547203657d68",
+        "aee7464375c7c875b6c407e0f909546e990d3355",
+        "42c724c1d247bc64f15475c3edc1d39393ba2f7c",
+        "0748d0f323d1b2ee9a4403b01004718e4cbf6f99",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
       ],
       "operatorBlameLineCount": 455,
-      "scopedFunctionCount": 18,
+      "scopedFunctionCount": 21,
       "currentFunctionKeys": [
         "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::classify_filter_method|obs_engine::classify_filter_method( std :: string_view method)",
         "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( FilterMethod method)",
         "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::needs_settings_settle|obs_engine::needs_settings_settle( FilterMethod method)",
         "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::execute_filter_method|obs_engine::execute_filter_method( Engine & engine , FilterMethod method , obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
-        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::make_capabilities_array|obs_engine::make_capabilities_array()",
-        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::set_capabilities|obs_engine::set_capabilities( obs_data_t * data)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::requires_preview_output_transport|obs_engine::requires_preview_output_transport( std :: string_view name)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::advertised_capabilities|obs_engine::advertised_capabilities( const Engine & engine)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::make_capabilities_array|obs_engine::make_capabilities_array( const Engine & engine)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::set_capabilities|obs_engine::set_capabilities( obs_data_t * data , const Engine & engine)",
         "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::reject_guard_on_read|obs_engine::reject_guard_on_read( const V2Request & request , uint64_t revision)",
         "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::validate_mutation_guard|obs_engine::validate_mutation_guard( const V2Request & request , RevisionState :: MutationGuard & guard)",
         "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::publish_runtime_events|obs_engine::publish_runtime_events( EventDispatcher & events , uint64_t revision , RuntimeV2Result & result)",
@@ -1495,10 +2006,61 @@
         "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::prepare_filter_mutation|obs_engine::prepare_filter_mutation( const V2Request & request , bool mutating , Engine & engine , RevisionState & revisions , RuntimeV2Result & result , std :: optional<FilterCaptureScope> & capture , std :: optional<RevisionState::MutationGuard> & guard)",
         "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::commit_filter_result|obs_engine::commit_filter_result( const V2Request & request , RuntimeV2Result & result , RevisionState & revisions , std :: optional<RevisionState::MutationGuard> & guard , uint64_t & revision)",
         "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::execute_filter_request|obs_engine::execute_filter_request( Engine & engine , FilterMethod method , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error , const std :: optional<FilterCaptureScope> & capture)",
-        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::handle_capability_request|obs_engine::handle_capability_request( RevisionState & revisions , const V2Request & request)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::handle_capability_request|obs_engine::handle_capability_request( Engine & engine , RevisionState & revisions , const V2Request & request)",
+        "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::is_capability_request|obs_engine::is_capability_request( std :: string_view method)",
         "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::handle_filter_request|obs_engine::handle_filter_request( Engine & engine , RevisionState & revisions , EventDispatcher & events , const V2Request & request , FilterMethod method)",
         "cpp|function|engine/protocol_filter_v2.cpp|obs_engine::handle_v2_request|obs_engine::handle_v2_request( Engine & engine , const Config & config , RevisionState & revisions , EventDispatcher & events , const V2Request & request)"
       ]
+    },
+    {
+      "path": "engine/protocol_phase2_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 10,
+      "operatorCommits": [
+        "6be51d166b03474765d0f8242af441c61748a03f",
+        "141906c4249d1ecdbf4e79188dbcb8016d04a3c2",
+        "47ddc99c15f95de87a895d3e1ca3dd66bac3befe",
+        "94c52dc5d0728ea4bd75efa95a04568f614eebdf",
+        "438ee2328c8f82f363ef551e8ff85b96b1e076d6",
+        "cde3063445f7a8977b40a09cab3e547203657d68",
+        "aee7464375c7c875b6c407e0f909546e990d3355",
+        "42c724c1d247bc64f15475c3edc1d39393ba2f7c",
+        "0748d0f323d1b2ee9a4403b01004718e4cbf6f99",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 16,
+      "currentFunctionKeys": [
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::classify|obs_engine::classify( std :: string_view method)",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::mutating|obs_engine::mutating( Phase2Method method)",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::handler_for|obs_engine::handler_for( Phase2Method method)",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::publish_events|obs_engine::publish_events( EventDispatcher & events , uint64_t revision , RuntimeV2Result & result)",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::Phase2CaptureScope::Phase2CaptureScope|obs_engine::Phase2CaptureScope::Phase2CaptureScope( Engine & engine , RuntimeV2Result & result)",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::Phase2CaptureScope::~Phase2CaptureScope|obs_engine::Phase2CaptureScope::~Phase2CaptureScope()",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::Phase2CaptureScope::flush|obs_engine::Phase2CaptureScope::flush( RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::reject_read_guard|obs_engine::reject_read_guard( const V2Request & request , uint64_t revision)",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::validate_guard|obs_engine::validate_guard( const V2Request & request , RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::prepare|obs_engine::prepare( const V2Request & request , Phase2Method method , Engine & engine , RevisionState & revisions , RuntimeV2Result & result , std :: optional<Phase2CaptureScope> & capture , std :: optional<RevisionState::MutationGuard> & guard)",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::execute_phase2_handler|obs_engine::execute_phase2_handler( Engine & engine , Phase2Method method , obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::normalize_phase2_error|obs_engine::normalize_phase2_error( RuntimeV2Error & error)",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::flush_phase2_capture|obs_engine::flush_phase2_capture( std :: optional<Phase2CaptureScope> & capture , std :: optional<RevisionState::MutationGuard> & guard)",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::commit_phase2_result|obs_engine::commit_phase2_result( const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error , RevisionState & revisions , std :: optional<RevisionState::MutationGuard> & guard , std :: optional<Phase2CaptureScope> & capture , uint64_t & revision)",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::is_phase2_method|obs_engine::is_phase2_method( std :: string_view method)",
+        "cpp|function|engine/protocol_phase2_v2.cpp|obs_engine::handle_phase2_request|obs_engine::handle_phase2_request( Engine & engine , RevisionState & revisions , EventDispatcher & events , const V2Request & request)"
+      ]
+    },
+    {
+      "path": "engine/protocol_phase2_v2.hpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "6be51d166b03474765d0f8242af441c61748a03f"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
     },
     {
       "path": "engine/protocol_v2.cpp",
@@ -1653,6 +2215,68 @@
         "cpp|function|engine/revision.hpp|obs_engine::RevisionState::commit_mutation|obs_engine::RevisionState::commit_mutation()",
         "cpp|function|engine/revision.hpp|obs_engine::RevisionState::max_revision|obs_engine::RevisionState::max_revision()",
         "cpp|function|engine/revision.hpp|obs_engine::RevisionState::commit_mutation_unlocked|obs_engine::RevisionState::commit_mutation_unlocked()"
+      ]
+    },
+    {
+      "path": "engine/runtime_canvas_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 5,
+      "operatorCommits": [
+        "47ddc99c15f95de87a895d3e1ca3dd66bac3befe",
+        "94c52dc5d0728ea4bd75efa95a04568f614eebdf",
+        "0748d0f323d1b2ee9a4403b01004718e4cbf6f99",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
+        "71e65a5b4bbf63347ebc67b01593a49ed38095cd"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 45,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::canvas_format_name|obs_engine::canvas_format_name( enum video_format value)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::parse_canvas_format|obs_engine::parse_canvas_format( std :: string_view value , enum video_format & out)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::canvas_colorspace_name|obs_engine::canvas_colorspace_name( enum video_colorspace value)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::parse_canvas_colorspace|obs_engine::parse_canvas_colorspace( std :: string_view value , enum video_colorspace & out)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::canvas_range_name|obs_engine::canvas_range_name( enum video_range_type value)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::parse_canvas_range|obs_engine::parse_canvas_range( std :: string_view value , enum video_range_type & out)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::canvas_scale_name|obs_engine::canvas_scale_name( enum obs_scale_type value)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::parse_canvas_scale|obs_engine::parse_canvas_scale( std :: string_view value , enum obs_scale_type & out)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::canvas_video_dimensions_equal|obs_engine::canvas_video_dimensions_equal( const obs_video_info & left , const obs_video_info & right)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::canvas_video_format_equal|obs_engine::canvas_video_format_equal( const obs_video_info & left , const obs_video_info & right)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::canvas_video_options_equal|obs_engine::canvas_video_options_equal( const obs_video_info & left , const obs_video_info & right)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::canvas_video_equal|obs_engine::canvas_video_equal( const obs_video_info & left , const obs_video_info & right)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_bounded_canvas_integer|obs_engine::read_bounded_canvas_integer( obs_data_t * settings , const char * name , long long minimum , long long maximum , long long & value , bool & present , const char * message , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_canvas_dimensions|obs_engine::read_canvas_dimensions( obs_data_t * settings , obs_video_info & video , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_canvas_frame_rate|obs_engine::read_canvas_frame_rate( obs_data_t * settings , obs_video_info & video , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_canvas_format_fields|obs_engine::read_canvas_format_fields( obs_data_t * settings , obs_video_info & video , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_canvas_scale_field|obs_engine::read_canvas_scale_field( obs_data_t * settings , obs_video_info & video , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_canvas_device_fields|obs_engine::read_canvas_device_fields( obs_data_t * settings , obs_video_info & video , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::canvas_video_complete|obs_engine::canvas_video_complete( const obs_video_info & video)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_canvas_video_settings|obs_engine::read_canvas_video_settings( obs_data_t * settings , obs_video_info & video , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::make_canvas_video_data|obs_engine::make_canvas_video_data( uint64_t handle , obs_canvas_t * canvas)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::make_canvas_summary|obs_engine::make_canvas_summary( uint64_t handle , const CanvasEntry & entry)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_canvas_source_target|obs_engine::read_canvas_source_target( Engine & engine , obs_data_t * object , CanvasTarget & target , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_canvas_scene_target|obs_engine::read_canvas_scene_target( Engine & engine , obs_data_t * object , CanvasTarget & target , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_canvas_target_type|obs_engine::read_canvas_target_type( Engine & engine , obs_data_t * object , const std :: string & type , CanvasTarget & target , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_canvas_target|obs_engine::read_canvas_target( Engine & engine , obs_data_t * params , CanvasTarget & target , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::make_channel_target|obs_engine::make_channel_target( const Engine & engine , obs_source_t * source)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_channel_index|obs_engine::read_channel_index( obs_data_t * params , uint32_t & channel , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_canvas_flag|obs_engine::read_canvas_flag( obs_data_t * flags , const char * name , uint32_t bit , uint32_t & value , const char * message , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_canvas_name_and_video|obs_engine::read_canvas_name_and_video( obs_data_t * params , std :: string & name , bool & name_present , obs_video_info & video , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_canvas_flags|obs_engine::read_canvas_flags( obs_data_t * params , uint32_t & flags , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::read_canvas_create_options|obs_engine::read_canvas_create_options( obs_data_t * params , std :: string & name , bool & name_present , obs_video_info & video , uint32_t & flags , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::prepare_canvas_video_update|obs_engine::prepare_canvas_video_update( obs_data_t * params , obs_canvas_t * canvas , obs_video_info & current , obs_video_info & proposed , bool & changed , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_list|obs_engine::Engine::v2_canvas_list( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_get_main|obs_engine::Engine::v2_canvas_get_main( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_get|obs_engine::Engine::v2_canvas_get( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_create|obs_engine::Engine::v2_canvas_create( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_remove|obs_engine::Engine::v2_canvas_remove( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_rename|obs_engine::Engine::v2_canvas_rename( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_get_video_settings|obs_engine::Engine::v2_canvas_get_video_settings( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_set_video_settings|obs_engine::Engine::v2_canvas_set_video_settings( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_list_scenes|obs_engine::Engine::v2_canvas_list_scenes( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_get_channel|obs_engine::Engine::v2_canvas_get_channel( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_set_channel|obs_engine::Engine::v2_canvas_set_channel( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_get_flags|obs_engine::Engine::v2_canvas_get_flags( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)"
       ]
     },
     {
@@ -1850,6 +2474,84 @@
       ]
     },
     {
+      "path": "engine/runtime_item_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "141906c4249d1ecdbf4e79188dbcb8016d04a3c2",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 64,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::collect_ordered_item|obs_engine::collect_ordered_item( obs_scene_t * , obs_sceneitem_t * item , * param)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::ordered_parent_items|obs_engine::ordered_parent_items( const Engine & engine , obs_scene_t * parent)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_finite_field|obs_engine::read_finite_field( obs_data_t * data , const char * name , double min_value , double max_value , double & out , bool & present , RuntimeV2Error & error , const char * message)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_alignment_field|obs_engine::read_alignment_field( obs_data_t * data , const char * name , uint32_t & out , bool & present , RuntimeV2Error & error , const char * message)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_vec2_fields|obs_engine::read_vec2_fields( obs_data_t * data , const char * name , vec2 & target , double min_value , double max_value , bool & changed , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_bounds_type_field|obs_engine::read_bounds_type_field( obs_data_t * bounds , obs_transform_info & info , bool & changed , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_bounds_dimensions|obs_engine::read_bounds_dimensions( obs_data_t * bounds , obs_transform_info & info , bool & changed , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_bounds_fields|obs_engine::read_bounds_fields( obs_data_t * transform , obs_transform_info & info , bool & changed , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_crop_component|obs_engine::read_crop_component( obs_data_t * crop_object , const char * name , int & target , bool & changed , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::validate_crop_source_bounds|obs_engine::validate_crop_source_bounds( const ItemEntry & entry , const obs_sceneitem_crop & crop , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_crop_fields|obs_engine::read_crop_fields( obs_data_t * transform , const ItemEntry & entry , obs_sceneitem_crop & crop , bool & changed , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_transform_rotation_alignment|obs_engine::read_transform_rotation_alignment( obs_data_t * transform , obs_transform_info & info , bool & changed , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_transform_crop_flag|obs_engine::read_transform_crop_flag( obs_data_t * transform , obs_transform_info & info , bool & changed , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::parse_transform|obs_engine::parse_transform( obs_data_t * transform , const ItemEntry & entry , obs_transform_info & info , obs_sceneitem_crop & crop , bool & changed , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::transform_vectors_equal|obs_engine::transform_vectors_equal( const obs_transform_info & left , const obs_transform_info & right)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::transform_bounds_equal|obs_engine::transform_bounds_equal( const obs_transform_info & left , const obs_transform_info & right)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::crop_equal|obs_engine::crop_equal( const obs_sceneitem_crop & left , const obs_sceneitem_crop & right)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::transform_equal|obs_engine::transform_equal( const obs_transform_info & left , const obs_transform_info & right , const obs_sceneitem_crop & left_crop , const obs_sceneitem_crop & right_crop)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::apply_item_transform|obs_engine::apply_item_transform( Engine & engine , uint64_t handle , ItemEntry & entry , obs_data_t * transform , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::is_scalar_transform_field|obs_engine::is_scalar_transform_field( std :: string_view field)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::copy_scalar_transform_field|obs_engine::copy_scalar_transform_field( obs_data_t * params , std :: string_view field , obs_data_t * transform , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::make_single_transform|obs_engine::make_single_transform( obs_data_t * params , const char * field , ObsDataPtr & transform , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::make_order_data|obs_engine::make_order_data( const Engine & engine , uint64_t handle , const ItemEntry & entry , const std :: vector<uint64_t> & ordered)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::make_items_changed_data|obs_engine::make_items_changed_data( const Engine & engine , uint64_t scene_handle , obs_scene_t * scene , uint64_t group_handle = 0)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_item_boolean|obs_engine::read_item_boolean( obs_data_t * params , const char * name , bool & value , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_item_enum|obs_engine::read_item_enum( obs_data_t * params , const char * name , std :: string & value , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_duplicate_target|obs_engine::read_duplicate_target( obs_data_t * params , const ItemEntry & entry , const std :: unordered_map<uint64_t,obs_scene_t*> & scenes , const std :: unordered_map<uint64_t,uint64_t> & scene_canvases , uint64_t & target_handle , obs_scene_t * & target_scene , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::copy_item_appearance|obs_engine::copy_item_appearance( obs_sceneitem_t * source , obs_sceneitem_t * target)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::group_child_handles|obs_engine::group_child_handles( const std :: unordered_map<uint64_t,ItemEntry> & items , uint64_t group_handle)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::append_item_removal_events|obs_engine::append_item_removal_events( const Engine & engine , const std :: unordered_map<uint64_t,ItemEntry> & items , const std :: vector<uint64_t> & handles , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_group_item|obs_engine::read_group_item( ObsDataPtr & value , uint64_t scene_handle , const std :: unordered_map<uint64_t,ItemEntry> & items , std :: vector<obs_sceneitem_t*> & scene_items , std :: vector<uint64_t> & handles , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::read_group_items|obs_engine::read_group_items( obs_data_t * params , uint64_t scene_handle , const std :: unordered_map<uint64_t,ItemEntry> & items , std :: vector<obs_sceneitem_t*> & scene_items , std :: vector<uint64_t> & handles , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::release_item_handles|obs_engine::Engine::release_item_handles( const std :: vector<uint64_t> & handles)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::register_group_item|obs_engine::Engine::register_group_item( uint64_t scene_handle , obs_scene_t * scene , obs_sceneitem_t * group , uint64_t & handle , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_get|obs_engine::Engine::v2_item_get( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_create|obs_engine::Engine::v2_item_create( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_duplicate|obs_engine::Engine::v2_item_duplicate( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_remove|obs_engine::Engine::v2_item_remove( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_get_transform|obs_engine::Engine::v2_item_get_transform( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_transform|obs_engine::Engine::v2_item_set_transform( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_position|obs_engine::Engine::v2_item_set_position( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_scale|obs_engine::Engine::v2_item_set_scale( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_rotation|obs_engine::Engine::v2_item_set_rotation( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_alignment|obs_engine::Engine::v2_item_set_alignment( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_bounds|obs_engine::Engine::v2_item_set_bounds( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_bounds_alignment|obs_engine::Engine::v2_item_set_bounds_alignment( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_crop|obs_engine::Engine::v2_item_set_crop( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_crop_to_bounds|obs_engine::Engine::v2_item_set_crop_to_bounds( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_visible|obs_engine::Engine::v2_item_set_visible( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_locked|obs_engine::Engine::v2_item_set_locked( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_order|obs_engine::Engine::v2_item_set_order( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::move_item_order|obs_engine::move_item_order( Engine & engine , obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error , enum obs_order_movement movement)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_move_up|obs_engine::Engine::v2_item_move_up( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_move_down|obs_engine::Engine::v2_item_move_down( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_move_top|obs_engine::Engine::v2_item_move_top( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_move_bottom|obs_engine::Engine::v2_item_move_bottom( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_scale_filter|obs_engine::Engine::v2_item_set_scale_filter( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_blend_mode|obs_engine::Engine::v2_item_set_blend_mode( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_set_blend_method|obs_engine::Engine::v2_item_set_blend_method( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_get_children|obs_engine::Engine::v2_item_get_children( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_create_group|obs_engine::Engine::v2_item_create_group( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_add_to_group|obs_engine::Engine::v2_item_add_to_group( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_remove_from_group|obs_engine::Engine::v2_item_remove_from_group( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_item_v2.cpp|obs_engine::Engine::v2_item_ungroup|obs_engine::Engine::v2_item_ungroup( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)"
+      ]
+    },
+    {
       "path": "engine/runtime_media_v2.cpp",
       "language": "C/C++",
       "status": "M",
@@ -1946,17 +2648,198 @@
       ]
     },
     {
+      "path": "engine/runtime_phase2_common.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "6be51d166b03474765d0f8242af441c61748a03f",
+        "94c52dc5d0728ea4bd75efa95a04568f614eebdf"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 23,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_reset_result|obs_engine::phase2_reset_result( RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_fail|obs_engine::phase2_fail( RuntimeV2Error & error , const char * code , const char * message)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_is_bounded_string|obs_engine::phase2_is_bounded_string( std :: string_view value , size_t max_bytes , bool allow_empty)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_read_string|obs_engine::phase2_read_string( obs_data_t * data , const char * name , std :: string & out , bool & present)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_read_bool|obs_engine::phase2_read_bool( obs_data_t * data , const char * name , bool & out , bool & present)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_read_integer|obs_engine::phase2_read_integer( obs_data_t * data , const char * name , long long & out , bool & present)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_read_double|obs_engine::phase2_read_double( obs_data_t * data , const char * name , double & out , bool & present)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_read_object|obs_engine::phase2_read_object( obs_data_t * data , const char * name , ObsDataPtr & out , bool & present)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_read_array|obs_engine::phase2_read_array( obs_data_t * data , const char * name , ObsArrayPtr & out , bool & present)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_parse_handle|obs_engine::phase2_parse_handle( std :: string_view value , uint64_t & out)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_read_handle|obs_engine::phase2_read_handle( obs_data_t * data , const char * name , uint64_t & out)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_read_nullable_handle|obs_engine::phase2_read_nullable_handle( obs_data_t * data , const char * name , uint64_t & out , bool & is_null , bool & present)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_set_handle|obs_engine::phase2_set_handle( obs_data_t * data , const char * name , uint64_t handle)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_clone_data|obs_engine::phase2_clone_data( obs_data_t * data)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_append_event|obs_engine::phase2_append_event( RuntimeV2Result & result , const char * name , ObsDataPtr data)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_scale_filter_name|obs_engine::phase2_scale_filter_name( enum obs_scale_type value)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_blend_method_name|obs_engine::phase2_blend_method_name( enum obs_blending_method value)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_blend_mode_name|obs_engine::phase2_blend_mode_name( enum obs_blending_type value)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_bounds_type_name|obs_engine::phase2_bounds_type_name( enum obs_bounds_type value)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_parse_scale_filter|obs_engine::phase2_parse_scale_filter( std :: string_view value , enum obs_scale_type & out)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_parse_blend_method|obs_engine::phase2_parse_blend_method( std :: string_view value , enum obs_blending_method & out)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_parse_blend_mode|obs_engine::phase2_parse_blend_mode( std :: string_view value , enum obs_blending_type & out)",
+        "cpp|function|engine/runtime_phase2_common.cpp|obs_engine::phase2_parse_bounds_type|obs_engine::phase2_parse_bounds_type( std :: string_view value , enum obs_bounds_type & out)"
+      ]
+    },
+    {
+      "path": "engine/runtime_phase2_common.hpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 2,
+      "operatorCommits": [
+        "6be51d166b03474765d0f8242af441c61748a03f",
+        "94c52dc5d0728ea4bd75efa95a04568f614eebdf"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": "engine/runtime_preview_output_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 4,
+      "operatorCommits": [
+        "cde3063445f7a8977b40a09cab3e547203657d68",
+        "0748d0f323d1b2ee9a4403b01004718e4cbf6f99",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
+        "ba88ff308df6d217c7a42a0739459ad6582abdf2"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 67,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::PreviewOutputTargetBinding::~PreviewOutputTargetBinding|obs_engine::PreviewOutputTargetBinding::~PreviewOutputTargetBinding()",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::preview_output_target_name|obs_engine::preview_output_target_name( PreviewOutputTarget target)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::preview_output_scale_name|obs_engine::preview_output_scale_name( PreviewOutputScale scale)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::parse_preview_output_scale|obs_engine::parse_preview_output_scale( std :: string_view value , PreviewOutputScale & scale)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::read_preview_output_scale|obs_engine::read_preview_output_scale( obs_data_t * params , PreviewOutputScale fallback , PreviewOutputScale & scale , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::parse_preview_output_target_type|obs_engine::parse_preview_output_target_type( std :: string_view type , PreviewOutputTarget & target , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::read_preview_output_target_handle|obs_engine::read_preview_output_target_handle( obs_data_t * object , PreviewOutputTarget target , uint64_t & handle , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::read_preview_output_target|obs_engine::read_preview_output_target( obs_data_t * params , PreviewOutputTarget & target , uint64_t & handle , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::bind_scene_target|obs_engine::bind_scene_target( Engine & engine , uint64_t handle , PreviewOutputTargetBinding & binding , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::bind_source_target|obs_engine::bind_source_target( Engine & engine , uint64_t handle , PreviewOutputTargetBinding & binding , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::bind_canvas_target|obs_engine::bind_canvas_target( Engine & engine , uint64_t handle , PreviewOutputTargetBinding & binding , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::create_preview_output_binding|obs_engine::create_preview_output_binding( Engine & engine , PreviewOutputTarget target , uint64_t handle , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::read_preview_output_dimension|obs_engine::read_preview_output_dimension( obs_data_t * params , const char * name , uint32_t fallback , uint32_t & value , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::read_preview_output_resize_dimensions|obs_engine::read_preview_output_resize_dimensions( obs_data_t * params , uint32_t & width , uint32_t & height , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::read_optional_transport_string|obs_engine::read_optional_transport_string( obs_data_t * params , const char * name , const char * expected , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::format_adapter_luid|obs_engine::format_adapter_luid( const LUID & luid)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::inspect_shared_texture_handle|obs_engine::inspect_shared_texture_handle( gs_texture_t * texture , uint64_t & shared_handle , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::inspect_d3d11_adapter|obs_engine::inspect_d3d11_adapter( std :: string & adapter_luid , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::inspect_d3d11_shared_texture|obs_engine::inspect_d3d11_shared_texture( gs_texture_t * texture , uint64_t & shared_handle , std :: string & adapter_luid , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::allocate_preview_resource_state|obs_engine::allocate_preview_resource_state( uint32_t width , uint32_t height , uint64_t generation , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::destroy_preview_resource_objects|obs_engine::destroy_preview_resource_objects( PreviewTextureV2Resource & resource)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::initialize_preview_resource_graphics|obs_engine::initialize_preview_resource_graphics( PreviewTextureV2Resource & resource , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::create_preview_resource|obs_engine::create_preview_resource( uint32_t width , uint32_t height , uint64_t generation , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::destroy_preview_resource|obs_engine::destroy_preview_resource( const std :: shared_ptr<PreviewTextureV2Resource> & resource)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::set_nullable_string_handle|obs_engine::set_nullable_string_handle( obs_data_t * data , const char * name , uint64_t value)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::make_preview_output_target|obs_engine::make_preview_output_target( const PreviewOutputTargetBinding & target)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::make_unavailable_target|obs_engine::make_unavailable_target( PreviewOutputTarget target , uint64_t handle)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::make_preview_output_info|obs_engine::make_preview_output_info( const PreviewOutputV2State & state)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::make_shared_texture_descriptor|obs_engine::make_shared_texture_descriptor( const PreviewOutputV2State & state)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::append_preview_render_job|obs_engine::append_preview_render_job( const std :: shared_ptr<PreviewOutputV2State> & state , PreviewRenderBatch & batch)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::collect_preview_render_batch|obs_engine::collect_preview_render_batch( const std :: unordered_map<uint64_t,std::shared_ptr<PreviewOutputV2State>> & outputs , std :: mutex & mutex)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::resolve_preview_render_target|obs_engine::resolve_preview_render_target( const PreviewRenderJob & job , obs_source_t * program_source , obs_source_t * preview_source , obs_source_t * & source , obs_canvas_t * & canvas)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::preview_source_dimensions|obs_engine::preview_source_dimensions( obs_source_t * source , obs_canvas_t * canvas , uint32_t fallback_width , uint32_t fallback_height , uint32_t & width , uint32_t & height)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::render_preview_stage|obs_engine::render_preview_stage( PreviewTextureV2Resource & resource , obs_source_t * source , obs_canvas_t * canvas , uint32_t width , uint32_t height)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::preview_draw_size|obs_engine::preview_draw_size( const PreviewTextureV2Resource & resource , uint32_t source_width , uint32_t source_height , PreviewOutputScale scale)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::draw_preview_stage|obs_engine::draw_preview_stage( const PreviewTextureV2Resource & resource , gs_texture_t * stage , PreviewOutputScale scale , uint32_t source_width , uint32_t source_height)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::render_preview_resource|obs_engine::render_preview_resource( PreviewTextureV2Resource & resource , obs_source_t * source , obs_canvas_t * canvas , PreviewOutputScale scale , uint32_t fallback_width , uint32_t fallback_height)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::preview_output_scene_canvas|obs_engine::preview_output_scene_canvas( uint64_t scene_handle , const std :: unordered_map<uint64_t,uint64_t> & scene_canvases , const std :: unordered_map<uint64_t,CanvasEntry> & canvases)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::preview_output_dimension_canvas|obs_engine::preview_output_dimension_canvas( PreviewOutputTarget target , uint64_t target_handle , const PreviewOutputTargetBinding & binding , uint64_t main_canvas , uint64_t preview_scene , const std :: unordered_map<uint64_t,uint64_t> & scene_canvases , const std :: unordered_map<uint64_t,CanvasEntry> & canvases)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::read_preview_output_create_options|obs_engine::read_preview_output_create_options( Engine & engine , obs_data_t * params , uint64_t main_canvas , uint64_t preview_scene , const std :: unordered_map<uint64_t,uint64_t> & scene_canvases , const std :: unordered_map<uint64_t,CanvasEntry> & canvases , PreviewOutputCreateOptions & options , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::prepare_preview_output_target|obs_engine::prepare_preview_output_target( Engine & engine , obs_data_t * params , PreviewOutputCreateOptions & options , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::read_preview_output_create_dimensions|obs_engine::read_preview_output_create_dimensions( obs_data_t * params , obs_canvas_t * dimension_canvas , const PreviewOutputTargetBinding & binding , PreviewOutputCreateOptions & options , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::read_preview_output_create_transport|obs_engine::read_preview_output_create_transport( obs_data_t * params , PreviewOutputCreateOptions & options , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::read_preview_output_create_format|obs_engine::read_preview_output_create_format( obs_data_t * params , obs_canvas_t * dimension_canvas , const PreviewOutputTargetBinding & binding , PreviewOutputCreateOptions & options , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::preview_output_uses_canvas|obs_engine::preview_output_uses_canvas( const PreviewOutputV2State & state , uint64_t canvas_handle , uint64_t preview_scene , const std :: unordered_map<uint64_t,uint64_t> & scene_canvases)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::collect_canvas_video_outputs|obs_engine::collect_canvas_video_outputs( uint64_t canvas_handle , uint64_t preview_scene , const std :: unordered_map<uint64_t,uint64_t> & scene_canvases , const std :: unordered_map<uint64_t,std::shared_ptr<PreviewOutputV2State>> & outputs , std :: mutex & mutex)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_capable|obs_engine::Engine::v2_preview_output_capable() const",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_get_preview_output_entry|obs_engine::Engine::v2_get_preview_output_entry( obs_data_t * params , uint64_t & handle , std :: shared_ptr<PreviewOutputV2State> & entry , RuntimeV2Error & error) const",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::replace_preview_output_resource|obs_engine::Engine::replace_preview_output_resource( const std :: shared_ptr<PreviewOutputV2State> & state , uint32_t width , uint32_t height , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_create|obs_engine::Engine::v2_preview_output_create( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_destroy|obs_engine::Engine::v2_preview_output_destroy( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_set_enabled|obs_engine::Engine::v2_preview_output_set_enabled( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_set_target|obs_engine::Engine::v2_preview_output_set_target( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_resize|obs_engine::Engine::v2_preview_output_resize( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_get_info|obs_engine::Engine::v2_preview_output_get_info( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_get|obs_engine::Engine::v2_preview_output_get( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_get_shared_texture|obs_engine::Engine::v2_preview_output_get_shared_texture( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_release_shared_texture|obs_engine::Engine::v2_preview_output_release_shared_texture( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_list|obs_engine::Engine::v2_preview_output_list( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_invalidate_scene|obs_engine::Engine::v2_preview_output_invalidate_scene( uint64_t scene_handle , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_invalidate_source|obs_engine::Engine::v2_preview_output_invalidate_source( uint64_t source_handle , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_invalidate_canvas|obs_engine::Engine::v2_preview_output_invalidate_canvas( uint64_t canvas_handle , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_invalidate_canvas_video|obs_engine::Engine::v2_preview_output_invalidate_canvas_video( uint64_t canvas_handle , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::refresh_preview_output_after_canvas_video|obs_engine::Engine::refresh_preview_output_after_canvas_video( const std :: shared_ptr<PreviewOutputV2State> & state , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_preview_output_render_callback|obs_engine::Engine::v2_preview_output_render_callback( * param , uint32_t base_width , uint32_t base_height)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_render_preview_outputs|obs_engine::Engine::v2_render_preview_outputs( uint32_t base_width , uint32_t base_height)",
+        "cpp|function|engine/runtime_preview_output_v2.cpp|obs_engine::Engine::v2_shutdown_preview_outputs|obs_engine::Engine::v2_shutdown_preview_outputs()"
+      ]
+    },
+    {
+      "path": "engine/runtime_preview_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "438ee2328c8f82f363ef551e8ff85b96b1e076d6",
+        "cde3063445f7a8977b40a09cab3e547203657d68",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 7,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_preview_v2.cpp|obs_engine::set_nullable_handle|obs_engine::set_nullable_handle( obs_data_t * data , const char * name , uint64_t handle)",
+        "cpp|function|engine/runtime_preview_v2.cpp|obs_engine::read_preview_scene_request|obs_engine::read_preview_scene_request( obs_data_t * params , const std :: unordered_map<uint64_t,obs_scene_t*> & scenes , uint64_t & requested , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_v2.cpp|obs_engine::Engine::v2_preview_data|obs_engine::Engine::v2_preview_data() const",
+        "cpp|function|engine/runtime_preview_v2.cpp|obs_engine::Engine::v2_clear_preview_source|obs_engine::Engine::v2_clear_preview_source()",
+        "cpp|function|engine/runtime_preview_v2.cpp|obs_engine::Engine::v2_preview_get_scene|obs_engine::Engine::v2_preview_get_scene( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_v2.cpp|obs_engine::Engine::v2_preview_set_scene|obs_engine::Engine::v2_preview_set_scene( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_preview_v2.cpp|obs_engine::Engine::v2_preview_get_info|obs_engine::Engine::v2_preview_get_info( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)"
+      ]
+    },
+    {
+      "path": "engine/runtime_program_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 5,
+      "operatorCommits": [
+        "94c52dc5d0728ea4bd75efa95a04568f614eebdf",
+        "9c268d76ec6f4f6a51a75dbfd41b8f23d637ad43",
+        "42c724c1d247bc64f15475c3edc1d39393ba2f7c",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
+        "ba88ff308df6d217c7a42a0739459ad6582abdf2"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 8,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_program_v2.cpp|obs_engine::make_cancelled_transition_event_data|obs_engine::make_cancelled_transition_event_data( uint64_t transition)",
+        "cpp|function|engine/runtime_program_v2.cpp|obs_engine::set_nullable_handle|obs_engine::set_nullable_handle( obs_data_t * data , const char * name , uint64_t handle)",
+        "cpp|function|engine/runtime_program_v2.cpp|obs_engine::read_program_scene_request|obs_engine::read_program_scene_request( obs_data_t * params , const std :: unordered_map<uint64_t,obs_scene_t*> & scenes , uint64_t & requested , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_program_v2.cpp|obs_engine::Engine::v2_current_program_scene|obs_engine::Engine::v2_current_program_scene() const",
+        "cpp|function|engine/runtime_program_v2.cpp|obs_engine::Engine::v2_program_data|obs_engine::Engine::v2_program_data( uint64_t scene_handle) const",
+        "cpp|function|engine/runtime_program_v2.cpp|obs_engine::Engine::v2_program_get_scene|obs_engine::Engine::v2_program_get_scene( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_program_v2.cpp|obs_engine::Engine::v2_program_set_scene|obs_engine::Engine::v2_program_set_scene( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_program_v2.cpp|obs_engine::Engine::apply_program_scene_route|obs_engine::Engine::apply_program_scene_route( uint64_t requested , RuntimeV2Result & result , RuntimeV2Error & error , uint64_t previous_scene_override , bool has_previous_scene_override)"
+      ]
+    },
+    {
       "path": "engine/runtime_properties_v2.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 3,
+      "operatorCommitCount": 4,
       "operatorCommits": [
         "472141d30bc4dad0d5654146dd715a5fa03d1c66",
         "bb227ad223b21d42c6381f6765213a36d2fa2665",
-        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a"
+        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
+        "aee7464375c7c875b6c407e0f909546e990d3355"
       ],
       "operatorBlameLineCount": 515,
-      "scopedFunctionCount": 31,
+      "scopedFunctionCount": 34,
       "currentFunctionKeys": [
         "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::ObsPropertiesDeleter::operator ( )|obs_engine::ObsPropertiesDeleter::operator ( )( obs_properties_t * value) const",
         "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::reset_result|obs_engine::reset_result( RuntimeV2Result & result , RuntimeV2Error & error)",
@@ -1981,6 +2864,9 @@
         "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_build_source_kind_property_target|obs_engine::Engine::v2_build_source_kind_property_target( obs_data_t * requested_target , ObsDataPtr & target , ObsDataPtr & base_settings , obs_properties_t * & properties , obs_source_t * & source , RuntimeV2Error & error)",
         "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_build_filter_property_target|obs_engine::Engine::v2_build_filter_property_target( obs_data_t * requested_target , ObsDataPtr & target , ObsDataPtr & base_settings , obs_properties_t * & properties , obs_source_t * & source , RuntimeV2Error & error)",
         "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_build_filter_kind_property_target|obs_engine::Engine::v2_build_filter_kind_property_target( obs_data_t * requested_target , ObsDataPtr & target , ObsDataPtr & base_settings , obs_properties_t * & properties , obs_source_t * & source , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::transition_kind_exists|obs_engine::transition_kind_exists( const char * kind)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_build_transition_property_target|obs_engine::Engine::v2_build_transition_property_target( obs_data_t * requested_target , ObsDataPtr & target , ObsDataPtr & base_settings , obs_properties_t * & properties , obs_source_t * & source , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_build_transition_kind_property_target|obs_engine::Engine::v2_build_transition_kind_property_target( obs_data_t * requested_target , ObsDataPtr & target , ObsDataPtr & base_settings , obs_properties_t * & properties , obs_source_t * & source , RuntimeV2Error & error)",
         "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_prepare_property_button|obs_engine::Engine::v2_prepare_property_button( obs_data_t * params , PropertyButtonContext & context , RuntimeV2Error & error)",
         "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_build_property_target|obs_engine::Engine::v2_build_property_target( obs_data_t * params , ObsDataPtr & target , ObsDataPtr & settings , obs_properties_t * & properties , obs_source_t * & source , RuntimeV2Error & error)",
         "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_properties_get|obs_engine::Engine::v2_properties_get( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
@@ -1989,6 +2875,65 @@
         "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_properties_validate|obs_engine::Engine::v2_properties_validate( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_properties_refresh|obs_engine::Engine::v2_properties_refresh( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/runtime_properties_v2.cpp|obs_engine::Engine::v2_properties_invoke_button|obs_engine::Engine::v2_properties_invoke_button( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)"
+      ]
+    },
+    {
+      "path": "engine/runtime_scene_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 8,
+      "operatorCommits": [
+        "6be51d166b03474765d0f8242af441c61748a03f",
+        "141906c4249d1ecdbf4e79188dbcb8016d04a3c2",
+        "47ddc99c15f95de87a895d3e1ca3dd66bac3befe",
+        "94c52dc5d0728ea4bd75efa95a04568f614eebdf",
+        "cde3063445f7a8977b40a09cab3e547203657d68",
+        "42c724c1d247bc64f15475c3edc1d39393ba2f7c",
+        "0748d0f323d1b2ee9a4403b01004718e4cbf6f99",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 39,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::set_nullable_handle|obs_engine::set_nullable_handle( obs_data_t * data , const char * name , uint64_t handle)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::collect_group_item|obs_engine::collect_group_item( obs_scene_t * , obs_sceneitem_t * item , * param)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::collect_scene_item|obs_engine::collect_scene_item( obs_scene_t * , obs_sceneitem_t * item , * param)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::collect_scene_order|obs_engine::collect_scene_order( obs_scene_t * , obs_sceneitem_t * item , * param)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::read_scene_name|obs_engine::read_scene_name( obs_data_t * params , const char * field , std :: string & name , bool & present , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::read_optional_canvas|obs_engine::read_optional_canvas( obs_data_t * params , uint64_t main_handle , uint64_t & canvas_handle , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::read_scene_duplicate_options|obs_engine::read_scene_duplicate_options( obs_data_t * params , uint64_t source_handle , const std :: unordered_map<uint64_t,uint64_t> & scene_canvases , std :: string & name , bool & name_present , uint64_t & canvas_handle , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::make_scene_item_transform|obs_engine::make_scene_item_transform( const ItemEntry & entry)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::scene_removal_order|obs_engine::scene_removal_order( const std :: vector<uint64_t> & handles , const std :: unordered_map<uint64_t,ItemEntry> & items)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::initialize_phase2_runtime|obs_engine::Engine::initialize_phase2_runtime()",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::shutdown_phase2_runtime|obs_engine::Engine::shutdown_phase2_runtime()",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_release_canvas_registry|obs_engine::Engine::v2_release_canvas_registry()",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_get_canvas_entry|obs_engine::Engine::v2_get_canvas_entry( obs_data_t * params , uint64_t & handle , CanvasEntry * & entry , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_get_scene_entry|obs_engine::Engine::v2_get_scene_entry( obs_data_t * params , uint64_t & handle , obs_scene_t * & scene , RuntimeV2Error & error) const",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_get_item_entry|obs_engine::Engine::v2_get_item_entry( obs_data_t * params , uint64_t & handle , ItemEntry * & entry , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_item_handle_for_pointer|obs_engine::Engine::v2_item_handle_for_pointer( const obs_sceneitem_t * item) const",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_source_handle_for_pointer|obs_engine::Engine::v2_source_handle_for_pointer( const obs_source_t * source) const",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_source_for_handle|obs_engine::Engine::v2_source_for_handle( uint64_t handle) const",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_scene_for_handle|obs_engine::Engine::v2_scene_for_handle( uint64_t handle) const",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_canvas_for_handle|obs_engine::Engine::v2_canvas_for_handle( uint64_t handle) const",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_scene_handle_for_pointer|obs_engine::Engine::v2_scene_handle_for_pointer( const obs_source_t * source) const",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_register_scene_item|obs_engine::Engine::v2_register_scene_item( uint64_t scene_id , uint64_t parent_group_id , obs_sceneitem_t * item , std :: vector<uint64_t> & added , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::update_registered_scene_item|obs_engine::Engine::update_registered_scene_item( uint64_t scene_id , uint64_t parent_group_id , uint64_t handle , obs_sceneitem_t * item , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::register_scene_entry|obs_engine::Engine::register_scene_entry( uint64_t handle , uint64_t canvas_handle , obs_scene_t * scene , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::discard_scene_entry|obs_engine::Engine::discard_scene_entry( uint64_t handle , obs_scene_t * scene)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::clear_program_scene_for_removal|obs_engine::Engine::clear_program_scene_for_removal( uint64_t scene_handle , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::clear_preview_scene_for_removal|obs_engine::Engine::clear_preview_scene_for_removal( uint64_t scene_handle , RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_register_scene_items|obs_engine::Engine::v2_register_scene_items( uint64_t scene_id , obs_scene_t * scene , std :: vector<uint64_t> & added , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_scene_ordered_item_handles|obs_engine::Engine::v2_scene_ordered_item_handles( uint64_t , obs_scene_t * scene) const",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_scene_summary|obs_engine::Engine::v2_scene_summary( uint64_t handle , obs_scene_t * scene) const",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_item_summary|obs_engine::Engine::v2_item_summary( uint64_t handle , const ItemEntry & entry) const",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_scene_list|obs_engine::Engine::v2_scene_list( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_scene_get|obs_engine::Engine::v2_scene_get( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_scene_create|obs_engine::Engine::v2_scene_create( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_scene_rename|obs_engine::Engine::v2_scene_rename( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_scene_duplicate|obs_engine::Engine::v2_scene_duplicate( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_scene_get_items|obs_engine::Engine::v2_scene_get_items( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_scene_get_state|obs_engine::Engine::v2_scene_get_state( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_scene_v2.cpp|obs_engine::Engine::v2_scene_remove|obs_engine::Engine::v2_scene_remove( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)"
       ]
     },
     {
@@ -2026,13 +2971,14 @@
       "path": "engine/runtime_source_v2.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 5,
+      "operatorCommitCount": 6,
       "operatorCommits": [
         "f13431c2dd72109b9ec8dbebb3c0174f7d119a15",
         "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
         "6a590c2985a99d186c8eecd0241acdc824d32168",
         "bb227ad223b21d42c6381f6765213a36d2fa2665",
-        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a"
+        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
+        "aee7464375c7c875b6c407e0f909546e990d3355"
       ],
       "operatorBlameLineCount": 1276,
       "scopedFunctionCount": 81,
@@ -2121,14 +3067,109 @@
       ]
     },
     {
+      "path": "engine/runtime_studio_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 3,
+      "operatorCommits": [
+        "42c724c1d247bc64f15475c3edc1d39393ba2f7c",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
+        "ba88ff308df6d217c7a42a0739459ad6582abdf2"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 11,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_studio_v2.cpp|obs_engine::set_nullable_handle|obs_engine::set_nullable_handle( obs_data_t * data , const char * name , uint64_t handle)",
+        "cpp|function|engine/runtime_studio_v2.cpp|obs_engine::make_studio_transition_data|obs_engine::make_studio_transition_data( uint64_t transition , uint32_t duration_ms , uint64_t from_scene , uint64_t destination_scene , const char * state)",
+        "cpp|function|engine/runtime_studio_v2.cpp|obs_engine::validate_studio_transition_request|obs_engine::validate_studio_transition_request( bool enabled , uint64_t transition , bool active , const std :: unordered_map<uint64_t,TransitionEntry> & transitions , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_studio_v2.cpp|obs_engine::Engine::v2_studio_get_enabled|obs_engine::Engine::v2_studio_get_enabled( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_studio_v2.cpp|obs_engine::Engine::v2_studio_set_enabled|obs_engine::Engine::v2_studio_set_enabled( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_studio_v2.cpp|obs_engine::Engine::v2_studio_get_transition|obs_engine::Engine::v2_studio_get_transition( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_studio_v2.cpp|obs_engine::Engine::v2_studio_set_transition|obs_engine::Engine::v2_studio_set_transition( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_studio_v2.cpp|obs_engine::Engine::v2_studio_get_transition_duration|obs_engine::Engine::v2_studio_get_transition_duration( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_studio_v2.cpp|obs_engine::Engine::v2_studio_set_transition_duration|obs_engine::Engine::v2_studio_set_transition_duration( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_studio_v2.cpp|obs_engine::Engine::begin_studio_transition|obs_engine::Engine::begin_studio_transition( uint64_t program_scene , uint64_t preview_scene , obs_source_t * preview_source , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_studio_v2.cpp|obs_engine::Engine::v2_studio_transition|obs_engine::Engine::v2_studio_transition( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)"
+      ]
+    },
+    {
+      "path": "engine/runtime_transition_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 4,
+      "operatorCommits": [
+        "aee7464375c7c875b6c407e0f909546e990d3355",
+        "42c724c1d247bc64f15475c3edc1d39393ba2f7c",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
+        "ba88ff308df6d217c7a42a0739459ad6582abdf2"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 50,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::safe_transition_identifier|obs_engine::safe_transition_identifier( const std :: string & value)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::transition_kind_exists|obs_engine::transition_kind_exists( const std :: string & kind)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::begin_transition_callback|obs_engine::begin_transition_callback( TransitionV2Observer & observer)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::end_transition_callback|obs_engine::end_transition_callback( TransitionV2Observer & observer)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::queue_transition_signal|obs_engine::queue_transition_signal( TransitionV2Observer & observer , TransitionPendingSignal signal)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::transition_start_cb|obs_engine::transition_start_cb( * data , calldata_t *)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::transition_end_cb|obs_engine::transition_end_cb( * data , calldata_t *)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::connect_transition_observer|obs_engine::connect_transition_observer( const std :: shared_ptr<TransitionV2Observer> & observer , obs_source_t * transition)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::disconnect_transition_observer|obs_engine::disconnect_transition_observer( TransitionV2Observer & observer , obs_source_t * transition)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::set_nullable_handle|obs_engine::set_nullable_handle( obs_data_t * data , const char * name , uint64_t handle)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::set_source_identity|obs_engine::set_source_identity( const Engine & engine , obs_data_t * data , const char * name , obs_source_t * source)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::set_transition_source_identities|obs_engine::set_transition_source_identities( const Engine & engine , obs_data_t * data , const TransitionEntry & entry)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::normalized_transition_progress|obs_engine::normalized_transition_progress( obs_source_t * transition)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::set_transition_state|obs_engine::set_transition_state( ObsDataPtr & data , const TransitionEntry & entry)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::make_transition_event_data|obs_engine::make_transition_event_data( uint64_t handle , const char * state)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::make_transition_summary|obs_engine::make_transition_summary( const Engine & engine , uint64_t handle , const TransitionEntry & entry)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::make_transition_kind_summary|obs_engine::make_transition_kind_summary( const std :: string & kind)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::read_transition_name|obs_engine::read_transition_name( obs_data_t * params , std :: string & name , bool & present , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::read_transition_create_options|obs_engine::read_transition_create_options( obs_data_t * params , std :: string & kind , std :: string & name , bool & name_present , ObsDataPtr & settings , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::snapshot_transition_state|obs_engine::snapshot_transition_state( TransitionV2State * state , RevisionState * & revisions , EventDispatcher * & events , std :: vector<std::shared_ptr<TransitionV2Observer>> & observers)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::drain_transition_observer|obs_engine::drain_transition_observer( const std :: shared_ptr<TransitionV2Observer> & observer , std :: deque<TransitionPendingSignal> & pending , bool & overflow)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::snapshot_active_transition|obs_engine::snapshot_active_transition( const std :: shared_ptr<TransitionV2State> & state , uint64_t & handle , obs_source_t * & transition , RevisionState * & revisions , EventDispatcher * & events)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_bind_transition_events|obs_engine::Engine::v2_bind_transition_events( RevisionState * revisions , EventDispatcher * events)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_get_transition_entry|obs_engine::Engine::v2_get_transition_entry( obs_data_t * params , uint64_t & handle , TransitionEntry * & entry , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_kind_list|obs_engine::Engine::v2_transition_kind_list( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_kind_defaults|obs_engine::Engine::v2_transition_kind_defaults( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_kind_properties|obs_engine::Engine::v2_transition_kind_properties( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_list|obs_engine::Engine::v2_transition_list( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_get|obs_engine::Engine::v2_transition_get( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_create|obs_engine::Engine::v2_transition_create( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_remove|obs_engine::Engine::v2_transition_remove( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_rename|obs_engine::Engine::v2_transition_rename( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::read_transition_settings|obs_engine::read_transition_settings( obs_data_t * params , ObsDataPtr & settings , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::transition_settings_equal|obs_engine::transition_settings_equal( obs_data_t * left , obs_data_t * right)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_get_settings|obs_engine::Engine::v2_transition_get_settings( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_patch_settings|obs_engine::Engine::v2_transition_patch_settings( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_replace_settings|obs_engine::Engine::v2_transition_replace_settings( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_get_properties|obs_engine::Engine::v2_transition_get_properties( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_get_duration|obs_engine::Engine::v2_transition_get_duration( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_set_duration|obs_engine::Engine::v2_transition_set_duration( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_update_transition_duration|obs_engine::Engine::v2_update_transition_duration( uint64_t handle , uint32_t duration , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_transition_get_state|obs_engine::Engine::v2_transition_get_state( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_start_transition|obs_engine::Engine::v2_start_transition( uint64_t handle , obs_source_t * from , obs_source_t * destination , uint32_t duration_ms , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_sync_transition_observers|obs_engine::Engine::v2_sync_transition_observers()",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_publish_transition_progress|obs_engine::Engine::v2_publish_transition_progress()",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::sync_transition_observer|obs_engine::Engine::sync_transition_observer( const std :: shared_ptr<TransitionV2Observer> & observer , RevisionState & revisions , EventDispatcher & events)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::publish_transition_signal|obs_engine::Engine::publish_transition_signal( const TransitionV2Observer & observer , bool ended , RevisionState & revisions , EventDispatcher & events)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::finish_studio_transition|obs_engine::Engine::finish_studio_transition( uint64_t revision , const TransitionV2Observer & observer , EventDispatcher & events)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_cancel_studio_transition|obs_engine::Engine::v2_cancel_studio_transition( uint64_t & cancelled_transition)",
+        "cpp|function|engine/runtime_transition_v2.cpp|obs_engine::Engine::v2_prepare_transition_shutdown|obs_engine::Engine::v2_prepare_transition_shutdown()"
+      ]
+    },
+    {
       "path": "engine/runtime_v2.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 3,
+      "operatorCommitCount": 6,
       "operatorCommits": [
         "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc",
         "bb227ad223b21d42c6381f6765213a36d2fa2665",
-        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a"
+        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
+        "6be51d166b03474765d0f8242af441c61748a03f",
+        "141906c4249d1ecdbf4e79188dbcb8016d04a3c2",
+        "0748d0f323d1b2ee9a4403b01004718e4cbf6f99"
       ],
       "operatorBlameLineCount": 619,
       "scopedFunctionCount": 28,
@@ -2167,24 +3208,29 @@
       "path": "engine/runtime.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 3,
+      "operatorCommitCount": 6,
       "operatorCommits": [
         "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
         "d47733b98421332ac54e26a671824230e49169c8",
-        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a"
+        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
+        "6be51d166b03474765d0f8242af441c61748a03f",
+        "141906c4249d1ecdbf4e79188dbcb8016d04a3c2",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
       ],
       "operatorBlameLineCount": 621,
-      "scopedFunctionCount": 30,
+      "scopedFunctionCount": 32,
       "currentFunctionKeys": [
         "cpp|function|engine/runtime.cpp|obs_engine::is_bounded_string|obs_engine::is_bounded_string( const char * value , size_t max_bytes)",
         "cpp|function|engine/runtime.cpp|obs_engine::apply_legacy_transform_scalar|obs_engine::apply_legacy_transform_scalar( long long request_id , obs_data_t * request , const char * field , float & target , double min_value , double max_value , const char * error_message)",
         "cpp|function|engine/runtime.cpp|obs_engine::apply_legacy_transform_alignment|obs_engine::apply_legacy_transform_alignment( long long request_id , obs_data_t * request , obs_transform_info & info)",
+        "cpp|function|engine/runtime.cpp|obs_engine::remove_attached_scene_item|obs_engine::remove_attached_scene_item( obs_sceneitem_t * item)",
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::Engine|obs_engine::Engine::Engine( Config config)",
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::~Engine|obs_engine::Engine::~Engine()",
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::prepare_startup_environment|obs_engine::Engine::prepare_startup_environment()",
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::reset_video|obs_engine::Engine::reset_video()",
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::load_runtime_modules|obs_engine::Engine::load_runtime_modules()",
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::start|obs_engine::Engine::start()",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::start_runtime|obs_engine::Engine::start_runtime()",
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::handle|obs_engine::Engine::handle( obs_data_t * request)",
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::allocate_handle|obs_engine::Engine::allocate_handle()",
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::input_type_exists|obs_engine::Engine::input_type_exists( const char * type) const",
@@ -2212,7 +3258,7 @@
       "path": "engine/runtime.hpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 12,
+      "operatorCommitCount": 21,
       "operatorCommits": [
         "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
         "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc",
@@ -2225,7 +3271,16 @@
         "c47cc67c87b4cc8f31cd2bc19d883c4d2ac6c4c2",
         "36017d2b0f60abd6e7ca85ac5a2fbdd7bc7bff05",
         "80a286d7a69ff55a53875bdfc9c5beb0c51b3909",
-        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a"
+        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
+        "6be51d166b03474765d0f8242af441c61748a03f",
+        "47ddc99c15f95de87a895d3e1ca3dd66bac3befe",
+        "94c52dc5d0728ea4bd75efa95a04568f614eebdf",
+        "cde3063445f7a8977b40a09cab3e547203657d68",
+        "aee7464375c7c875b6c407e0f909546e990d3355",
+        "42c724c1d247bc64f15475c3edc1d39393ba2f7c",
+        "0748d0f323d1b2ee9a4403b01004718e4cbf6f99",
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
+        "ba88ff308df6d217c7a42a0739459ad6582abdf2"
       ],
       "operatorBlameLineCount": 228,
       "scopedFunctionCount": 0,
@@ -2323,6 +3378,22 @@
       ]
     },
     {
+      "path": "libobs/obs-canvas.c",
+      "language": "C/C++",
+      "status": "M",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "71e65a5b4bbf63347ebc67b01593a49ed38095cd"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 3,
+      "currentFunctionKeys": [
+        "cpp|function|libobs/obs-canvas.c|obs_phase2_test_fail_next_canvas_video_mix|obs_phase2_test_fail_next_canvas_video_mix()",
+        "cpp|function|libobs/obs-canvas.c|phase2_consume_canvas_video_mix_failure|phase2_consume_canvas_video_mix_failure()",
+        "cpp|function|libobs/obs-canvas.c|obs_canvas_reset_video_internal|obs_canvas_reset_video_internal( obs_canvas_t * canvas , struct obs_video_info * ovi)"
+      ]
+    },
+    {
       "path": "libobs/obs-internal.h",
       "language": "C/C++",
       "status": "A",
@@ -2414,7 +3485,7 @@
       "path": "tools/check-complexity.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 24,
+      "operatorCommitCount": 26,
       "operatorCommits": [
         "a6b2b65df6cbcb289e4b81af1ca898a5397c3992",
         "979148802c665938cd7532c4c50fedf9259d725e",
@@ -2439,10 +3510,12 @@
         "17d6cd6b61cfd515a9f4251e89249cdce10389e1",
         "52c70fa3a20f1bbd454b35680b39537abe2f7106",
         "bedce2a35574b017abb9135e1b3d752e16223dc2",
-        "5d2f78f42f4b1c7d4fc939a2456e0fba89920b25"
+        "5d2f78f42f4b1c7d4fc939a2456e0fba89920b25",
+        "7edafb9f3f441f1b09640c765436f5dbd239875a",
+        "5206d23c90943968b6667ebd5837ed80670bf0d0"
       ],
       "operatorBlameLineCount": 0,
-      "scopedFunctionCount": 164,
+      "scopedFunctionCount": 165,
       "currentFunctionKeys": [
         "powershell|function|tools/check-complexity.ps1|Get-RepoFilePath|Get-RepoFilePath",
         "powershell|function|tools/check-complexity.ps1|New-ExactMap|New-ExactMap",
@@ -2558,6 +3631,7 @@
         "powershell|function|tools/check-complexity.ps1|New-BaselineMarkdown|New-BaselineMarkdown",
         "powershell|function|tools/check-complexity.ps1|New-InventoryMarkdown|New-InventoryMarkdown",
         "powershell|function|tools/check-complexity.ps1|Find-BeforeMetric|Find-BeforeMetric",
+        "powershell|function|tools/check-complexity.ps1|Get-EnforcedContinuitySummary|Get-EnforcedContinuitySummary",
         "powershell|function|tools/check-complexity.ps1|Get-ComparisonLabel|Get-ComparisonLabel",
         "powershell|function|tools/check-complexity.ps1|Get-ComparisonMetricLine|Get-ComparisonMetricLine",
         "powershell|function|tools/check-complexity.ps1|Add-ComparisonSummary|Add-ComparisonSummary",
@@ -2614,7 +3688,7 @@
       "path": "tools/check-complexity.tests.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 22,
+      "operatorCommitCount": 24,
       "operatorCommits": [
         "7acd77cf27d81c26ce4f9ef5ca065352a6a1dc46",
         "496ce5ae3f7b803e8affd882c51a8a8af429b100",
@@ -2637,10 +3711,12 @@
         "a58d27981183690b6d43f548e1b73cde7f3a9210",
         "9e07d13f852360838293317cad14d92701ff851e",
         "0e2ea6febe018072f7ad59d3ecc90c8837cd6d07",
-        "8c12beaf3d202be9e1cc6771f5c2ad23684a28b1"
+        "8c12beaf3d202be9e1cc6771f5c2ad23684a28b1",
+        "42d362014e52f6cb29b463cbb83922ca3224132e",
+        "5206d23c90943968b6667ebd5837ed80670bf0d0"
       ],
       "operatorBlameLineCount": 0,
-      "scopedFunctionCount": 22,
+      "scopedFunctionCount": 23,
       "currentFunctionKeys": [
         "powershell|function|tools/check-complexity.tests.ps1|Write-FixtureText|Write-FixtureText",
         "powershell|function|tools/check-complexity.tests.ps1|Trust-FixtureBaseline|Trust-FixtureBaseline",
@@ -2649,6 +3725,7 @@
         "powershell|function|tools/check-complexity.tests.ps1|Invoke-ComplexityChecker|Invoke-ComplexityChecker",
         "powershell|function|tools/check-complexity.tests.ps1|Assert-CheckerPass|Assert-CheckerPass",
         "powershell|function|tools/check-complexity.tests.ps1|Assert-CheckerFailure|Assert-CheckerFailure",
+        "powershell|function|tools/check-complexity.tests.ps1|Assert-CompleteBaselineSummary|Assert-CompleteBaselineSummary",
         "powershell|function|tools/check-complexity.tests.ps1|Get-ReportFunctionMetric|Get-ReportFunctionMetric",
         "powershell|function|tools/check-complexity.tests.ps1|Assert-FunctionMeasured|Assert-FunctionMeasured",
         "powershell|function|tools/check-complexity.tests.ps1|Get-ReportScriptBodyMetric|Get-ReportScriptBodyMetric",
@@ -2670,6 +3747,11 @@
   "nonCyclomaticChangedFiles": [
     {
       "path": ".github/workflows/engine-complexity.yaml",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
+      "path": ".github/workflows/engine-protocol-v2-phase2.yaml",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
@@ -2844,6 +3926,21 @@
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
     {
+      "path": "docs/libobs-engine/PHASE2_ACCEPTANCE.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/PHASE2_ARCHITECTURE.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/PHASE2_PHYSICAL_EVIDENCE.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
       "path": "docs/libobs-engine/PROJECT_STATUS.md",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
@@ -2889,7 +3986,17 @@
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
     {
+      "path": "engine/CANVAS_V1.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
       "path": "engine/CMakeLists.txt",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/D3D11_SHARED_PREVIEW_V1.md",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
@@ -2909,7 +4016,27 @@
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
     {
+      "path": "engine/ITEM_V1.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
       "path": "engine/MEDIA_V1.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/PREVIEW_OUTPUT_V1.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/PREVIEW_V1.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/PROGRAM_V1.md",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
@@ -2934,7 +4061,22 @@
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
     {
+      "path": "engine/SCENE_V1.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
       "path": "engine/SOURCE_V1.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/STUDIO_V1.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/TRANSITION_V1.md",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
