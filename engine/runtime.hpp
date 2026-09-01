@@ -121,6 +121,7 @@ public:
 	void v2_bind_transition_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_sync_transition_observers();
 	void v2_prepare_transition_shutdown() noexcept;
+	void v2_cancel_studio_transition() noexcept;
 	bool v2_start_transition(uint64_t handle, obs_source_t *from, obs_source_t *destination, uint32_t duration_ms,
 				RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_settle_filter_mutation(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -439,7 +440,9 @@ private:
 	uint64_t main_canvas_ = 0;
 	bool studio_enabled_ = false;
 	uint64_t studio_transition_ = 0;
-	uint32_t studio_transition_duration_ = 0;
+	bool studio_transition_active_ = false;
+	uint64_t studio_transition_from_scene_ = 0;
+	uint64_t studio_transition_destination_scene_ = 0;
 	std::unordered_map<uint64_t, obs_source_t *> sources_;
 	std::unordered_map<uint64_t, obs_scene_t *> scenes_;
 	ItemMap items_;

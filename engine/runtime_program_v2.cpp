@@ -18,6 +18,8 @@ void set_nullable_handle(obs_data_t *data, const char *name, uint64_t handle)
 
 uint64_t Engine::v2_current_program_scene() const
 {
+	if (studio_transition_active_)
+		return program_scene_;
 	const auto main_it = canvases_.find(main_canvas_);
 	if (main_it == canvases_.end() || !main_it->second.canvas)
 		return 0;
@@ -34,6 +36,9 @@ ObsDataPtr Engine::v2_program_data(uint64_t scene_handle) const
 	set_nullable_handle(data.get(), "scene", scene_handle);
 	if (main_canvas_ != 0)
 		phase2_set_handle(data.get(), "canvas", main_canvas_);
+	obs_data_set_bool(data.get(), "transitioning", studio_transition_active_);
+	if (studio_transition_active_ && studio_transition_ != 0)
+		phase2_set_handle(data.get(), "transition", studio_transition_);
 	return data;
 }
 
@@ -57,6 +62,8 @@ bool Engine::v2_program_set_scene(obs_data_t *params, RuntimeV2Result &result, R
 		requested = 0;
 	if (requested != 0 && !scenes_.contains(requested))
 		return phase2_fail(error, "not_found", "scene handle was not found");
+	if (studio_transition_active_)
+		v2_cancel_studio_transition();
 
 	const auto main_it = canvases_.find(main_canvas_);
 	if (main_it == canvases_.end() || !main_it->second.canvas)

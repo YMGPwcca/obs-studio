@@ -184,7 +184,9 @@ void Engine::shutdown_phase2_runtime() noexcept
 		v2_clear_preview_source();
 		studio_enabled_ = false;
 		studio_transition_ = 0;
-		studio_transition_duration_ = 0;
+		studio_transition_active_ = false;
+		studio_transition_from_scene_ = 0;
+		studio_transition_destination_scene_ = 0;
 
 		for (auto &[_, entry] : transitions_)
 			obs_source_release(entry.transition);

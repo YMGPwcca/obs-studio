@@ -658,11 +658,11 @@ bool Engine::v2_start_transition(uint64_t handle, obs_source_t *from, obs_source
 	TransitionEntry &entry = it->second;
 	if (obs_transition_is_active(entry.transition))
 		return phase2_fail(error, "busy", "transition is already running");
-	if (!from || !destination)
-		return phase2_fail(error, "invalid_state", "transition source and destination are required");
+	if (!destination)
+		return phase2_fail(error, "invalid_state", "transition destination is required");
 	obs_transition_set(entry.transition, from);
-	const uint32_t width = std::max(obs_source_get_width(from), obs_source_get_width(destination));
-	const uint32_t height = std::max(obs_source_get_height(from), obs_source_get_height(destination));
+	const uint32_t width = std::max(from ? obs_source_get_width(from) : 0, obs_source_get_width(destination));
+	const uint32_t height = std::max(from ? obs_source_get_height(from) : 0, obs_source_get_height(destination));
 	obs_transition_set_size(entry.transition, width, height);
 	obs_transition_set_alignment(entry.transition, OBS_ALIGN_CENTER);
 	obs_transition_set_scale_type(entry.transition, OBS_TRANSITION_SCALE_ASPECT);
@@ -722,10 +722,55 @@ void Engine::v2_sync_transition_observers()
 			const uint64_t revision = revisions->commit_mutation();
 			const char *name = signal == TransitionPendingSignal::Started ? "transition.started" : "transition.ended";
 			const char *state = signal == TransitionPendingSignal::Started ? "running" : "idle";
+			if (signal == TransitionPendingSignal::Ended && studio_transition_active_ &&
+			    observer->handle == studio_transition_) {
+				// This headless engine drives video only. libobs can leave the
+				// audio half of a transition active after video_stop when no audio
+				// consumer exists; clear both halves before allowing the selected
+				// Transition to be reused.
+				if (observer->transition)
+					obs_transition_clear(observer->transition);
+				const uint64_t previous_scene = studio_transition_from_scene_;
+				const uint64_t destination_scene = studio_transition_destination_scene_;
+				auto main_it = canvases_.find(main_canvas_);
+				obs_source_t *destination = nullptr;
+				auto destination_it = scenes_.find(destination_scene);
+				if (destination_it != scenes_.end())
+					destination = obs_scene_get_source(destination_it->second);
+				if (main_it != canvases_.end() && main_it->second.canvas)
+					obs_canvas_set_channel(main_it->second.canvas, 0, destination);
+				program_scene_ = destination ? destination_scene : 0;
+				studio_transition_active_ = false;
+				studio_transition_from_scene_ = 0;
+				studio_transition_destination_scene_ = 0;
+				ObsDataPtr program_data = v2_program_data(program_scene_);
+				set_nullable_handle(program_data.get(), "previousScene", previous_scene);
+				events->publish(EngineEventKind::State, "program.sceneChanged", revision, program_data.get());
+			}
 			events->publish(EngineEventKind::State, name, revision,
 					make_transition_event_data(observer->handle, state).get());
 		}
 	}
+}
+
+void Engine::v2_cancel_studio_transition() noexcept
+{
+	if (!studio_transition_active_)
+		return;
+	const auto it = transitions_.find(studio_transition_);
+	if (it != transitions_.end() && it->second.transition) {
+		if (obs_transition_is_active(it->second.transition))
+			obs_transition_force_stop(it->second.transition);
+		obs_transition_clear(it->second.transition);
+		if (it->second.observer) {
+			std::lock_guard<std::mutex> lock(it->second.observer->mutex);
+			it->second.observer->running = false;
+			it->second.observer->pending.clear();
+		}
+	}
+	studio_transition_active_ = false;
+	studio_transition_from_scene_ = 0;
+	studio_transition_destination_scene_ = 0;
 }
 
 void Engine::v2_prepare_transition_shutdown() noexcept

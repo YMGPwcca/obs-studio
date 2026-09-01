@@ -34,6 +34,7 @@ target_sources(
     runtime_preview_v2.cpp
     runtime_preview_output_v2.cpp
     runtime_transition_v2.cpp
+    runtime_studio_v2.cpp
     runtime_scene_v2.cpp
     runtime_source_settle_v2.cpp
     runtime_source_v2.cpp

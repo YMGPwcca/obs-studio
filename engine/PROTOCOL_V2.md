@@ -598,9 +598,6 @@ Studio:
 - `studio.getTransitionDuration`
 - `studio.setTransitionDuration`
 - `studio.transition`
-- `studio.getTBar`
-- `studio.setTBar`
-- `studio.releaseTBar`
 
 These are frontend semantics implemented by `obs-engine`; they are not required to map one-to-one to a single libobs function.
 
@@ -611,7 +608,6 @@ Events:
 - `studio.enabledChanged`
 - `studio.transitionChanged`
 - `studio.transitionDurationChanged`
-- `studio.tBarChanged`
 
 ## 22. Transition API
 

@@ -88,6 +88,13 @@ enum class Phase2Method {
 	TransitionGetDuration,
 	TransitionSetDuration,
 	TransitionGetState,
+	StudioGetEnabled,
+	StudioSetEnabled,
+	StudioGetTransition,
+	StudioSetTransition,
+	StudioGetTransitionDuration,
+	StudioSetTransitionDuration,
+	StudioTransition,
 	Unknown,
 };
 
@@ -148,6 +155,13 @@ constexpr Phase2MethodName kMethods[] = {
 	{"transition.getDuration", Phase2Method::TransitionGetDuration},
 	{"transition.setDuration", Phase2Method::TransitionSetDuration},
 	{"transition.getState", Phase2Method::TransitionGetState},
+	{"studio.getEnabled", Phase2Method::StudioGetEnabled},
+	{"studio.setEnabled", Phase2Method::StudioSetEnabled},
+	{"studio.getTransition", Phase2Method::StudioGetTransition},
+	{"studio.setTransition", Phase2Method::StudioSetTransition},
+	{"studio.getTransitionDuration", Phase2Method::StudioGetTransitionDuration},
+	{"studio.setTransitionDuration", Phase2Method::StudioSetTransitionDuration},
+	{"studio.transition", Phase2Method::StudioTransition},
 };
 
 Phase2Method classify(std::string_view method)
@@ -214,6 +228,11 @@ bool mutating(Phase2Method method)
 	case Phase2Method::TransitionPatchSettings:
 	case Phase2Method::TransitionReplaceSettings:
 	case Phase2Method::TransitionSetDuration:
+		return true;
+	case Phase2Method::StudioSetEnabled:
+	case Phase2Method::StudioSetTransition:
+	case Phase2Method::StudioSetTransitionDuration:
+	case Phase2Method::StudioTransition:
 		return true;
 	default:
 		return false;
@@ -377,6 +396,20 @@ Handler handler_for(Phase2Method method)
 		return &Engine::v2_transition_set_duration;
 	case Phase2Method::TransitionGetState:
 		return &Engine::v2_transition_get_state;
+	case Phase2Method::StudioGetEnabled:
+		return &Engine::v2_studio_get_enabled;
+	case Phase2Method::StudioSetEnabled:
+		return &Engine::v2_studio_set_enabled;
+	case Phase2Method::StudioGetTransition:
+		return &Engine::v2_studio_get_transition;
+	case Phase2Method::StudioSetTransition:
+		return &Engine::v2_studio_set_transition;
+	case Phase2Method::StudioGetTransitionDuration:
+		return &Engine::v2_studio_get_transition_duration;
+	case Phase2Method::StudioSetTransitionDuration:
+		return &Engine::v2_studio_set_transition_duration;
+	case Phase2Method::StudioTransition:
+		return &Engine::v2_studio_transition;
 	case Phase2Method::Unknown:
 		return nullptr;
 	}
