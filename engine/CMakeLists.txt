@@ -15,6 +15,8 @@ target_sources(
     protocol.cpp
     protocol.hpp
     protocol_filter_v2.cpp
+    protocol_phase2_v2.cpp
+    protocol_phase2_v2.hpp
     protocol_v2.cpp
     protocol_v2.hpp
     revision.hpp
@@ -24,6 +26,9 @@ target_sources(
     runtime_interaction_v2.cpp
     runtime_media_v2.cpp
     runtime_properties_v2.cpp
+    runtime_phase2_common.cpp
+    runtime_phase2_common.hpp
+    runtime_scene_v2.cpp
     runtime_source_settle_v2.cpp
     runtime_source_v2.cpp
     runtime_v2.cpp

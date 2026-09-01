@@ -159,7 +159,7 @@ bool Engine::load_runtime_modules()
 
 bool Engine::start()
 {
-	return prepare_startup_environment() && reset_video() && load_runtime_modules();
+	return prepare_startup_environment() && reset_video() && load_runtime_modules() && initialize_phase2_runtime();
 }
 
 bool Engine::handle(obs_data_t *request)
@@ -392,6 +392,8 @@ bool Engine::command_source_settings(long long request_id, obs_data_t *request)
 
 void Engine::release_item(ItemMap::iterator &it)
 {
+	if (it->second.item)
+		item_handles_.erase(it->second.item);
 	obs_sceneitem_remove(it->second.item);
 	obs_sceneitem_release(it->second.item);
 	it = items_.erase(it);
@@ -606,6 +608,8 @@ void Engine::shutdown()
 	if (!obs_initialized())
 		return;
 
+	shutdown_phase2_runtime();
+
 	obs_set_output_source(0, nullptr);
 	program_scene_ = 0;
 
@@ -614,6 +618,7 @@ void Engine::shutdown()
 		obs_sceneitem_release(entry.item);
 	}
 	items_.clear();
+	item_handles_.clear();
 
 	for (auto &[_, scene] : scenes_)
 		obs_scene_release(scene);
@@ -622,6 +627,8 @@ void Engine::shutdown()
 	for (auto &[_, source] : sources_)
 		obs_source_release(source);
 	sources_.clear();
+	scene_canvases_.clear();
+	v2_release_canvas_registry();
 
 	obs_shutdown();
 }

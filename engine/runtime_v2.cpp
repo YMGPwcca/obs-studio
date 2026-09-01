@@ -454,6 +454,7 @@ bool Engine::v2_source_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 	return true;
 }
 
+#if 0 // Replaced by the Phase-2 scene/item runtime implementation.
 bool Engine::v2_scene_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
 	reset_result(result, error);
@@ -538,6 +539,8 @@ bool Engine::v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, Runtim
 	result.mutated = true;
 	return true;
 }
+
+#endif
 
 bool Engine::v2_item_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {

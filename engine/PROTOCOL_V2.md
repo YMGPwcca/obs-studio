@@ -489,12 +489,6 @@ Methods:
 - `scene.rename`
 - `scene.duplicate`
 - `scene.getItems`
-- `scene.reorder`
-- `scene.createGroup`
-- `scene.ungroup`
-- `scene.getTransitionOverride`
-- `scene.setTransitionOverride`
-- `scene.clearTransitionOverride`
 - `scene.getState`
 
 Events:
@@ -502,8 +496,12 @@ Events:
 - `scene.created`
 - `scene.removed`
 - `scene.renamed`
-- `scene.itemsChanged`
-- `scene.transitionOverrideChanged`
+
+Scene item groups are owned by the `item.*` namespace. Scene transition
+overrides are deferred until the Transition milestone; no temporary transition
+identity is exposed by the Scene namespace. `scene.getItems` uses index `0` as
+the bottom render layer and larger indexes as higher layers. Every Scene has a
+Canvas identity; omitted `scene.create.canvas` selects Main Canvas.
 
 ## 19. Scene item API
 

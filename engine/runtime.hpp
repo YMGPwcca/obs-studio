@@ -28,7 +28,20 @@ struct ItemEntry {
 	uint64_t scene_id = 0;
 	uint64_t source_id = 0;
 	obs_sceneitem_t *item = nullptr;
+	uint64_t parent_group_id = 0;
+	bool is_group = false;
 };
+
+struct CanvasEntry {
+	obs_canvas_t *canvas = nullptr;
+	bool is_main = false;
+};
+
+struct TransitionEntry {
+	obs_source_t *transition = nullptr;
+};
+
+struct PreviewOutputV2State;
 
 struct FilterEntry {
 	uint64_t source_id = 0;
@@ -181,11 +194,98 @@ public:
 	bool v2_filter_move_top(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_filter_move_bottom(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 
+	bool v2_scene_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_scene_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_scene_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_scene_rename(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_scene_duplicate(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_scene_get_items(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_scene_get_state(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+
+	bool v2_item_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_item_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_item_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_duplicate(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_get_transform(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_item_set_transform(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_position(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_scale(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_rotation(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_alignment(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_bounds(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_bounds_alignment(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_crop(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_crop_to_bounds(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_visible(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_locked(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_order(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_move_up(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_move_down(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_move_top(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_move_bottom(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_scale_filter(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_blend_mode(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_set_blend_method(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_create_group(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_ungroup(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_add_to_group(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_remove_from_group(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_item_get_children(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+
+	bool v2_canvas_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_canvas_get_main(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_canvas_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_canvas_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_canvas_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_canvas_rename(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_canvas_get_video_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_canvas_set_video_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_canvas_list_scenes(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_canvas_get_channel(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_canvas_set_channel(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_canvas_get_flags(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+
+	bool v2_program_get_scene(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_program_set_scene(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_preview_get_scene(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_preview_set_scene(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_preview_get_info(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+
+	bool v2_transition_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_transition_kind_defaults(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_transition_kind_properties(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_transition_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_transition_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_transition_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_transition_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_transition_rename(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_transition_get_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_transition_patch_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_transition_replace_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_transition_get_properties(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_transition_get_duration(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_transition_set_duration(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_transition_get_state(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+
+	bool v2_studio_get_enabled(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_studio_set_enabled(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_studio_get_transition(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_studio_set_transition(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_studio_get_transition_duration(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_studio_set_transition_duration(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_studio_transition(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+
+	bool v2_preview_output_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_preview_output_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_preview_output_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_preview_output_destroy(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_preview_output_set_target(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_preview_output_resize(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_preview_output_set_enabled(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_preview_output_get_info(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_preview_output_get_shared_texture(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_preview_output_release_shared_texture(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 
 	bool v2_properties_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_properties_resolve(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -197,6 +297,9 @@ public:
 private:
 	using ItemMap = std::unordered_map<uint64_t, ItemEntry>;
 	using FilterMap = std::unordered_map<uint64_t, FilterEntry>;
+	using CanvasMap = std::unordered_map<uint64_t, CanvasEntry>;
+	using TransitionMap = std::unordered_map<uint64_t, TransitionEntry>;
+	using PreviewOutputMap = std::unordered_map<uint64_t, std::shared_ptr<PreviewOutputV2State>>;
 
 	uint64_t allocate_handle();
 	bool input_type_exists(const char *type) const;
@@ -270,8 +373,27 @@ private:
 	std::vector<uint64_t> v2_item_handles_for_scene(uint64_t scene_id) const;
 	bool v2_append_item_removal_events(const std::vector<uint64_t> &item_handles, RuntimeV2Result &result,
 					   RuntimeV2Error &error) const;
+
+	public:
+	bool v2_get_canvas_entry(obs_data_t *params, uint64_t &handle, CanvasEntry *&entry, RuntimeV2Error &error);
+	bool v2_get_scene_entry(obs_data_t *params, uint64_t &handle, obs_scene_t *&scene, RuntimeV2Error &error) const;
+	bool v2_get_item_entry(obs_data_t *params, uint64_t &handle, ItemEntry *&entry, RuntimeV2Error &error);
+	bool v2_register_scene_item(uint64_t scene_id, uint64_t parent_group_id, obs_sceneitem_t *item,
+					std::vector<uint64_t> &added, RuntimeV2Error &error);
+	bool v2_register_scene_items(uint64_t scene_id, obs_scene_t *scene, std::vector<uint64_t> &added,
+					RuntimeV2Error &error);
+	std::vector<uint64_t> v2_scene_ordered_item_handles(uint64_t scene_id, obs_scene_t *scene) const;
+	uint64_t v2_item_handle_for_pointer(const obs_sceneitem_t *item) const;
+	uint64_t v2_source_handle_for_pointer(const obs_source_t *source) const;
+	ObsDataPtr v2_scene_summary(uint64_t handle, obs_scene_t *scene) const;
+	ObsDataPtr v2_item_summary(uint64_t handle, const ItemEntry &entry) const;
+	void v2_release_canvas_registry() noexcept;
+
+	private:
 	void remove_items_for_source(uint64_t source_id);
 	void remove_items_for_scene(uint64_t scene_id);
+	bool initialize_phase2_runtime();
+	void shutdown_phase2_runtime() noexcept;
 	bool prepare_startup_environment();
 	bool reset_video();
 	bool load_runtime_modules();
@@ -280,9 +402,19 @@ private:
 	Config config_;
 	uint64_t next_handle_ = 1;
 	uint64_t program_scene_ = 0;
+	uint64_t preview_scene_ = 0;
+	uint64_t main_canvas_ = 0;
+	bool studio_enabled_ = false;
+	uint64_t studio_transition_ = 0;
+	uint32_t studio_transition_duration_ = 0;
 	std::unordered_map<uint64_t, obs_source_t *> sources_;
 	std::unordered_map<uint64_t, obs_scene_t *> scenes_;
 	ItemMap items_;
+	CanvasMap canvases_;
+	TransitionMap transitions_;
+	PreviewOutputMap preview_outputs_;
+	std::unordered_map<uint64_t, uint64_t> scene_canvases_;
+	std::unordered_map<obs_sceneitem_t *, uint64_t> item_handles_;
 	FilterMap filters_;
 	std::unordered_map<obs_source_t *, uint64_t> filter_handles_;
 	std::shared_ptr<SourceV2State> source_v2_state_;

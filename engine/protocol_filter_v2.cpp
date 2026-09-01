@@ -1,6 +1,7 @@
 #include "protocol_v2.hpp"
 
 #include "events.hpp"
+#include "protocol_phase2_v2.hpp"
 #include "revision.hpp"
 #include "runtime.hpp"
 
@@ -84,7 +85,13 @@ constexpr CapabilityDescriptor kCapabilities[] = {
 	{"properties.resolve.v1", false},
 	{"properties.validate.v1", false},
 	{"scene.create.v1", false},
+	{"scene.duplicate.v1", false},
+	{"scene.get.v1", false},
+	{"scene.getItems.v1", false},
+	{"scene.getState.v1", false},
+	{"scene.list.v1", false},
 	{"scene.remove.v1", false},
+	{"scene.rename.v1", false},
 	{"session.close.v1", false},
 	{"session.getSubscriptions.v1", false},
 	{"session.hello.v1", false},
@@ -460,6 +467,9 @@ bool handle_v2_request(Engine &engine, const Config &config, RevisionState &revi
 	const FilterMethod filter_method = classify_filter_method(request.method);
 	if (filter_method != FilterMethod::Unknown)
 		return handle_filter_request(engine, revisions, events, request, filter_method);
+
+	if (is_phase2_method(request.method))
+		return handle_phase2_request(engine, revisions, events, request);
 
 	return handle_v2_request_core(engine, config, revisions, events, request);
 }
