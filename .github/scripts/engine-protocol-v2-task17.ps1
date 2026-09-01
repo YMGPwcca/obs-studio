@@ -160,7 +160,8 @@ function Assert-Task17ProgramDescriptor($Descriptor) {
 }
 
 function Assert-Task17LeaseInfo($Info, [string] $Label) {
-    Assert-Ok $Info $script:T17Revision $Label
+    if (-not $Info.status.ok -or [int64]$Info.revision -lt $script:T17Revision) { Fail-Task17 "$Label failed or regressed the revision." }
+    $script:T17Revision = [int64]$Info.revision
     if ($Info.data.PSObject.Properties['consumerAttached']) { Fail-Task17 'lease state leaked into PreviewOutput.getInfo.' }
 }
 
