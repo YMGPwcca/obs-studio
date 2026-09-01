@@ -66,6 +66,13 @@ enum class Phase2Method {
 	PreviewGetScene,
 	PreviewSetScene,
 	PreviewGetInfo,
+	PreviewOutputCreate,
+	PreviewOutputDestroy,
+	PreviewOutputGetInfo,
+	PreviewOutputSetEnabled,
+	PreviewOutputResize,
+	PreviewOutputGetSharedTexture,
+	PreviewOutputReleaseSharedTexture,
 	Unknown,
 };
 
@@ -104,6 +111,13 @@ constexpr Phase2MethodName kMethods[] = {
 	{"program.getScene", Phase2Method::ProgramGetScene}, {"program.setScene", Phase2Method::ProgramSetScene},
 	{"preview.getScene", Phase2Method::PreviewGetScene}, {"preview.setScene", Phase2Method::PreviewSetScene},
 	{"preview.getInfo", Phase2Method::PreviewGetInfo},
+	{"previewOutput.create", Phase2Method::PreviewOutputCreate},
+	{"previewOutput.destroy", Phase2Method::PreviewOutputDestroy},
+	{"previewOutput.getInfo", Phase2Method::PreviewOutputGetInfo},
+	{"previewOutput.setEnabled", Phase2Method::PreviewOutputSetEnabled},
+	{"previewOutput.resize", Phase2Method::PreviewOutputResize},
+	{"previewOutput.getSharedTexture", Phase2Method::PreviewOutputGetSharedTexture},
+	{"previewOutput.releaseSharedTexture", Phase2Method::PreviewOutputReleaseSharedTexture},
 };
 
 Phase2Method classify(std::string_view method)
@@ -158,6 +172,11 @@ bool mutating(Phase2Method method)
 	case Phase2Method::ProgramSetScene:
 		return true;
 	case Phase2Method::PreviewSetScene:
+		return true;
+	case Phase2Method::PreviewOutputCreate:
+	case Phase2Method::PreviewOutputDestroy:
+	case Phase2Method::PreviewOutputSetEnabled:
+	case Phase2Method::PreviewOutputResize:
 		return true;
 	default:
 		return false;
@@ -277,6 +296,20 @@ Handler handler_for(Phase2Method method)
 		return &Engine::v2_preview_set_scene;
 	case Phase2Method::PreviewGetInfo:
 		return &Engine::v2_preview_get_info;
+	case Phase2Method::PreviewOutputCreate:
+		return &Engine::v2_preview_output_create;
+	case Phase2Method::PreviewOutputDestroy:
+		return &Engine::v2_preview_output_destroy;
+	case Phase2Method::PreviewOutputGetInfo:
+		return &Engine::v2_preview_output_get_info;
+	case Phase2Method::PreviewOutputSetEnabled:
+		return &Engine::v2_preview_output_set_enabled;
+	case Phase2Method::PreviewOutputResize:
+		return &Engine::v2_preview_output_resize;
+	case Phase2Method::PreviewOutputGetSharedTexture:
+		return &Engine::v2_preview_output_get_shared_texture;
+	case Phase2Method::PreviewOutputReleaseSharedTexture:
+		return &Engine::v2_preview_output_release_shared_texture;
 	case Phase2Method::Unknown:
 		return nullptr;
 	}

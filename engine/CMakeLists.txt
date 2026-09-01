@@ -32,6 +32,7 @@ target_sources(
     runtime_canvas_v2.cpp
     runtime_program_v2.cpp
     runtime_preview_v2.cpp
+    runtime_preview_output_v2.cpp
     runtime_scene_v2.cpp
     runtime_source_settle_v2.cpp
     runtime_source_v2.cpp
@@ -73,6 +74,14 @@ target_compile_features(obs-engine-properties-test PRIVATE cxx_std_20)
 target_compile_definitions(obs-engine-properties-test PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 target_link_libraries(obs-engine-properties-test PRIVATE OBS::libobs)
 set_target_properties(obs-engine-properties-test PROPERTIES FOLDER "engine/tests")
+
+# Task 17 cross-process D3D11 consumer. It is a GPL-compatible test fixture,
+# never part of the normal engine build or install package.
+add_executable(obs-engine-preview-consumer-test EXCLUDE_FROM_ALL preview_consumer_test.cpp)
+target_compile_features(obs-engine-preview-consumer-test PRIVATE cxx_std_20)
+target_compile_definitions(obs-engine-preview-consumer-test PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+target_link_libraries(obs-engine-preview-consumer-test PRIVATE d3d11 dxgi dxguid)
+set_target_properties(obs-engine-preview-consumer-test PROPERTIES FOLDER "engine/tests")
 
 # Task 8 deterministic concurrency source. This module exists only for the
 # dedicated A-F CI regression job. EXCLUDE_FROM_ALL keeps it out of normal

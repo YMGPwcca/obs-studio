@@ -154,7 +154,7 @@ checked-out libobs ownership rules require it:
 
 ```text
 disable and detach PreviewOutputs
-release shared GPU resources and close engine-owned OS handles
+release shared GPU resources (legacy DXGI share values are not CloseHandle-owned)
 stop Studio/transition activity
 clear Preview and Program routing
 disconnect Transition/Studio/Canvas/Scene/Item observers
@@ -180,12 +180,20 @@ projector window; the Controller owns those surfaces.
 
 The checked-out D3D11 backend supports render-target textures with
 `GS_SHARED_KM_TEX`, `IDXGIKeyedMutex`, `IDXGIResource::GetSharedHandle`, and
-`OpenSharedResource`. The backend's legacy public helper currently uses a
+`OpenSharedResource`. Its legacy public helper currently exposes only a
 32-bit handle type, while Windows `HANDLE` is pointer-width. The Phase-2
-transport therefore must use a width-preserving descriptor/bridge and must
-document whether the final mechanism is a system-wide legacy shared handle or
-an explicitly duplicated NT handle. A numeric value is never treated as a
-portable process-local HANDLE without the corresponding Windows sharing API.
+transport therefore queries the backend-owned `ID3D11Texture2D` through the
+engine-only `gs_texture_get_obj` path, obtains the full-width
+`IDXGIResource::GetSharedHandle` value, and encodes it as a decimal protocol
+string. A numeric value is never treated as a portable process-local HANDLE
+without the corresponding Windows sharing API.
+
+Task 17 intentionally uses the backend's legacy shared-handle mechanism rather
+than inventing a second NT-handle bridge: the controller opens it with
+`ID3D11Device::OpenSharedResource`, does not call `CloseHandle` or
+`DuplicateHandle`, and must retain its opened resource until it is finished.
+The engine owns the originating resource and uses a keyed mutex; the exact
+ownership and lifetime rules are frozen in `engine/PREVIEW_OUTPUT_V1.md`.
 
 The initial SDR resource is BGRA8-compatible with explicit color-space/range
 metadata. The producer owns the render resource and uses a keyed mutex with a
@@ -196,11 +204,12 @@ reset, adapter/device recreation, and device loss. `frameSequence`, if
 exposed, is telemetry and is independent from engine revision.
 
 PreviewOutput callbacks render only on the libobs graphics/video context. They
-obtain a temporary strong reference to their tagged target under the output
-state lock, release the lock before entering source/Canvas rendering, and
-never hold protocol/revision locks while calling graphics or libobs. A target
-removal first detaches the output's target, then releases the target reference,
-then publishes `previewOutput.targetChanged`/`resourceChanged` as applicable.
+copy output state and the Preview source reference under the output-state lock,
+release that lock before entering source rendering, and never hold
+protocol/revision locks while calling graphics or libobs. Program targets take
+a temporary strong reference from Main Canvas channel `0`. Task 17 supports
+only Program and Preview targets; Task 20 adds explicit Scene, Source, and
+Canvas routing.
 
 ## Capabilities and documentation
 

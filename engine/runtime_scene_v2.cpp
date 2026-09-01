@@ -161,6 +161,11 @@ bool Engine::initialize_phase2_runtime()
 			return false;
 		}
 		main_canvas_ = handle;
+		obs_add_main_render_callback(&Engine::v2_preview_output_render_callback, this);
+		preview_render_callback_registered_ = true;
+		obs_enter_graphics();
+		preview_output_capable_ = gs_get_device_type() == GS_DEVICE_DIRECT3D_11 && gs_shared_texture_available();
+		obs_leave_graphics();
 		return true;
 	} catch (...) {
 		obs_canvas_release(main);
@@ -175,7 +180,8 @@ void Engine::shutdown_phase2_runtime() noexcept
 		if (main_it != canvases_.end() && main_it->second.canvas)
 			obs_canvas_set_channel(main_it->second.canvas, 0, nullptr);
 		program_scene_ = 0;
-		preview_scene_ = 0;
+		v2_shutdown_preview_outputs();
+		v2_clear_preview_source();
 		studio_enabled_ = false;
 		studio_transition_ = 0;
 		studio_transition_duration_ = 0;
@@ -183,7 +189,6 @@ void Engine::shutdown_phase2_runtime() noexcept
 		for (auto &[_, entry] : transitions_)
 			obs_source_release(entry.transition);
 		transitions_.clear();
-		preview_outputs_.clear();
 	} catch (...) {
 		// Destruction must remain noexcept; the protocol bridge is already being
 		// detached by the host scope before Engine teardown.
@@ -646,7 +651,7 @@ bool Engine::v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, Runtim
 		phase2_append_event(result, "program.sceneChanged", std::move(event_data));
 	}
 	if (preview_was_scene) {
-		preview_scene_ = 0;
+		v2_clear_preview_source();
 		ObsDataPtr event_data(obs_data_create());
 		set_nullable_handle(event_data.get(), "scene", 0);
 		set_nullable_handle(event_data.get(), "previousScene", handle);

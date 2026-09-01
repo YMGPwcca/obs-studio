@@ -645,7 +645,8 @@ Events:
 
 ## 23. Preview output API
 
-Primary Windows capability: `preview.d3d11SharedTexture.v1`.
+Primary Windows capability: `preview.d3d11SharedTexture.v1`, advertised only
+when the live graphics backend is D3D11 with shared-texture support.
 
 Methods:
 
@@ -677,6 +678,7 @@ Events:
 - `previewOutput.destroyed`
 - `previewOutput.targetChanged`
 - `previewOutput.resourceChanged`
+- `previewOutput.enabledChanged`
 
 ## 24. Audio API
 

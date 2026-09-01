@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -286,6 +287,7 @@ public:
 	bool v2_preview_output_get_info(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_preview_output_get_shared_texture(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_preview_output_release_shared_texture(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_preview_output_capable() const;
 
 	bool v2_properties_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_properties_resolve(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -398,6 +400,12 @@ private:
 	uint64_t v2_current_program_scene() const;
 	ObsDataPtr v2_program_data(uint64_t scene_handle) const;
 	ObsDataPtr v2_preview_data() const;
+	void v2_clear_preview_source() noexcept;
+	void v2_shutdown_preview_outputs() noexcept;
+	bool v2_get_preview_output_entry(obs_data_t *params, uint64_t &handle,
+					std::shared_ptr<PreviewOutputV2State> &entry, RuntimeV2Error &error) const;
+	static void v2_preview_output_render_callback(void *param, uint32_t base_width, uint32_t base_height);
+	void v2_render_preview_outputs(uint32_t base_width, uint32_t base_height);
 	bool initialize_phase2_runtime();
 	void shutdown_phase2_runtime() noexcept;
 	bool prepare_startup_environment();
@@ -409,6 +417,7 @@ private:
 	uint64_t next_handle_ = 1;
 	uint64_t program_scene_ = 0;
 	uint64_t preview_scene_ = 0;
+	obs_source_t *preview_source_ = nullptr;
 	uint64_t main_canvas_ = 0;
 	bool studio_enabled_ = false;
 	uint64_t studio_transition_ = 0;
@@ -421,6 +430,10 @@ private:
 	PreviewOutputMap preview_outputs_;
 	std::unordered_map<uint64_t, uint64_t> scene_canvases_;
 	std::unordered_map<obs_sceneitem_t *, uint64_t> item_handles_;
+	mutable std::mutex preview_outputs_mutex_;
+	bool preview_render_callback_registered_ = false;
+	bool preview_output_capable_ = false;
+	uint64_t preview_render_frame_ = UINT64_MAX;
 	FilterMap filters_;
 	std::unordered_map<obs_source_t *, uint64_t> filter_handles_;
 	std::shared_ptr<SourceV2State> source_v2_state_;

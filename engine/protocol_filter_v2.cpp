@@ -138,6 +138,14 @@ constexpr CapabilityDescriptor kCapabilities[] = {
 	{"preview.setScene.v1", false},
 	{"preview.getInfo.v1", false},
 	{"preview.v1", false},
+	{"preview.d3d11SharedTexture.v1", true},
+	{"previewOutput.create.v1", true},
+	{"previewOutput.destroy.v1", true},
+	{"previewOutput.getInfo.v1", true},
+	{"previewOutput.setEnabled.v1", true},
+	{"previewOutput.resize.v1", true},
+	{"previewOutput.getSharedTexture.v1", true},
+	{"previewOutput.releaseSharedTexture.v1", true},
 	{"session.close.v1", false},
 	{"session.getSubscriptions.v1", false},
 	{"session.hello.v1", false},
@@ -300,10 +308,17 @@ bool execute_filter_method(Engine &engine, FilterMethod method, obs_data_t *para
 	return false;
 }
 
-ObsArrayPtr make_capabilities_array()
+bool requires_preview_output_transport(std::string_view name)
+{
+	return name == "preview.d3d11SharedTexture.v1" || name.starts_with("previewOutput.");
+}
+
+ObsArrayPtr make_capabilities_array(const Engine &engine)
 {
 	ObsArrayPtr capabilities(obs_data_array_create());
 	for (const CapabilityDescriptor &descriptor : kCapabilities) {
+		if (requires_preview_output_transport(descriptor.name) && !engine.v2_preview_output_capable())
+			continue;
 		ObsDataPtr capability(obs_data_create());
 		obs_data_set_string(capability.get(), "name", descriptor.name);
 		obs_data_set_bool(capability.get(), "experimental", descriptor.experimental);
@@ -312,9 +327,9 @@ ObsArrayPtr make_capabilities_array()
 	return capabilities;
 }
 
-void set_capabilities(obs_data_t *data)
+void set_capabilities(obs_data_t *data, const Engine &engine)
 {
-	ObsArrayPtr capabilities = make_capabilities_array();
+	ObsArrayPtr capabilities = make_capabilities_array(engine);
 	obs_data_set_array(data, "capabilities", capabilities.get());
 }
 
@@ -432,7 +447,7 @@ bool execute_filter_request(Engine &engine, FilterMethod method, const V2Request
 	return succeeded;
 }
 
-bool handle_capability_request(RevisionState &revisions, const V2Request &request)
+bool handle_capability_request(Engine &engine, RevisionState &revisions, const V2Request &request)
 {
 	if (reject_guard_on_read(request, revisions.current()))
 		return true;
@@ -450,14 +465,14 @@ bool handle_capability_request(RevisionState &revisions, const V2Request &reques
 		obs_data_set_int(data.get(), "pid", static_cast<long long>(GetCurrentProcessId()));
 		obs_data_set_string(data.get(), "encoding", "utf-8");
 		obs_data_set_int(data.get(), "maxMessageBytes", static_cast<long long>(kMaxMessageBytes));
-		set_capabilities(data.get());
+		set_capabilities(data.get(), engine);
 		obs_data_set_int(data.get(), "revision", static_cast<long long>(revision));
 		send_v2_ok(request.id, data.get(), revision);
 		return true;
 	}
 
 	ObsDataPtr data(obs_data_create());
-	set_capabilities(data.get());
+	set_capabilities(data.get(), engine);
 	send_v2_ok(request.id, data.get(), revisions.current());
 	return true;
 }
@@ -508,7 +523,7 @@ bool handle_v2_request(Engine &engine, const Config &config, RevisionState &revi
 		       const V2Request &request)
 {
 	if (request.method == "session.hello" || request.method == "engine.getCapabilities")
-		return handle_capability_request(revisions, request);
+		return handle_capability_request(engine, revisions, request);
 
 	const FilterMethod filter_method = classify_filter_method(request.method);
 	if (filter_method != FilterMethod::Unknown)
