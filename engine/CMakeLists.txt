@@ -28,6 +28,7 @@ target_sources(
     runtime_properties_v2.cpp
     runtime_phase2_common.cpp
     runtime_phase2_common.hpp
+    runtime_item_v2.cpp
     runtime_scene_v2.cpp
     runtime_source_settle_v2.cpp
     runtime_source_v2.cpp

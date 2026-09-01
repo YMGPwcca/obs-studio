@@ -254,8 +254,11 @@ bool Engine::v2_register_scene_item(uint64_t scene_id, uint64_t parent_group_id,
 		auto item_it = items_.find(known->second);
 		if (item_it == items_.end())
 			return phase2_fail(error, "internal_error", "scene item handle registry is inconsistent");
-		if (item_it->second.scene_id != scene_id || item_it->second.parent_group_id != parent_group_id)
-			return phase2_fail(error, "invalid_state", "one libobs scene item belongs to multiple protocol parents");
+		if (item_it->second.scene_id != scene_id)
+			return phase2_fail(error, "invalid_state", "one libobs scene item belongs to multiple protocol Scenes");
+		item_it->second.parent_group_id = parent_group_id;
+		item_it->second.source_id = v2_source_handle_for_pointer(obs_sceneitem_get_source(item));
+		item_it->second.is_group = obs_sceneitem_is_group(item);
 		return true;
 	}
 

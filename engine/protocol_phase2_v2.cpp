@@ -20,6 +20,35 @@ enum class Phase2Method {
 	SceneDuplicate,
 	SceneGetItems,
 	SceneGetState,
+	ItemGet,
+	ItemCreate,
+	ItemRemove,
+	ItemDuplicate,
+	ItemGetTransform,
+	ItemSetTransform,
+	ItemSetPosition,
+	ItemSetScale,
+	ItemSetRotation,
+	ItemSetAlignment,
+	ItemSetBounds,
+	ItemSetBoundsAlignment,
+	ItemSetCrop,
+	ItemSetCropToBounds,
+	ItemSetVisible,
+	ItemSetLocked,
+	ItemSetOrder,
+	ItemMoveUp,
+	ItemMoveDown,
+	ItemMoveTop,
+	ItemMoveBottom,
+	ItemSetScaleFilter,
+	ItemSetBlendMode,
+	ItemSetBlendMethod,
+	ItemCreateGroup,
+	ItemUngroup,
+	ItemAddToGroup,
+	ItemRemoveFromGroup,
+	ItemGetChildren,
 	Unknown,
 };
 
@@ -33,6 +62,21 @@ constexpr Phase2MethodName kMethods[] = {
 	{"scene.create", Phase2Method::SceneCreate},   {"scene.remove", Phase2Method::SceneRemove},
 	{"scene.rename", Phase2Method::SceneRename},   {"scene.duplicate", Phase2Method::SceneDuplicate},
 	{"scene.getItems", Phase2Method::SceneGetItems}, {"scene.getState", Phase2Method::SceneGetState},
+	{"item.get", Phase2Method::ItemGet}, {"item.create", Phase2Method::ItemCreate},
+	{"item.remove", Phase2Method::ItemRemove}, {"item.duplicate", Phase2Method::ItemDuplicate},
+	{"item.getTransform", Phase2Method::ItemGetTransform}, {"item.setTransform", Phase2Method::ItemSetTransform},
+	{"item.setPosition", Phase2Method::ItemSetPosition}, {"item.setScale", Phase2Method::ItemSetScale},
+	{"item.setRotation", Phase2Method::ItemSetRotation}, {"item.setAlignment", Phase2Method::ItemSetAlignment},
+	{"item.setBounds", Phase2Method::ItemSetBounds}, {"item.setBoundsAlignment", Phase2Method::ItemSetBoundsAlignment},
+	{"item.setCrop", Phase2Method::ItemSetCrop}, {"item.setCropToBounds", Phase2Method::ItemSetCropToBounds},
+	{"item.setVisible", Phase2Method::ItemSetVisible}, {"item.setLocked", Phase2Method::ItemSetLocked},
+	{"item.setOrder", Phase2Method::ItemSetOrder}, {"item.moveUp", Phase2Method::ItemMoveUp},
+	{"item.moveDown", Phase2Method::ItemMoveDown}, {"item.moveTop", Phase2Method::ItemMoveTop},
+	{"item.moveBottom", Phase2Method::ItemMoveBottom}, {"item.setScaleFilter", Phase2Method::ItemSetScaleFilter},
+	{"item.setBlendMode", Phase2Method::ItemSetBlendMode}, {"item.setBlendMethod", Phase2Method::ItemSetBlendMethod},
+	{"item.createGroup", Phase2Method::ItemCreateGroup}, {"item.ungroup", Phase2Method::ItemUngroup},
+	{"item.addToGroup", Phase2Method::ItemAddToGroup}, {"item.removeFromGroup", Phase2Method::ItemRemoveFromGroup},
+	{"item.getChildren", Phase2Method::ItemGetChildren},
 };
 
 Phase2Method classify(std::string_view method)
@@ -46,8 +90,41 @@ Phase2Method classify(std::string_view method)
 
 bool mutating(Phase2Method method)
 {
-	return method == Phase2Method::SceneCreate || method == Phase2Method::SceneRemove ||
-	       method == Phase2Method::SceneRename || method == Phase2Method::SceneDuplicate;
+	switch (method) {
+	case Phase2Method::SceneCreate:
+	case Phase2Method::SceneRemove:
+	case Phase2Method::SceneRename:
+	case Phase2Method::SceneDuplicate:
+	case Phase2Method::ItemCreate:
+	case Phase2Method::ItemRemove:
+	case Phase2Method::ItemDuplicate:
+	case Phase2Method::ItemSetTransform:
+	case Phase2Method::ItemSetPosition:
+	case Phase2Method::ItemSetScale:
+	case Phase2Method::ItemSetRotation:
+	case Phase2Method::ItemSetAlignment:
+	case Phase2Method::ItemSetBounds:
+	case Phase2Method::ItemSetBoundsAlignment:
+	case Phase2Method::ItemSetCrop:
+	case Phase2Method::ItemSetCropToBounds:
+	case Phase2Method::ItemSetVisible:
+	case Phase2Method::ItemSetLocked:
+	case Phase2Method::ItemSetOrder:
+	case Phase2Method::ItemMoveUp:
+	case Phase2Method::ItemMoveDown:
+	case Phase2Method::ItemMoveTop:
+	case Phase2Method::ItemMoveBottom:
+	case Phase2Method::ItemSetScaleFilter:
+	case Phase2Method::ItemSetBlendMode:
+	case Phase2Method::ItemSetBlendMethod:
+	case Phase2Method::ItemCreateGroup:
+	case Phase2Method::ItemUngroup:
+	case Phase2Method::ItemAddToGroup:
+	case Phase2Method::ItemRemoveFromGroup:
+		return true;
+	default:
+		return false;
+	}
 }
 
 using Handler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
@@ -71,6 +148,64 @@ Handler handler_for(Phase2Method method)
 		return &Engine::v2_scene_get_items;
 	case Phase2Method::SceneGetState:
 		return &Engine::v2_scene_get_state;
+	case Phase2Method::ItemGet:
+		return &Engine::v2_item_get;
+	case Phase2Method::ItemCreate:
+		return &Engine::v2_item_create;
+	case Phase2Method::ItemRemove:
+		return &Engine::v2_item_remove;
+	case Phase2Method::ItemDuplicate:
+		return &Engine::v2_item_duplicate;
+	case Phase2Method::ItemGetTransform:
+		return &Engine::v2_item_get_transform;
+	case Phase2Method::ItemSetTransform:
+		return &Engine::v2_item_set_transform;
+	case Phase2Method::ItemSetPosition:
+		return &Engine::v2_item_set_position;
+	case Phase2Method::ItemSetScale:
+		return &Engine::v2_item_set_scale;
+	case Phase2Method::ItemSetRotation:
+		return &Engine::v2_item_set_rotation;
+	case Phase2Method::ItemSetAlignment:
+		return &Engine::v2_item_set_alignment;
+	case Phase2Method::ItemSetBounds:
+		return &Engine::v2_item_set_bounds;
+	case Phase2Method::ItemSetBoundsAlignment:
+		return &Engine::v2_item_set_bounds_alignment;
+	case Phase2Method::ItemSetCrop:
+		return &Engine::v2_item_set_crop;
+	case Phase2Method::ItemSetCropToBounds:
+		return &Engine::v2_item_set_crop_to_bounds;
+	case Phase2Method::ItemSetVisible:
+		return &Engine::v2_item_set_visible;
+	case Phase2Method::ItemSetLocked:
+		return &Engine::v2_item_set_locked;
+	case Phase2Method::ItemSetOrder:
+		return &Engine::v2_item_set_order;
+	case Phase2Method::ItemMoveUp:
+		return &Engine::v2_item_move_up;
+	case Phase2Method::ItemMoveDown:
+		return &Engine::v2_item_move_down;
+	case Phase2Method::ItemMoveTop:
+		return &Engine::v2_item_move_top;
+	case Phase2Method::ItemMoveBottom:
+		return &Engine::v2_item_move_bottom;
+	case Phase2Method::ItemSetScaleFilter:
+		return &Engine::v2_item_set_scale_filter;
+	case Phase2Method::ItemSetBlendMode:
+		return &Engine::v2_item_set_blend_mode;
+	case Phase2Method::ItemSetBlendMethod:
+		return &Engine::v2_item_set_blend_method;
+	case Phase2Method::ItemCreateGroup:
+		return &Engine::v2_item_create_group;
+	case Phase2Method::ItemUngroup:
+		return &Engine::v2_item_ungroup;
+	case Phase2Method::ItemAddToGroup:
+		return &Engine::v2_item_add_to_group;
+	case Phase2Method::ItemRemoveFromGroup:
+		return &Engine::v2_item_remove_from_group;
+	case Phase2Method::ItemGetChildren:
+		return &Engine::v2_item_get_children;
 	case Phase2Method::Unknown:
 		return nullptr;
 	}

@@ -531,6 +531,11 @@ Methods:
 - `item.setScaleFilter`
 - `item.setBlendMode`
 - `item.setBlendMethod`
+- `item.createGroup`
+- `item.ungroup`
+- `item.addToGroup`
+- `item.removeFromGroup`
+- `item.getChildren`
 
 `item.setTransform` is the canonical compound update and may contain position, rotation, scale, alignment, bounds type, bounds alignment, bounds dimensions, crop and crop-to-bounds.
 
@@ -540,9 +545,13 @@ Events:
 - `item.removed`
 - `item.transformChanged`
 - `item.visibilityChanged`
-- `item.lockChanged`
+- `item.lockedChanged`
 - `item.orderChanged`
 - `item.blendChanged`
+
+Crop, bounds, crop-to-bounds, and scale-filter state are part of the canonical
+`item.transformChanged` payload. Group structure changes may also emit
+`scene.itemsChanged`; this event is not an alias for an item state event.
 
 ## 20. Canvas API
 

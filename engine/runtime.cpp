@@ -394,7 +394,8 @@ void Engine::release_item(ItemMap::iterator &it)
 {
 	if (it->second.item)
 		item_handles_.erase(it->second.item);
-	obs_sceneitem_remove(it->second.item);
+	if (it->second.item && obs_sceneitem_get_scene(it->second.item))
+		obs_sceneitem_remove(it->second.item);
 	obs_sceneitem_release(it->second.item);
 	it = items_.erase(it);
 }
