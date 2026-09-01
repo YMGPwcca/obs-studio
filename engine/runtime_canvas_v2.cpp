@@ -501,6 +501,7 @@ bool Engine::v2_canvas_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 	ObsDataPtr data(obs_data_create());
 	phase2_set_handle(data.get(), "canvas", handle);
 	result.data = std::move(data);
+	v2_preview_output_invalidate_canvas(handle, result);
 	obs_canvas_remove(entry->canvas);
 	obs_canvas_release(entry->canvas);
 	canvases_.erase(handle);
@@ -577,6 +578,7 @@ bool Engine::v2_canvas_set_video_settings(obs_data_t *params, RuntimeV2Result &r
 				   obs_video_active() ? "Canvas video reset is busy while video is active" : "Canvas video reset failed");
 	result.data = make_canvas_video_data(handle, entry->canvas);
 	phase2_append_event(result, "canvas.videoSettingsChanged", phase2_clone_data(result.data.get()));
+	v2_preview_output_invalidate_canvas_video(handle, result);
 	result.mutated = true;
 	return true;
 }

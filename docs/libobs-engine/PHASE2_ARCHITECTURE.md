@@ -1,6 +1,7 @@
 # Engine Protocol v2 Phase 2 Architecture
 
-Status: implementation design for the `phase2-scene-render-graph` branch
+Status: Phase-2 implementation complete on the `phase2-scene-render-graph`
+branch; awaiting independent advisor review and human acceptance
 
 This document records the Phase-2 runtime model for Tasks 12–20. It is
 subordinate to checked-out source, the explicit Phase-2 goal, and the concrete
@@ -53,6 +54,7 @@ TransitionEntry
 
 PreviewOutputEntry
   +-- logical tagged target
+  +-- strong target binding or unavailable target state
   +-- render size/format/color metadata
   +-- engine-owned GPU resources and generation
   +-- bounded synchronization state
@@ -182,8 +184,9 @@ revision state is gone.
 
 Task 17 creates the PreviewOutput runtime object and the Windows-only shared
 resource foundation. Task 20 completes explicit tagged routing to Program,
-Preview, Scene, Source, and Canvas. Normal outputs never create an HWND or a
-projector window; the Controller owns those surfaces.
+Preview, Scene, Source, and Canvas, semantic fit/fill/stretch/oneToOne scaling,
+list/get/setTarget, and target/resource invalidation. Normal outputs never
+create an HWND or a projector window; the Controller owns those surfaces.
 
 The checked-out D3D11 backend supports render-target textures with
 `GS_SHARED_KM_TEX`, `IDXGIKeyedMutex`, `IDXGIResource::GetSharedHandle`, and
@@ -206,9 +209,8 @@ The initial SDR resource is BGRA8-compatible with explicit color-space/range
 metadata. The producer owns the render resource and uses a keyed mutex with a
 bounded acquire timeout; it never waits indefinitely for a dead Controller.
 The consumer acquires/releases the documented keys. `resourceGeneration`
-changes on resize, format/color-space resource replacement, Canvas/global video
-reset, adapter/device recreation, and device loss. `frameSequence`, if
-exposed, is telemetry and is independent from engine revision.
+changes on resize, Canvas video reset, and resource replacement. `frameSequence`,
+if exposed, is telemetry and is independent from engine revision.
 
 PreviewOutput callbacks render only on the libobs graphics/video context. They
 copy output state and the Preview source reference under the output-state lock,
@@ -220,8 +222,9 @@ Canvas routing.
 
 ## Capabilities and documentation
 
-Intermediate commits advertise method-level capabilities only. The intended
-final set is:
+The final implementation advertises the following capabilities on the live
+D3D11 build; the shared-texture and PreviewOutput entries are omitted on
+unsupported graphics backends:
 
 ```text
 scene.v1

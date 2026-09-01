@@ -299,6 +299,10 @@ public:
 	bool v2_preview_output_get_shared_texture(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_preview_output_release_shared_texture(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_preview_output_capable() const;
+	void v2_preview_output_invalidate_scene(uint64_t scene_handle, RuntimeV2Result &result);
+	void v2_preview_output_invalidate_source(uint64_t source_handle, RuntimeV2Result &result);
+	void v2_preview_output_invalidate_canvas(uint64_t canvas_handle, RuntimeV2Result &result);
+	void v2_preview_output_invalidate_canvas_video(uint64_t canvas_handle, RuntimeV2Result &result);
 
 	bool v2_properties_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_properties_resolve(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -408,6 +412,7 @@ private:
 	uint64_t v2_source_handle_for_pointer(const obs_source_t *source) const;
 	obs_source_t *v2_source_for_handle(uint64_t handle) const;
 	obs_scene_t *v2_scene_for_handle(uint64_t handle) const;
+	obs_canvas_t *v2_canvas_for_handle(uint64_t handle) const;
 	uint64_t v2_scene_handle_for_pointer(const obs_source_t *source) const;
 	ObsDataPtr v2_scene_summary(uint64_t handle, obs_scene_t *scene) const;
 	ObsDataPtr v2_item_summary(uint64_t handle, const ItemEntry &entry) const;

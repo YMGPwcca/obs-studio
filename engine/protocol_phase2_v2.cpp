@@ -68,6 +68,9 @@ enum class Phase2Method {
 	PreviewGetInfo,
 	PreviewOutputCreate,
 	PreviewOutputDestroy,
+	PreviewOutputList,
+	PreviewOutputGet,
+	PreviewOutputSetTarget,
 	PreviewOutputGetInfo,
 	PreviewOutputSetEnabled,
 	PreviewOutputResize,
@@ -135,6 +138,9 @@ constexpr Phase2MethodName kMethods[] = {
 	{"preview.getInfo", Phase2Method::PreviewGetInfo},
 	{"previewOutput.create", Phase2Method::PreviewOutputCreate},
 	{"previewOutput.destroy", Phase2Method::PreviewOutputDestroy},
+	{"previewOutput.list", Phase2Method::PreviewOutputList},
+	{"previewOutput.get", Phase2Method::PreviewOutputGet},
+	{"previewOutput.setTarget", Phase2Method::PreviewOutputSetTarget},
 	{"previewOutput.getInfo", Phase2Method::PreviewOutputGetInfo},
 	{"previewOutput.setEnabled", Phase2Method::PreviewOutputSetEnabled},
 	{"previewOutput.resize", Phase2Method::PreviewOutputResize},
@@ -221,6 +227,7 @@ bool mutating(Phase2Method method)
 	case Phase2Method::PreviewOutputDestroy:
 	case Phase2Method::PreviewOutputSetEnabled:
 	case Phase2Method::PreviewOutputResize:
+	case Phase2Method::PreviewOutputSetTarget:
 		return true;
 	case Phase2Method::TransitionCreate:
 	case Phase2Method::TransitionRemove:
@@ -356,6 +363,12 @@ Handler handler_for(Phase2Method method)
 		return &Engine::v2_preview_output_create;
 	case Phase2Method::PreviewOutputDestroy:
 		return &Engine::v2_preview_output_destroy;
+	case Phase2Method::PreviewOutputList:
+		return &Engine::v2_preview_output_list;
+	case Phase2Method::PreviewOutputGet:
+		return &Engine::v2_preview_output_get;
+	case Phase2Method::PreviewOutputSetTarget:
+		return &Engine::v2_preview_output_set_target;
 	case Phase2Method::PreviewOutputGetInfo:
 		return &Engine::v2_preview_output_get_info;
 	case Phase2Method::PreviewOutputSetEnabled:

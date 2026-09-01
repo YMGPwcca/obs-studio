@@ -1,22 +1,29 @@
 # Engine Protocol v2 — PreviewOutput v1 / D3D11
 
-Task 17 exposes a Windows D3D11 PreviewOutput for efficient cross-process
+Phase 2 exposes a Windows D3D11 PreviewOutput for efficient cross-process
 preview. The capability `preview.d3d11SharedTexture.v1` and its method-level
 entries are advertised only when the live graphics device is D3D11 and reports
-shared-texture support. The Task-17 target set is `program` and `preview`;
-Scene, Source, and Canvas targets are added by Task 20.
+shared-texture support. Task 17 established the transport; Task 20 completes
+the general target/routing namespace.
 
 ## Methods
 
 ```text
+previewOutput.list
+previewOutput.get
 previewOutput.create
 previewOutput.destroy
+previewOutput.setTarget
 previewOutput.getInfo
 previewOutput.setEnabled
 previewOutput.resize
 previewOutput.getSharedTexture
 previewOutput.releaseSharedTexture
 ```
+
+Targets are explicit tagged objects: `program`, `preview`, `scene`, `source`,
+and `canvas`. `previewOutput.create` and `previewOutput.setTarget` reject
+unregistered handles; they never infer a target class from a bare handle.
 
 `previewOutput.create` requires an explicit target object:
 
@@ -33,10 +40,12 @@ previewOutput.releaseSharedTexture
 ```
 
 Width and height default to the target video output and are bounded to
-`16..16384`. The only transport format in this version is BGRA8-compatible,
-sRGB, full range. The response and `previewOutput.created` event include the
-logical target, effective dimensions, `resourceGeneration`, adapter LUID, and
-the shared-texture descriptor. Handles remain canonical decimal strings.
+`16..16384`. Semantic scaling is `fit`, `fill`, `stretch`, or `oneToOne`, with
+`fit` as the default. The only transport format in this version is
+BGRA8-compatible, sRGB, full range. The response and `previewOutput.created`
+event include the logical target, effective dimensions, scale,
+`resourceGeneration`, adapter LUID, and the shared-texture descriptor. Handles
+remain canonical decimal strings.
 
 ## Resource and handle contract
 
@@ -100,12 +109,12 @@ transforms, and filters. All graphics operations are inside the libobs graphics
 context. No HWND, COM pointer, `gs_texture_t*`, or raw video bytes cross the
 protocol.
 
-`resourceGeneration` starts at `"1"` and increments when `resize` replaces the
-resource. The `previewOutput.resourceChanged` event carries the replacement
-descriptor. Destruction removes the runtime handle and releases the engine's
-graphics resources after the render callback is detached. A Controller-opened
-legacy resource may keep the underlying allocation alive until its own D3D
-reference is released.
+`resourceGeneration` starts at `"1"` and increments when `resize` or a relevant
+Canvas video reset replaces the resource. The `previewOutput.resourceChanged`
+event carries the replacement descriptor. Destruction removes the runtime
+handle and releases the engine's graphics resources after the render callback
+is detached. A Controller-opened legacy resource may keep the underlying
+allocation alive until its own D3D reference is released.
 
 `previewOutput.setEnabled` is a canonical configuration mutation and emits
 `previewOutput.enabledChanged`; disabled outputs retain their descriptor but
@@ -117,5 +126,5 @@ mutation revision.
 
 Stable errors include `bad_request`, `not_found`, `not_available`,
 `unsupported_capability`, `obs_error`, `busy`, and `revision_conflict`.
-`previewOutput.list`, `previewOutput.get`, `setTarget`, and binary capture are
-not advertised until Task 20 completes the general PreviewOutput namespace.
+Binary capture is intentionally not implemented or advertised; large frame
+data never travels through NDJSON.

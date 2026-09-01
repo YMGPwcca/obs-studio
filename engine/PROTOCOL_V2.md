@@ -571,8 +571,6 @@ Methods:
 - `canvas.getChannel`
 - `canvas.setChannel`
 - `canvas.getFlags`
-- `canvas.snapshot`
-- `canvas.restore`
 
 The protocol MUST isolate canvas instability behind this capability so controller compatibility does not depend on libobs canvas ABI details.
 
@@ -657,7 +655,6 @@ Methods:
 - `previewOutput.getInfo`
 - `previewOutput.getSharedTexture`
 - `previewOutput.releaseSharedTexture`
-- `previewOutput.captureFrame`
 
 Targets:
 
@@ -668,8 +665,6 @@ Targets:
 - canvas.
 
 The engine owns all graphics API entry/exit calls and `gs_*` objects. The controller receives only platform-safe share metadata/handles with explicit lifetime and synchronization rules.
-
-Raw video frames MUST NOT be sent as JSON. `captureFrame` uses an out-of-band binary result or a safe engine-managed file operation.
 
 Events:
 

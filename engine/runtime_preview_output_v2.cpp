@@ -14,6 +14,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -27,6 +28,16 @@ constexpr uint32_t kPreviewAcquireTimeoutMs = 16;
 enum class PreviewOutputTarget {
 	Program,
 	Preview,
+	Scene,
+	Source,
+	Canvas,
+};
+
+enum class PreviewOutputScale {
+	Fit,
+	Fill,
+	Stretch,
+	OneToOne,
 };
 
 struct PreviewTextureV2Resource {
@@ -42,9 +53,26 @@ struct PreviewTextureV2Resource {
 
 } // namespace
 
+struct PreviewOutputTargetBinding {
+	PreviewOutputTarget target = PreviewOutputTarget::Preview;
+	uint64_t handle = 0;
+	bool available = true;
+	obs_source_t *source = nullptr;
+	obs_canvas_t *canvas = nullptr;
+
+	~PreviewOutputTargetBinding()
+	{
+		if (source)
+			obs_source_release(source);
+		if (canvas)
+			obs_canvas_release(canvas);
+	}
+};
+
 struct PreviewOutputV2State {
 	uint64_t handle = 0;
-	PreviewOutputTarget target = PreviewOutputTarget::Preview;
+	std::shared_ptr<PreviewOutputTargetBinding> target;
+	PreviewOutputScale scale = PreviewOutputScale::Fit;
 	bool enabled = true;
 	bool consumer_attached = false;
 	std::shared_ptr<PreviewTextureV2Resource> resource;
@@ -55,10 +83,69 @@ namespace {
 
 const char *preview_output_target_name(PreviewOutputTarget target)
 {
-	return target == PreviewOutputTarget::Program ? "program" : "preview";
+	switch (target) {
+	case PreviewOutputTarget::Program:
+		return "program";
+	case PreviewOutputTarget::Preview:
+		return "preview";
+	case PreviewOutputTarget::Scene:
+		return "scene";
+	case PreviewOutputTarget::Source:
+		return "source";
+	case PreviewOutputTarget::Canvas:
+		return "canvas";
+	}
+	return "unavailable";
 }
 
-bool read_preview_output_target(obs_data_t *params, PreviewOutputTarget &target, RuntimeV2Error &error)
+const char *preview_output_scale_name(PreviewOutputScale scale)
+{
+	switch (scale) {
+	case PreviewOutputScale::Fit:
+		return "fit";
+	case PreviewOutputScale::Fill:
+		return "fill";
+	case PreviewOutputScale::Stretch:
+		return "stretch";
+	case PreviewOutputScale::OneToOne:
+		return "oneToOne";
+	}
+	return "fit";
+}
+
+bool parse_preview_output_scale(std::string_view value, PreviewOutputScale &scale)
+{
+	if (value == "fit")
+		scale = PreviewOutputScale::Fit;
+	else if (value == "fill")
+		scale = PreviewOutputScale::Fill;
+	else if (value == "stretch")
+		scale = PreviewOutputScale::Stretch;
+	else if (value == "oneToOne" || value == "none")
+		scale = PreviewOutputScale::OneToOne;
+	else
+		return false;
+	return true;
+}
+
+bool read_preview_output_scale(obs_data_t *params, PreviewOutputScale fallback, PreviewOutputScale &scale,
+				       RuntimeV2Error &error)
+{
+	std::string value;
+	bool present = false;
+	if (!phase2_read_string(params, "scale", value, present))
+		return phase2_fail(error, "bad_request", "params.scale must be a semantic string");
+	if (!present) {
+		scale = fallback;
+		return true;
+	}
+	if (!parse_preview_output_scale(value, scale))
+		return phase2_fail(error, "bad_request", "params.scale is unsupported");
+	return true;
+}
+
+bool read_preview_output_target(obs_data_t *params, PreviewOutputTarget &target, uint64_t &handle,
+					RuntimeV2Error &error)
 {
 	ObsDataPtr object;
 	bool present = false;
@@ -67,13 +154,73 @@ bool read_preview_output_target(obs_data_t *params, PreviewOutputTarget &target,
 	std::string type;
 	if (!phase2_read_string(object.get(), "type", type, present) || !present)
 		return phase2_fail(error, "bad_request", "target.type is required");
+	handle = 0;
 	if (type == "program")
 		target = PreviewOutputTarget::Program;
 	else if (type == "preview")
 		target = PreviewOutputTarget::Preview;
+	else if (type == "scene") {
+		target = PreviewOutputTarget::Scene;
+		if (!phase2_read_handle(object.get(), "scene", handle))
+			return phase2_fail(error, "bad_request", "target.scene must be a canonical scene handle string");
+	} else if (type == "source") {
+		target = PreviewOutputTarget::Source;
+		if (!phase2_read_handle(object.get(), "source", handle))
+			return phase2_fail(error, "bad_request", "target.source must be a canonical source handle string");
+	} else if (type == "canvas") {
+		target = PreviewOutputTarget::Canvas;
+		if (!phase2_read_handle(object.get(), "canvas", handle))
+			return phase2_fail(error, "bad_request", "target.canvas must be a canonical canvas handle string");
+}
 	else
-		return phase2_fail(error, "unsupported_capability", "PreviewOutput target must be program or preview");
+		return phase2_fail(error, "unsupported_capability", "PreviewOutput target is not supported");
 	return true;
+}
+
+std::shared_ptr<PreviewOutputTargetBinding> create_preview_output_binding(Engine &engine,
+								PreviewOutputTarget target, uint64_t handle,
+								RuntimeV2Error &error)
+{
+	auto binding = std::make_shared<PreviewOutputTargetBinding>();
+	binding->target = target;
+	binding->handle = handle;
+	switch (target) {
+	case PreviewOutputTarget::Program:
+	case PreviewOutputTarget::Preview:
+		return binding;
+	case PreviewOutputTarget::Scene: {
+		obs_scene_t *scene = engine.v2_scene_for_handle(handle);
+		if (!scene) {
+			phase2_fail(error, "not_found", "PreviewOutput scene target was not found");
+			return {};
+		}
+		binding->source = obs_source_get_ref(obs_scene_get_source(scene));
+		break;
+	}
+	case PreviewOutputTarget::Source:
+		binding->source = obs_source_get_ref(engine.v2_source_for_handle(handle));
+		if (!binding->source) {
+			phase2_fail(error, "not_found", "PreviewOutput source target was not found");
+			return {};
+		}
+		break;
+	case PreviewOutputTarget::Canvas:
+		binding->canvas = obs_canvas_get_ref(engine.v2_canvas_for_handle(handle));
+		if (!binding->canvas || obs_canvas_removed(binding->canvas)) {
+			if (binding->canvas) {
+				obs_canvas_release(binding->canvas);
+				binding->canvas = nullptr;
+			}
+			phase2_fail(error, "not_found", "PreviewOutput canvas target was not found");
+			return {};
+		}
+		break;
+	}
+	if ((target == PreviewOutputTarget::Scene || target == PreviewOutputTarget::Source) && !binding->source) {
+		phase2_fail(error, "not_found", "PreviewOutput target source was not available");
+		return {};
+	}
+	return binding;
 }
 
 bool read_preview_output_dimension(obs_data_t *params, const char *name, uint32_t fallback, uint32_t &value,
@@ -244,19 +391,43 @@ void set_nullable_string_handle(obs_data_t *data, const char *name, uint64_t val
 		obs_data_set_obj(data, name, nullptr);
 }
 
-ObsDataPtr make_preview_output_target(PreviewOutputTarget target)
+ObsDataPtr make_preview_output_target(const PreviewOutputTargetBinding &target)
 {
 	ObsDataPtr data(obs_data_create());
-	obs_data_set_string(data.get(), "type", preview_output_target_name(target));
+	obs_data_set_string(data.get(), "type", preview_output_target_name(target.target));
+	if (target.handle != 0) {
+		const char *field = target.target == PreviewOutputTarget::Scene
+				    ? "scene"
+				    : target.target == PreviewOutputTarget::Source ? "source" : "canvas";
+		phase2_set_handle(data.get(), field, target.handle);
+	}
 	return data;
+}
+
+std::shared_ptr<PreviewOutputTargetBinding> make_unavailable_target(PreviewOutputTarget target, uint64_t handle)
+{
+	auto binding = std::make_shared<PreviewOutputTargetBinding>();
+	binding->target = target;
+	binding->handle = handle;
+	binding->available = false;
+	return binding;
 }
 
 ObsDataPtr make_preview_output_info(const PreviewOutputV2State &state)
 {
 	ObsDataPtr data(obs_data_create());
 	phase2_set_handle(data.get(), "previewOutput", state.handle);
-	obs_data_set_obj(data.get(), "target", make_preview_output_target(state.target).get());
+	if (state.target) {
+		obs_data_set_obj(data.get(), "target", make_preview_output_target(*state.target).get());
+		obs_data_set_bool(data.get(), "targetAvailable", state.target->available);
+	} else {
+		ObsDataPtr target(obs_data_create());
+		obs_data_set_string(target.get(), "type", "unavailable");
+		obs_data_set_obj(data.get(), "target", target.get());
+		obs_data_set_bool(data.get(), "targetAvailable", false);
+	}
 	obs_data_set_bool(data.get(), "enabled", state.enabled);
+	obs_data_set_string(data.get(), "scale", preview_output_scale_name(state.scale));
 	const auto resource = state.resource;
 	if (resource) {
 		phase2_set_handle(data.get(), "resourceGeneration", resource->generation);
@@ -312,11 +483,12 @@ ObsDataPtr make_shared_texture_descriptor(const PreviewOutputV2State &state)
 struct PreviewRenderJob {
 	std::shared_ptr<PreviewOutputV2State> state;
 	std::shared_ptr<PreviewTextureV2Resource> resource;
-	PreviewOutputTarget target = PreviewOutputTarget::Preview;
+	std::shared_ptr<PreviewOutputTargetBinding> target;
+	PreviewOutputScale scale = PreviewOutputScale::Fit;
 };
 
-bool render_preview_resource(PreviewTextureV2Resource &resource, obs_source_t *source, uint32_t fallback_width,
-				     uint32_t fallback_height)
+bool render_preview_resource(PreviewTextureV2Resource &resource, obs_source_t *source, obs_canvas_t *canvas,
+				     PreviewOutputScale scale, uint32_t fallback_width, uint32_t fallback_height)
 {
 	if (!resource.texture)
 		return false;
@@ -330,12 +502,19 @@ bool render_preview_resource(PreviewTextureV2Resource &resource, obs_source_t *s
 	gs_texture_t *stage = nullptr;
 	uint32_t source_width = source ? obs_source_get_width(source) : 0;
 	uint32_t source_height = source ? obs_source_get_height(source) : 0;
+	if (!source && canvas) {
+		obs_video_info video = {};
+		if (obs_canvas_get_video_info(canvas, &video)) {
+			source_width = video.base_width;
+			source_height = video.base_height;
+		}
+	}
 	if (source_width == 0)
 		source_width = fallback_width;
 	if (source_height == 0)
 		source_height = fallback_height;
 
-	if (source && source_width != 0 && source_height != 0 && resource.staging) {
+	if ((source || canvas) && source_width != 0 && source_height != 0 && resource.staging) {
 		gs_texrender_reset(resource.staging);
 		if (gs_texrender_begin_with_color_space(resource.staging, source_width, source_height, GS_CS_SRGB)) {
 			struct vec4 clear_color;
@@ -344,7 +523,10 @@ bool render_preview_resource(PreviewTextureV2Resource &resource, obs_source_t *s
 			gs_ortho(0.0f, static_cast<float>(source_width), 0.0f, static_cast<float>(source_height), -100.0f,
 				 100.0f);
 			gs_matrix_identity();
-			obs_source_video_render(source);
+			if (source)
+				obs_source_video_render(source);
+			else
+				obs_canvas_render(canvas);
 			gs_texrender_end(resource.staging);
 			stage = gs_texrender_get_texture(resource.staging);
 		}
@@ -364,10 +546,22 @@ bool render_preview_resource(PreviewTextureV2Resource &resource, obs_source_t *s
 	gs_clear(GS_CLEAR_COLOR, &output_clear, 1.0f, 0);
 	if (stage && source_width != 0 && source_height != 0) {
 		gs_reset_blend_state();
-		const double scale = std::min(static_cast<double>(resource.width) / source_width,
-					      static_cast<double>(resource.height) / source_height);
-		const uint32_t draw_width = std::max<uint32_t>(1, static_cast<uint32_t>(source_width * scale + 0.5));
-		const uint32_t draw_height = std::max<uint32_t>(1, static_cast<uint32_t>(source_height * scale + 0.5));
+		double scale_factor = 1.0;
+		if (scale == PreviewOutputScale::Fit)
+			scale_factor = std::min(static_cast<double>(resource.width) / source_width,
+						 static_cast<double>(resource.height) / source_height);
+		else if (scale == PreviewOutputScale::Fill)
+			scale_factor = std::max(static_cast<double>(resource.width) / source_width,
+						 static_cast<double>(resource.height) / source_height);
+		else if (scale == PreviewOutputScale::Stretch) {
+			scale_factor = 1.0;
+		}
+		const uint32_t draw_width = scale == PreviewOutputScale::Stretch
+					    ? resource.width
+					    : std::max<uint32_t>(1, static_cast<uint32_t>(source_width * scale_factor + 0.5));
+		const uint32_t draw_height = scale == PreviewOutputScale::Stretch
+					     ? resource.height
+					     : std::max<uint32_t>(1, static_cast<uint32_t>(source_height * scale_factor + 0.5));
 		gs_matrix_translate3f((static_cast<float>(resource.width) - draw_width) * 0.5f,
 				      (static_cast<float>(resource.height) - draw_height) * 0.5f, 0.0f);
 		gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
@@ -420,7 +614,11 @@ bool Engine::v2_preview_output_create(obs_data_t *params, RuntimeV2Result &resul
 	if (!preview_output_capable_)
 		return phase2_fail(error, "unsupported_capability", "D3D11 PreviewOutput is unavailable");
 	PreviewOutputTarget target = PreviewOutputTarget::Preview;
-	if (!read_preview_output_target(params, target, error))
+	uint64_t target_handle = 0;
+	if (!read_preview_output_target(params, target, target_handle, error))
+		return false;
+	auto binding = create_preview_output_binding(*this, target, target_handle, error);
+	if (!binding)
 		return false;
 
 	obs_canvas_t *dimension_canvas = nullptr;
@@ -428,7 +626,13 @@ bool Engine::v2_preview_output_create(obs_data_t *params, RuntimeV2Result &resul
 		const auto main_it = canvases_.find(main_canvas_);
 		if (main_it != canvases_.end())
 			dimension_canvas = main_it->second.canvas;
-	} else {
+	} else if (target == PreviewOutputTarget::Canvas) {
+		dimension_canvas = binding->canvas;
+	} else if (target == PreviewOutputTarget::Scene) {
+		const auto scene_canvas = scene_canvases_.find(target_handle);
+		if (scene_canvas != scene_canvases_.end())
+			dimension_canvas = v2_canvas_for_handle(scene_canvas->second);
+	} else if (target == PreviewOutputTarget::Preview) {
 		uint64_t preview_scene = 0;
 		{
 			std::lock_guard<std::mutex> lock(preview_outputs_mutex_);
@@ -449,7 +653,15 @@ bool Engine::v2_preview_output_create(obs_data_t *params, RuntimeV2Result &resul
 		}
 	}
 	obs_video_info video = {};
-	if (!dimension_canvas || !obs_canvas_get_video_info(dimension_canvas, &video))
+	if (dimension_canvas)
+		obs_canvas_get_video_info(dimension_canvas, &video);
+	if (video.output_width == 0 || video.output_height == 0) {
+		if (binding->source) {
+			video.output_width = obs_source_get_width(binding->source);
+			video.output_height = obs_source_get_height(binding->source);
+		}
+	}
+	if (video.output_width == 0 || video.output_height == 0)
 		return phase2_fail(error, "not_available", "PreviewOutput target video settings are unavailable");
 	uint32_t width = 0;
 	uint32_t height = 0;
@@ -459,6 +671,9 @@ bool Engine::v2_preview_output_create(obs_data_t *params, RuntimeV2Result &resul
 	if (!read_optional_transport_string(params, "pixelFormat", "bgra8", error) ||
 	    !read_optional_transport_string(params, "colorSpace", "srgb", error) ||
 	    !read_optional_transport_string(params, "range", "full", error))
+		return false;
+	PreviewOutputScale scale = PreviewOutputScale::Fit;
+	if (!read_preview_output_scale(params, PreviewOutputScale::Fit, scale, error))
 		return false;
 	bool enabled = true;
 	bool enabled_present = false;
@@ -476,7 +691,8 @@ bool Engine::v2_preview_output_create(obs_data_t *params, RuntimeV2Result &resul
 	try {
 		state = std::make_shared<PreviewOutputV2State>();
 		state->handle = handle;
-		state->target = target;
+		state->target = std::move(binding);
+		state->scale = scale;
 		state->enabled = enabled;
 		state->resource = resource;
 		std::lock_guard<std::mutex> lock(preview_outputs_mutex_);
@@ -539,6 +755,48 @@ bool Engine::v2_preview_output_set_enabled(obs_data_t *params, RuntimeV2Result &
 		result.data = make_preview_output_info(*state);
 	}
 	phase2_append_event(result, "previewOutput.enabledChanged", phase2_clone_data(result.data.get()));
+	result.mutated = true;
+	return true;
+}
+
+bool Engine::v2_preview_output_set_target(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
+{
+	phase2_reset_result(result, error);
+	uint64_t handle = 0;
+	std::shared_ptr<PreviewOutputV2State> state;
+	if (!v2_get_preview_output_entry(params, handle, state, error))
+		return false;
+	PreviewOutputTarget target = PreviewOutputTarget::Preview;
+	uint64_t target_handle = 0;
+	if (!read_preview_output_target(params, target, target_handle, error))
+		return false;
+	std::shared_ptr<PreviewOutputTargetBinding> binding =
+		create_preview_output_binding(*this, target, target_handle, error);
+	if (!binding)
+		return false;
+	PreviewOutputScale scale = PreviewOutputScale::Fit;
+	{
+		std::lock_guard<std::mutex> lock(preview_outputs_mutex_);
+		scale = state->scale;
+	}
+	if (!read_preview_output_scale(params, scale, scale, error))
+		return false;
+
+	bool changed = false;
+	{
+		std::lock_guard<std::mutex> lock(preview_outputs_mutex_);
+		const auto &previous = state->target;
+		changed = !previous || previous->target != target || previous->handle != target_handle ||
+			  !previous->available || state->scale != scale;
+		if (!changed) {
+			result.data = make_preview_output_info(*state);
+			return true;
+		}
+		state->target = std::move(binding);
+		state->scale = scale;
+		result.data = make_preview_output_info(*state);
+	}
+	phase2_append_event(result, "previewOutput.targetChanged", phase2_clone_data(result.data.get()));
 	result.mutated = true;
 	return true;
 }
@@ -615,6 +873,11 @@ bool Engine::v2_preview_output_get_info(obs_data_t *params, RuntimeV2Result &res
 	return true;
 }
 
+bool Engine::v2_preview_output_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
+{
+	return v2_preview_output_get_info(params, result, error);
+}
+
 bool Engine::v2_preview_output_get_shared_texture(obs_data_t *params, RuntimeV2Result &result,
 							  RuntimeV2Error &error)
 {
@@ -673,6 +936,105 @@ bool Engine::v2_preview_output_list(obs_data_t *, RuntimeV2Result &result, Runti
 	return true;
 }
 
+void Engine::v2_preview_output_invalidate_scene(uint64_t scene_handle, RuntimeV2Result &result)
+{
+	std::lock_guard<std::mutex> lock(preview_outputs_mutex_);
+	for (const auto &[_, state] : preview_outputs_) {
+		if (!state || !state->target || !state->target->available || state->target->target != PreviewOutputTarget::Scene ||
+		    state->target->handle != scene_handle)
+			continue;
+		state->target = make_unavailable_target(PreviewOutputTarget::Scene, scene_handle);
+		result.events.push_back(RuntimeV2Event{"previewOutput.targetChanged", make_preview_output_info(*state)});
+	}
+}
+
+void Engine::v2_preview_output_invalidate_source(uint64_t source_handle, RuntimeV2Result &result)
+{
+	std::lock_guard<std::mutex> lock(preview_outputs_mutex_);
+	for (const auto &[_, state] : preview_outputs_) {
+		if (!state || !state->target || !state->target->available || state->target->target != PreviewOutputTarget::Source ||
+		    state->target->handle != source_handle)
+			continue;
+		state->target = make_unavailable_target(PreviewOutputTarget::Source, source_handle);
+		result.events.push_back(RuntimeV2Event{"previewOutput.targetChanged", make_preview_output_info(*state)});
+	}
+}
+
+void Engine::v2_preview_output_invalidate_canvas(uint64_t canvas_handle, RuntimeV2Result &result)
+{
+	std::lock_guard<std::mutex> lock(preview_outputs_mutex_);
+	for (const auto &[_, state] : preview_outputs_) {
+		if (!state || !state->target || !state->target->available || state->target->target != PreviewOutputTarget::Canvas ||
+		    state->target->handle != canvas_handle)
+			continue;
+		state->target = make_unavailable_target(PreviewOutputTarget::Canvas, canvas_handle);
+		result.events.push_back(RuntimeV2Event{"previewOutput.targetChanged", make_preview_output_info(*state)});
+	}
+}
+
+void Engine::v2_preview_output_invalidate_canvas_video(uint64_t canvas_handle, RuntimeV2Result &result)
+{
+	uint64_t preview_scene = 0;
+	{
+		std::lock_guard<std::mutex> lock(preview_outputs_mutex_);
+		preview_scene = preview_scene_;
+	}
+	std::vector<std::shared_ptr<PreviewOutputV2State>> affected;
+	{
+		std::lock_guard<std::mutex> lock(preview_outputs_mutex_);
+		for (const auto &[_, state] : preview_outputs_) {
+			if (!state || !state->resource || !state->target || !state->target->available)
+				continue;
+			bool affected_canvas = state->target->target == PreviewOutputTarget::Canvas &&
+					       state->target->handle == canvas_handle;
+			if (!affected_canvas && state->target->target == PreviewOutputTarget::Scene) {
+				const auto scene_canvas = scene_canvases_.find(state->target->handle);
+				affected_canvas = scene_canvas != scene_canvases_.end() && scene_canvas->second == canvas_handle;
+			}
+			if (!affected_canvas && state->target->target == PreviewOutputTarget::Preview) {
+				const auto scene_canvas = scene_canvases_.find(preview_scene);
+				affected_canvas = scene_canvas != scene_canvases_.end() && scene_canvas->second == canvas_handle;
+			}
+			if (affected_canvas)
+				affected.push_back(state);
+		}
+	}
+
+	for (const auto &state : affected) {
+		std::shared_ptr<PreviewTextureV2Resource> old_resource;
+		{
+			std::lock_guard<std::mutex> lock(preview_outputs_mutex_);
+			old_resource = state->resource;
+		}
+		if (!old_resource || old_resource->generation == std::numeric_limits<uint64_t>::max())
+			continue;
+		RuntimeV2Error replacement_error;
+		std::shared_ptr<PreviewTextureV2Resource> replacement =
+			create_preview_resource(old_resource->width, old_resource->height, old_resource->generation + 1,
+						 replacement_error);
+		if (!replacement) {
+			blog(LOG_WARNING, "obs-engine: PreviewOutput resource invalidation failed after Canvas video reset: %s",
+			     replacement_error.message.c_str());
+			continue;
+		}
+		bool swapped = false;
+		{
+			std::lock_guard<std::mutex> lock(preview_outputs_mutex_);
+			if (state->resource == old_resource) {
+				state->resource = replacement;
+				state->consumer_attached = false;
+				RuntimeV2Event event{"previewOutput.resourceChanged", make_shared_texture_descriptor(*state)};
+				result.events.push_back(std::move(event));
+				swapped = true;
+			}
+		}
+		if (swapped)
+			destroy_preview_resource(old_resource);
+		else
+			destroy_preview_resource(replacement);
+	}
+}
+
 void Engine::v2_preview_output_render_callback(void *param, uint32_t base_width, uint32_t base_height)
 {
 	if (param)
@@ -695,9 +1057,9 @@ void Engine::v2_render_preview_outputs(uint32_t base_width, uint32_t base_height
 			if (!state || !state->enabled || !state->consumer_attached || !state->resource ||
 			    !state->resource->texture)
 				continue;
-			jobs.push_back(PreviewRenderJob{state, state->resource, state->target});
-			need_program = need_program || state->target == PreviewOutputTarget::Program;
-			need_preview = need_preview || state->target == PreviewOutputTarget::Preview;
+			jobs.push_back(PreviewRenderJob{state, state->resource, state->target, state->scale});
+			need_program = need_program || (state->target && state->target->target == PreviewOutputTarget::Program);
+			need_preview = need_preview || (state->target && state->target->target == PreviewOutputTarget::Preview);
 		}
 	}
 	if (jobs.empty())
@@ -710,8 +1072,26 @@ void Engine::v2_render_preview_outputs(uint32_t base_width, uint32_t base_height
 		preview_source = obs_source_get_ref(preview_source_);
 	}
 	for (const PreviewRenderJob &job : jobs) {
-		obs_source_t *source = job.target == PreviewOutputTarget::Program ? program_source : preview_source;
-		if (render_preview_resource(*job.resource, source, base_width, base_height))
+		obs_source_t *source = nullptr;
+		obs_canvas_t *canvas = nullptr;
+		if (job.target && job.target->available) {
+			switch (job.target->target) {
+			case PreviewOutputTarget::Program:
+				source = program_source;
+				break;
+			case PreviewOutputTarget::Preview:
+				source = preview_source;
+				break;
+			case PreviewOutputTarget::Scene:
+			case PreviewOutputTarget::Source:
+				source = job.target->source;
+				break;
+			case PreviewOutputTarget::Canvas:
+				canvas = job.target->canvas;
+				break;
+			}
+		}
+		if (render_preview_resource(*job.resource, source, canvas, job.scale, base_width, base_height))
 			job.state->frame_sequence.fetch_add(1, std::memory_order_relaxed);
 	}
 	if (program_source)

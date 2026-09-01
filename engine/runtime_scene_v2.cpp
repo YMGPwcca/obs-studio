@@ -271,6 +271,12 @@ obs_scene_t *Engine::v2_scene_for_handle(uint64_t handle) const
 	return it == scenes_.end() ? nullptr : it->second;
 }
 
+obs_canvas_t *Engine::v2_canvas_for_handle(uint64_t handle) const
+{
+	const auto it = canvases_.find(handle);
+	return it == canvases_.end() ? nullptr : it->second.canvas;
+}
+
 uint64_t Engine::v2_scene_handle_for_pointer(const obs_source_t *source) const
 {
 	for (const auto &[handle, scene] : scenes_) {
@@ -626,6 +632,9 @@ bool Engine::v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, Runtim
 	obs_scene_t *scene = nullptr;
 	if (!v2_get_scene_entry(params, handle, scene, error))
 		return false;
+	if (studio_transition_active_ &&
+	    (handle == studio_transition_from_scene_ || handle == studio_transition_destination_scene_))
+		return phase2_fail(error, "object_in_use", "Scene is participating in an active Studio transition");
 	const uint64_t canvas_handle = scene_canvases_.contains(handle) ? scene_canvases_.at(handle) : 0;
 	const std::vector<uint64_t> all_items = v2_item_handles_for_scene(handle);
 	const bool program_was_scene = v2_current_program_scene() == handle;
@@ -661,6 +670,7 @@ bool Engine::v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, Runtim
 	}
 	if (!v2_append_item_removal_events(item_handles, result, error))
 		return false;
+	v2_preview_output_invalidate_scene(handle, result);
 	ObsDataPtr removed_event(obs_data_create());
 	phase2_set_handle(removed_event.get(), "scene", handle);
 	if (canvas_handle != 0)
