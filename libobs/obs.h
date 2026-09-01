@@ -2320,6 +2320,8 @@ EXPORT bool obs_encoder_add_roi(obs_encoder_t *encoder, const struct obs_encoder
 EXPORT bool obs_encoder_has_roi(const obs_encoder_t *encoder);
 /** Clear all regions */
 EXPORT void obs_encoder_clear_roi(obs_encoder_t *encoder);
+/** Remove one region by its insertion index. Returns false when the index is invalid. */
+EXPORT bool obs_encoder_remove_roi(obs_encoder_t *encoder, size_t index);
 /** Enumerate regions with callback (reverse order of addition) */
 EXPORT void obs_encoder_enum_roi(obs_encoder_t *encoder, void (*enum_proc)(void *, struct obs_encoder_roi *),
 				 void *param);
@@ -2408,6 +2410,13 @@ EXPORT obs_properties_t *obs_encoder_properties(const obs_encoder_t *encoder);
  */
 EXPORT void obs_encoder_update(obs_encoder_t *encoder, obs_data_t *settings);
 
+/* Tracked settings update used by the headless Engine.  Inactive updates call
+ * the encoder plugin synchronously; active updates invoke the callback at the
+ * actual encoder reconfigure point on the encoder/video/audio thread. */
+typedef void (*obs_encoder_update_callback_t)(void *data, uint64_t serial, bool success);
+EXPORT bool obs_encoder_update_tracked(obs_encoder_t *encoder, obs_data_t *settings, bool replace_settings,
+						       uint64_t serial, obs_encoder_update_callback_t callback, void *data);
+
 /** Gets extra data (headers) associated with this context */
 EXPORT bool obs_encoder_get_extra_data(const obs_encoder_t *encoder, uint8_t **extra_data, size_t *size);
 
@@ -2444,6 +2453,7 @@ EXPORT audio_t *obs_encoder_audio(const obs_encoder_t *encoder);
 
 /** Returns true if encoder is active, false otherwise */
 EXPORT bool obs_encoder_active(const obs_encoder_t *encoder);
+EXPORT bool obs_encoder_initialized(const obs_encoder_t *encoder);
 
 EXPORT void *obs_encoder_get_type_data(obs_encoder_t *encoder);
 

@@ -84,10 +84,42 @@ enum class HotkeyMethod {
 	Unknown,
 };
 
+enum class EncoderMethod {
+	KindList,
+	KindGet,
+	KindDefaults,
+	KindProperties,
+	KindCapabilities,
+	List,
+	Get,
+	Create,
+	Remove,
+	Rename,
+	GetSettings,
+	PatchSettings,
+	ReplaceSettings,
+	GetProperties,
+	GetVideoInput,
+	SetVideoInput,
+	GetCodec,
+	GetType,
+	GetDimensions,
+	GetState,
+	SetScaledSize,
+	SetScaleFilter,
+	RoiList,
+	RoiAdd,
+	RoiRemove,
+	RoiClear,
+	Unknown,
+};
+
 struct Phase3Dispatch {
 	AudioMethod audio = AudioMethod::Unknown;
 	HotkeyMethod hotkey = HotkeyMethod::Unknown;
+	EncoderMethod encoder = EncoderMethod::Unknown;
 	bool is_hotkey = false;
+	bool is_encoder = false;
 	bool mutating = false;
 };
 
@@ -112,6 +144,40 @@ constexpr HotkeyMethodName kHotkeyMethods[] = {
 	{"hotkey.import", HotkeyMethod::Import},
 };
 
+struct EncoderMethodName {
+	std::string_view name;
+	EncoderMethod method;
+};
+
+constexpr EncoderMethodName kEncoderMethods[] = {
+	{"encoder.kindList", EncoderMethod::KindList},
+	{"encoder.kindGet", EncoderMethod::KindGet},
+	{"encoder.kindDefaults", EncoderMethod::KindDefaults},
+	{"encoder.kindProperties", EncoderMethod::KindProperties},
+	{"encoder.kindCapabilities", EncoderMethod::KindCapabilities},
+	{"encoder.list", EncoderMethod::List},
+	{"encoder.get", EncoderMethod::Get},
+	{"encoder.create", EncoderMethod::Create},
+	{"encoder.remove", EncoderMethod::Remove},
+	{"encoder.rename", EncoderMethod::Rename},
+	{"encoder.getSettings", EncoderMethod::GetSettings},
+	{"encoder.patchSettings", EncoderMethod::PatchSettings},
+	{"encoder.replaceSettings", EncoderMethod::ReplaceSettings},
+	{"encoder.getProperties", EncoderMethod::GetProperties},
+	{"encoder.getVideoInput", EncoderMethod::GetVideoInput},
+	{"encoder.setVideoInput", EncoderMethod::SetVideoInput},
+	{"encoder.getCodec", EncoderMethod::GetCodec},
+	{"encoder.getType", EncoderMethod::GetType},
+	{"encoder.getDimensions", EncoderMethod::GetDimensions},
+	{"encoder.getState", EncoderMethod::GetState},
+	{"encoder.setScaledSize", EncoderMethod::SetScaledSize},
+	{"encoder.setScaleFilter", EncoderMethod::SetScaleFilter},
+	{"encoder.roi.list", EncoderMethod::RoiList},
+	{"encoder.roi.add", EncoderMethod::RoiAdd},
+	{"encoder.roi.remove", EncoderMethod::RoiRemove},
+	{"encoder.roi.clear", EncoderMethod::RoiClear},
+};
+
 constexpr AudioMethod kMutatingMethods[] = {
 	AudioMethod::SetMute,
 	AudioMethod::ToggleMute,
@@ -132,6 +198,20 @@ constexpr HotkeyMethod kHotkeyMutatingMethods[] = {
 	HotkeyMethod::Trigger,
 	HotkeyMethod::SetBackgroundCapture,
 	HotkeyMethod::Import,
+};
+
+constexpr EncoderMethod kEncoderMutatingMethods[] = {
+	EncoderMethod::Create,
+	EncoderMethod::Remove,
+	EncoderMethod::Rename,
+	EncoderMethod::PatchSettings,
+	EncoderMethod::ReplaceSettings,
+	EncoderMethod::SetVideoInput,
+	EncoderMethod::SetScaledSize,
+	EncoderMethod::SetScaleFilter,
+	EncoderMethod::RoiAdd,
+	EncoderMethod::RoiRemove,
+	EncoderMethod::RoiClear,
 };
 
 using AudioMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
@@ -188,6 +268,42 @@ constexpr HotkeyHandlerEntry kHotkeyHandlers[] = {
 	{HotkeyMethod::Import, &Engine::v2_hotkey_import},
 };
 
+using EncoderMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
+
+struct EncoderHandlerEntry {
+	EncoderMethod method;
+	EncoderMethodHandler handler;
+};
+
+constexpr EncoderHandlerEntry kEncoderHandlers[] = {
+	{EncoderMethod::KindList, &Engine::v2_encoder_kind_list},
+	{EncoderMethod::KindGet, &Engine::v2_encoder_kind_get},
+	{EncoderMethod::KindDefaults, &Engine::v2_encoder_kind_defaults},
+	{EncoderMethod::KindProperties, &Engine::v2_encoder_kind_properties},
+	{EncoderMethod::KindCapabilities, &Engine::v2_encoder_kind_capabilities},
+	{EncoderMethod::List, &Engine::v2_encoder_list},
+	{EncoderMethod::Get, &Engine::v2_encoder_get},
+	{EncoderMethod::Create, &Engine::v2_encoder_create},
+	{EncoderMethod::Remove, &Engine::v2_encoder_remove},
+	{EncoderMethod::Rename, &Engine::v2_encoder_rename},
+	{EncoderMethod::GetSettings, &Engine::v2_encoder_get_settings},
+	{EncoderMethod::PatchSettings, &Engine::v2_encoder_patch_settings},
+	{EncoderMethod::ReplaceSettings, &Engine::v2_encoder_replace_settings},
+	{EncoderMethod::GetProperties, &Engine::v2_encoder_get_properties},
+	{EncoderMethod::GetVideoInput, &Engine::v2_encoder_get_video_input},
+	{EncoderMethod::SetVideoInput, &Engine::v2_encoder_set_video_input},
+	{EncoderMethod::GetCodec, &Engine::v2_encoder_get_codec},
+	{EncoderMethod::GetType, &Engine::v2_encoder_get_type},
+	{EncoderMethod::GetDimensions, &Engine::v2_encoder_get_dimensions},
+	{EncoderMethod::GetState, &Engine::v2_encoder_get_state},
+	{EncoderMethod::SetScaledSize, &Engine::v2_encoder_set_scaled_size},
+	{EncoderMethod::SetScaleFilter, &Engine::v2_encoder_set_scale_filter},
+	{EncoderMethod::RoiList, &Engine::v2_encoder_roi_list},
+	{EncoderMethod::RoiAdd, &Engine::v2_encoder_roi_add},
+	{EncoderMethod::RoiRemove, &Engine::v2_encoder_roi_remove},
+	{EncoderMethod::RoiClear, &Engine::v2_encoder_roi_clear},
+};
+
 AudioMethod classify(std::string_view name)
 {
 	for (const AudioMethodName &entry : kAudioMethods) {
@@ -206,6 +322,15 @@ HotkeyMethod classify_hotkey(std::string_view name)
 	return HotkeyMethod::Unknown;
 }
 
+EncoderMethod classify_encoder(std::string_view name)
+{
+	for (const EncoderMethodName &entry : kEncoderMethods) {
+		if (entry.name == name)
+			return entry.method;
+	}
+	return EncoderMethod::Unknown;
+}
+
 bool is_mutating(AudioMethod method)
 {
 	for (const AudioMethod candidate : kMutatingMethods) {
@@ -218,6 +343,15 @@ bool is_mutating(AudioMethod method)
 bool is_mutating(HotkeyMethod method)
 {
 	for (const HotkeyMethod candidate : kHotkeyMutatingMethods) {
+		if (candidate == method)
+			return true;
+	}
+	return false;
+}
+
+bool is_mutating(EncoderMethod method)
+{
+	for (const EncoderMethod candidate : kEncoderMutatingMethods) {
 		if (candidate == method)
 			return true;
 	}
@@ -242,14 +376,27 @@ HotkeyMethodHandler hotkey_handler_for(HotkeyMethod method)
 	return nullptr;
 }
 
+EncoderMethodHandler encoder_handler_for(EncoderMethod method)
+{
+	for (const EncoderHandlerEntry &entry : kEncoderHandlers) {
+		if (entry.method == method)
+			return entry.handler;
+	}
+	return nullptr;
+}
+
 bool classify_phase3(std::string_view name, Phase3Dispatch &dispatch)
 {
 	dispatch.audio = classify(name);
 	dispatch.hotkey = classify_hotkey(name);
-	if (dispatch.audio == AudioMethod::Unknown && dispatch.hotkey == HotkeyMethod::Unknown)
+	dispatch.encoder = classify_encoder(name);
+	if (dispatch.audio == AudioMethod::Unknown && dispatch.hotkey == HotkeyMethod::Unknown &&
+	    dispatch.encoder == EncoderMethod::Unknown)
 		return false;
 	dispatch.is_hotkey = dispatch.hotkey != HotkeyMethod::Unknown;
-	dispatch.mutating = dispatch.is_hotkey ? is_mutating(dispatch.hotkey) : is_mutating(dispatch.audio);
+	dispatch.is_encoder = dispatch.encoder != EncoderMethod::Unknown;
+	dispatch.mutating = dispatch.is_encoder ? is_mutating(dispatch.encoder)
+						: dispatch.is_hotkey ? is_mutating(dispatch.hotkey) : is_mutating(dispatch.audio);
 	return true;
 }
 
@@ -352,11 +499,26 @@ bool execute_hotkey(Engine &engine, HotkeyMethod method, const V2Request &reques
 	return (engine.*handler)(request.params.get(), result, error);
 }
 
+bool execute_encoder(Engine &engine, EncoderMethod method, const V2Request &request, RuntimeV2Result &result,
+			     RuntimeV2Error &error)
+{
+	const EncoderMethodHandler handler = encoder_handler_for(method);
+	if (!handler) {
+		error.code = "internal_error";
+		error.message = "encoder method dispatch failed";
+		return false;
+	}
+	return (engine.*handler)(request.params.get(), result, error);
+}
+
 bool execute_phase3(Engine &engine, const Phase3Dispatch &dispatch, const V2Request &request,
 			   RuntimeV2Result &result, RuntimeV2Error &error)
 {
-	return dispatch.is_hotkey ? execute_hotkey(engine, dispatch.hotkey, request, result, error)
-				 : execute_audio(engine, dispatch.audio, request, result, error);
+	if (dispatch.is_encoder)
+		return execute_encoder(engine, dispatch.encoder, request, result, error);
+	if (dispatch.is_hotkey)
+		return execute_hotkey(engine, dispatch.hotkey, request, result, error);
+	return execute_audio(engine, dispatch.audio, request, result, error);
 }
 
 void publish_events(EventDispatcher &events, uint64_t revision, RuntimeV2Result &result)
@@ -398,7 +560,8 @@ bool commit_phase3_result(RuntimeV2Result &result, std::optional<RevisionState::
 
 bool is_phase3_method(std::string_view method)
 {
-	return classify(method) != AudioMethod::Unknown || classify_hotkey(method) != HotkeyMethod::Unknown;
+	return classify(method) != AudioMethod::Unknown || classify_hotkey(method) != HotkeyMethod::Unknown ||
+	       classify_encoder(method) != EncoderMethod::Unknown;
 }
 
 bool handle_phase3_request(Engine &engine, RevisionState &revisions, EventDispatcher &events,

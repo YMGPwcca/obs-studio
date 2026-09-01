@@ -856,6 +856,7 @@ void Engine::v2_bind_source_events(RevisionState *revisions, EventDispatcher *ev
 	v2_bind_media_events(revisions, events);
 	v2_bind_audio_events(revisions, events);
 	v2_bind_hotkey_events(revisions, events);
+	v2_bind_encoder_events(revisions, events);
 	v2_bind_filter_events(revisions, events);
 	v2_bind_transition_events(revisions, events);
 }
@@ -981,8 +982,9 @@ void Engine::v2_prepare_shutdown() noexcept
 	v2_prepare_transition_shutdown();
 	v2_prepare_filter_shutdown();
 	v2_prepare_media_shutdown();
-	v2_prepare_audio_shutdown();
+	v2_prepare_encoder_shutdown();
 	v2_prepare_hotkey_shutdown();
+	v2_prepare_audio_shutdown();
 	if (!source_v2_state_)
 		return;
 

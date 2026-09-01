@@ -565,6 +565,9 @@ bool Engine::v2_canvas_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 	for (const auto &[scene_handle, canvas_handle] : scene_canvases_)
 		if (canvas_handle == handle)
 			return phase2_fail(error, "object_in_use", "Canvas still owns one or more Scenes");
+	for (const auto &[_, encoder] : encoders_)
+		if (encoder.video_canvas == handle)
+			return phase2_fail(error, "object_in_use", "Canvas is still the input of an Encoder");
 	for (uint32_t channel = 0; channel < MAX_CHANNELS; ++channel) {
 		obs_source_t *source = obs_canvas_get_channel(entry->canvas, channel);
 		if (source) {

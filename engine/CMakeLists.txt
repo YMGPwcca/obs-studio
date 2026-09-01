@@ -6,6 +6,7 @@ target_sources(
     config.cpp
     config.hpp
     runtime_audio_v2.cpp
+    runtime_encoder_v2.cpp
     runtime_hotkey_v2.cpp
     events.cpp
     events.hpp
@@ -178,6 +179,39 @@ set_target_properties(
   obs-engine-task21-audio-plugin
   PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task21-audio-source"
 )
+
+# Task 23 deterministic video/audio encoders. The fixture is staged only by
+# the Task-23 integration lane and is excluded from normal runtime packages.
+add_library(obs-engine-task23-encoder-plugin MODULE EXCLUDE_FROM_ALL task23_encoder_plugin.cpp)
+target_compile_features(obs-engine-task23-encoder-plugin PRIVATE cxx_std_20)
+target_compile_definitions(
+  obs-engine-task23-encoder-plugin
+  PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+)
+target_link_libraries(obs-engine-task23-encoder-plugin PRIVATE OBS::libobs)
+set_target_properties(
+  obs-engine-task23-encoder-plugin
+  PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task23-encoder"
+)
+
+# Task 23 active-update bridge test. It uses the packaged null output only to
+# reach the real encoder/GPU-thread reconfigure point and is never installed.
+add_executable(obs-engine-task23-encoder-bridge-test EXCLUDE_FROM_ALL task23_encoder_bridge_test.cpp)
+target_compile_features(obs-engine-task23-encoder-bridge-test PRIVATE cxx_std_20)
+target_compile_definitions(
+  obs-engine-task23-encoder-bridge-test
+  PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+)
+target_link_libraries(obs-engine-task23-encoder-bridge-test PRIVATE OBS::libobs)
+if(TARGET OBS::libobs-d3d11)
+  target_compile_definitions(
+    obs-engine-task23-encoder-bridge-test
+    PRIVATE DL_D3D11="$<$<IF:$<PLATFORM_ID:Windows>,TARGET_FILE_NAME,TARGET_SONAME_FILE_NAME>:OBS::libobs-d3d11>"
+  )
+else()
+  message(FATAL_ERROR "Task 23 bridge test requires the libobs D3D11 graphics backend")
+endif()
+set_target_properties(obs-engine-task23-encoder-bridge-test PROPERTIES FOLDER "engine/tests")
 
 # Restrict implicit dependent-DLL resolution before main() runs. 0xA00 is
 # LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32. Runtime

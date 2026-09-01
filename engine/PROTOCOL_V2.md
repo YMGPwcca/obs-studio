@@ -767,31 +767,39 @@ Runtime methods:
 - `encoder.patchSettings`
 - `encoder.replaceSettings`
 - `encoder.getProperties`
-- `encoder.setVideoSource`
-- `encoder.setAudioMix`
+- `encoder.getVideoInput`
+- `encoder.setVideoInput`
 - `encoder.getCodec`
 - `encoder.getType`
 - `encoder.getDimensions`
+- `encoder.getState`
 - `encoder.setScaledSize`
 - `encoder.setScaleFilter`
-- `encoder.getStats`
-- `encoder.getExtraData`
-- `encoder.getSEIData`
 - `encoder.roi.list`
 - `encoder.roi.add`
 - `encoder.roi.remove`
 - `encoder.roi.clear`
 
-Encoder capability metadata includes deprecated/internal, texture encoding, dynamic bitrate, ROI, scaling and multitrack dynamic bitrate support.
+Encoder capability metadata includes deprecated/internal, texture encoding,
+dynamic bitrate, ROI, scaling and multitrack dynamic bitrate support. Kind
+metadata distinguishes registration/module state from actual runtime
+compatibility; a DLL filename never proves hardware availability.
 
-Binary encoder extra/SEI data is returned out-of-band rather than embedded unbounded in JSON.
+Video input is a semantic Canvas descriptor. Audio `audioTrack` is immutable
+at creation and is one-based (`1..MAX_AUDIO_MIXES`); `encoder.setAudioMix` is
+not part of the contract. Binary encoder extra/SEI data and high-frequency
+stats are deferred until a bounded transport/namespace exists.
 
 Events:
 
 - `encoder.created`
 - `encoder.removed`
 - `encoder.settingsChanged`
+- `encoder.inputChanged`
+- `encoder.scalingChanged`
 - `encoder.roiChanged`
+- `encoder.groupChanged`
+- `encoder.activeChanged`
 
 ## 27. Encoder group API
 

@@ -1407,6 +1407,15 @@ struct obs_encoder {
 	struct obs_encoder_info orig_info;
 
 	pthread_mutex_t init_mutex;
+	pthread_mutex_t update_mutex;
+	uint64_t update_generation;
+	uint64_t applied_update_generation;
+	uint64_t update_serial;
+	obs_encoder_update_callback_t update_callback;
+	void *update_callback_data;
+	bool update_pending;
+	bool update_mutex_initialized;
+	bool tracked_update_interfered;
 
 	uint32_t samplerate;
 	size_t planes;

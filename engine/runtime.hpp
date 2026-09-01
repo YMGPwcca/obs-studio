@@ -21,6 +21,7 @@ class EventDispatcher;
 struct AudioV2State;
 struct HotkeyV2State;
 struct HotkeyOwnedContext;
+struct EncoderV2State;
 struct InteractionV2State;
 struct MediaV2State;
 struct MediaV2Observer;
@@ -55,6 +56,14 @@ struct PreviewOutputV2State;
 struct FilterEntry {
 	uint64_t source_id = 0;
 	obs_source_t *filter = nullptr;
+};
+
+struct EncoderEntry {
+	obs_encoder_t *encoder = nullptr;
+	uint64_t video_canvas = 0;
+	uint64_t audio_track = 0;
+	uint64_t group = 0;
+	std::unordered_set<uint64_t> bound_outputs;
 };
 
 struct RuntimeV2Error {
@@ -123,6 +132,36 @@ public:
 	bool v2_hotkey_set_background_capture(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_hotkey_export(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_hotkey_import(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	void v2_bind_encoder_events(RevisionState *revisions, EventDispatcher *events);
+	void v2_prepare_encoder_shutdown() noexcept;
+
+	bool v2_encoder_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_kind_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_kind_defaults(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_kind_properties(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_kind_capabilities(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_rename(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_get_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_patch_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_replace_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_get_properties(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_get_video_input(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_set_video_input(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_get_codec(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_get_type(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_get_dimensions(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_get_state(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_set_scaled_size(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_set_scale_filter(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_roi_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_roi_add(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_roi_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_roi_clear(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	uint64_t v2_encoder_handle_for_pointer(const obs_encoder_t *encoder) const;
 	void v2_bind_audio_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_begin_audio_event_capture(RuntimeV2Result &result);
 	void v2_wait_for_audio_event_callbacks();
@@ -442,6 +481,10 @@ private:
 				 RuntimeV2Error &error) const;
 	bool v2_get_interaction_source(obs_data_t *params, uint64_t &handle, obs_source_t *&source,
 				       RuntimeV2Error &error);
+	bool v2_get_encoder_entry(obs_data_t *params, uint64_t &handle, EncoderEntry *&entry,
+				      RuntimeV2Error &error) const;
+	bool v2_update_encoder_settings(EncoderEntry &entry, uint64_t handle, obs_data_t *requested, bool replace,
+				       RuntimeV2Result &result, RuntimeV2Error &error);
 
 	bool command_hello(long long request_id, obs_data_t *request);
 	bool command_source_types(long long request_id, obs_data_t *request);
@@ -548,10 +591,12 @@ private:
 	std::shared_ptr<SourceV2State> source_v2_state_;
 	std::shared_ptr<AudioV2State> audio_v2_state_;
 	std::shared_ptr<HotkeyV2State> hotkey_v2_state_;
+	std::shared_ptr<EncoderV2State> encoder_v2_state_;
 	std::shared_ptr<InteractionV2State> interaction_v2_state_;
 	std::shared_ptr<MediaV2State> media_v2_state_;
 	std::shared_ptr<FilterV2State> filter_v2_state_;
 	std::shared_ptr<TransitionV2State> transition_v2_state_;
+	std::unordered_map<uint64_t, EncoderEntry> encoders_;
 };
 
 } // namespace obs_engine

@@ -25,6 +25,7 @@
 #define get_weak(encoder) ((obs_weak_encoder_t *)encoder->context.control)
 
 static void encoder_set_video(obs_encoder_t *encoder, video_t *video);
+static void complete_tracked_update(struct obs_encoder *encoder, bool success);
 
 struct obs_encoder_info *find_encoder(const char *id)
 {
@@ -81,6 +82,7 @@ enum obs_module_load_state obs_encoder_load_state(const char *id)
 static bool init_encoder(struct obs_encoder *encoder, const char *name, obs_data_t *settings, obs_data_t *hotkey_data)
 {
 	pthread_mutex_init_value(&encoder->init_mutex);
+	pthread_mutex_init_value(&encoder->update_mutex);
 	pthread_mutex_init_value(&encoder->callbacks_mutex);
 	pthread_mutex_init_value(&encoder->outputs_mutex);
 	pthread_mutex_init_value(&encoder->pause.mutex);
@@ -90,6 +92,9 @@ static bool init_encoder(struct obs_encoder *encoder, const char *name, obs_data
 		return false;
 	if (pthread_mutex_init_recursive(&encoder->init_mutex) != 0)
 		return false;
+	if (pthread_mutex_init(&encoder->update_mutex, NULL) != 0)
+		return false;
+	encoder->update_mutex_initialized = true;
 	if (pthread_mutex_init_recursive(&encoder->callbacks_mutex) != 0)
 		return false;
 	if (pthread_mutex_init(&encoder->outputs_mutex, NULL) != 0)
@@ -445,6 +450,7 @@ static void remove_connection(struct obs_encoder *encoder, bool shutdown)
 	 * up again */
 	if (shutdown)
 		obs_encoder_shutdown(encoder);
+	complete_tracked_update(encoder, false);
 	encoder->initialized = false;
 
 	set_encoder_active(encoder, false);
@@ -462,6 +468,7 @@ static inline void free_audio_buffers(struct obs_encoder *encoder)
 void obs_encoder_destroy(obs_encoder_t *encoder)
 {
 	if (encoder) {
+		complete_tracked_update(encoder, false);
 		pthread_mutex_lock(&encoder->outputs_mutex);
 		for (size_t i = 0; i < encoder->outputs.num; i++) {
 			struct obs_output *output = encoder->outputs.array[i];
@@ -484,6 +491,8 @@ void obs_encoder_destroy(obs_encoder_t *encoder)
 		da_free(encoder->roi);
 		da_free(encoder->encoder_packet_times);
 		pthread_mutex_destroy(&encoder->init_mutex);
+		if (encoder->update_mutex_initialized)
+			pthread_mutex_destroy(&encoder->update_mutex);
 		pthread_mutex_destroy(&encoder->callbacks_mutex);
 		pthread_mutex_destroy(&encoder->outputs_mutex);
 		pthread_mutex_destroy(&encoder->pause.mutex);
@@ -582,37 +591,41 @@ obs_properties_t *obs_encoder_properties(const obs_encoder_t *encoder)
 
 static void encoder_group_new_reconfigure_request(struct obs_encoder_group *group);
 
-void obs_encoder_update(obs_encoder_t *encoder, obs_data_t *settings)
+static void complete_tracked_update(struct obs_encoder *encoder, bool success)
 {
-	if (!obs_encoder_valid(encoder, "obs_encoder_update"))
+	if (!encoder->update_mutex_initialized)
 		return;
+	obs_encoder_update_callback_t callback = NULL;
+	void *callback_data = NULL;
+	uint64_t serial = 0;
 
-	obs_data_apply(encoder->context.settings, settings);
-
-	// Encoder isn't initialized yet, only apply changes to settings
-	if (!encoder->context.data)
-		return;
-
-	// Encoder doesn't support updates
-	if (!encoder->info.update)
-		return;
-
-	if (!encoder_active(encoder)) {
-		encoder->info.update(encoder->context.data, encoder->context.settings);
+	pthread_mutex_lock(&encoder->update_mutex);
+	if (!encoder->update_pending) {
+		pthread_mutex_unlock(&encoder->update_mutex);
 		return;
 	}
+	encoder->update_pending = false;
+	encoder->applied_update_generation = encoder->update_generation;
+	success = success && !encoder->tracked_update_interfered;
+	encoder->tracked_update_interfered = false;
+	serial = encoder->update_serial;
+	callback = encoder->update_callback;
+	callback_data = encoder->update_callback_data;
+	encoder->update_callback = NULL;
+	encoder->update_callback_data = NULL;
+	pthread_mutex_unlock(&encoder->update_mutex);
 
-	/* If the encoder is active we defer the update as it may not be reentrant. Setting reconfigure_requested to
-	 * true makes the changes apply at the next possible moment in the encoder / GPU encoder thread.
-	 */
+	if (callback)
+		callback(callback_data, serial, success);
+}
+
+static bool schedule_encoder_reconfigure(struct obs_encoder *encoder)
+{
 	if (!encoder->encoder_group) {
 		encoder->reconfigure_requested = true;
-		return;
+		return true;
 	}
 
-	/* Encoder groups need slightly more special handling since encoders generally start new GOPs/insert IDR frames
-	 * when reconfigured, so we need to reconfigure them all on the same frame.
-	 */
 	struct obs_encoder_group *group = encoder->encoder_group;
 	pthread_mutex_lock(&group->mutex);
 	bool first_reconfigure_request = group->reconfigure_request == 0;
@@ -624,7 +637,114 @@ void obs_encoder_update(obs_encoder_t *encoder, obs_data_t *settings)
 		group->reconfigure_again = true;
 	}
 	pthread_mutex_unlock(&group->mutex);
+	return true;
 }
+
+static char *capture_encoder_settings(const struct obs_encoder *encoder)
+{
+	if (encoder_active(encoder) || !encoder->context.data || !encoder->info.update)
+		return NULL;
+	const char *json = obs_data_get_json(encoder->context.settings);
+	return json ? bstrdup(json) : NULL;
+}
+
+static void apply_encoder_settings(struct obs_encoder *encoder, obs_data_t *settings, bool replace_settings)
+{
+	if (replace_settings)
+		obs_data_clear(encoder->context.settings);
+	obs_data_apply(encoder->context.settings, settings);
+}
+
+static void restore_encoder_settings(struct obs_encoder *encoder, const char *previous_json)
+{
+	if (!previous_json)
+		return;
+	obs_data_t *old_settings = obs_data_create_from_json(previous_json);
+	if (!old_settings)
+		return;
+	obs_data_clear(encoder->context.settings);
+	obs_data_apply(encoder->context.settings, old_settings);
+	obs_data_release(old_settings);
+}
+
+static bool update_inactive_encoder(struct obs_encoder *encoder, const char *previous_json)
+{
+	const bool success = encoder->info.update(encoder->context.data, encoder->context.settings);
+	if (!success)
+		restore_encoder_settings(encoder, previous_json);
+	return success;
+}
+
+static void finish_immediate_encoder_update(struct obs_encoder *encoder, obs_encoder_update_callback_t callback,
+					    void *data, uint64_t serial, bool success)
+{
+	if (!callback)
+		return;
+	pthread_mutex_lock(&encoder->update_mutex);
+	encoder->update_generation++;
+	encoder->applied_update_generation = encoder->update_generation;
+	pthread_mutex_unlock(&encoder->update_mutex);
+	callback(data, serial, success);
+}
+
+static bool finish_nonactive_encoder_update(struct obs_encoder *encoder, char *previous_json,
+					     obs_encoder_update_callback_t callback, void *data, uint64_t serial)
+{
+	if (encoder->context.data && encoder->info.update && encoder_active(encoder))
+		return false;
+	bool success = true;
+	if (encoder->context.data && encoder->info.update)
+		success = update_inactive_encoder(encoder, previous_json);
+	pthread_mutex_unlock(&encoder->update_mutex);
+	finish_immediate_encoder_update(encoder, callback, data, serial, success);
+	if (previous_json)
+		bfree(previous_json);
+	return true;
+}
+
+bool obs_encoder_update_tracked(obs_encoder_t *encoder, obs_data_t *settings, bool replace_settings, uint64_t serial,
+					obs_encoder_update_callback_t callback, void *data)
+{
+	if (!obs_encoder_valid(encoder, "obs_encoder_update_tracked") || !settings)
+		return false;
+	if (!encoder->update_mutex_initialized)
+		return false;
+
+	pthread_mutex_lock(&encoder->update_mutex);
+	if (callback && encoder->update_pending) {
+		pthread_mutex_unlock(&encoder->update_mutex);
+		return false;
+	}
+
+	char *previous_json = capture_encoder_settings(encoder);
+	apply_encoder_settings(encoder, settings, replace_settings);
+	if (finish_nonactive_encoder_update(encoder, previous_json, callback, data, serial))
+		return true;
+
+	if (callback) {
+		encoder->update_generation++;
+		encoder->update_serial = serial;
+		encoder->update_callback = callback;
+		encoder->update_callback_data = data;
+		encoder->update_pending = true;
+		encoder->tracked_update_interfered = false;
+	} else if (encoder->update_pending) {
+		/* A legacy update cannot be assigned the Engine serial. Do not let it
+		 * falsely settle the command-owned completion callback. */
+		encoder->tracked_update_interfered = true;
+	}
+	schedule_encoder_reconfigure(encoder);
+	pthread_mutex_unlock(&encoder->update_mutex);
+	if (previous_json)
+		bfree(previous_json);
+	return true;
+}
+
+void obs_encoder_update(obs_encoder_t *encoder, obs_data_t *settings)
+{
+	obs_encoder_update_tracked(encoder, settings, false, 0, NULL, NULL);
+}
+
 
 bool obs_encoder_get_extra_data(const obs_encoder_t *encoder, uint8_t **extra_data, size_t *size)
 {
@@ -1316,6 +1436,11 @@ bool obs_encoder_active(const obs_encoder_t *encoder)
 	return obs_encoder_valid(encoder, "obs_encoder_active") ? encoder_active(encoder) : false;
 }
 
+bool obs_encoder_initialized(const obs_encoder_t *encoder)
+{
+	return obs_encoder_valid(encoder, "obs_encoder_initialized") ? encoder->initialized : false;
+}
+
 static inline bool get_sei(const struct obs_encoder *encoder, uint8_t **sei, size_t *size)
 {
 	if (encoder->info.get_sei_data)
@@ -1467,7 +1592,8 @@ bool do_encode(struct obs_encoder *encoder, struct encoder_frame *frame, const u
 
 	if (encoder->reconfigure_requested) {
 		encoder->reconfigure_requested = false;
-		encoder->info.update(encoder->context.data, encoder->context.settings);
+		const bool update_success = encoder->info.update(encoder->context.data, encoder->context.settings);
+		complete_tracked_update(encoder, update_success);
 	}
 
 	pkt.timebase_num = encoder->timebase_num * encoder->frame_rate_divisor;
@@ -2124,6 +2250,25 @@ void obs_encoder_clear_roi(obs_encoder_t *encoder)
 	da_clear(encoder->roi);
 	encoder->roi_increment++;
 	pthread_mutex_unlock(&encoder->roi_mutex);
+}
+
+bool obs_encoder_remove_roi(obs_encoder_t *encoder, size_t index)
+{
+	if (!obs_encoder_valid(encoder, "obs_encoder_remove_roi"))
+		return false;
+
+	pthread_mutex_lock(&encoder->roi_mutex);
+	if (index >= encoder->roi.num) {
+		pthread_mutex_unlock(&encoder->roi_mutex);
+		return false;
+	}
+
+	for (size_t current = index + 1; current < encoder->roi.num; ++current)
+		encoder->roi.array[current - 1] = encoder->roi.array[current];
+	encoder->roi.num--;
+	encoder->roi_increment++;
+	pthread_mutex_unlock(&encoder->roi_mutex);
+	return true;
 }
 
 void obs_encoder_enum_roi(obs_encoder_t *encoder, void (*enum_proc)(void *, struct obs_encoder_roi *), void *param)
