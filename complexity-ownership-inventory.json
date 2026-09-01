@@ -15,7 +15,7 @@
     }
   ],
   "operatorAuthoredCommitCountInLineage": 64,
-  "operatorAuthoredCodeCommitCountInScope": 148,
+  "operatorAuthoredCodeCommitCountInScope": 150,
   "operatorAuthoredCommits": [
     {
       "hash": "ffffcfd1a65677a16d9ec596103d99bde080deb8",
@@ -1433,6 +1433,77 @@
       ]
     },
     {
+      "path": ".github/scripts/engine-protocol-v2-task24-build-fixture.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "6626a37b187a0ebc3ca9662a6397b1b330c45d74"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task24-package-audit.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "6626a37b187a0ebc3ca9662a6397b1b330c45d74"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task24-remove-fixture.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "6626a37b187a0ebc3ca9662a6397b1b330c45d74"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task24-stage-fixture.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "6626a37b187a0ebc3ca9662a6397b1b330c45d74"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task24.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "6626a37b187a0ebc3ca9662a6397b1b330c45d74"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 10,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task24.ps1|Fail-Task24|Fail-Task24",
+        "powershell|function|.github/scripts/engine-protocol-v2-task24.ps1|Start-Task24Engine|Start-Task24Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task24.ps1|Stop-Task24Engine|Stop-Task24Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task24.ps1|Read-Task24Message|Read-Task24Message",
+        "powershell|function|.github/scripts/engine-protocol-v2-task24.ps1|Send-Task24|Send-Task24",
+        "powershell|function|.github/scripts/engine-protocol-v2-task24.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task24.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task24.ps1|Read-Task24Event|Read-Task24Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task24.ps1|Invoke-Task24Mutation|Invoke-Task24Mutation",
+        "powershell|function|.github/scripts/engine-protocol-v2-task24.ps1|Initialize-Task24Session|Initialize-Task24Session"
+      ]
+    },
+    {
       "path": ".github/scripts/engine-protocol-v2-task3-capabilities.ps1",
       "language": "PowerShell",
       "status": "A",
@@ -2231,7 +2302,7 @@
       "path": "engine/protocol_filter_v2.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 17,
+      "operatorCommitCount": 18,
       "operatorCommits": [
         "bb227ad223b21d42c6381f6765213a36d2fa2665",
         "fbab77143a84bc101e9444f0dd2a516aab8d008a",
@@ -2249,7 +2320,8 @@
         "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
         "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20",
         "6c8b194267516e3589f7d93cc1616359804abb05",
-        "30b064bc394b157f8ca8d06cfd36c675cd379410"
+        "30b064bc394b157f8ca8d06cfd36c675cd379410",
+        "6626a37b187a0ebc3ca9662a6397b1b330c45d74"
       ],
       "operatorBlameLineCount": 455,
       "scopedFunctionCount": 21,
@@ -2331,24 +2403,28 @@
       "path": "engine/protocol_phase3_v2.cpp",
       "language": "C/C++",
       "status": "A",
-      "operatorCommitCount": 3,
+      "operatorCommitCount": 4,
       "operatorCommits": [
         "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20",
         "6c8b194267516e3589f7d93cc1616359804abb05",
-        "30b064bc394b157f8ca8d06cfd36c675cd379410"
+        "30b064bc394b157f8ca8d06cfd36c675cd379410",
+        "6626a37b187a0ebc3ca9662a6397b1b330c45d74"
       ],
       "operatorBlameLineCount": 0,
-      "scopedFunctionCount": 25,
+      "scopedFunctionCount": 29,
       "currentFunctionKeys": [
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify|obs_engine::classify( std :: string_view name)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_hotkey|obs_engine::classify_hotkey( std :: string_view name)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_encoder|obs_engine::classify_encoder( std :: string_view name)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_encoder_group|obs_engine::classify_encoder_group( std :: string_view name)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( AudioMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( HotkeyMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( EncoderMethod method)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( EncoderGroupMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::handler_for|obs_engine::handler_for( AudioMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::hotkey_handler_for|obs_engine::hotkey_handler_for( HotkeyMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::encoder_handler_for|obs_engine::encoder_handler_for( EncoderMethod method)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::encoder_group_handler_for|obs_engine::encoder_group_handler_for( EncoderGroupMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_phase3|obs_engine::classify_phase3( std :: string_view name , Phase3Dispatch & dispatch)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::reject_read_guard|obs_engine::reject_read_guard( const V2Request & request , uint64_t revision)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::validate_mutation_guard|obs_engine::validate_mutation_guard( const V2Request & request , RevisionState :: MutationGuard & guard)",
@@ -2359,6 +2435,7 @@
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_audio|obs_engine::execute_audio( Engine & engine , AudioMethod method , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_hotkey|obs_engine::execute_hotkey( Engine & engine , HotkeyMethod method , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_encoder|obs_engine::execute_encoder( Engine & engine , EncoderMethod method , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_encoder_group|obs_engine::execute_encoder_group( Engine & engine , EncoderGroupMethod method , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_phase3|obs_engine::execute_phase3( Engine & engine , const Phase3Dispatch & dispatch , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::publish_events|obs_engine::publish_events( EventDispatcher & events , uint64_t revision , RuntimeV2Result & result)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::fail_phase3_request|obs_engine::fail_phase3_request( const V2Request & request , RevisionState & revisions , RuntimeV2Error & error , std :: optional<Phase3CaptureScope> & capture , std :: optional<RevisionState::MutationGuard> & guard)",
@@ -2715,6 +2792,35 @@
         "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_get_channel|obs_engine::Engine::v2_canvas_get_channel( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_set_channel|obs_engine::Engine::v2_canvas_set_channel( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/runtime_canvas_v2.cpp|obs_engine::Engine::v2_canvas_get_flags|obs_engine::Engine::v2_canvas_get_flags( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)"
+      ]
+    },
+    {
+      "path": "engine/runtime_encoder_group_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "6626a37b187a0ebc3ca9662a6397b1b330c45d74"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 16,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::reset_result|obs_engine::reset_result( RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::fail|obs_engine::fail( RuntimeV2Error & error , const char * code , const char * message)",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::set_nullable_group|obs_engine::set_nullable_group( obs_data_t * data , uint64_t handle)",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::make_group_summary|obs_engine::make_group_summary( uint64_t handle , const EncoderGroupEntry & entry , bool active)",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::make_encoder_group_change|obs_engine::make_encoder_group_change( uint64_t encoder , uint64_t group)",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::append_group_mutation_events|obs_engine::append_group_mutation_events( RuntimeV2Result & result , uint64_t group , uint64_t encoder , const EncoderGroupEntry & entry , bool active)",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::Engine::v2_get_encoder_group_entry|obs_engine::Engine::v2_get_encoder_group_entry( obs_data_t * params , uint64_t & handle , EncoderGroupEntry * & entry , RuntimeV2Error & error) const",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::Engine::v2_encoder_group_is_active|obs_engine::Engine::v2_encoder_group_is_active( const EncoderGroupEntry & entry) const",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::Engine::v2_prepare_encoder_group_shutdown|obs_engine::Engine::v2_prepare_encoder_group_shutdown()",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::Engine::v2_encoder_group_list|obs_engine::Engine::v2_encoder_group_list( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::Engine::v2_encoder_group_get|obs_engine::Engine::v2_encoder_group_get( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::Engine::v2_encoder_group_create|obs_engine::Engine::v2_encoder_group_create( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::Engine::v2_encoder_group_remove|obs_engine::Engine::v2_encoder_group_remove( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::Engine::v2_encoder_group_add|obs_engine::Engine::v2_encoder_group_add( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::Engine::v2_encoder_group_remove_encoder|obs_engine::Engine::v2_encoder_group_remove_encoder( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_encoder_group_v2.cpp|obs_engine::Engine::v2_encoder_group_get_encoders|obs_engine::Engine::v2_encoder_group_get_encoders( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)"
       ]
     },
     {
@@ -3585,7 +3691,7 @@
       "path": "engine/runtime_source_v2.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 9,
+      "operatorCommitCount": 10,
       "operatorCommits": [
         "f13431c2dd72109b9ec8dbebb3c0174f7d119a15",
         "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
@@ -3595,7 +3701,8 @@
         "aee7464375c7c875b6c407e0f909546e990d3355",
         "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20",
         "6c8b194267516e3589f7d93cc1616359804abb05",
-        "30b064bc394b157f8ca8d06cfd36c675cd379410"
+        "30b064bc394b157f8ca8d06cfd36c675cd379410",
+        "6626a37b187a0ebc3ca9662a6397b1b330c45d74"
       ],
       "operatorBlameLineCount": 1276,
       "scopedFunctionCount": 81,
@@ -3878,7 +3985,7 @@
       "path": "engine/runtime.hpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 24,
+      "operatorCommitCount": 25,
       "operatorCommits": [
         "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
         "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc",
@@ -3903,7 +4010,8 @@
         "ba88ff308df6d217c7a42a0739459ad6582abdf2",
         "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20",
         "6c8b194267516e3589f7d93cc1616359804abb05",
-        "30b064bc394b157f8ca8d06cfd36c675cd379410"
+        "30b064bc394b157f8ca8d06cfd36c675cd379410",
+        "6626a37b187a0ebc3ca9662a6397b1b330c45d74"
       ],
       "operatorBlameLineCount": 228,
       "scopedFunctionCount": 0,
@@ -4221,7 +4329,7 @@
       "path": "tools/check-complexity.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 31,
+      "operatorCommitCount": 32,
       "operatorCommits": [
         "a6b2b65df6cbcb289e4b81af1ca898a5397c3992",
         "979148802c665938cd7532c4c50fedf9259d725e",
@@ -4253,7 +4361,8 @@
         "13faf231012b1f9ac23ebc000b4fb4260e7c2ff8",
         "34cf254206e684997d9ad78d76fd187fd0188dc0",
         "50df18f16160f5c8a4c31dbd0bb4ac71cfa45f21",
-        "f6ec085059796f0c0c5d04196915b74ad62af6e1"
+        "f6ec085059796f0c0c5d04196915b74ad62af6e1",
+        "1ef1dc372c51cef5cfae08ce1ad999177502f59c"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 165,
@@ -4532,6 +4641,11 @@
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
     {
+      "path": ".github/workflows/engine-protocol-v2-task24.yaml",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
       "path": ".github/workflows/engine-protocol-v2-task3.yaml",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
@@ -4763,6 +4877,11 @@
     },
     {
       "path": "engine/D3D11_SHARED_PREVIEW_V1.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/ENCODER_GROUP_V1.md",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
