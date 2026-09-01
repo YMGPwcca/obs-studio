@@ -249,5 +249,7 @@ Every milestone has a clean checkpoint commit and a dedicated deterministic
 integration lane, while cumulative regression evidence is retained. The final
 candidate must pass the complete Task 1–20 exact-SHA matrix, complexity gate,
 package audit, two-pass review, and the mandatory physical Windows D3D11
-integration. Phase 2 remains `IN REVIEW` until independent advisor review and
+integration. The current evidence record is `PHASE2_ACCEPTANCE.md`, with the
+host-specific physical record in `PHASE2_PHYSICAL_EVIDENCE.md`. Phase 2 remains
+`IN REVIEW` until hosted exact-SHA evidence, independent advisor review, and
 human acceptance; this branch never starts Task 21.

@@ -501,4 +501,5 @@ After each accepted task:
 
 The current transition point is **Phase-1 accepted -> Phase-2 Tasks 12–20 in
 review**. Task 21 and later remain planned and outside this branch until a
-separate explicit authorization.
+separate explicit authorization. See `PHASE2_ACCEPTANCE.md` and
+`PHASE2_PHYSICAL_EVIDENCE.md` for the Phase-2 review record.

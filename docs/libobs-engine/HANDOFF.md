@@ -22,8 +22,8 @@
 
 The workflow executable hardening cleanup was the tooling-only pre-Phase-2
 checkpoint. The current candidate is the explicitly authorized Phase-2 branch;
-see `PHASE2_ARCHITECTURE.md` and `PHASE2_ACCEPTANCE_MATRIX.md` for its scope
-and evidence state.
+see `PHASE2_ARCHITECTURE.md`, `PHASE2_ACCEPTANCE.md`, and
+`PHASE2_PHYSICAL_EVIDENCE.md` for its scope and evidence state.
 
 This file exists so a local AI coding agent can continue the project without access to the previous ChatGPT conversation. It records project decisions, accepted behavior, verification evidence, known traps, and the required working process. **Verify everything against the checked-out source before changing it.**
 
@@ -231,10 +231,10 @@ advertises its capability only when the live backend supports it.
 The Phase-2 architecture and namespace contracts are recorded in
 `PHASE2_ARCHITECTURE.md` and the `engine/*_V1.md` documents. Deterministic
 Task 12–20 scripts, the D3D11 consumer fixture, and the exact-SHA hosted
-workflow are present. Local Tasks 1–11 and 12–20 lanes are green on the
-Windows D3D11 host; package audit and final physical evidence remain part of
-the review record. Phase 2 is `IN REVIEW`, not accepted, and Task 21+ is out
-of scope.
+workflow are present. Local Tasks 1–11 and 12–20 lanes, package audit, and
+final physical evidence are recorded in `PHASE2_ACCEPTANCE.md` and
+`PHASE2_PHYSICAL_EVIDENCE.md`; the hosted exact-SHA run remains pending push.
+Phase 2 is `IN REVIEW`, not accepted, and Task 21+ is out of scope.
 
 ## 5. Important source files today
 
