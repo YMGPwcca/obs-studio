@@ -66,6 +66,11 @@ struct EncoderEntry {
 	std::unordered_set<uint64_t> bound_outputs;
 };
 
+struct EncoderGroupEntry {
+	obs_encoder_group_t *group = nullptr;
+	std::vector<uint64_t> encoders;
+};
+
 struct RuntimeV2Error {
 	std::string code;
 	std::string message;
@@ -134,6 +139,7 @@ public:
 	bool v2_hotkey_import(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	void v2_bind_encoder_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_prepare_encoder_shutdown() noexcept;
+	void v2_prepare_encoder_group_shutdown() noexcept;
 
 	bool v2_encoder_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_encoder_kind_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -162,6 +168,14 @@ public:
 	bool v2_encoder_roi_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_encoder_roi_clear(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	uint64_t v2_encoder_handle_for_pointer(const obs_encoder_t *encoder) const;
+
+	bool v2_encoder_group_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_group_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_group_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_group_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_group_add(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_group_remove_encoder(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_encoder_group_get_encoders(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	void v2_bind_audio_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_begin_audio_event_capture(RuntimeV2Result &result);
 	void v2_wait_for_audio_event_callbacks();
@@ -483,6 +497,9 @@ private:
 				       RuntimeV2Error &error);
 	bool v2_get_encoder_entry(obs_data_t *params, uint64_t &handle, EncoderEntry *&entry,
 				      RuntimeV2Error &error) const;
+	bool v2_get_encoder_group_entry(obs_data_t *params, uint64_t &handle, EncoderGroupEntry *&entry,
+					RuntimeV2Error &error) const;
+	bool v2_encoder_group_is_active(const EncoderGroupEntry &entry) const;
 	bool v2_update_encoder_settings(EncoderEntry &entry, uint64_t handle, obs_data_t *requested, bool replace,
 				       RuntimeV2Result &result, RuntimeV2Error &error);
 
@@ -597,6 +614,7 @@ private:
 	std::shared_ptr<FilterV2State> filter_v2_state_;
 	std::shared_ptr<TransitionV2State> transition_v2_state_;
 	std::unordered_map<uint64_t, EncoderEntry> encoders_;
+	std::unordered_map<uint64_t, EncoderGroupEntry> encoder_groups_;
 };
 
 } // namespace obs_engine

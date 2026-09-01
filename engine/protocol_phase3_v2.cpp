@@ -114,12 +114,25 @@ enum class EncoderMethod {
 	Unknown,
 };
 
+enum class EncoderGroupMethod {
+	List,
+	Get,
+	Create,
+	Remove,
+	Add,
+	RemoveEncoder,
+	GetEncoders,
+	Unknown,
+};
+
 struct Phase3Dispatch {
 	AudioMethod audio = AudioMethod::Unknown;
 	HotkeyMethod hotkey = HotkeyMethod::Unknown;
 	EncoderMethod encoder = EncoderMethod::Unknown;
+	EncoderGroupMethod encoder_group = EncoderGroupMethod::Unknown;
 	bool is_hotkey = false;
 	bool is_encoder = false;
+	bool is_encoder_group = false;
 	bool mutating = false;
 };
 
@@ -178,6 +191,21 @@ constexpr EncoderMethodName kEncoderMethods[] = {
 	{"encoder.roi.clear", EncoderMethod::RoiClear},
 };
 
+struct EncoderGroupMethodName {
+	std::string_view name;
+	EncoderGroupMethod method;
+};
+
+constexpr EncoderGroupMethodName kEncoderGroupMethods[] = {
+	{"encoderGroup.list", EncoderGroupMethod::List},
+	{"encoderGroup.get", EncoderGroupMethod::Get},
+	{"encoderGroup.create", EncoderGroupMethod::Create},
+	{"encoderGroup.remove", EncoderGroupMethod::Remove},
+	{"encoderGroup.add", EncoderGroupMethod::Add},
+	{"encoderGroup.removeEncoder", EncoderGroupMethod::RemoveEncoder},
+	{"encoderGroup.getEncoders", EncoderGroupMethod::GetEncoders},
+};
+
 constexpr AudioMethod kMutatingMethods[] = {
 	AudioMethod::SetMute,
 	AudioMethod::ToggleMute,
@@ -212,6 +240,13 @@ constexpr EncoderMethod kEncoderMutatingMethods[] = {
 	EncoderMethod::RoiAdd,
 	EncoderMethod::RoiRemove,
 	EncoderMethod::RoiClear,
+};
+
+constexpr EncoderGroupMethod kEncoderGroupMutatingMethods[] = {
+	EncoderGroupMethod::Create,
+	EncoderGroupMethod::Remove,
+	EncoderGroupMethod::Add,
+	EncoderGroupMethod::RemoveEncoder,
 };
 
 using AudioMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
@@ -304,6 +339,23 @@ constexpr EncoderHandlerEntry kEncoderHandlers[] = {
 	{EncoderMethod::RoiClear, &Engine::v2_encoder_roi_clear},
 };
 
+using EncoderGroupMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
+
+struct EncoderGroupHandlerEntry {
+	EncoderGroupMethod method;
+	EncoderGroupMethodHandler handler;
+};
+
+constexpr EncoderGroupHandlerEntry kEncoderGroupHandlers[] = {
+	{EncoderGroupMethod::List, &Engine::v2_encoder_group_list},
+	{EncoderGroupMethod::Get, &Engine::v2_encoder_group_get},
+	{EncoderGroupMethod::Create, &Engine::v2_encoder_group_create},
+	{EncoderGroupMethod::Remove, &Engine::v2_encoder_group_remove},
+	{EncoderGroupMethod::Add, &Engine::v2_encoder_group_add},
+	{EncoderGroupMethod::RemoveEncoder, &Engine::v2_encoder_group_remove_encoder},
+	{EncoderGroupMethod::GetEncoders, &Engine::v2_encoder_group_get_encoders},
+};
+
 AudioMethod classify(std::string_view name)
 {
 	for (const AudioMethodName &entry : kAudioMethods) {
@@ -331,6 +383,15 @@ EncoderMethod classify_encoder(std::string_view name)
 	return EncoderMethod::Unknown;
 }
 
+EncoderGroupMethod classify_encoder_group(std::string_view name)
+{
+	for (const EncoderGroupMethodName &entry : kEncoderGroupMethods) {
+		if (entry.name == name)
+			return entry.method;
+	}
+	return EncoderGroupMethod::Unknown;
+}
+
 bool is_mutating(AudioMethod method)
 {
 	for (const AudioMethod candidate : kMutatingMethods) {
@@ -352,6 +413,15 @@ bool is_mutating(HotkeyMethod method)
 bool is_mutating(EncoderMethod method)
 {
 	for (const EncoderMethod candidate : kEncoderMutatingMethods) {
+		if (candidate == method)
+			return true;
+	}
+	return false;
+}
+
+bool is_mutating(EncoderGroupMethod method)
+{
+	for (const EncoderGroupMethod candidate : kEncoderGroupMutatingMethods) {
 		if (candidate == method)
 			return true;
 	}
@@ -385,17 +455,29 @@ EncoderMethodHandler encoder_handler_for(EncoderMethod method)
 	return nullptr;
 }
 
+EncoderGroupMethodHandler encoder_group_handler_for(EncoderGroupMethod method)
+{
+	for (const EncoderGroupHandlerEntry &entry : kEncoderGroupHandlers) {
+		if (entry.method == method)
+			return entry.handler;
+	}
+	return nullptr;
+}
+
 bool classify_phase3(std::string_view name, Phase3Dispatch &dispatch)
 {
 	dispatch.audio = classify(name);
 	dispatch.hotkey = classify_hotkey(name);
 	dispatch.encoder = classify_encoder(name);
+	dispatch.encoder_group = classify_encoder_group(name);
 	if (dispatch.audio == AudioMethod::Unknown && dispatch.hotkey == HotkeyMethod::Unknown &&
-	    dispatch.encoder == EncoderMethod::Unknown)
+	    dispatch.encoder == EncoderMethod::Unknown && dispatch.encoder_group == EncoderGroupMethod::Unknown)
 		return false;
 	dispatch.is_hotkey = dispatch.hotkey != HotkeyMethod::Unknown;
 	dispatch.is_encoder = dispatch.encoder != EncoderMethod::Unknown;
-	dispatch.mutating = dispatch.is_encoder ? is_mutating(dispatch.encoder)
+	dispatch.is_encoder_group = dispatch.encoder_group != EncoderGroupMethod::Unknown;
+	dispatch.mutating = dispatch.is_encoder_group ? is_mutating(dispatch.encoder_group)
+						: dispatch.is_encoder ? is_mutating(dispatch.encoder)
 						: dispatch.is_hotkey ? is_mutating(dispatch.hotkey) : is_mutating(dispatch.audio);
 	return true;
 }
@@ -511,9 +593,23 @@ bool execute_encoder(Engine &engine, EncoderMethod method, const V2Request &requ
 	return (engine.*handler)(request.params.get(), result, error);
 }
 
+bool execute_encoder_group(Engine &engine, EncoderGroupMethod method, const V2Request &request,
+				   RuntimeV2Result &result, RuntimeV2Error &error)
+{
+	const EncoderGroupMethodHandler handler = encoder_group_handler_for(method);
+	if (!handler) {
+		error.code = "internal_error";
+		error.message = "encoder group method dispatch failed";
+		return false;
+	}
+	return (engine.*handler)(request.params.get(), result, error);
+}
+
 bool execute_phase3(Engine &engine, const Phase3Dispatch &dispatch, const V2Request &request,
 			   RuntimeV2Result &result, RuntimeV2Error &error)
 {
+	if (dispatch.is_encoder_group)
+		return execute_encoder_group(engine, dispatch.encoder_group, request, result, error);
 	if (dispatch.is_encoder)
 		return execute_encoder(engine, dispatch.encoder, request, result, error);
 	if (dispatch.is_hotkey)
@@ -561,7 +657,8 @@ bool commit_phase3_result(RuntimeV2Result &result, std::optional<RevisionState::
 bool is_phase3_method(std::string_view method)
 {
 	return classify(method) != AudioMethod::Unknown || classify_hotkey(method) != HotkeyMethod::Unknown ||
-	       classify_encoder(method) != EncoderMethod::Unknown;
+	       classify_encoder(method) != EncoderMethod::Unknown ||
+	       classify_encoder_group(method) != EncoderGroupMethod::Unknown;
 }
 
 bool handle_phase3_request(Engine &engine, RevisionState &revisions, EventDispatcher &events,

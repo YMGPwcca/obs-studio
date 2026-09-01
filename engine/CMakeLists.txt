@@ -7,6 +7,7 @@ target_sources(
     config.hpp
     runtime_audio_v2.cpp
     runtime_encoder_v2.cpp
+    runtime_encoder_group_v2.cpp
     runtime_hotkey_v2.cpp
     events.cpp
     events.hpp
