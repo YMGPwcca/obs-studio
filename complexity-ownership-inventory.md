@@ -9,7 +9,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 
 - GitHub account: **YMGPwcca**
 - Author-authored commits in accepted lineage: **64**
-- Author-authored commits touching current executable scope: **135**
+- Author-authored commits touching current executable scope: **137**
 
 | Author name | Author email |
 |---|---|
@@ -45,7 +45,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `.github/scripts/engine-protocol-v2-task14.ps1` | PowerShell | A | 2 | 0 | 13 |
 | `.github/scripts/engine-protocol-v2-task15.ps1` | PowerShell | A | 2 | 0 | 14 |
 | `.github/scripts/engine-protocol-v2-task16.ps1` | PowerShell | A | 2 | 0 | 13 |
-| `.github/scripts/engine-protocol-v2-task17.ps1` | PowerShell | A | 3 | 0 | 23 |
+| `.github/scripts/engine-protocol-v2-task17.ps1` | PowerShell | A | 4 | 0 | 23 |
 | `.github/scripts/engine-protocol-v2-task18.ps1` | PowerShell | A | 3 | 0 | 28 |
 | `.github/scripts/engine-protocol-v2-task19.ps1` | PowerShell | A | 2 | 0 | 13 |
 | `.github/scripts/engine-protocol-v2-task2-framing.ps1` | PowerShell | A | 1 | 0 | 17 |
@@ -120,7 +120,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `libobs/obs-source-media-internal.h` | C/C++ | A | 1 | 34 | 0 |
 | `libobs/obs-source.c` | C/C++ | M | 4 | 164 | 22 |
 | `plugins/win-capture/plugin-main.c` | C/C++ | M | 2 | 42 | 6 |
-| `tools/check-complexity.ps1` | PowerShell | A | 26 | 0 | 165 |
+| `tools/check-complexity.ps1` | PowerShell | A | 27 | 0 | 165 |
 | `tools/check-complexity.tests.ps1` | PowerShell | A | 24 | 0 | 23 |
 
 ## Non-CC changed paths

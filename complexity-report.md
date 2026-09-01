@@ -1,14 +1,14 @@
 # Phase-1 Complexity Hardening Report
 
 Accepted starting SHA: `3fc2e678d10809a4dca8b28107710534160803ab`
-Candidate measurement HEAD: `5206d23c90943968b6667ebd5837ed80670bf0d0`
+Candidate measurement HEAD: `33845ef42cdb8e16cfc122b17032266ed0b9640a`
 
 ## Named-function before/after summary
 
 | Measure | Before | After |
 |---|---:|---:|
 | Named functions | 543 | 1783 |
-| Average named-function CC | 5.703 | 4.011 |
+| Average named-function CC | 5.703 | 4.012 |
 | Median named-function CC | 4 | 4 |
 | 90th percentile named-function CC | 13 | 8 |
 | Maximum named-function CC | 61 | 13 |
@@ -36,7 +36,7 @@ The p90 is nearest-rank `ceil(0.90 * N)`. The named-function summary excludes Po
 | Measure | Before | After |
 |---|---:|---:|
 | Enforced scopes | 548 | 1834 |
-| Average Enforced scopes CC | 5.982 | 3.956 |
+| Average Enforced scopes CC | 5.982 | 3.957 |
 | Median Enforced scopes CC | 4 | 3 |
 | 90th percentile Enforced scopes CC | 13 | 8 |
 | Maximum Enforced scopes CC | 80 | 13 |
@@ -993,6 +993,7 @@ Owned run blocks: 55; substantial inline PowerShell: 0; unsupported substantial 
 | `looks_like_v2_request` | `engine/host.cpp` | 4 | 4 | 6 | 6 | unchanged |
 | `Assert-P2PhysicalEventOrder` | `.github/scripts/engine-protocol-v2-phase2-physical.ps1` | — | 4 | — | 5 | new cohesive helper/function in scoped file |
 | `Assert-Task12Error` | `.github/scripts/engine-protocol-v2-task12.ps1` | — | 4 | — | 5 | new cohesive helper/function in scoped file |
+| `Assert-Task17LeaseInfo` | `.github/scripts/engine-protocol-v2-task17.ps1` | — | 4 | — | 5 | new cohesive helper/function in scoped file |
 | `Record-Task18Progress` | `.github/scripts/engine-protocol-v2-task18.ps1` | — | 4 | — | 5 | new cohesive helper/function in scoped file |
 | `Assert-Task2Ping` | `.github/scripts/engine-protocol-v2-task2-framing.ps1` | — | 4 | — | 5 | new cohesive helper/function in scoped file |
 | `Assert-Task2BadId` | `.github/scripts/engine-protocol-v2-task2-framing.ps1` | — | 4 | — | 5 | new cohesive helper/function in scoped file |
@@ -1580,7 +1581,6 @@ Owned run blocks: 55; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::transition_end_cb` | `engine/runtime_transition_v2.cpp` | — | 2 | — | 5 | new cohesive helper/function in scoped file |
 | `Get-WorkflowReportBlocks` | `tools/check-complexity.ps1` | — | 2 | — | 5 | new cohesive helper/function in scoped file |
 | `Test-P2PhysicalEventSequence` | `.github/scripts/engine-protocol-v2-phase2-physical.ps1` | — | 2 | — | 4 | new cohesive helper/function in scoped file |
-| `Assert-Task17LeaseInfo` | `.github/scripts/engine-protocol-v2-task17.ps1` | — | 2 | — | 4 | new cohesive helper/function in scoped file |
 | `Take-Task18Event` | `.github/scripts/engine-protocol-v2-task18.ps1` | — | 2 | — | 4 | new cohesive helper/function in scoped file |
 | `obs_engine::safe_string` | `engine/properties.cpp` | 2 | 2 | 4 | 4 | unchanged |
 | `obs_engine::number_type_name` | `engine/properties.cpp` | 2 | 2 | 4 | 4 | unchanged |
@@ -2042,7 +2042,7 @@ Owned run blocks: 55; substantial inline PowerShell: 0; unsupported substantial 
 - `parse_consumer_option` — `engine/preview_consumer_test.cpp:95-114`, CC 9, NLOC 20, params 2
 - `obs_engine::read_transition_create_options` — `engine/runtime_transition_v2.cpp:280-299`, CC 9, NLOC 20, params 6
 - `Assert-TrustedBaselineReportShape` — `tools/check-complexity.ps1:125-144`, CC 9, NLOC 19, params 1
-- `Invoke-Task17RouteSwitch` — `.github/scripts/engine-protocol-v2-task17.ps1:230-247`, CC 9, NLOC 18, params 1
+- `Invoke-Task17RouteSwitch` — `.github/scripts/engine-protocol-v2-task17.ps1:231-248`, CC 9, NLOC 18, params 1
 - `obs_engine::read_preview_output_create_dimensions` — `engine/runtime_preview_output_v2.cpp:778-795`, CC 9, NLOC 18, params 5
 - `obs_engine::collect_sensitive_recursive` — `engine/properties_sensitive.cpp:6-22`, CC 9, NLOC 17, params 2
 - `obs_engine::Engine::v2_read_source_create_options` — `engine/runtime_v2.cpp:240-256`, CC 9, NLOC 17, params 5
@@ -2140,7 +2140,7 @@ Owned run blocks: 55; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::phase2_parse_handle` — `engine/runtime_phase2_common.cpp:131-142`, CC 8, NLOC 12, params 2
 - `Assert-Task3Hello` — `.github/scripts/engine-protocol-v2-task3-capabilities.ps1:76-86`, CC 8, NLOC 11, params 1
 - `Read-Task13Event` — `.github/scripts/engine-protocol-v2-task13.ps1:87-96`, CC 8, NLOC 10, params 2
-- `Write-Task17FailureDetails` — `.github/scripts/engine-protocol-v2-task17.ps1:310-319`, CC 8, NLOC 10, params 1
+- `Write-Task17FailureDetails` — `.github/scripts/engine-protocol-v2-task17.ps1:311-320`, CC 8, NLOC 10, params 1
 - `obs_engine::batch_matches_filter_update` — `engine/runtime_filter_v2.cpp:1087-1096`, CC 8, NLOC 10, params 5
 - `obs_engine::safe_transition_identifier` — `engine/runtime_transition_v2.cpp:54-63`, CC 8, NLOC 10, params 1
 - `Read-Task14CanvasFailureEvent` — `.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1:100-107`, CC 8, NLOC 8, params 2
@@ -2269,7 +2269,7 @@ Owned run blocks: 55; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::v2_prepare_media_shutdown` — `engine/runtime_media_v2.cpp:1029-1061`, CC 6, NLOC 31, params 0
 - `Invoke-RaceNewerRequest` — `.github/scripts/engine-protocol-v2-task11-timeout-race.ps1:220-251`, CC 6, NLOC 30, params 2
 - `Initialize-Task11FilterGraph` — `.github/scripts/engine-protocol-v2-task11.ps1:379-408`, CC 6, NLOC 30, params 1
-- `Invoke-Task17ResourceChecks` — `.github/scripts/engine-protocol-v2-task17.ps1:249-278`, CC 6, NLOC 30, params 1
+- `Invoke-Task17ResourceChecks` — `.github/scripts/engine-protocol-v2-task17.ps1:250-279`, CC 6, NLOC 30, params 1
 - `obs_engine::publish_filter_events` — `engine/runtime_filter_v2.cpp:708-740`, CC 6, NLOC 30, params 7
 - `obs_engine::handle_phase2_request` — `engine/protocol_phase2_v2.cpp:479-510`, CC 6, NLOC 29, params 4
 - `obs_engine::Engine::v2_media_set_position` — `engine/runtime_media_v2.cpp:1243-1272`, CC 6, NLOC 29, params 3
@@ -2502,7 +2502,7 @@ Owned run blocks: 55; substantial inline PowerShell: 0; unsupported substantial 
 - `parse_consumer_option` — `engine/preview_consumer_test.cpp:95-114`, CC 9, NLOC 20, params 2
 - `obs_engine::read_transition_create_options` — `engine/runtime_transition_v2.cpp:280-299`, CC 9, NLOC 20, params 6
 - `Assert-TrustedBaselineReportShape` — `tools/check-complexity.ps1:125-144`, CC 9, NLOC 19, params 1
-- `Invoke-Task17RouteSwitch` — `.github/scripts/engine-protocol-v2-task17.ps1:230-247`, CC 9, NLOC 18, params 1
+- `Invoke-Task17RouteSwitch` — `.github/scripts/engine-protocol-v2-task17.ps1:231-248`, CC 9, NLOC 18, params 1
 - `obs_engine::read_preview_output_create_dimensions` — `engine/runtime_preview_output_v2.cpp:778-795`, CC 9, NLOC 18, params 5
 - `obs_engine::collect_sensitive_recursive` — `engine/properties_sensitive.cpp:6-22`, CC 9, NLOC 17, params 2
 - `obs_engine::Engine::v2_read_source_create_options` — `engine/runtime_v2.cpp:240-256`, CC 9, NLOC 17, params 5
@@ -2600,7 +2600,7 @@ Owned run blocks: 55; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::phase2_parse_handle` — `engine/runtime_phase2_common.cpp:131-142`, CC 8, NLOC 12, params 2
 - `Assert-Task3Hello` — `.github/scripts/engine-protocol-v2-task3-capabilities.ps1:76-86`, CC 8, NLOC 11, params 1
 - `Read-Task13Event` — `.github/scripts/engine-protocol-v2-task13.ps1:87-96`, CC 8, NLOC 10, params 2
-- `Write-Task17FailureDetails` — `.github/scripts/engine-protocol-v2-task17.ps1:310-319`, CC 8, NLOC 10, params 1
+- `Write-Task17FailureDetails` — `.github/scripts/engine-protocol-v2-task17.ps1:311-320`, CC 8, NLOC 10, params 1
 - `obs_engine::batch_matches_filter_update` — `engine/runtime_filter_v2.cpp:1087-1096`, CC 8, NLOC 10, params 5
 - `obs_engine::safe_transition_identifier` — `engine/runtime_transition_v2.cpp:54-63`, CC 8, NLOC 10, params 1
 - `Read-Task14CanvasFailureEvent` — `.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1:100-107`, CC 8, NLOC 8, params 2
