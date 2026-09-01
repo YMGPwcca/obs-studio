@@ -92,11 +92,13 @@ Current status to verify:
 - Task 9 all seven `interaction.*` methods complete; same-SHA regression matrix green; physical Windows acceptance complete.
 - Task 10 `media.*` is accepted at `6a590c2985a99d186c8eecd0241acdc824d32168`; `engine/MEDIA_V1.md` and the media settlement limits are authoritative.
 - Phase-1 cyclomatic-complexity hardening is COMPLETE / ACCEPTED at reviewed checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`; see `PHASE1_COMPLEXITY_ACCEPTANCE.md` for the frozen baseline and approval evidence.
-- The separate pre-Phase-2 PowerShell script-body hardening cleanup is IN REVIEW on `phase1-scriptbody-hardening`; see `PHASE1_SCRIPTBODY_HARDENING.md`. Do not treat it as accepted or modify runtime code while it is under review.
-- The final pre-Phase-2 workflow executable-code hardening cleanup is IN REVIEW on `phase1-workflow-exec-hardening`; see `PHASE1_WORKFLOW_EXEC_HARDENING.md`. Do not treat it as accepted or modify runtime code while it is under review.
-- Task 21 and later remain NOT STARTED / NOT AUTHORIZED.
+- The separate pre-Phase-2 PowerShell script-body hardening cleanup is COMPLETE / ACCEPTED in the current lineage; its historical branch/evidence is `phase1-scriptbody-hardening` / `PHASE1_SCRIPTBODY_HARDENING.md`.
+- The final pre-Phase-2 workflow executable-code hardening cleanup is COMPLETE / ACCEPTED in the current lineage; its historical branch/evidence is `phase1-workflow-exec-hardening` / `PHASE1_WORKFLOW_EXEC_HARDENING.md`.
+- Tasks 21–30 are explicitly authorized only on the `phase3-output-stack` candidate. Task 31 and later remain NOT STARTED / NOT AUTHORIZED.
 
-**Do not begin Task 21.** Wait for explicit human authorization before any later roadmap implementation.
+On the accepted Phase-2 production branch, do not begin Task 21. This Phase-3
+candidate has explicit authorization for Tasks 21–30 only; do not begin Task 31
+or later.
 
 After the audit, report back with:
 
@@ -110,7 +112,8 @@ After the audit, report back with:
 8. the accepted Task-11 filter implementation and its evidence record;
 9. confirmation that you have not changed production code before the audit report.
 
-After the audit, do not implement Task 21 or any later task unless the operator separately authorizes it. For an explicitly authorized future task, follow its full task gate and stop before the next unauthorized task.
+For this explicitly authorized Phase-3 candidate, follow the full task gate for
+Tasks 21–30 and stop before Task 31 or any later task.
 
 For manual acceptance commands, make fresh-engine handles deterministic and use literal `"source":"1"` whenever possible. Do not give the operator commands containing `YOUR_HANDLE` placeholders that require manual editing.
 

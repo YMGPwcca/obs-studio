@@ -46,9 +46,9 @@ The current accepted implementation baseline is:
 - Tasks 12 through 20: complete and accepted by human approval of the reviewed Phase-2 candidate.
 - Phase 2: accepted. The acceptance commit changes documentation only; it does not change the reviewed runtime candidate.
 - Phase-1 cyclomatic-complexity hardening: complete and accepted at reviewed checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`; see `docs/libobs-engine/PHASE1_COMPLEXITY_ACCEPTANCE.md`.
-- Pre-Phase-2 PowerShell script-body hardening: IN REVIEW on `phase1-scriptbody-hardening`; see `docs/libobs-engine/PHASE1_SCRIPTBODY_HARDENING.md`. This cleanup does not alter runtime code or authorize Task 12.
-- Final pre-Phase-2 workflow executable-code hardening: IN REVIEW on `phase1-workflow-exec-hardening`; see `docs/libobs-engine/PHASE1_WORKFLOW_EXEC_HARDENING.md`. This cleanup does not alter runtime code or authorize Task 12.
-- Task 21 and later: NOT STARTED / NOT AUTHORIZED.
+- Pre-Phase-2 PowerShell script-body hardening: COMPLETE / ACCEPTED in the current accepted lineage; the historical branch was `phase1-scriptbody-hardening` and its evidence record retains the original review history.
+- Final pre-Phase-2 workflow executable-code hardening: COMPLETE / ACCEPTED in the current accepted lineage; the historical branch was `phase1-workflow-exec-hardening` and its evidence record retains the original review history.
+- Task 21 and later: NOT STARTED on the accepted production baseline. The explicitly authorized Phase-3 candidate is `phase3-output-stack` for Tasks 21–30 only.
 
 The Phase-2 acceptance commit advances branch HEAD beyond the reviewed runtime
 candidate only with approved Markdown documentation. Verify its exact parent

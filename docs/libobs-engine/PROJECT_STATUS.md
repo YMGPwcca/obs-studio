@@ -11,15 +11,17 @@
 **Reviewed Phase-2 runtime candidate:** `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`
 **Complete Phase-2 complexity baseline:** `eb5ed120ddc3f159ce5d0d3a317fd4c741532525`
 **Phase-2 acceptance commit:** the single documentation-only child of the reviewed Phase-2 tip
-**Script-body hardening branch:** `phase1-scriptbody-hardening`
+**Historical script-body hardening branch:** `phase1-scriptbody-hardening`
 **Task-11 status:** COMPLETE / ACCEPTED
 **Tasks 1-11:** ACCEPTED
 **Phase-1 complexity hardening:** COMPLETE / ACCEPTED
-**Phase-1 script-body hardening:** IN REVIEW
-**Phase-1 workflow executable hardening:** IN REVIEW
+**Phase-1 script-body hardening:** COMPLETE / ACCEPTED in current lineage
+**Phase-1 workflow executable hardening:** COMPLETE / ACCEPTED in current lineage
 **Phase-2 Tasks 12-20:** COMPLETE / ACCEPTED
 **Phase 2:** ACCEPTED
-**Task 21+:** NOT STARTED / NOT AUTHORIZED
+**Phase-3 candidate branch:** `phase3-output-stack`
+**Phase-3 Tasks 21–30:** AUTHORIZED / IN PROGRESS
+**Task 31+:** NOT STARTED / NOT AUTHORIZED
 
 The current Phase-1 review checkpoint hardens the complexity gate's moving
 post-Task-11 scope, adds exact function-identity continuity migrations, and
@@ -34,19 +36,19 @@ pre-freeze checkpoint `5eb1e665bfee7c868c088bf306e770e814159c54` and contains
 complete 1,235-scope snapshot at pre-freeze checkpoint
 `8c12beaf3d202be9e1cc6771f5c2ad23684a28b1`, pinned by baseline blob
 `81e2f631d41e84b71569ea46ca9439da367dc567`. The runtime implementation
-reference remains `44243a501`; the workflow closure is still IN REVIEW.
+reference remains `44243a501`; both pre-Phase-2 tooling cleanups are
+incorporated in the accepted current lineage.
 
-The separate pre-Phase-2 script-body cleanup is in review on
-`phase1-scriptbody-hardening`. It enforces PowerShell top-level script-body
-budgets and refactors only verification tooling; it does not change runtime
-behavior, the accepted named-function baseline, or Task-12 authorization. See
-`PHASE1_SCRIPTBODY_HARDENING.md` for the provisional before/after evidence.
+The separate pre-Phase-2 script-body cleanup is incorporated and accepted in
+the current lineage. It enforces PowerShell top-level script-body budgets and
+refactors only verification tooling; its historical evidence remains in
+`PHASE1_SCRIPTBODY_HARDENING.md`.
 
-The final pre-Phase-2 workflow executable-code cleanup is in review on
-`phase1-workflow-exec-hardening`. It extracts substantial GitHub Actions
-`run:` logic into measured PowerShell scripts and fails closed on unsupported
-inline executable logic. It does not change runtime behavior or authorize Task
-12. See `PHASE1_WORKFLOW_EXEC_HARDENING.md` for the inventory and evidence.
+The final pre-Phase-2 workflow executable-code cleanup is incorporated and
+accepted in the current lineage. It extracts substantial GitHub Actions `run:`
+logic into measured PowerShell scripts and fails closed on unsupported inline
+executable logic. Its historical inventory/evidence remains in
+`PHASE1_WORKFLOW_EXEC_HARDENING.md`.
 
 ## 2.2 Phase-2 candidate — Tasks 12–20
 
@@ -101,7 +103,8 @@ This file is the current status ledger for the LibOBS split-engine project. If a
 | 10 | `media.*` | COMPLETE / ACCEPTED | 11 methods, exact queued-action settlement, exact-SHA hosted and physical evidence |
 | 11 | `filter.*` | COMPLETE / ACCEPTED | `e7b34828...`, exact-SHA matrix, physical Windows, artifact and independent review PASS |
 | 12–20 | Full composition and preview output path | COMPLETE / ACCEPTED | Human-approved Phase-2 candidate; exact-SHA hosted and physical evidence recorded |
-| 21–50 | Later roadmap | NOT STARTED / NOT AUTHORIZED | Outside the Phase-2 authorization; do not begin on this branch |
+| 21–30 | Phase-3 output stack | AUTHORIZED / IN PROGRESS | Dedicated `phase3-output-stack` candidate only |
+| 31–50 | Later roadmap | NOT STARTED / NOT AUTHORIZED | Outside the Phase-3 authorization |
 
 ---
 
@@ -508,5 +511,6 @@ The current project state is:
 
 `Phase-1 accepted` -> `Phase-2 Tasks 12-20 accepted`.
 
-The accepted Phase-2 scope stops at Task 20. Task 21 and later namespaces
-remain not started and are not authorized on this branch.
+The accepted Phase-2 scope stops at Task 20. Tasks 21–30 are authorized only on
+the dedicated `phase3-output-stack` candidate; Task 31 and later remain not
+started and not authorized.

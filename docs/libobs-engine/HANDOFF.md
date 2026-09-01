@@ -4,8 +4,8 @@
 **Repository:** `YMGPwcca/obs-studio`  
 **Production branch:** `engine-protocol-v2`
 **Candidate branch:** `phase2-scene-render-graph`
-**Current script-body hardening branch:** `phase1-scriptbody-hardening`
-**Current workflow executable hardening branch:** `phase1-workflow-exec-hardening`
+**Historical script-body hardening branch:** `phase1-scriptbody-hardening`
+**Historical workflow executable hardening branch:** `phase1-workflow-exec-hardening`
 **Accepted Task-10 implementation:** `6a590c2985a99d186c8eecd0241acdc824d32168` (`fix(engine): correlate media actions by source ticket`)
 **Accepted Task-10 documentation checkpoint:** `e8a0cb36cb2baacb8368ff5236a7a84bec9584ea`
 **Accepted Task-11 implementation:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
@@ -16,21 +16,23 @@
 **Reviewed Phase-2 runtime candidate:** `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`
 **Complete Phase-2 complexity baseline:** `eb5ed120ddc3f159ce5d0d3a317fd4c741532525`
 **Phase-2 acceptance commit:** the single documentation-only child of the reviewed Phase-2 tip
-**Next roadmap task:** Task 21 — outside this Phase-2 branch and not authorized
+**Phase-3 candidate branch:** `phase3-output-stack`
+**Phase-3 authorization:** Tasks 21–30 only; Task 31+ remains out of scope
 **Task 10 implementation status:** COMPLETE / ACCEPTED
 **Task 11 implementation status:** COMPLETE / ACCEPTED
 **Phase-1 complexity hardening status:** COMPLETE / ACCEPTED
-**Phase-1 script-body hardening status:** IN REVIEW
-**Phase-1 workflow executable hardening status:** IN REVIEW
+**Phase-1 script-body hardening status:** COMPLETE / ACCEPTED in current lineage
+**Phase-1 workflow executable hardening status:** COMPLETE / ACCEPTED in current lineage
 **Phase-2 Tasks 12-20 status:** COMPLETE / ACCEPTED
 **Phase-2 status:** ACCEPTED
-**Task 21 status:** NOT STARTED / NOT AUTHORIZED
+**Task 21–30 status:** AUTHORIZED / NOT YET IMPLEMENTED on the Phase-3 candidate
 
 The workflow executable hardening cleanup was the tooling-only pre-Phase-2
-checkpoint. The human-approved Phase-2 candidate is recorded at the reviewed
-tip and runtime candidate above. The final acceptance commit is documentation-
-only; see `PHASE2_ARCHITECTURE.md`, `PHASE2_ACCEPTANCE.md`, and
-`PHASE2_PHYSICAL_EVIDENCE.md` for the accepted scope and evidence.
+checkpoint and is incorporated in the accepted Phase-2 lineage. Its historical
+evidence remains unchanged. The human-approved Phase-2 candidate is recorded at
+the reviewed tip and runtime candidate above. The Phase-3 candidate is a new
+branch from the exact accepted Phase-2 checkpoint; see
+`PHASE3_ARCHITECTURE.md` for its authorized scope.
 
 This file exists so a local AI coding agent can continue the project without access to the previous ChatGPT conversation. It records project decisions, accepted behavior, verification evidence, known traps, and the required working process. **Verify everything against the checked-out source before changing it.**
 

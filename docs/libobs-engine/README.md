@@ -53,15 +53,15 @@ human approval and final frozen-baseline evidence are recorded in
 `44243a5013007a449c1d0b9903233929bd44a141`; Phase 2 is accepted, while Task
 21 and later remain planned and unauthorized.
 
-The additional pre-Phase-2 PowerShell script-body cleanup is **IN REVIEW** on
-`phase1-scriptbody-hardening`; its provisional evidence is in
-`PHASE1_SCRIPTBODY_HARDENING.md`. It does not modify runtime code or authorize
-Task 12.
+The additional pre-Phase-2 PowerShell script-body cleanup is **COMPLETE /
+ACCEPTED in the current accepted lineage**. Its historical branch was
+`phase1-scriptbody-hardening`; the evidence record retains the original review
+history and does not modify runtime code.
 
-The final pre-Phase-2 workflow executable-code cleanup is **IN REVIEW** on
-`phase1-workflow-exec-hardening`; its inventory and policy evidence are in
-`PHASE1_WORKFLOW_EXEC_HARDENING.md`. It does not modify runtime code or
-authorize Task 12.
+The final pre-Phase-2 workflow executable-code cleanup is **COMPLETE /
+ACCEPTED in the current accepted lineage**. Its historical branch was
+`phase1-workflow-exec-hardening`; the inventory/evidence record retains the
+original review history and does not modify runtime code.
 
 ## Why multiple documents?
 

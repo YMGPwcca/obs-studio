@@ -168,15 +168,15 @@ checkpoint `1b2ddacbb36c39bb61fd645594f0746f106956bf`. The final frozen
 complexity baseline and explicit human approval are recorded in
 `PHASE1_COMPLEXITY_ACCEPTANCE.md`. This acceptance does not authorize Task 12.
 
-The separate pre-Phase-2 PowerShell script-body hardening cleanup is currently
-IN REVIEW on `phase1-scriptbody-hardening`; see
-`PHASE1_SCRIPTBODY_HARDENING.md`. It is tooling-only and does not change the
-accepted runtime or named-function result.
+The separate pre-Phase-2 PowerShell script-body hardening cleanup is COMPLETE /
+ACCEPTED in the current lineage. Its historical branch/evidence is
+`phase1-scriptbody-hardening` / `PHASE1_SCRIPTBODY_HARDENING.md`; it is
+tooling-only and does not change the accepted runtime or named-function result.
 
-The final pre-Phase-2 workflow executable-code hardening cleanup is IN REVIEW
-on `phase1-workflow-exec-hardening`; see
-`PHASE1_WORKFLOW_EXEC_HARDENING.md`. It extracts substantial workflow `run:`
-logic into measured scripts and does not authorize Task 12.
+The final pre-Phase-2 workflow executable-code hardening cleanup is COMPLETE /
+ACCEPTED in the current lineage. Its historical branch/evidence is
+`phase1-workflow-exec-hardening` / `PHASE1_WORKFLOW_EXEC_HARDENING.md`; it
+extracts substantial workflow `run:` logic into measured scripts.
 
 ---
 
@@ -258,7 +258,7 @@ logic into measured scripts and does not authorize Task 12.
 
 # Phase D — Audio and input control
 
-## Task 21 — `audio.*` — NOT STARTED / NOT AUTHORIZED
+## Task 21 — `audio.*` — AUTHORIZED / IN PROGRESS on `phase3-output-stack`
 
 **Goal:** expose source/global audio controls necessary for a full OBS-like frontend.
 
@@ -268,7 +268,7 @@ logic into measured scripts and does not authorize Task 12.
 
 **Research:** audio callback thread constraints and monitoring device behavior; avoid doing protocol serialization in realtime callbacks.
 
-## Task 22 — `hotkey.*` — PLANNED
+## Task 22 — `hotkey.*` — AUTHORIZED / PENDING on `phase3-output-stack`
 
 **Goal:** enumerate/register/bind/trigger appropriate libobs hotkeys through semantic protocol.
 
@@ -278,7 +278,7 @@ logic into measured scripts and does not authorize Task 12.
 
 # Phase E — Output primitives
 
-## Task 23 — `encoder.*` — PLANNED
+## Task 23 — `encoder.*` — AUTHORIZED / PENDING on `phase3-output-stack`
 
 **Goal:** discover/configure/create/destroy video/audio encoders and expose properties/capabilities.
 
@@ -286,19 +286,19 @@ logic into measured scripts and does not authorize Task 12.
 
 **Acceptance:** software encoder deterministic path plus hardware capability/error paths; no assumption NVIDIA/Intel/AMD encoder exists.
 
-## Task 24 — `encoderGroup.*` — PLANNED
+## Task 24 — `encoderGroup.*` — AUTHORIZED / PENDING on `phase3-output-stack`
 
 **Goal:** group encoder configurations/resources where libobs/upstream supports coordinated operation.
 
 **Do not invent a group abstraction unless current upstream libobs actually supports the intended semantics; verify API first.**
 
-## Task 25 — `service.*` — PLANNED
+## Task 25 — `service.*` — AUTHORIZED / PENDING on `phase3-output-stack`
 
 **Goal:** discover/create/configure streaming services and service properties.
 
 **Security:** credentials are sensitive Controller-owned data at rest. Define how/when secrets enter runtime, avoid logging them, and do not echo sensitive values unnecessarily.
 
-## Task 26 — `output.*` — PLANNED
+## Task 26 — `output.*` — AUTHORIZED / PENDING on `phase3-output-stack`
 
 **Goal:** generic output discovery/configuration/lifecycle foundation used by recording/streaming/replay/virtual camera.
 
@@ -308,7 +308,7 @@ logic into measured scripts and does not authorize Task 12.
 
 # Phase F — Product output workflows
 
-## Task 27 — `recording.*` — PLANNED
+## Task 27 — `recording.*` — AUTHORIZED / PENDING on `phase3-output-stack`
 
 **Goal:** high-level recording control/state over generic output primitives.
 
@@ -316,19 +316,19 @@ logic into measured scripts and does not authorize Task 12.
 
 **Physical acceptance:** real filesystem output and playable finalized file; interrupted/failed-path behavior.
 
-## Task 28 — `streaming.*` — PLANNED
+## Task 28 — `streaming.*` — AUTHORIZED / PENDING on `phase3-output-stack`
 
 **Goal:** high-level stream start/stop/reconnect/status behavior.
 
 **Testing:** deterministic local RTMP/SRT/etc. endpoint where possible rather than public network dependency; service/output error mapping.
 
-## Task 29 — `replayBuffer.*` — PLANNED
+## Task 29 — `replayBuffer.*` — AUTHORIZED / PENDING on `phase3-output-stack`
 
 **Goal:** start/stop/save replay buffer and expose lifecycle/state.
 
 **Acceptance:** file finalization, repeated save behavior, disk errors, output conflicts.
 
-## Task 30 — `virtualCamera.*` — PLANNED
+## Task 30 — `virtualCamera.*` — AUTHORIZED / PENDING on `phase3-output-stack`
 
 **Goal:** control OBS virtual camera output where installed/supported.
 

@@ -1,6 +1,8 @@
 # Phase-1 PowerShell Script-Body Complexity Hardening
 
-Status: **IN REVIEW**. This is the final pre-Phase-2 quality closure; it does
+Status at the historical branch checkpoint: **IN REVIEW**. The changes are
+now **INCORPORATED / ACCEPTED in the current Phase-2 lineage**. This is the
+final pre-Phase-2 quality closure; it does
 not authorize Task 12 and does not change the accepted runtime/named-function
 Phase-1 result.
 
