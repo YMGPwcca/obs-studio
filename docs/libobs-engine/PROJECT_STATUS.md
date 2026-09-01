@@ -64,8 +64,8 @@ Phase-2 implementation lanes, the Tasks 1–11 regression matrix, package audit,
 and final physical integration are recorded in `PHASE2_ACCEPTANCE.md` and
 `PHASE2_PHYSICAL_EVIDENCE.md` from the local Windows D3D11 host. The branch
 also contains the reproducible `.github/workflows/engine-protocol-v2-phase2.yaml`
-hosted matrix; run `33495486309` passed the exact-SHA complexity, regression,
-and Tasks 12–20 jobs at head `833df6e59408ff25aec0c4de432726253be52914`.
+hosted matrix; run `33513275145` passed the exact-SHA complexity, regression,
+and Tasks 12–20 jobs at exact head `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`.
 Independent advisor review remains pending. Phase 2 remains `IN REVIEW`, not
 accepted. Task 21 and all later work are outside this branch.
 

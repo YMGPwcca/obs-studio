@@ -1,7 +1,8 @@
 # Engine Protocol v2 Phase 2 Architecture
 
-Status: Phase-2 implementation complete on the `phase2-scene-render-graph`
-branch; awaiting independent advisor review and human acceptance
+Status: Phase-2 Tasks 12–20 are IN REVIEW on the
+`phase2-scene-render-graph` branch; independent advisor and human acceptance
+are still pending.
 
 This document records the Phase-2 runtime model for Tasks 12–20. It is
 subordinate to checked-out source, the explicit Phase-2 goal, and the concrete
@@ -122,17 +123,18 @@ changes actual Program routing, including while Studio is enabled. Preview
 selection changes only Preview. Neither state is duplicated as an independent
 Studio-owned Scene value.
 
-Studio owns only enabled state, selected Transition handle, transition duration,
-and any supported T-Bar state. `studio.transition` validates enabled Studio,
-live Preview, live selected Transition, compatible Canvas/routing, and current
-transition state before beginning. Program identity is changed and
-`program.sceneChanged` is emitted at the documented libobs transition commit
-point, not merely when a start request is accepted. Transition progress is
-telemetry and never consumes a revision per frame. A Transition object's
-duration is an engine-owned configuration value passed to libobs when Studio
-starts it; libobs does not expose a persistent duration property on the source
-object, so the contract has one explicit owner rather than contradictory
-copies.
+Studio owns only enabled state, selected Transition handle, and orchestration;
+Transition owns the single canonical duration value. `studio.transition`
+validates enabled Studio, live Preview, live selected Transition,
+compatible Canvas/routing, and current transition state before beginning.
+Program identity is changed and `program.sceneChanged` is emitted at the
+documented libobs transition commit point, not merely when a start request is
+accepted. Direct `program.setScene` is immediate even in Studio mode: it
+synchronously stops/clears the real transition, suppresses the callback owner,
+applies the requested route, and publishes `program.sceneChanged` followed by
+one `transition.ended` at the single command revision. Transition progress is
+bounded opt-in telemetry and never consumes a revision per frame. Both
+duration setters publish only `transition.durationChanged`.
 
 ## Revision and event ownership
 
@@ -146,6 +148,8 @@ The existing global revision/event invariants remain frozen:
 * unrelated asynchronous callbacks receive independent revisions;
 * telemetry is bounded/coalesced and does not consume mutation revisions;
 * canonical overflow or uncertain ownership requires `session.resyncRequired`.
+* PreviewOutput consumer attachment is ephemeral lease state and is absent from
+  canonical `getInfo`, list, and resource descriptor payloads.
 
 Scene/item/canvas/Program/Preview/Transition/Studio/PreviewOutput callbacks
 normalize and enqueue state; they never write stdout. Callback connections are
@@ -209,7 +213,10 @@ The initial SDR resource is BGRA8-compatible with explicit color-space/range
 metadata. The producer owns the render resource and uses a keyed mutex with a
 bounded acquire timeout; it never waits indefinitely for a dead Controller.
 The consumer acquires/releases the documented keys. `resourceGeneration`
-changes on resize, Canvas video reset, and resource replacement. `frameSequence`,
+changes on resize, committed Canvas video reset, and resource replacement.
+Canvas video reset prepares its replacement mix before swapping the current
+mix, so allocation failure leaves the old Canvas and PreviewOutput state
+untouched. `frameSequence`,
 if exposed, is telemetry and is independent from engine revision.
 
 PreviewOutput callbacks render only on the libobs graphics/video context. They

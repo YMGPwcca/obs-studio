@@ -230,12 +230,13 @@ advertises its capability only when the live backend supports it.
 
 The Phase-2 architecture and namespace contracts are recorded in
 `PHASE2_ARCHITECTURE.md` and the `engine/*_V1.md` documents. Deterministic
-Task 12–20 scripts, the D3D11 consumer fixture, and the exact-SHA hosted
-workflow are present. Local Tasks 1–11 and 12–20 lanes, package audit, and
-final physical evidence are recorded in `PHASE2_ACCEPTANCE.md` and
-`PHASE2_PHYSICAL_EVIDENCE.md`; hosted run `33495486309` passed all listed jobs
-at head `833df6e59408ff25aec0c4de432726253be52914`. Phase 2 is `IN REVIEW`,
-not accepted, and Task 21+ is out of scope.
+Task 12–20 scripts, the D3D11 consumer fixture, the Canvas failure-atomicity
+lane, and the complete complexity-baseline freeze are present. Local Tasks
+1–11 and 12–20 lanes, package audit, and final physical evidence are recorded
+in `PHASE2_ACCEPTANCE.md` and `PHASE2_PHYSICAL_EVIDENCE.md`; hosted run
+`33513275145` passed all listed jobs at exact head
+`13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`. Phase 2 is `IN REVIEW`, not
+accepted, and Task 21+ is out of scope.
 
 ## 5. Important source files today
 

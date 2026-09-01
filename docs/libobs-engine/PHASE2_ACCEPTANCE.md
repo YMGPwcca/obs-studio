@@ -5,14 +5,16 @@
 **Candidate branch:** `phase2-scene-render-graph`
 **Phase-2 base:** `15457fcfd7abf3f9f0ddd8f43f3f1885980de8c8`
 **Accepted Task-11 implementation parent:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
-**Runtime implementation checkpoint:** `95214baed67950c430dc1fd1a0411d69c761f999`
-**Current verification tip when this record was prepared:** `2a974c55b700826459c0aa6736a9d06526db9d06`
+**Previous reviewed HEAD:** `db2f878672869cf38a5d6b798bdf0044ad507595`
+**Runtime candidate SHA:** `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`
+**Complexity measurement SHA:** `33845ef42cdb8e16cfc122b17032266ed0b9640a`
+**Final verification workflow:** `33513275145`
 
-The runtime checkpoint is the last commit that changes engine/runtime or the
-consumer fixture. The commits after it are verification-only acceptance-driver
-and evidence-record changes; `git diff 95214baed67950c430dc1fd1a0411d69c761f999..HEAD -- engine`
-is empty. The final branch tip must still be resolved with `git rev-parse HEAD`
-after any documentation-only update.
+The runtime candidate includes the three repair commits, the complete
+complexity-baseline freeze, and the lease-test correction. The final physical
+run and hosted exact-SHA matrix both used this committed candidate. Later
+documentation-only handoff changes do not alter the runtime candidate; the
+current branch tip must still be checked with `git rev-parse HEAD`.
 
 This record deliberately does not claim `ACCEPTED`. No production branch was
 moved, no `engine-protocol-v2` ref was advanced, and Task 21 or later was not
@@ -37,6 +39,12 @@ started.
 | `95214baed67950c430dc1fd1a0411d69c761f999` | D3D11 consumer adapter-scan correction |
 | `782551e733bd589d15072c351d251013e7b90317` | Final integrated physical acceptance driver |
 | `2a974c55b700826459c0aa6736a9d06526db9d06` | Physical evidence fields and resource-generation reporting |
+| `71e65a5b4bbf63347ebc67b01593a49ed38095cd` | Repair — transactional Canvas video-mix reset and deterministic failure seam |
+| `ba88ff308df6d217c7a42a0739459ad6582abdf2` | Repair — canonical Studio cancellation, duration ownership, progress telemetry, and lease shape |
+| `5206d23c90943968b6667ebd5837ed80670bf0d0` | Repair — complete-baseline checker and adversarial workflow lane |
+| `55aca3debcc6a08a28ddaac589e3f08cf18a147c` | Complete Phase-2 complexity baseline freeze |
+| `33845ef42cdb8e16cfc122b17032266ed0b9640a` | Test correction — tolerate unrelated read-side revision advance in lease checks |
+| `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8` | Final complete-baseline refresh after test correction |
 
 The implementation order is the authorized dependency order:
 
@@ -73,13 +81,31 @@ legacy shared handle. Resource generations change on resize and Canvas video
 reset. See [`D3D11_SHARED_PREVIEW_V1.md`](../../engine/D3D11_SHARED_PREVIEW_V1.md)
 and [`PREVIEW_OUTPUT_V1.md`](../../engine/PREVIEW_OUTPUT_V1.md).
 
+## Repair-pass blocker resolution
+
+- Complexity: the checker now requires a complete baseline/continuity match;
+  the final freeze covers all 1,834 enforced scopes.
+- Studio cancellation: `program.setScene` synchronously suppresses and drains
+  the real transition callback owner, preserves the logical prior Program
+  Scene, and emits `program.sceneChanged` then one `transition.ended` at the
+  command revision.
+- Canvas reset: the private libobs reset path creates the replacement mix
+  before swapping settings/mix membership; injected allocation failure leaves
+  the old Canvas and PreviewOutput resource untouched.
+- Duration: `transition.durationChanged` is the only duration event owner;
+  Studio setters are convenience entry points.
+- Progress: `transition.progress` is bounded opt-in telemetry through the
+  existing dispatcher and never advances the mutation revision per frame.
+- PreviewOutput leases: consumer attachment remains ephemeral and is absent
+  from canonical wire snapshots.
+
 ## Local verification matrix
 
-All local runtime lanes used the audited Windows artifact from the runtime
-implementation checkpoint above. The exact-SHA hosted workflow is
-`.github/workflows/engine-protocol-v2-phase2.yaml`. Run `33495486309` passed at
-head `833df6e59408ff25aec0c4de432726253be52914`; the job IDs are recorded
-below. Any later evidence-only commit preserves the same runtime source scope.
+All local runtime lanes used the clean Windows artifact built from runtime
+candidate `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`. The exact-SHA hosted
+workflow is `.github/workflows/engine-protocol-v2-phase2.yaml`; final run
+`33513275145` passed at that same SHA. The standalone complexity workflow
+`33513274930` also passed at the same SHA.
 
 | Lane | Local result | Evidence |
 |---|---|---|
@@ -97,6 +123,7 @@ below. Any later evidence-only commit preserves the same runtime source scope.
 | Task 12 | PASS | `.github/scripts/engine-protocol-v2-task12.ps1` |
 | Task 13 | PASS | `.github/scripts/engine-protocol-v2-task13.ps1` |
 | Task 14 | PASS | `.github/scripts/engine-protocol-v2-task14.ps1` |
+| Task 14 failure atomicity | PASS | deterministic test-hook build and A→B retry lane |
 | Task 15 | PASS | `.github/scripts/engine-protocol-v2-task15.ps1` |
 | Task 16 | PASS | `.github/scripts/engine-protocol-v2-task16.ps1` |
 | Task 17 | PASS | Task-17 D3D11 consumer integration plus physical GPU run |
@@ -105,6 +132,7 @@ below. Any later evidence-only commit preserves the same runtime source scope.
 | Task 20 | PASS | `.github/scripts/engine-protocol-v2-task20.ps1` |
 | Complexity self-tests | PASS | pinned checker self-tests |
 | Complexity gate | PASS | pinned lizard and PowerShell AST gate |
+| Complexity freeze completeness | PASS | 1,834 enforced / 1,834 matched / 0 unbaselined |
 | Normal package audit | PASS | package contains only the intended headless runtime surface |
 | Final integrated physical flow | PASS | [`PHASE2_PHYSICAL_EVIDENCE.md`](PHASE2_PHYSICAL_EVIDENCE.md) |
 
@@ -121,45 +149,66 @@ Tasks 1-11 exact-SHA regression matrix: PASS
 The Phase-2 lane runner passed Tasks 12–20 on the same audited artifact. The
 normal package audit passed before and after fixture use.
 
+The repair-specific adversarial coverage passed at the same local candidate:
+
+- Studio cancellation A→B then immediate Program C: one command revision,
+  `program.sceneChanged` then `transition.ended`, logical previous Scene A,
+  idle agreement, and no delayed duplicate or route to B.
+- Near-completion cancellation: one completion owner and no duplicate end.
+- Canvas reset failure injection: error at the old revision, unchanged Canvas
+  generation/share descriptor/rendering, no reset/resource events; retry then
+  committed exactly one reset revision and one resource generation step.
+- Duration setters: both mutate the one `TransitionEntry.duration_ms` state and
+  emit only `transition.durationChanged`; equal values are no-ops.
+- Progress telemetry: opt-in only, finite `0..1` samples, no per-frame
+  revisions, bounded/coalesced delivery, and no telemetry-induced resync.
+- PreviewOutput leases: `consumerAttached` is absent from canonical wire
+  snapshots and lease operations remain non-revisioned.
+
 ## Hosted exact-SHA matrix
 
-Workflow run: [33495486309](https://github.com/YMGPwcca/obs-studio/actions/runs/33495486309)
+Workflow run: [33513275145](https://github.com/YMGPwcca/obs-studio/actions/runs/33513275145)
 
-Head SHA: `833df6e59408ff25aec0c4de432726253be52914`
+Head SHA: `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`
 
 | Hosted lane | Job ID | Result |
 |---|---:|---|
-| Complexity self-tests and gate | `99816569753` | PASS |
-| Tasks 1–11 same-SHA regression matrix | `99816569902` | PASS |
-| Task 12 | `99820728099` | PASS |
-| Task 13 | `99820728229` | PASS |
-| Task 14 | `99820728196` | PASS |
-| Task 15 | `99820728101` | PASS |
-| Task 16 | `99820728090` | PASS |
-| Task 17 | `99820728119` | PASS |
-| Task 18 | `99820728062` | PASS |
-| Task 19 | `99820728145` | PASS |
-| Task 20 | `99820728248` | PASS |
+| Complexity self-tests and gate | `99873922227` | PASS |
+| Tasks 1–11 same-SHA regression matrix | `99873922387` | PASS |
+| Task 14 failure-atomic Canvas reset | `99875439478` | PASS |
+| Task 12 | `99875439497` | PASS |
+| Task 17 | `99875439525` | PASS |
+| Task 19 | `99875439537` | PASS |
+| Task 14 | `99875439541` | PASS |
+| Task 20 | `99875439559` | PASS |
+| Task 15 | `99875439571` | PASS |
+| Task 16 | `99875439626` | PASS |
+| Task 18 | `99875439656` | PASS |
+| Task 13 | `99875439814` | PASS |
 
 The only hosted annotation was the platform Node.js 20 deprecation notice for
 the pinned `upload-artifact` action. It did not affect any job result.
 
+The standalone Phase-1 complexity workflow also passed: run
+`33513274930`, job `99873921498`, head SHA
+`13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`.
+
 ## Complexity evidence
 
 The gate used `lizard==1.24.0` in an isolated target path and the repository's
-pinned `powershell-yaml==0.4.12` parser. The final local measurement was made
-at `2a974c55b700826459c0aa6736a9d06526db9d06`; documentation-only commits do
-not alter the measured source scope.
+pinned `powershell-yaml==0.4.12` parser. The complete final snapshot was
+measured at `33845ef42cdb8e16cfc122b17032266ed0b9640a` and frozen by the
+baseline-refresh commit `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`.
 
 | Metric | Final value |
 |---|---:|
-| Scoped function/script-body count | 1,735 |
-| Average cyclomatic complexity | 4.001 |
-| Median cyclomatic complexity | 4 |
+| Scoped function/script-body count | 1,834 |
+| Average cyclomatic complexity | 3.957 |
+| Median cyclomatic complexity | 3 |
 | P90 cyclomatic complexity | 8 |
 | Maximum cyclomatic complexity | 13 |
-| Scopes above CC 5 | 441 |
-| Scopes above CC 7 | 191 |
+| Scopes above CC 5 | 461 |
+| Scopes above CC 7 | 196 |
 | Scopes above CC 10 | 1 |
 
 The sole CC 13 scope is the pre-existing upstream
@@ -170,27 +219,58 @@ the D3D11 consumer `main`, `runtime_scene_v2.cpp::v2_scene_remove`,
 scene/item/canvas helpers at CC 10. The physical PowerShell driver has a CC 5
 top-level body; its highest measured named function is CC 8.
 
+Complexity-freeze details:
+
+- Old accepted baseline blob: `81e2f631d41e84b71569ea46ca9439da367dc567`.
+- New complete Phase-2 baseline blob: `eb5ed120ddc3f159ce5d0d3a317fd4c741532525`.
+- Checker pin: `eb5ed120ddc3f159ce5d0d3a317fd4c741532525`.
+- Enforced scopes: 1,834; baseline/continuity matched: 1,834;
+  unbaselined: 0.
+- Named functions: 1,783; script bodies: 51; named-function average 4.012,
+  median 4, P90 8, max 13; enforced average 3.957, median 3, P90 8, max 13.
+- Exact exception: `libobs/obs-source.c::obs_source_destroy_defer` at CC 13.
+- Freeze self-test: introduced scope at CC 2, intentional CC 3 regression failed
+  against baseline 2, restored CC 2 passed with `1/1/0` completeness summary.
+
 ## Artifact evidence
 
-The audited local runtime package was built from runtime checkpoint
-`95214baed67950c430dc1fd1a0411d69c761f999` and reported
-`0.0.1-git-95214baed`:
+Physical build artifacts were produced on the stated Windows host from exact
+runtime candidate `13faf231012b1f9ac23ebc000b4fb4260e7c2ff8` and are recorded
+in [`PHASE2_PHYSICAL_EVIDENCE.md`](PHASE2_PHYSICAL_EVIDENCE.md):
 
 | File | SHA-256 |
 |---|---|
-| `build_x64/install/bin/64bit/obs-engine.exe` | `B5037B3B9E69B6F676FB72A11257BDC9BA197DE794DF4CA68098ED9CFE03F7E8` |
-| `build_x64/install/bin/64bit/obs.dll` | `9B64618CD5B5FBAEB8ED893C726F38EF2A916964E9D7E8E27FF81AFC83C4532A` |
-| `build_x64/install/bin/64bit/libobs-d3d11.dll` | `2972C28EBF41AB76493AA8EEE46356F4B81B5209FAF6F30C322CE0337691F13B` |
-| `build_x64/engine/RelWithDebInfo/obs-engine-preview-consumer-test.exe` | `7E66902CC9E0913B2B4EAECE2B1C1368CBC1D8185976A85F388312906925EC34` |
+| `obs-engine.exe` | `4A1D35E2AE4A9E3641CF76513EB0BAEE7D8CFCF03AD1EF6D90232E414A92DF8D` |
+| `obs.dll` | `DB4CF4BC846AD4A901D8260FF68FFF5EDADBE000EFC7F6A6CCF1515049FAD7F7` |
+| `libobs-d3d11.dll` | `2972C28EBF41AB76493AA8EEE46356F4B81B5209FAF6F30C322CE0337691F13B` |
+| `libobs-winrt.dll` | `5BE8F3C5050AB21C629CC162E8DA9E59103C2A6A92FCBDDBE773C4449344E5DF` |
+| `w32-pthreads.dll` | `50FC04DCF7D7A681F0E0BF3974FD5042FA34A03C765B4DE341E7622E69DAC44D` |
+| `obs-transitions.dll` | `9D7795F23843088832C9FEA867B7B557BFA43E397966B892546E900AC046E282` |
+| `obs-engine-preview-consumer-test.exe` | `7E66902CC9E0913B2B4EAECE2B1C1368CBC1D8185976A85F388312906925EC34` |
+
+Hosted final exact-SHA artifacts came from Phase-2 workflow run
+`33513275145`, regression artifact ID `9802766472`, and the same source SHA
+`13faf231012b1f9ac23ebc000b4fb4260e7c2ff8`:
+
+| File | SHA-256 |
+|---|---|
+| `obs-engine.exe` | `B445554FF92A8F3B0CB5B86D21E3D9C7736C155298CCCB43A736B07F8747884D` |
+| `obs.dll` | `FDB0570BFB36761EFC116C63A556AD6446751A04D95E4E0929776C62E6E1203A` |
+| `libobs-d3d11.dll` | `21D5DD13E606A4CA9A5A87129627790362B4ACC020B2CBC5A1C2FA3C9F1C2E90` |
+| `libobs-winrt.dll` | `E7738E6F33985F73581F5F149D1C09F10DFA835034A96FB8B989384E162ED90B` |
+| `w32-pthreads.dll` | `7C925D8C0CCC332EB429F175784003EF49E0BEF06AD194002DF4F4CAAFBF9EF0` |
+| `obs-transitions.dll` | `E8F709383A59577E8565B3C3713A26186F5D66CB934F9953DBBDAA13C95293D4` |
 
 The normal package audit found exactly one `obs-engine.exe` and no OBS
 frontend/browser/WebSocket/test executable leakage in the normal package.
+The physical and hosted hash tables identify different build outputs from the
+same source SHA; they are not being presented as byte-identical binaries.
 
 ## Remaining debt and review boundary
 
-- Hosted GitHub Actions run `33495486309` passed the exact pushed runtime
-  candidate; the final response records the follow-up run for this evidence
-  record's branch tip.
+- Hosted GitHub Actions run `33513275145` passed all final Phase-2 jobs at the
+  exact runtime candidate SHA, including the new Canvas failure lane and the
+  complete complexity-baseline check.
 - Forced graphics device/adapter-loss recovery is not claimed in Phase 2. The
   physical run verifies resize, Canvas video reset, resource replacement,
   adapter mismatch rejection, and clean shutdown; systematic device-loss
