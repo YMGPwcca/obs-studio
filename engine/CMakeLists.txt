@@ -31,6 +31,7 @@ target_sources(
     runtime_item_v2.cpp
     runtime_canvas_v2.cpp
     runtime_program_v2.cpp
+    runtime_preview_v2.cpp
     runtime_scene_v2.cpp
     runtime_source_settle_v2.cpp
     runtime_source_v2.cpp

@@ -63,6 +63,9 @@ enum class Phase2Method {
 	CanvasGetFlags,
 	ProgramGetScene,
 	ProgramSetScene,
+	PreviewGetScene,
+	PreviewSetScene,
+	PreviewGetInfo,
 	Unknown,
 };
 
@@ -99,6 +102,8 @@ constexpr Phase2MethodName kMethods[] = {
 	{"canvas.listScenes", Phase2Method::CanvasListScenes}, {"canvas.getChannel", Phase2Method::CanvasGetChannel},
 	{"canvas.setChannel", Phase2Method::CanvasSetChannel}, {"canvas.getFlags", Phase2Method::CanvasGetFlags},
 	{"program.getScene", Phase2Method::ProgramGetScene}, {"program.setScene", Phase2Method::ProgramSetScene},
+	{"preview.getScene", Phase2Method::PreviewGetScene}, {"preview.setScene", Phase2Method::PreviewSetScene},
+	{"preview.getInfo", Phase2Method::PreviewGetInfo},
 };
 
 Phase2Method classify(std::string_view method)
@@ -151,6 +156,8 @@ bool mutating(Phase2Method method)
 	case Phase2Method::CanvasSetChannel:
 		return true;
 	case Phase2Method::ProgramSetScene:
+		return true;
+	case Phase2Method::PreviewSetScene:
 		return true;
 	default:
 		return false;
@@ -264,6 +271,12 @@ Handler handler_for(Phase2Method method)
 		return &Engine::v2_program_get_scene;
 	case Phase2Method::ProgramSetScene:
 		return &Engine::v2_program_set_scene;
+	case Phase2Method::PreviewGetScene:
+		return &Engine::v2_preview_get_scene;
+	case Phase2Method::PreviewSetScene:
+		return &Engine::v2_preview_set_scene;
+	case Phase2Method::PreviewGetInfo:
+		return &Engine::v2_preview_get_info;
 	case Phase2Method::Unknown:
 		return nullptr;
 	}

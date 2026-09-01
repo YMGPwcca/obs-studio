@@ -587,6 +587,7 @@ Preview:
 
 - `preview.getScene`
 - `preview.setScene`
+- `preview.getInfo`
 
 Studio:
 
