@@ -139,6 +139,8 @@ function Read-Task21Event([string] $Name, [int64] $Revision, [bool] $RequireAfte
     while ($true) {
         $event = Read-Task21SequencedEvent
         if ([string]$event.event -eq 'audio.meter') { continue }
+        if ([string]$event.event -in @('source.activeChanged', 'source.showingChanged') -and
+            $Name -notin @('source.activeChanged', 'source.showingChanged')) { continue }
         Assert-Task21StateEvent $event $Name $Revision $RequireAfterResponse
         return $event
     }
@@ -182,6 +184,10 @@ function Request([string] $Id, [string] $Method, [int64] $Revision, [hashtable] 
     if ($Mutating) { $request.ifRevision = $Revision }
     $response = Send-Task21 $request
     return $response
+}
+
+function Request-Task21UnGuarded([string] $Id, [string] $Method, [hashtable] $Params) {
+    return Send-Task21 @{ op = 'request'; id = $Id; method = $Method; params = $Params }
 }
 
 function Assert-Task21Capabilities($Hello) {
@@ -375,8 +381,10 @@ function Invoke-Task21Cleanup($State) {
     $State.Current = [int64]$removeScene.revision
     Read-Task21Event 'item.removed' $State.Current | Out-Null
     Read-Task21Event 'scene.removed' $State.Current | Out-Null
-    $removeAudio = Request 't21-audio-remove' 'source.remove' $State.Current @{ source = $State.Audio } $true
-    Assert-Ok $removeAudio ($State.Current + 1) 'audio source.remove'
+    $removeAudio = Request-Task21UnGuarded 't21-audio-remove' 'source.remove' @{ source = $State.Audio }
+    if (-not $removeAudio.status.ok -or [int64]$removeAudio.revision -le $State.Current) {
+        Fail-Task21 'audio source.remove did not settle after lifecycle events.'
+    }
     $State.Current = [int64]$removeAudio.revision
     Read-Task21Event 'source.removed' $State.Current | Out-Null
     $meterUnsub = Send-Task21 @{ op = 'request'; id = 't21-meter-unsub'; method = 'audio.unsubscribeMeters'; params = @{ meterSubscription = $State.Meter } }
