@@ -2517,6 +2517,11 @@ EXPORT obs_service_t *obs_weak_service_get_service(obs_weak_service_t *weak);
 EXPORT bool obs_weak_service_references_service(obs_weak_service_t *weak, obs_service_t *service);
 
 EXPORT const char *obs_service_get_name(const obs_service_t *service);
+EXPORT void obs_service_set_name(obs_service_t *service, const char *name);
+/** Returns whether the service plugin context was created successfully. */
+EXPORT bool obs_service_initialized(const obs_service_t *service);
+/** Returns whether the service is active on an output. */
+EXPORT bool obs_service_active(const obs_service_t *service);
 
 /** Gets the default settings for a service */
 EXPORT obs_data_t *obs_service_defaults(const char *id);

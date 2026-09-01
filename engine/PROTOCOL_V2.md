@@ -835,6 +835,7 @@ Runtime methods:
 - `service.rename`
 - `service.getSettings`
 - `service.patchSettings`
+- `service.replaceSettings`
 - `service.getProperties`
 - `service.getProtocol`
 - `service.getPreferredOutputKind`
@@ -843,16 +844,21 @@ Runtime methods:
 - `service.getMaxBitrates`
 - `service.getSupportedVideoCodecs`
 - `service.getSupportedAudioCodecs`
-- `service.applyEncoderRecommendations`
+- `service.getEncoderRecommendations`
 - `service.canConnect`
 
-Service secrets such as stream keys/passwords MUST be redacted by generic get/log/snapshot operations unless a specifically privileged method explicitly requests secret material.
+Service secrets such as stream keys/passwords MUST be redacted by generic
+get/log/snapshot operations. Responses carry only secret-presence metadata;
+there is no privileged secret-returning method in the stable protocol.
 
 Events:
 
 - `service.created`
 - `service.removed`
 - `service.settingsChanged`
+- `service.renamed`
+- `service.bindingChanged`
+- `service.activeChanged`
 
 ## 29. Output API
 

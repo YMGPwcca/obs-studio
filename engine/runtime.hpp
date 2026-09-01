@@ -71,6 +71,11 @@ struct EncoderGroupEntry {
 	std::vector<uint64_t> encoders;
 };
 
+struct ServiceEntry {
+	obs_service_t *service = nullptr;
+	uint64_t bound_output = 0;
+};
+
 struct RuntimeV2Error {
 	std::string code;
 	std::string message;
@@ -140,6 +145,7 @@ public:
 	void v2_bind_encoder_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_prepare_encoder_shutdown() noexcept;
 	void v2_prepare_encoder_group_shutdown() noexcept;
+	void v2_prepare_service_shutdown() noexcept;
 
 	bool v2_encoder_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_encoder_kind_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -176,6 +182,28 @@ public:
 	bool v2_encoder_group_add(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_encoder_group_remove_encoder(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_encoder_group_get_encoders(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+
+	bool v2_service_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_kind_defaults(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_kind_properties(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_rename(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_get_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_patch_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_replace_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_get_properties(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_get_protocol(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_get_preferred_output_kind(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_get_supported_resolutions(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_get_max_fps(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_get_max_bitrates(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_get_supported_video_codecs(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_get_supported_audio_codecs(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_get_encoder_recommendations(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_service_can_connect(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	void v2_bind_audio_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_begin_audio_event_capture(RuntimeV2Result &result);
 	void v2_wait_for_audio_event_callbacks();
@@ -500,6 +528,8 @@ private:
 	bool v2_get_encoder_group_entry(obs_data_t *params, uint64_t &handle, EncoderGroupEntry *&entry,
 					RuntimeV2Error &error) const;
 	bool v2_encoder_group_is_active(const EncoderGroupEntry &entry) const;
+	bool v2_get_service_entry(obs_data_t *params, uint64_t &handle, ServiceEntry *&entry,
+					RuntimeV2Error &error) const;
 	bool v2_update_encoder_settings(EncoderEntry &entry, uint64_t handle, obs_data_t *requested, bool replace,
 				       RuntimeV2Result &result, RuntimeV2Error &error);
 
@@ -615,6 +645,7 @@ private:
 	std::shared_ptr<TransitionV2State> transition_v2_state_;
 	std::unordered_map<uint64_t, EncoderEntry> encoders_;
 	std::unordered_map<uint64_t, EncoderGroupEntry> encoder_groups_;
+	std::unordered_map<uint64_t, ServiceEntry> services_;
 };
 
 } // namespace obs_engine

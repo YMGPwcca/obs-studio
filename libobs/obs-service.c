@@ -145,6 +145,24 @@ const char *obs_service_get_name(const obs_service_t *service)
 	return obs_service_valid(service, "obs_service_get_name") ? service->context.name : NULL;
 }
 
+void obs_service_set_name(obs_service_t *service, const char *name)
+{
+	if (!obs_service_valid(service, "obs_service_set_name") || !name || !*name)
+		return;
+	if (strcmp(name, service->context.name) != 0)
+		obs_context_data_setname(&service->context, name);
+}
+
+bool obs_service_initialized(const obs_service_t *service)
+{
+	return obs_service_valid(service, "obs_service_initialized") && service->context.data != NULL;
+}
+
+bool obs_service_active(const obs_service_t *service)
+{
+	return obs_service_valid(service, "obs_service_active") && service->active;
+}
+
 static inline obs_data_t *get_defaults(const struct obs_service_info *info)
 {
 	obs_data_t *settings = obs_data_create();
@@ -430,6 +448,8 @@ const char **obs_service_get_supported_audio_codecs(const obs_service_t *service
 const char *obs_service_get_protocol(const obs_service_t *service)
 {
 	if (!obs_service_valid(service, "obs_service_get_protocol"))
+		return NULL;
+	if (!service->info.get_protocol)
 		return NULL;
 
 	return service->info.get_protocol(service->context.data);

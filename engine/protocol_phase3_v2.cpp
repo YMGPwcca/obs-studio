@@ -125,14 +125,41 @@ enum class EncoderGroupMethod {
 	Unknown,
 };
 
+enum class ServiceMethod {
+	KindList,
+	KindDefaults,
+	KindProperties,
+	List,
+	Get,
+	Create,
+	Remove,
+	Rename,
+	GetSettings,
+	PatchSettings,
+	ReplaceSettings,
+	GetProperties,
+	GetProtocol,
+	GetPreferredOutputKind,
+	GetSupportedResolutions,
+	GetMaxFps,
+	GetMaxBitrates,
+	GetSupportedVideoCodecs,
+	GetSupportedAudioCodecs,
+	GetEncoderRecommendations,
+	CanConnect,
+	Unknown,
+};
+
 struct Phase3Dispatch {
 	AudioMethod audio = AudioMethod::Unknown;
 	HotkeyMethod hotkey = HotkeyMethod::Unknown;
 	EncoderMethod encoder = EncoderMethod::Unknown;
 	EncoderGroupMethod encoder_group = EncoderGroupMethod::Unknown;
+	ServiceMethod service = ServiceMethod::Unknown;
 	bool is_hotkey = false;
 	bool is_encoder = false;
 	bool is_encoder_group = false;
+	bool is_service = false;
 	bool mutating = false;
 };
 
@@ -206,6 +233,35 @@ constexpr EncoderGroupMethodName kEncoderGroupMethods[] = {
 	{"encoderGroup.getEncoders", EncoderGroupMethod::GetEncoders},
 };
 
+struct ServiceMethodName {
+	std::string_view name;
+	ServiceMethod method;
+};
+
+constexpr ServiceMethodName kServiceMethods[] = {
+	{"service.kindList", ServiceMethod::KindList},
+	{"service.kindDefaults", ServiceMethod::KindDefaults},
+	{"service.kindProperties", ServiceMethod::KindProperties},
+	{"service.list", ServiceMethod::List},
+	{"service.get", ServiceMethod::Get},
+	{"service.create", ServiceMethod::Create},
+	{"service.remove", ServiceMethod::Remove},
+	{"service.rename", ServiceMethod::Rename},
+	{"service.getSettings", ServiceMethod::GetSettings},
+	{"service.patchSettings", ServiceMethod::PatchSettings},
+	{"service.replaceSettings", ServiceMethod::ReplaceSettings},
+	{"service.getProperties", ServiceMethod::GetProperties},
+	{"service.getProtocol", ServiceMethod::GetProtocol},
+	{"service.getPreferredOutputKind", ServiceMethod::GetPreferredOutputKind},
+	{"service.getSupportedResolutions", ServiceMethod::GetSupportedResolutions},
+	{"service.getMaxFps", ServiceMethod::GetMaxFps},
+	{"service.getMaxBitrates", ServiceMethod::GetMaxBitrates},
+	{"service.getSupportedVideoCodecs", ServiceMethod::GetSupportedVideoCodecs},
+	{"service.getSupportedAudioCodecs", ServiceMethod::GetSupportedAudioCodecs},
+	{"service.getEncoderRecommendations", ServiceMethod::GetEncoderRecommendations},
+	{"service.canConnect", ServiceMethod::CanConnect},
+};
+
 constexpr AudioMethod kMutatingMethods[] = {
 	AudioMethod::SetMute,
 	AudioMethod::ToggleMute,
@@ -247,6 +303,14 @@ constexpr EncoderGroupMethod kEncoderGroupMutatingMethods[] = {
 	EncoderGroupMethod::Remove,
 	EncoderGroupMethod::Add,
 	EncoderGroupMethod::RemoveEncoder,
+};
+
+constexpr ServiceMethod kServiceMutatingMethods[] = {
+	ServiceMethod::Create,
+	ServiceMethod::Remove,
+	ServiceMethod::Rename,
+	ServiceMethod::PatchSettings,
+	ServiceMethod::ReplaceSettings,
 };
 
 using AudioMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
@@ -356,6 +420,37 @@ constexpr EncoderGroupHandlerEntry kEncoderGroupHandlers[] = {
 	{EncoderGroupMethod::GetEncoders, &Engine::v2_encoder_group_get_encoders},
 };
 
+using ServiceMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
+
+struct ServiceHandlerEntry {
+	ServiceMethod method;
+	ServiceMethodHandler handler;
+};
+
+constexpr ServiceHandlerEntry kServiceHandlers[] = {
+	{ServiceMethod::KindList, &Engine::v2_service_kind_list},
+	{ServiceMethod::KindDefaults, &Engine::v2_service_kind_defaults},
+	{ServiceMethod::KindProperties, &Engine::v2_service_kind_properties},
+	{ServiceMethod::List, &Engine::v2_service_list},
+	{ServiceMethod::Get, &Engine::v2_service_get},
+	{ServiceMethod::Create, &Engine::v2_service_create},
+	{ServiceMethod::Remove, &Engine::v2_service_remove},
+	{ServiceMethod::Rename, &Engine::v2_service_rename},
+	{ServiceMethod::GetSettings, &Engine::v2_service_get_settings},
+	{ServiceMethod::PatchSettings, &Engine::v2_service_patch_settings},
+	{ServiceMethod::ReplaceSettings, &Engine::v2_service_replace_settings},
+	{ServiceMethod::GetProperties, &Engine::v2_service_get_properties},
+	{ServiceMethod::GetProtocol, &Engine::v2_service_get_protocol},
+	{ServiceMethod::GetPreferredOutputKind, &Engine::v2_service_get_preferred_output_kind},
+	{ServiceMethod::GetSupportedResolutions, &Engine::v2_service_get_supported_resolutions},
+	{ServiceMethod::GetMaxFps, &Engine::v2_service_get_max_fps},
+	{ServiceMethod::GetMaxBitrates, &Engine::v2_service_get_max_bitrates},
+	{ServiceMethod::GetSupportedVideoCodecs, &Engine::v2_service_get_supported_video_codecs},
+	{ServiceMethod::GetSupportedAudioCodecs, &Engine::v2_service_get_supported_audio_codecs},
+	{ServiceMethod::GetEncoderRecommendations, &Engine::v2_service_get_encoder_recommendations},
+	{ServiceMethod::CanConnect, &Engine::v2_service_can_connect},
+};
+
 AudioMethod classify(std::string_view name)
 {
 	for (const AudioMethodName &entry : kAudioMethods) {
@@ -392,6 +487,15 @@ EncoderGroupMethod classify_encoder_group(std::string_view name)
 	return EncoderGroupMethod::Unknown;
 }
 
+ServiceMethod classify_service(std::string_view name)
+{
+	for (const ServiceMethodName &entry : kServiceMethods) {
+		if (entry.name == name)
+			return entry.method;
+	}
+	return ServiceMethod::Unknown;
+}
+
 bool is_mutating(AudioMethod method)
 {
 	for (const AudioMethod candidate : kMutatingMethods) {
@@ -422,6 +526,15 @@ bool is_mutating(EncoderMethod method)
 bool is_mutating(EncoderGroupMethod method)
 {
 	for (const EncoderGroupMethod candidate : kEncoderGroupMutatingMethods) {
+		if (candidate == method)
+			return true;
+	}
+	return false;
+}
+
+bool is_mutating(ServiceMethod method)
+{
+	for (const ServiceMethod candidate : kServiceMutatingMethods) {
 		if (candidate == method)
 			return true;
 	}
@@ -464,19 +577,32 @@ EncoderGroupMethodHandler encoder_group_handler_for(EncoderGroupMethod method)
 	return nullptr;
 }
 
+ServiceMethodHandler service_handler_for(ServiceMethod method)
+{
+	for (const ServiceHandlerEntry &entry : kServiceHandlers) {
+		if (entry.method == method)
+			return entry.handler;
+	}
+	return nullptr;
+}
+
 bool classify_phase3(std::string_view name, Phase3Dispatch &dispatch)
 {
 	dispatch.audio = classify(name);
 	dispatch.hotkey = classify_hotkey(name);
 	dispatch.encoder = classify_encoder(name);
 	dispatch.encoder_group = classify_encoder_group(name);
+	dispatch.service = classify_service(name);
 	if (dispatch.audio == AudioMethod::Unknown && dispatch.hotkey == HotkeyMethod::Unknown &&
-	    dispatch.encoder == EncoderMethod::Unknown && dispatch.encoder_group == EncoderGroupMethod::Unknown)
+	    dispatch.encoder == EncoderMethod::Unknown && dispatch.encoder_group == EncoderGroupMethod::Unknown &&
+	    dispatch.service == ServiceMethod::Unknown)
 		return false;
 	dispatch.is_hotkey = dispatch.hotkey != HotkeyMethod::Unknown;
 	dispatch.is_encoder = dispatch.encoder != EncoderMethod::Unknown;
 	dispatch.is_encoder_group = dispatch.encoder_group != EncoderGroupMethod::Unknown;
-	dispatch.mutating = dispatch.is_encoder_group ? is_mutating(dispatch.encoder_group)
+	dispatch.is_service = dispatch.service != ServiceMethod::Unknown;
+	dispatch.mutating = dispatch.is_service ? is_mutating(dispatch.service)
+						: dispatch.is_encoder_group ? is_mutating(dispatch.encoder_group)
 						: dispatch.is_encoder ? is_mutating(dispatch.encoder)
 						: dispatch.is_hotkey ? is_mutating(dispatch.hotkey) : is_mutating(dispatch.audio);
 	return true;
@@ -605,9 +731,23 @@ bool execute_encoder_group(Engine &engine, EncoderGroupMethod method, const V2Re
 	return (engine.*handler)(request.params.get(), result, error);
 }
 
+bool execute_service(Engine &engine, ServiceMethod method, const V2Request &request, RuntimeV2Result &result,
+			     RuntimeV2Error &error)
+{
+	const ServiceMethodHandler handler = service_handler_for(method);
+	if (!handler) {
+		error.code = "internal_error";
+		error.message = "service method dispatch failed";
+		return false;
+	}
+	return (engine.*handler)(request.params.get(), result, error);
+}
+
 bool execute_phase3(Engine &engine, const Phase3Dispatch &dispatch, const V2Request &request,
 			   RuntimeV2Result &result, RuntimeV2Error &error)
 {
+	if (dispatch.is_service)
+		return execute_service(engine, dispatch.service, request, result, error);
 	if (dispatch.is_encoder_group)
 		return execute_encoder_group(engine, dispatch.encoder_group, request, result, error);
 	if (dispatch.is_encoder)
@@ -658,7 +798,8 @@ bool is_phase3_method(std::string_view method)
 {
 	return classify(method) != AudioMethod::Unknown || classify_hotkey(method) != HotkeyMethod::Unknown ||
 	       classify_encoder(method) != EncoderMethod::Unknown ||
-	       classify_encoder_group(method) != EncoderGroupMethod::Unknown;
+	       classify_encoder_group(method) != EncoderGroupMethod::Unknown ||
+	       classify_service(method) != ServiceMethod::Unknown;
 }
 
 bool handle_phase3_request(Engine &engine, RevisionState &revisions, EventDispatcher &events,
