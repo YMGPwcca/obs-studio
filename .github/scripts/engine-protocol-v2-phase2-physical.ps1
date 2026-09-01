@@ -401,6 +401,8 @@ function Test-P2PhysicalOutput($Output, [string] $Label, [int] $Blue, [int] $Gre
     if ($CheckMismatch) { Assert-P2PhysicalAdapterMismatch $descriptor.data }
     $runner = New-P2PhysicalConsumer $descriptor.data 24
     $evidence = Wait-P2PhysicalConsumer $runner $Label
+    $evidence | Add-Member -NotePropertyName adapterLuid -NotePropertyValue ([string]$descriptor.data.adapterLuid) -Force
+    $evidence | Add-Member -NotePropertyName resourceGeneration -NotePropertyValue ([string]$descriptor.data.resourceGeneration) -Force
     Assert-P2PhysicalColor $evidence $Label $Blue $Green $Red
     $release = Send-P2PhysicalRequest @{ op = 'request'; id = "p-release-$Label"; method = 'previewOutput.releaseSharedTexture'; params = @{ previewOutput = [string]$Output.previewOutput } }
     Assert-P2PhysicalReadOk $release "$Label release"
@@ -490,7 +492,8 @@ function Invoke-P2ResourceRecreation {
     Assert-P2PhysicalOk $resize ($resize.GuardRevision + 1) 'PreviewOutput resize'
     $script:P2Revision = [int64]$resize.revision
     Read-P2PhysicalEvent 'previewOutput.resourceChanged' $script:P2Revision | Out-Null
-    Test-P2PhysicalOutput $script:P2Outputs.Source 'resized-canvas' 0 255 0 | Out-Null
+    $resizedEvidence = Test-P2PhysicalOutput $script:P2Outputs.Source 'resized-canvas' 0 255 0
+    Write-Output ("Physical resized Canvas evidence: " + ($resizedEvidence | ConvertTo-Json -Compress -Depth 10))
     $remove = Send-P2PhysicalGuarded 'p-remove-current-scene-target' 'scene.remove' @{ scene = $script:P2Graph.Scene } $script:P2Revision
     Assert-P2PhysicalOk $remove ($remove.GuardRevision + 1) 'remove current Scene target'
     $script:P2Revision = [int64]$remove.revision
