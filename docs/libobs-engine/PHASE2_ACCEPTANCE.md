@@ -1,11 +1,11 @@
 # LibOBS Engine Protocol v2 — Phase 2 Acceptance Record
 
-**Status:** Phase 2 **IN REVIEW** / ready for independent advisor review  
-**Snapshot date:** 2026-09-01  
-**Candidate branch:** `phase2-scene-render-graph`  
-**Phase-2 base:** `15457fcfd7abf3f9f0ddd8f43f3f1885980de8c8`  
-**Accepted Task-11 implementation parent:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`  
-**Runtime implementation checkpoint:** `95214baed67950c430dc1fd1a0411d69c761f999`  
+**Status:** Phase 2 **IN REVIEW** / ready for independent advisor review
+**Snapshot date:** 2026-09-01
+**Candidate branch:** `phase2-scene-render-graph`
+**Phase-2 base:** `15457fcfd7abf3f9f0ddd8f43f3f1885980de8c8`
+**Accepted Task-11 implementation parent:** `e7b34828cb9fbd55bae01f97148f1ec93a4ae015`
+**Runtime implementation checkpoint:** `95214baed67950c430dc1fd1a0411d69c761f999`
 **Current verification tip when this record was prepared:** `2a974c55b700826459c0aa6736a9d06526db9d06`
 
 The runtime checkpoint is the last commit that changes engine/runtime or the

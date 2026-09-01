@@ -1,9 +1,9 @@
 # Phase 2 Physical Windows GPU Evidence
 
-**Date:** 2026-09-01  
-**Branch:** `phase2-scene-render-graph`  
-**Runtime artifact checkpoint:** `95214baed67950c430dc1fd1a0411d69c761f999`  
-**Host:** Windows 11 Pro 25H2, build `26200`, revision `9278`, x64  
+**Date:** 2026-09-01
+**Branch:** `phase2-scene-render-graph`
+**Runtime artifact checkpoint:** `95214baed67950c430dc1fd1a0411d69c761f999`
+**Host:** Windows 11 Pro 25H2, build `26200`, revision `9278`, x64
 **CPU:** AMD Ryzen 7 9700X, 8 physical cores / 16 logical processors
 
 ## GPU and adapter identity
