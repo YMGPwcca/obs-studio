@@ -74,10 +74,13 @@ default to activation, scene references, audio mixing, and ephemeral runtime
 behavior.
 
 `canvas.setVideoSettings` validates the complete proposed configuration first.
-If libobs refuses reset while video is active, the method returns `busy` and
-does not claim a mutation. A successful reset emits
-`canvas.videoSettingsChanged` once. PreviewOutput resource invalidation is
-attached by the later PreviewOutput implementation.
+The private libobs reset path prepares the replacement video mix before it
+touches the current mix or settings. Allocation failure therefore returns
+`obs_error` with the old mix, settings, render graph, and PreviewOutput
+resources unchanged. If libobs refuses reset while video is active, the method
+returns `busy` and does not claim a mutation. Only a committed reset emits one
+`canvas.videoSettingsChanged`; PreviewOutput then invalidates and replaces
+resources targeting that Canvas exactly once.
 
 ## Scene ownership
 

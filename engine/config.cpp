@@ -109,6 +109,12 @@ bool parse_args(int argc, char **argv, Config &config)
 			config.enable_game_capture = true;
 			continue;
 		}
+#ifdef OBS_PHASE2_TEST_HOOKS
+		if (std::strcmp(arg, "--test-fail-next-canvas-reset") == 0) {
+			config.test_fail_next_canvas_reset = true;
+			continue;
+		}
+#endif
 
 		const ArgumentResult value = parse_value_argument(arg, config);
 		if (value == ArgumentResult::Parsed)

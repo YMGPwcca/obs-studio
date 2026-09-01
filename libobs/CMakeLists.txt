@@ -23,6 +23,10 @@ endif()
 add_library(libobs SHARED)
 add_library(OBS::libobs ALIAS libobs)
 
+if(ENABLE_PHASE2_TEST_HOOKS)
+  target_compile_definitions(libobs PRIVATE OBS_PHASE2_TEST_HOOKS)
+endif()
+
 target_sources(
   libobs
   PRIVATE

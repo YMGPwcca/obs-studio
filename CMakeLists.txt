@@ -26,6 +26,7 @@ option(ENABLE_PLUGINS "Enable OBS runtime plugins" ON)
 option(ENABLE_BROWSER_SOURCE "Build obs-browser (large CEF dependency)" OFF)
 option(ENABLE_WEBSOCKET "Build obs-websocket" OFF)
 option(ENABLE_DECKLINK_CAPTIONS "Build DeckLink captions OBS frontend UI plugin" OFF)
+option(ENABLE_PHASE2_TEST_HOOKS "Enable non-shipping Phase-2 deterministic test hooks" OFF)
 
 add_subdirectory(libobs)
 add_subdirectory(libobs-d3d11)

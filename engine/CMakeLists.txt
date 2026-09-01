@@ -40,6 +40,7 @@ target_sources(
     runtime_source_v2.cpp
     runtime_v2.cpp
     source_event_capture.hpp
+    phase2_test_hooks.hpp
     validation.hpp
 )
 
@@ -50,6 +51,9 @@ set_source_files_properties(protocol_v2.cpp PROPERTIES COMPILE_DEFINITIONS "hand
 
 target_compile_features(obs-engine PRIVATE cxx_std_20)
 target_compile_definitions(obs-engine PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+if(ENABLE_PHASE2_TEST_HOOKS)
+  target_compile_definitions(obs-engine PRIVATE OBS_PHASE2_TEST_HOOKS)
+endif()
 target_link_libraries(obs-engine PRIVATE OBS::libobs)
 
 # Task 5 queue-policy verification. EXCLUDE_FROM_ALL keeps this helper out of

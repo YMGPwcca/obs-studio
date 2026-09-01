@@ -301,24 +301,53 @@ bool obs_canvas_has_valid_video_info(obs_canvas_t *canvas)
 	       ovi->output_format != VIDEO_FORMAT_NONE;
 }
 
+#ifdef OBS_PHASE2_TEST_HOOKS
+static bool phase2_fail_next_canvas_video_mix;
+
+EXPORT void obs_phase2_test_fail_next_canvas_video_mix(void)
+{
+	phase2_fail_next_canvas_video_mix = true;
+}
+
+static bool phase2_consume_canvas_video_mix_failure(void)
+{
+	const bool fail = phase2_fail_next_canvas_video_mix;
+	phase2_fail_next_canvas_video_mix = false;
+	return fail;
+}
+#endif
+
 bool obs_canvas_reset_video_internal(obs_canvas_t *canvas, struct obs_video_info *ovi)
 {
-	obs_canvas_clear_mix(canvas);
+#ifdef OBS_PHASE2_TEST_HOOKS
+	if (phase2_consume_canvas_video_mix_failure())
+		return false;
+#endif
+	struct obs_core_video_mix *replacement = obs_create_video_mix(ovi);
+	if (!replacement)
+		return false;
+	replacement->view = &canvas->view;
+	replacement->mix_audio = (canvas->flags & MIX_AUDIO) != 0;
 
-	canvas->ovi = *ovi;
-	canvas->mix = obs_create_video_mix(&canvas->ovi);
-	if (canvas->mix) {
-		canvas->mix->view = &canvas->view;
-		canvas->mix->mix_audio = (canvas->flags & MIX_AUDIO) != 0;
-
-		pthread_mutex_lock(&obs->video.mixes_mutex);
-		da_push_back(obs->video.mixes, &canvas->mix);
-		pthread_mutex_unlock(&obs->video.mixes_mutex);
+	struct obs_core_video_mix *previous = canvas->mix;
+	pthread_mutex_lock(&obs->video.mixes_mutex);
+	if (previous) {
+		for (size_t i = 0; i < obs->video.mixes.num; ++i) {
+			if (obs->video.mixes.array[i] == previous) {
+				da_erase(obs->video.mixes, i);
+				break;
+			}
+		}
 	}
+	da_push_back(obs->video.mixes, &replacement);
+	canvas->ovi = *ovi;
+	canvas->mix = replacement;
+	pthread_mutex_unlock(&obs->video.mixes_mutex);
 
+	if (previous)
+		obs_free_video_mix(previous);
 	canvas_dosignal(canvas, "canvas_video_reset", "video_reset");
-
-	return !!canvas->mix;
+	return true;
 }
 
 void obs_canvas_insert_source(obs_canvas_t *canvas, obs_source_t *source)

@@ -38,6 +38,9 @@ struct Config {
 	std::vector<std::string> required_plugins = {"win-capture"};
 	bool enable_game_capture = false;
 	bool help = false;
+#ifdef OBS_PHASE2_TEST_HOOKS
+	bool test_fail_next_canvas_reset = false;
+#endif
 };
 
 bool parse_args(int argc, char **argv, Config &config);

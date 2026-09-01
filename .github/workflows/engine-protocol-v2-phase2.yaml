@@ -34,7 +34,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           & pwsh -NoProfile -File tools/check-complexity.tests.ps1 -LizardPythonPath $env:LIZARD_PATH
-          & pwsh -NoProfile -File tools/check-complexity.ps1 -Mode Check -LizardPythonPath $env:LIZARD_PATH
+          & pwsh -NoProfile -File tools/check-complexity.ps1 -Mode Check -RequireCompleteBaseline -LizardPythonPath $env:LIZARD_PATH
 
   previous-regression:
     name: Tasks 1-11 same-SHA regression matrix
@@ -118,3 +118,19 @@ jobs:
           if-no-files-found: error
           compression-level: 6
           retention-days: 7
+
+  canvas-reset-failure:
+    name: Task 14 failure-atomic Canvas reset lane
+    needs: [complexity]
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Run deterministic Canvas failure-atomicity lane
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & .github/scripts/engine-protocol-v2-task14-canvas-failure-lane.ps1

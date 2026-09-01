@@ -1,6 +1,9 @@
 #include "runtime_phase2_common.hpp"
 
 #include <obs-defs.h>
+#ifdef OBS_PHASE2_TEST_HOOKS
+#include "phase2_test_hooks.hpp"
+#endif
 
 #include <algorithm>
 #include <cstring>
@@ -639,6 +642,12 @@ bool Engine::v2_canvas_set_video_settings(obs_data_t *params, RuntimeV2Result &r
 		result.data = make_canvas_video_data(handle, entry->canvas);
 		return true;
 	}
+#ifdef OBS_PHASE2_TEST_HOOKS
+	if (config_.test_fail_next_canvas_reset) {
+		config_.test_fail_next_canvas_reset = false;
+		obs_phase2_test_fail_next_canvas_video_mix();
+	}
+#endif
 	if (!obs_canvas_reset_video(entry->canvas, &proposed))
 		return phase2_fail(error, obs_video_active() ? "busy" : "obs_error",
 				   obs_video_active() ? "Canvas video reset is busy while video is active" : "Canvas video reset failed");
