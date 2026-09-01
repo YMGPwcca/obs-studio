@@ -15,7 +15,7 @@
     }
   ],
   "operatorAuthoredCommitCountInLineage": 64,
-  "operatorAuthoredCodeCommitCountInScope": 137,
+  "operatorAuthoredCodeCommitCountInScope": 142,
   "operatorAuthoredCommits": [
     {
       "hash": "ffffcfd1a65677a16d9ec596103d99bde080deb8",
@@ -1172,6 +1172,93 @@
       ]
     },
     {
+      "path": ".github/scripts/engine-protocol-v2-task21-build-fixture.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task21-package-audit.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task21-remove-fixture.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task21-stage-fixture.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task21.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 26,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Fail-Task21|Fail-Task21",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Start-Task21Engine|Start-Task21Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Stop-Task21Engine|Stop-Task21Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Read-Task21Message|Read-Task21Message",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Send-Task21|Send-Task21",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Read-Task21NextEvent|Read-Task21NextEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Read-Task21SequencedEvent|Read-Task21SequencedEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Assert-Task21StateEvent|Assert-Task21StateEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Read-Task21Event|Read-Task21Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Assert-FiniteMeter|Assert-FiniteMeter",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Read-Task21Meter|Read-Task21Meter",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Wait-Task21StereoLayout|Wait-Task21StereoLayout",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Request|Request",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Assert-Task21Capabilities|Assert-Task21Capabilities",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Get-Task21Kinds|Get-Task21Kinds",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Initialize-Task21Session|Initialize-Task21Session",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|New-Task21Graph|New-Task21Graph",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Invoke-Task21VolumeChecks|Invoke-Task21VolumeChecks",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Invoke-Task21AudioChecks|Invoke-Task21AudioChecks",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Invoke-Task21RestrictionChecks|Invoke-Task21RestrictionChecks",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Invoke-Task21DeviceChecks|Invoke-Task21DeviceChecks",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Invoke-Task21MeterChecks|Invoke-Task21MeterChecks",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Invoke-Task21Cleanup|Invoke-Task21Cleanup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task21.ps1|Invoke-Task21Scenario|Invoke-Task21Scenario"
+      ]
+    },
+    {
       "path": ".github/scripts/engine-protocol-v2-task3-capabilities.ps1",
       "language": "PowerShell",
       "status": "A",
@@ -1970,7 +2057,7 @@
       "path": "engine/protocol_filter_v2.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 14,
+      "operatorCommitCount": 15,
       "operatorCommits": [
         "bb227ad223b21d42c6381f6765213a36d2fa2665",
         "fbab77143a84bc101e9444f0dd2a516aab8d008a",
@@ -1985,7 +2072,8 @@
         "aee7464375c7c875b6c407e0f909546e990d3355",
         "42c724c1d247bc64f15475c3edc1d39393ba2f7c",
         "0748d0f323d1b2ee9a4403b01004718e4cbf6f99",
-        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
       ],
       "operatorBlameLineCount": 455,
       "scopedFunctionCount": 21,
@@ -2064,10 +2152,50 @@
       "currentFunctionKeys": []
     },
     {
+      "path": "engine/protocol_phase3_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 15,
+      "currentFunctionKeys": [
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify|obs_engine::classify( std :: string_view name)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( AudioMethod method)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::handler_for|obs_engine::handler_for( AudioMethod method)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::reject_read_guard|obs_engine::reject_read_guard( const V2Request & request , uint64_t revision)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::validate_mutation_guard|obs_engine::validate_mutation_guard( const V2Request & request , RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::Phase3CaptureScope::Phase3CaptureScope|obs_engine::Phase3CaptureScope::Phase3CaptureScope( Engine & engine , RuntimeV2Result & result)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::Phase3CaptureScope::~Phase3CaptureScope|obs_engine::Phase3CaptureScope::~Phase3CaptureScope()",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::Phase3CaptureScope::flush|obs_engine::Phase3CaptureScope::flush( RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::prepare|obs_engine::prepare( const V2Request & request , AudioMethod method , Engine & engine , RevisionState & revisions , RuntimeV2Result & result , std :: optional<Phase3CaptureScope> & capture , std :: optional<RevisionState::MutationGuard> & guard)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute|obs_engine::execute( Engine & engine , AudioMethod method , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::publish_events|obs_engine::publish_events( EventDispatcher & events , uint64_t revision , RuntimeV2Result & result)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::fail_phase3_request|obs_engine::fail_phase3_request( const V2Request & request , RevisionState & revisions , RuntimeV2Error & error , std :: optional<Phase3CaptureScope> & capture , std :: optional<RevisionState::MutationGuard> & guard)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::commit_phase3_result|obs_engine::commit_phase3_result( RuntimeV2Result & result , std :: optional<RevisionState::MutationGuard> & guard , RevisionState & revisions , uint64_t & revision , RuntimeV2Error & error)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_phase3_method|obs_engine::is_phase3_method( std :: string_view method)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::handle_phase3_request|obs_engine::handle_phase3_request( Engine & engine , RevisionState & revisions , EventDispatcher & events , const V2Request & request)"
+      ]
+    },
+    {
+      "path": "engine/protocol_phase3_v2.hpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
       "path": "engine/protocol_v2.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 12,
+      "operatorCommitCount": 13,
       "operatorCommits": [
         "911fad2e5fe7f1abe438c441957a4e11be4ce685",
         "66d871bffdc10105ba4096f13edc2631a6379f7f",
@@ -2080,7 +2208,8 @@
         "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
         "6a590c2985a99d186c8eecd0241acdc824d32168",
         "ca9f1ac77b500c2df134c377d337a39e12d758b7",
-        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a"
+        "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
       ],
       "operatorBlameLineCount": 958,
       "scopedFunctionCount": 41,
@@ -2216,6 +2345,123 @@
         "cpp|function|engine/revision.hpp|obs_engine::RevisionState::commit_mutation|obs_engine::RevisionState::commit_mutation()",
         "cpp|function|engine/revision.hpp|obs_engine::RevisionState::max_revision|obs_engine::RevisionState::max_revision()",
         "cpp|function|engine/revision.hpp|obs_engine::RevisionState::commit_mutation_unlocked|obs_engine::RevisionState::commit_mutation_unlocked()"
+      ]
+    },
+    {
+      "path": "engine/runtime_audio_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 104,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::AudioMeterSource::AudioMeterSource|obs_engine::AudioMeterSource::AudioMeterSource()",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::fail|obs_engine::fail( RuntimeV2Error & error , const char * code , const char * message)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::reset_result|obs_engine::reset_result( RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::read_string_field|obs_engine::read_string_field( obs_data_t * data , const char * name , std :: string & out , bool & present)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::read_bool_field|obs_engine::read_bool_field( obs_data_t * data , const char * name , bool & out , bool & present)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::read_object_field|obs_engine::read_object_field( obs_data_t * data , const char * name , ObsDataPtr & out , bool & present)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::read_array_field|obs_engine::read_array_field( obs_data_t * data , const char * name , ObsArrayPtr & out , bool & present)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::read_integer_field|obs_engine::read_integer_field( obs_data_t * data , const char * name , long long & out , bool & present)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::parse_handle_text|obs_engine::parse_handle_text( std :: string_view text , uint64_t & out)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::read_handle_field|obs_engine::read_handle_field( obs_data_t * data , const char * name , uint64_t & out)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::read_meter_source_item|obs_engine::read_meter_source_item( obs_data_t * item , uint64_t & handle)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::set_handle|obs_engine::set_handle( obs_data_t * data , const char * name , uint64_t handle)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::append_event|obs_engine::append_event( RuntimeV2Result & result , const char * name , ObsDataPtr data)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::result_has_source_event|obs_engine::result_has_source_event( const RuntimeV2Result & result , std :: string_view name , uint64_t handle)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::speaker_layout_name|obs_engine::speaker_layout_name( enum speaker_layout layout)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::finite_float|obs_engine::finite_float( float value)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::volume_db|obs_engine::volume_db( float volume)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::set_tracks|obs_engine::set_tracks( obs_data_t * data , uint32_t mixers)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::make_volume_data|obs_engine::make_volume_data( uint64_t handle , float volume)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::make_gating_data|obs_engine::make_gating_data( uint64_t handle , bool ptt , uint64_t ptt_delay , bool ptm , uint64_t ptm_delay)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::make_audio_data|obs_engine::make_audio_data( uint64_t handle , obs_source_t * source)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::AudioCallbackScope::AudioCallbackScope|obs_engine::AudioCallbackScope::AudioCallbackScope( AudioV2State & state , uint64_t handle)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::AudioCallbackScope::~AudioCallbackScope|obs_engine::AudioCallbackScope::~AudioCallbackScope()",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::AudioCallbackScope::accepted|obs_engine::AudioCallbackScope::accepted() const",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::AudioCallbackScope::suppressed|obs_engine::AudioCallbackScope::suppressed() const",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::clear_deferred_audio_events|obs_engine::clear_deferred_audio_events( AudioV2State & state)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::take_deferred_audio_events|obs_engine::take_deferred_audio_events( AudioV2State & state , bool wait_for_pre_capture , bool end_capture)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::publish_deferred_audio_snapshot|obs_engine::publish_deferred_audio_snapshot( DeferredAudioEventSnapshot snapshot , RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::queue_deferred_audio_events_locked|obs_engine::queue_deferred_audio_events_locked( AudioV2State & state , uint64_t handle , std :: vector<RuntimeV2Event> generated)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::capture_audio_events_locked|obs_engine::capture_audio_events_locked( AudioV2State & state , uint64_t handle , std :: vector<RuntimeV2Event> & generated)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::commit_direct_audio_event_locked|obs_engine::commit_direct_audio_event_locked( AudioV2State & state , RevisionState * & revisions , EventDispatcher * & events , uint64_t & revision)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::publish_audio_events|obs_engine::publish_audio_events( AudioV2State & state , uint64_t handle , std :: vector<RuntimeV2Event> generated)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::set_cached_bool|obs_engine::set_cached_bool( bool & cached , bool value)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::set_cached_delay|obs_engine::set_cached_delay( uint64_t & cached , calldata_t * calldata)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::is_gating_signal|obs_engine::is_gating_signal( AudioSignal signal)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::update_volume_audio_observer|obs_engine::update_volume_audio_observer( AudioV2Observer & observer , calldata_t * calldata)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::update_balance_audio_observer|obs_engine::update_balance_audio_observer( AudioV2Observer & observer , calldata_t * calldata)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::update_scalar_audio_observer|obs_engine::update_scalar_audio_observer( AudioV2Observer & observer , AudioSignal signal , calldata_t * calldata)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::update_gating_audio_observer|obs_engine::update_gating_audio_observer( AudioV2Observer & observer , AudioSignal signal , calldata_t * calldata)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::update_audio_observer|obs_engine::update_audio_observer( AudioV2Observer & observer , AudioSignal signal , calldata_t * calldata)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::append_scalar_audio_event|obs_engine::append_scalar_audio_event( AudioV2Observer & observer , AudioSignal signal , std :: vector<RuntimeV2Event> & generated)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::append_audio_signal_event|obs_engine::append_audio_signal_event( AudioV2Observer & observer , AudioSignal signal , bool changed , std :: vector<RuntimeV2Event> & generated)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::collect_audio_signal|obs_engine::collect_audio_signal( AudioV2Observer & observer , AudioSignal signal , calldata_t * calldata)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::connect_audio_observer|obs_engine::connect_audio_observer( AudioV2Observer & observer , obs_source_t * source)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::disconnect_audio_observer|obs_engine::disconnect_audio_observer( AudioV2Observer & observer)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::audio_meter_callback|obs_engine::audio_meter_callback( * data , const float magnitude [ MAX_AUDIO_CHANNELS ] , const float peak [ MAX_AUDIO_CHANNELS ] , const float input_peak [ MAX_AUDIO_CHANNELS ])",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::steady_now_ns|obs_engine::steady_now_ns()",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::take_due_meter_sources|obs_engine::take_due_meter_sources( AudioMeterSubscription & subscription , uint64_t now , std :: vector<std::shared_ptr<AudioMeterSource>> & sources)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::update_meter_channel_count|obs_engine::update_meter_channel_count( AudioMeterSource & source)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::make_meter_payload|obs_engine::make_meter_payload( uint64_t subscription_handle , AudioMeterSource & source , int channels)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::publish_meter_sample|obs_engine::publish_meter_sample( const AudioMeterSubscription & subscription , AudioMeterSource & source , RevisionState & revisions , EventDispatcher & events)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::audio_meter_tick|obs_engine::audio_meter_tick( * data , float)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::detach_meter_source|obs_engine::detach_meter_source( AudioMeterSource & source)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::attach_meter_source|obs_engine::attach_meter_source( uint64_t handle , obs_source_t * source , enum obs_peak_meter_type peak_type , std :: shared_ptr<AudioMeterSource> & out)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::detach_meter_sources|obs_engine::detach_meter_sources( std :: vector<std::shared_ptr<AudioMeterSource>> & sources)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::attach_meter_sources|obs_engine::attach_meter_sources( const std :: vector<uint64_t> & handles , enum obs_peak_meter_type peak_type , std :: vector<std::shared_ptr<AudioMeterSource>> & attached , RuntimeV2Error & error , const std :: unordered_map<uint64_t,obs_source_t*> & sources)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::make_meter_subscription|obs_engine::make_meter_subscription( const std :: vector<uint64_t> & handles , uint32_t max_hz , enum obs_peak_meter_type peak_type , std :: shared_ptr<AudioMeterSubscription> & out , RuntimeV2Error & error , const std :: unordered_map<uint64_t,obs_source_t*> & sources)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::read_audio_source|obs_engine::read_audio_source( Engine & engine , obs_data_t * params , uint64_t & handle , obs_source_t * & source , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::read_gating_fields|obs_engine::read_gating_fields( obs_data_t * params , bool & enabled , uint64_t & delay , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::read_track_mixers|obs_engine::read_track_mixers( obs_data_t * params , uint32_t & mixers , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::replace_gating_event|obs_engine::replace_gating_event( RuntimeV2Result & result , uint64_t handle , obs_source_t * source)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_get_audio_source|obs_engine::Engine::v2_get_audio_source( obs_data_t * params , uint64_t & handle , obs_source_t * & source , RuntimeV2Error & error) const",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_bind_audio_events|obs_engine::Engine::v2_bind_audio_events( RevisionState * revisions , EventDispatcher * events)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_begin_audio_event_capture|obs_engine::Engine::v2_begin_audio_event_capture( RuntimeV2Result & result)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_wait_for_audio_event_callbacks|obs_engine::Engine::v2_wait_for_audio_event_callbacks()",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_end_audio_event_capture|obs_engine::Engine::v2_end_audio_event_capture()",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_drain_deferred_audio_events|obs_engine::Engine::v2_drain_deferred_audio_events( RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_flush_deferred_audio_events|obs_engine::Engine::v2_flush_deferred_audio_events( RevisionState :: MutationGuard & guard)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::is_audio_source|obs_engine::is_audio_source( obs_source_t * source)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::collect_audio_observer_changes|obs_engine::collect_audio_observer_changes( AudioV2State & state , const std :: unordered_map<uint64_t,obs_source_t*> & sources , std :: vector<std::pair<uint64_t,obs_source_t*>> & add , std :: vector<std::shared_ptr<AudioV2Observer>> & retire)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::create_audio_observer|obs_engine::create_audio_observer( AudioV2State & state , uint64_t handle , obs_source_t * source)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::add_audio_observer|obs_engine::add_audio_observer( AudioV2State & state , const std :: unordered_map<uint64_t,obs_source_t*> & sources , uint64_t handle , obs_source_t * source , std :: vector<std::shared_ptr<AudioV2Observer>> & retire)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_sync_audio_observers|obs_engine::Engine::v2_sync_audio_observers()",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_forget_source|obs_engine::Engine::v2_audio_forget_source( uint64_t handle)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_prepare_audio_shutdown|obs_engine::Engine::v2_prepare_audio_shutdown()",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_get|obs_engine::Engine::v2_audio_get( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_set_mute|obs_engine::Engine::v2_audio_set_mute( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_toggle_mute|obs_engine::Engine::v2_audio_toggle_mute( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_get_volume|obs_engine::Engine::v2_audio_get_volume( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_set_volume|obs_engine::Engine::v2_audio_set_volume( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_set_volume_db|obs_engine::Engine::v2_audio_set_volume_db( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_set_balance|obs_engine::Engine::v2_audio_set_balance( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_set_sync_offset|obs_engine::Engine::v2_audio_set_sync_offset( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_get_monitoring_enabled|obs_engine::Engine::v2_audio_get_monitoring_enabled( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_set_monitoring_enabled|obs_engine::Engine::v2_audio_set_monitoring_enabled( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_get_tracks|obs_engine::Engine::v2_audio_get_tracks( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_set_tracks|obs_engine::Engine::v2_audio_set_tracks( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_get_push_to_talk|obs_engine::Engine::v2_audio_get_push_to_talk( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_set_push_to_talk|obs_engine::Engine::v2_audio_set_push_to_talk( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_get_push_to_mute|obs_engine::Engine::v2_audio_get_push_to_mute( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_set_push_to_mute|obs_engine::Engine::v2_audio_set_push_to_mute( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::collect_monitoring_device|obs_engine::collect_monitoring_device( * data , const char * name , const char * id)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::find_monitoring_device|obs_engine::find_monitoring_device( const std :: string & id , MonitoringDevice & found)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::read_requested_monitoring_device|obs_engine::read_requested_monitoring_device( obs_data_t * params , MonitoringDevice & device , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::make_monitoring_device_data|obs_engine::make_monitoring_device_data( const char * name , const char * id)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::read_meter_source_handles|obs_engine::read_meter_source_handles( obs_data_t * params , std :: vector<uint64_t> & handles , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::read_meter_options|obs_engine::read_meter_options( obs_data_t * params , MeterRequest & request , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::read_meter_request|obs_engine::read_meter_request( obs_data_t * params , MeterRequest & request , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::collect_audio_meter_sources|obs_engine::collect_audio_meter_sources( const std :: unordered_map<uint64_t,obs_source_t*> & available , const std :: vector<uint64_t> & handles , std :: unordered_map<uint64_t,obs_source_t*> & sources , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_list_monitoring_devices|obs_engine::Engine::v2_audio_list_monitoring_devices( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_get_monitoring_device|obs_engine::Engine::v2_audio_get_monitoring_device( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_set_monitoring_device|obs_engine::Engine::v2_audio_set_monitoring_device( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_subscribe_meters|obs_engine::Engine::v2_audio_subscribe_meters( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_audio_v2.cpp|obs_engine::Engine::v2_audio_unsubscribe_meters|obs_engine::Engine::v2_audio_unsubscribe_meters( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)"
       ]
     },
     {
@@ -2972,14 +3218,15 @@
       "path": "engine/runtime_source_v2.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 6,
+      "operatorCommitCount": 7,
       "operatorCommits": [
         "f13431c2dd72109b9ec8dbebb3c0174f7d119a15",
         "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
         "6a590c2985a99d186c8eecd0241acdc824d32168",
         "bb227ad223b21d42c6381f6765213a36d2fa2665",
         "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
-        "aee7464375c7c875b6c407e0f909546e990d3355"
+        "aee7464375c7c875b6c407e0f909546e990d3355",
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
       ],
       "operatorBlameLineCount": 1276,
       "scopedFunctionCount": 81,
@@ -3163,14 +3410,15 @@
       "path": "engine/runtime_v2.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 6,
+      "operatorCommitCount": 7,
       "operatorCommits": [
         "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc",
         "bb227ad223b21d42c6381f6765213a36d2fa2665",
         "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
         "6be51d166b03474765d0f8242af441c61748a03f",
         "141906c4249d1ecdbf4e79188dbcb8016d04a3c2",
-        "0748d0f323d1b2ee9a4403b01004718e4cbf6f99"
+        "0748d0f323d1b2ee9a4403b01004718e4cbf6f99",
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
       ],
       "operatorBlameLineCount": 619,
       "scopedFunctionCount": 28,
@@ -3209,17 +3457,18 @@
       "path": "engine/runtime.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 6,
+      "operatorCommitCount": 7,
       "operatorCommits": [
         "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
         "d47733b98421332ac54e26a671824230e49169c8",
         "d32ad7a9e1ad9adc3cd50ab6d80f04c453eee72a",
         "6be51d166b03474765d0f8242af441c61748a03f",
         "141906c4249d1ecdbf4e79188dbcb8016d04a3c2",
-        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190"
+        "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
       ],
       "operatorBlameLineCount": 621,
-      "scopedFunctionCount": 32,
+      "scopedFunctionCount": 33,
       "currentFunctionKeys": [
         "cpp|function|engine/runtime.cpp|obs_engine::is_bounded_string|obs_engine::is_bounded_string( const char * value , size_t max_bytes)",
         "cpp|function|engine/runtime.cpp|obs_engine::apply_legacy_transform_scalar|obs_engine::apply_legacy_transform_scalar( long long request_id , obs_data_t * request , const char * field , float & target , double min_value , double max_value , const char * error_message)",
@@ -3229,6 +3478,7 @@
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::~Engine|obs_engine::Engine::~Engine()",
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::prepare_startup_environment|obs_engine::Engine::prepare_startup_environment()",
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::reset_video|obs_engine::Engine::reset_video()",
+        "cpp|function|engine/runtime.cpp|obs_engine::Engine::reset_audio|obs_engine::Engine::reset_audio()",
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::load_runtime_modules|obs_engine::Engine::load_runtime_modules()",
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::start|obs_engine::Engine::start()",
         "cpp|function|engine/runtime.cpp|obs_engine::Engine::start_runtime|obs_engine::Engine::start_runtime()",
@@ -3259,7 +3509,7 @@
       "path": "engine/runtime.hpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 21,
+      "operatorCommitCount": 22,
       "operatorCommits": [
         "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
         "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc",
@@ -3281,7 +3531,8 @@
         "42c724c1d247bc64f15475c3edc1d39393ba2f7c",
         "0748d0f323d1b2ee9a4403b01004718e4cbf6f99",
         "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
-        "ba88ff308df6d217c7a42a0739459ad6582abdf2"
+        "ba88ff308df6d217c7a42a0739459ad6582abdf2",
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
       ],
       "operatorBlameLineCount": 228,
       "scopedFunctionCount": 0,
@@ -3331,6 +3582,20 @@
       "scopedFunctionCount": 1,
       "currentFunctionKeys": [
         "cpp|function|engine/task11_filter_source.cpp|obs_module_load|obs_module_load()"
+      ]
+    },
+    {
+      "path": "engine/task21_audio_source.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 1,
+      "currentFunctionKeys": [
+        "cpp|function|engine/task21_audio_source.cpp|obs_module_load|obs_module_load()"
       ]
     },
     {
@@ -3486,7 +3751,7 @@
       "path": "tools/check-complexity.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 27,
+      "operatorCommitCount": 28,
       "operatorCommits": [
         "a6b2b65df6cbcb289e4b81af1ca898a5397c3992",
         "979148802c665938cd7532c4c50fedf9259d725e",
@@ -3514,7 +3779,8 @@
         "5d2f78f42f4b1c7d4fc939a2456e0fba89920b25",
         "7edafb9f3f441f1b09640c765436f5dbd239875a",
         "5206d23c90943968b6667ebd5837ed80670bf0d0",
-        "55aca3debcc6a08a28ddaac589e3f08cf18a147c"
+        "55aca3debcc6a08a28ddaac589e3f08cf18a147c",
+        "13faf231012b1f9ac23ebc000b4fb4260e7c2ff8"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 165,
@@ -3778,6 +4044,11 @@
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
     {
+      "path": ".github/workflows/engine-protocol-v2-task21.yaml",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
       "path": ".github/workflows/engine-protocol-v2-task3.yaml",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
@@ -3943,6 +4214,11 @@
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
     {
+      "path": "docs/libobs-engine/PHASE3_ARCHITECTURE.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
       "path": "docs/libobs-engine/PROJECT_STATUS.md",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
@@ -3984,6 +4260,11 @@
     },
     {
       "path": "docs/libobs-engine/TASK11_IMPLEMENTATION_AUDIT.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/AUDIO_V1.md",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
