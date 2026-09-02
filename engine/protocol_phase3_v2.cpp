@@ -234,6 +234,18 @@ enum class ReplayBufferMethod {
 	Unknown,
 };
 
+enum class VirtualCameraMethod {
+	GetCapabilities,
+	Configure,
+	Unconfigure,
+	Start,
+	Stop,
+	GetState,
+	SetTarget,
+	GetTarget,
+	Unknown,
+};
+
 struct Phase3Dispatch {
 	AudioMethod audio = AudioMethod::Unknown;
 	HotkeyMethod hotkey = HotkeyMethod::Unknown;
@@ -244,6 +256,7 @@ struct Phase3Dispatch {
 	RecordingMethod recording = RecordingMethod::Unknown;
 	StreamingMethod streaming = StreamingMethod::Unknown;
 	ReplayBufferMethod replay_buffer = ReplayBufferMethod::Unknown;
+	VirtualCameraMethod virtual_camera = VirtualCameraMethod::Unknown;
 	bool is_hotkey = false;
 	bool is_encoder = false;
 	bool is_encoder_group = false;
@@ -252,6 +265,7 @@ struct Phase3Dispatch {
 	bool is_recording = false;
 	bool is_streaming = false;
 	bool is_replay_buffer = false;
+	bool is_virtual_camera = false;
 	bool mutating = false;
 };
 
@@ -454,6 +468,22 @@ constexpr ReplayBufferMethodName kReplayBufferMethods[] = {
 	{"replayBuffer.getLastFile", ReplayBufferMethod::GetLastFile},
 };
 
+struct VirtualCameraMethodName {
+	std::string_view name;
+	VirtualCameraMethod method;
+};
+
+constexpr VirtualCameraMethodName kVirtualCameraMethods[] = {
+	{"virtualCamera.getCapabilities", VirtualCameraMethod::GetCapabilities},
+	{"virtualCamera.configure", VirtualCameraMethod::Configure},
+	{"virtualCamera.unconfigure", VirtualCameraMethod::Unconfigure},
+	{"virtualCamera.start", VirtualCameraMethod::Start},
+	{"virtualCamera.stop", VirtualCameraMethod::Stop},
+	{"virtualCamera.getState", VirtualCameraMethod::GetState},
+	{"virtualCamera.setTarget", VirtualCameraMethod::SetTarget},
+	{"virtualCamera.getTarget", VirtualCameraMethod::GetTarget},
+};
+
 constexpr AudioMethod kMutatingMethods[] = {
 	AudioMethod::SetMute,
 	AudioMethod::ToggleMute,
@@ -550,6 +580,14 @@ constexpr ReplayBufferMethod kReplayBufferMutatingMethods[] = {
 	ReplayBufferMethod::Start,
 	ReplayBufferMethod::Stop,
 	ReplayBufferMethod::Save,
+};
+
+constexpr VirtualCameraMethod kVirtualCameraMutatingMethods[] = {
+	VirtualCameraMethod::Configure,
+	VirtualCameraMethod::Unconfigure,
+	VirtualCameraMethod::Start,
+	VirtualCameraMethod::Stop,
+	VirtualCameraMethod::SetTarget,
 };
 
 using AudioMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
@@ -798,6 +836,24 @@ constexpr ReplayBufferHandlerEntry kReplayBufferHandlers[] = {
 	{ReplayBufferMethod::GetLastFile, &Engine::v2_replay_buffer_get_last_file},
 };
 
+using VirtualCameraMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
+
+struct VirtualCameraHandlerEntry {
+	VirtualCameraMethod method;
+	VirtualCameraMethodHandler handler;
+};
+
+constexpr VirtualCameraHandlerEntry kVirtualCameraHandlers[] = {
+	{VirtualCameraMethod::GetCapabilities, &Engine::v2_virtual_camera_get_capabilities},
+	{VirtualCameraMethod::Configure, &Engine::v2_virtual_camera_configure},
+	{VirtualCameraMethod::Unconfigure, &Engine::v2_virtual_camera_unconfigure},
+	{VirtualCameraMethod::Start, &Engine::v2_virtual_camera_start},
+	{VirtualCameraMethod::Stop, &Engine::v2_virtual_camera_stop},
+	{VirtualCameraMethod::GetState, &Engine::v2_virtual_camera_get_state},
+	{VirtualCameraMethod::SetTarget, &Engine::v2_virtual_camera_set_target},
+	{VirtualCameraMethod::GetTarget, &Engine::v2_virtual_camera_get_target},
+};
+
 AudioMethod classify(std::string_view name)
 {
 	for (const AudioMethodName &entry : kAudioMethods) {
@@ -879,6 +935,15 @@ ReplayBufferMethod classify_replay_buffer(std::string_view name)
 	return ReplayBufferMethod::Unknown;
 }
 
+VirtualCameraMethod classify_virtual_camera(std::string_view name)
+{
+	for (const VirtualCameraMethodName &entry : kVirtualCameraMethods) {
+		if (entry.name == name)
+			return entry.method;
+	}
+	return VirtualCameraMethod::Unknown;
+}
+
 bool is_mutating(AudioMethod method)
 {
 	for (const AudioMethod candidate : kMutatingMethods) {
@@ -954,6 +1019,15 @@ bool is_mutating(StreamingMethod method)
 bool is_mutating(ReplayBufferMethod method)
 {
 	for (const ReplayBufferMethod candidate : kReplayBufferMutatingMethods) {
+		if (candidate == method)
+			return true;
+	}
+	return false;
+}
+
+bool is_mutating(VirtualCameraMethod method)
+{
+	for (const VirtualCameraMethod candidate : kVirtualCameraMutatingMethods) {
 		if (candidate == method)
 			return true;
 	}
@@ -1041,13 +1115,23 @@ ReplayBufferMethodHandler replay_buffer_handler_for(ReplayBufferMethod method)
 	return nullptr;
 }
 
+VirtualCameraMethodHandler virtual_camera_handler_for(VirtualCameraMethod method)
+{
+	for (const VirtualCameraHandlerEntry &entry : kVirtualCameraHandlers) {
+		if (entry.method == method)
+			return entry.handler;
+	}
+	return nullptr;
+}
+
 bool phase3_dispatch_empty(const Phase3Dispatch &dispatch)
 {
 	return dispatch.audio == AudioMethod::Unknown && dispatch.hotkey == HotkeyMethod::Unknown &&
 	       dispatch.encoder == EncoderMethod::Unknown && dispatch.encoder_group == EncoderGroupMethod::Unknown &&
 	       dispatch.service == ServiceMethod::Unknown && dispatch.output == OutputMethod::Unknown &&
 	       dispatch.recording == RecordingMethod::Unknown && dispatch.streaming == StreamingMethod::Unknown &&
-	       dispatch.replay_buffer == ReplayBufferMethod::Unknown;
+	       dispatch.replay_buffer == ReplayBufferMethod::Unknown &&
+	       dispatch.virtual_camera == VirtualCameraMethod::Unknown;
 }
 
 bool phase3_dispatch_is_mutating(const Phase3Dispatch &dispatch)
@@ -1060,6 +1144,8 @@ bool phase3_dispatch_is_mutating(const Phase3Dispatch &dispatch)
 		return is_mutating(dispatch.streaming);
 	if (dispatch.is_replay_buffer)
 		return is_mutating(dispatch.replay_buffer);
+	if (dispatch.is_virtual_camera)
+		return is_mutating(dispatch.virtual_camera);
 	if (dispatch.is_service)
 		return is_mutating(dispatch.service);
 	if (dispatch.is_encoder_group)
@@ -1082,6 +1168,7 @@ bool classify_phase3(std::string_view name, Phase3Dispatch &dispatch)
 	dispatch.recording = classify_recording(name);
 	dispatch.streaming = classify_streaming(name);
 	dispatch.replay_buffer = classify_replay_buffer(name);
+	dispatch.virtual_camera = classify_virtual_camera(name);
 	if (phase3_dispatch_empty(dispatch))
 		return false;
 	dispatch.is_hotkey = dispatch.hotkey != HotkeyMethod::Unknown;
@@ -1092,6 +1179,7 @@ bool classify_phase3(std::string_view name, Phase3Dispatch &dispatch)
 	dispatch.is_recording = dispatch.recording != RecordingMethod::Unknown;
 	dispatch.is_streaming = dispatch.streaming != StreamingMethod::Unknown;
 	dispatch.is_replay_buffer = dispatch.replay_buffer != ReplayBufferMethod::Unknown;
+	dispatch.is_virtual_camera = dispatch.virtual_camera != VirtualCameraMethod::Unknown;
 	dispatch.mutating = phase3_dispatch_is_mutating(dispatch);
 	return true;
 }
@@ -1279,6 +1367,18 @@ bool execute_replay_buffer(Engine &engine, ReplayBufferMethod method, const V2Re
 	return (engine.*handler)(request.params.get(), result, error);
 }
 
+bool execute_virtual_camera(Engine &engine, VirtualCameraMethod method, const V2Request &request,
+				    RuntimeV2Result &result, RuntimeV2Error &error)
+{
+	const VirtualCameraMethodHandler handler = virtual_camera_handler_for(method);
+	if (!handler) {
+		error.code = "internal_error";
+		error.message = "virtual camera method dispatch failed";
+		return false;
+	}
+	return (engine.*handler)(request.params.get(), result, error);
+}
+
 bool execute_phase3(Engine &engine, const Phase3Dispatch &dispatch, const V2Request &request,
 			   RuntimeV2Result &result, RuntimeV2Error &error)
 {
@@ -1290,6 +1390,8 @@ bool execute_phase3(Engine &engine, const Phase3Dispatch &dispatch, const V2Requ
 		return execute_streaming(engine, dispatch.streaming, request, result, error);
 	if (dispatch.is_replay_buffer)
 		return execute_replay_buffer(engine, dispatch.replay_buffer, request, result, error);
+	if (dispatch.is_virtual_camera)
+		return execute_virtual_camera(engine, dispatch.virtual_camera, request, result, error);
 	if (dispatch.is_service)
 		return execute_service(engine, dispatch.service, request, result, error);
 	if (dispatch.is_encoder_group)
@@ -1347,7 +1449,8 @@ bool is_phase3_method(std::string_view method)
 	       classify_output(method) != OutputMethod::Unknown ||
 	       classify_recording(method) != RecordingMethod::Unknown ||
 	       classify_streaming(method) != StreamingMethod::Unknown ||
-	       classify_replay_buffer(method) != ReplayBufferMethod::Unknown;
+	       classify_replay_buffer(method) != ReplayBufferMethod::Unknown ||
+	       classify_virtual_camera(method) != VirtualCameraMethod::Unknown;
 }
 
 bool handle_phase3_request(Engine &engine, RevisionState &revisions, EventDispatcher &events,

@@ -560,6 +560,8 @@ bool Engine::v2_canvas_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 	CanvasEntry *entry = nullptr;
 	if (!v2_get_canvas_entry(params, handle, entry, error))
 		return false;
+	if (v2_virtual_camera_target_in_use(VirtualCameraTargetKind::Canvas, handle))
+		return phase2_fail(error, "object_in_use", "Canvas is the active Virtual Camera target");
 	if (entry->is_main)
 		return phase2_fail(error, "invalid_state", "Main Canvas cannot be removed");
 	for (const auto &[scene_handle, canvas_handle] : scene_canvases_)
@@ -636,6 +638,8 @@ bool Engine::v2_canvas_set_video_settings(obs_data_t *params, RuntimeV2Result &r
 		return false;
 	if (entry->is_main)
 		return phase2_fail(error, "invalid_state", "Main Canvas video settings are controlled by engine startup");
+	if (v2_virtual_camera_target_in_use(VirtualCameraTargetKind::Canvas, handle))
+		return phase2_fail(error, "busy", "Canvas video settings cannot change while it is the Virtual Camera target");
 	obs_video_info current = {};
 	obs_video_info proposed = current;
 	bool changed = false;

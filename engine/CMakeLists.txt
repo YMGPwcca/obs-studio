@@ -13,6 +13,7 @@ target_sources(
     runtime_recording_v2.cpp
     runtime_streaming_v2.cpp
     runtime_replay_buffer_v2.cpp
+    runtime_virtual_camera_v2.cpp
     runtime_hotkey_v2.cpp
     events.cpp
     events.hpp

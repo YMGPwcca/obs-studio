@@ -307,7 +307,8 @@ bool Engine::v2_replay_buffer_configure(obs_data_t *params, RuntimeV2Result &res
 		return false;
 	if (replay_.output && replay_.output != output_handle)
 		return fail(error, "object_in_use", "another Output is already assigned to replayBuffer");
-	if (recording_.output == output_handle || streaming_.output == output_handle)
+	if (recording_.output == output_handle || streaming_.output == output_handle ||
+	    virtual_camera_.output == output_handle)
 		return fail(error, "object_in_use", "Output is already assigned to another convenience role");
 	if (!v2_output_is_inactive(*entry, error))
 		return false;

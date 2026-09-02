@@ -416,6 +416,8 @@ bool Engine::v2_source_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 	obs_source_t *source = nullptr;
 	if (!v2_get_source(params, handle, source, error))
 		return false;
+	if (v2_virtual_camera_target_in_use(VirtualCameraTargetKind::Source, handle))
+		return fail(error, "object_in_use", "Source is the active Virtual Camera target");
 	auto source_it = sources_.find(handle);
 
 	std::vector<uint64_t> item_handles;

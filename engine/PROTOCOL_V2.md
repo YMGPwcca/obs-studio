@@ -1023,6 +1023,7 @@ Methods:
 
 - `virtualCamera.getCapabilities`
 - `virtualCamera.configure`
+- `virtualCamera.unconfigure`
 - `virtualCamera.start`
 - `virtualCamera.stop`
 - `virtualCamera.getState`

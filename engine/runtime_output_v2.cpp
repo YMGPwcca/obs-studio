@@ -623,7 +623,7 @@ bool output_starting(const OutputEntry &entry)
 }
 
 const char *output_role_error(uint64_t handle, uint64_t recording_output, uint64_t streaming_output,
-				      uint64_t replay_output)
+				      uint64_t replay_output, uint64_t virtual_camera_output)
 {
 	if (recording_output == handle)
 		return "output is assigned to the recording role";
@@ -631,6 +631,8 @@ const char *output_role_error(uint64_t handle, uint64_t recording_output, uint64
 		return "output is assigned to the streaming role";
 	if (replay_output == handle)
 		return "output is assigned to the replayBuffer role";
+	if (virtual_camera_output == handle)
+		return "output is assigned to the virtualCamera role";
 	return nullptr;
 }
 
@@ -903,6 +905,9 @@ ObsDataPtr Engine::v2_output_state(uint64_t handle, const OutputEntry &entry) co
 	} else if (replay_.output == handle) {
 		obs_data_set_string(data.get(), "role", "replayBuffer");
 		obs_data_set_string(data.get(), "managedBy", "replayBuffer");
+	} else if (virtual_camera_.output == handle) {
+		obs_data_set_string(data.get(), "role", "virtualCamera");
+		obs_data_set_string(data.get(), "managedBy", "virtualCamera");
 	}
 	ObsDataPtr delay(obs_data_create());
 	obs_data_set_int(delay.get(), "seconds", obs_output_get_delay(entry.output));
@@ -1583,7 +1588,8 @@ bool Engine::v2_output_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 	if (entry->service || std::any_of(entry->video_encoders.begin(), entry->video_encoders.end(), [](uint64_t v) { return v != 0; }) ||
 	    std::any_of(entry->audio_encoders.begin(), entry->audio_encoders.end(), [](uint64_t v) { return v != 0; }))
 		return fail(error, "object_in_use", "output has bound Service or Encoder objects");
-	const char *role_error = output_role_error(handle, recording_.output, streaming_.output, replay_.output);
+	const char *role_error =
+		output_role_error(handle, recording_.output, streaming_.output, replay_.output, virtual_camera_.output);
 	if (role_error)
 		return fail(error, "object_in_use", role_error);
 	if (entry->observer) {

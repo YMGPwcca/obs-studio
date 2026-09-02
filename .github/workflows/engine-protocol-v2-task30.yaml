@@ -1,0 +1,36 @@
+name: Engine Protocol v2 Task 30 Verification
+
+on:
+  push:
+    branches:
+      - phase3-output-stack
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  virtual-camera-v1:
+    name: Build and verify virtual-camera protocol
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Build Windows minimal runtime
+        uses: ./.github/actions/build-obs
+        with:
+          target: x64
+          config: RelWithDebInfo
+      - name: Audit normal package
+        shell: pwsh
+        run: '& .github/scripts/engine-protocol-v2-task30-package-audit.ps1 -InstallRoot (Resolve-Path ''build_x64/install'')'
+      - name: Run Task 30 virtual-camera integration
+        shell: pwsh
+        run: '& .github/scripts/engine-protocol-v2-task30.ps1 -InstallRoot (Resolve-Path ''build_x64/install'')'
+      - name: Audit package after integration
+        if: always()
+        shell: pwsh
+        run: '& .github/scripts/engine-protocol-v2-task30-package-audit.ps1 -InstallRoot (Resolve-Path ''build_x64/install'')'

@@ -992,6 +992,7 @@ void Engine::v2_prepare_shutdown() noexcept
 	v2_prepare_streaming_shutdown();
 	v2_prepare_replay_shutdown();
 	v2_prepare_output_shutdown();
+	v2_prepare_virtual_camera_shutdown();
 	v2_prepare_service_shutdown();
 	v2_prepare_encoder_group_shutdown();
 	v2_prepare_encoder_shutdown();

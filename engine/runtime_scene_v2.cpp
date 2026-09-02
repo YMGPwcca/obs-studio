@@ -682,6 +682,9 @@ bool Engine::v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, Runtim
 	obs_scene_t *scene = nullptr;
 	if (!v2_get_scene_entry(params, handle, scene, error))
 		return false;
+	if (v2_virtual_camera_target_in_use(VirtualCameraTargetKind::Scene, handle) ||
+	    v2_virtual_camera_target_in_use(VirtualCameraTargetKind::Preview, handle))
+		return phase2_fail(error, "object_in_use", "Scene is the active Virtual Camera target");
 	if (studio_transition_active_ &&
 	    (handle == studio_transition_from_scene_ || handle == studio_transition_destination_scene_))
 		return phase2_fail(error, "object_in_use", "Scene is participating in an active Studio transition");
