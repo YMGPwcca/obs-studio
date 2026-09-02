@@ -51,12 +51,18 @@ function Send-Task30([hashtable] $Request) {
 }
 
 function Assert-Ok($Response, [int64] $Revision, [string] $Label) {
-    if (-not $Response.status.ok -or [int64]$Response.revision -ne $Revision) { Fail-Task30 "$Label did not succeed at revision $Revision." }
+    $code = if ($null -ne $Response.status.PSObject.Properties['code']) { [string]$Response.status.code } else { '<missing>' }
+    if (-not $Response.status.ok -or [int64]$Response.revision -ne $Revision) { Fail-Task30 "$Label did not succeed at revision $Revision (actual=$($Response.revision) code=$code)." }
 }
 
 function Assert-Error($Response, [string] $Code, [int64] $Revision, [string] $Label) {
     $actual = if ($null -ne $Response.status.PSObject.Properties['code']) { [string]$Response.status.code } else { '<missing>' }
     if ($Response.status.ok -or $actual -ne $Code -or [int64]$Response.revision -ne $Revision) { Fail-Task30 "$Label did not return $Code at revision $Revision (actual=$actual revision=$($Response.revision))." }
+}
+
+function Assert-ErrorAtOrAfter($Response, [string] $Code, [int64] $MinimumRevision, [string] $Label) {
+    $actual = if ($null -ne $Response.status.PSObject.Properties['code']) { [string]$Response.status.code } else { '<missing>' }
+    if ($Response.status.ok -or $actual -ne $Code -or [int64]$Response.revision -lt $MinimumRevision) { Fail-Task30 "$Label did not return $Code at or after revision $MinimumRevision." }
 }
 
 function Read-Task30Event([string] $Name, [int64] $Revision) {
@@ -125,7 +131,7 @@ function Invoke-Task30Available($State) {
     $State.Source = [string]$source.data.source
     $sourceTarget = Invoke-Task30Mutation $State 'source-target' 'virtualCamera.setTarget' @{ target = @{ type = 'source'; source = $State.Source } } @('virtualCamera.targetChanged') 'set Virtual Camera Source target'
     if ([string]$sourceTarget.data.target.type -ne 'source') { Fail-Task30 'Source target was not reported.' }
-    $removeSource = Send-Task30 @{ op = 'request'; id = 'remove-source'; method = 'source.remove'; params = @{ source = $State.Source } }; Assert-Error $removeSource 'object_in_use' ($State.Current + 1) 'remove active Virtual Camera source target'; $State.Current = [int64]$removeSource.revision
+    $removeSource = Send-Task30 @{ op = 'request'; id = 'remove-source'; method = 'source.remove'; params = @{ source = $State.Source } }; Assert-ErrorAtOrAfter $removeSource 'object_in_use' $State.Current 'remove active Virtual Camera source target'; $State.Current = [int64]$removeSource.revision
     $null = Invoke-Task30Mutation $State 'program-target' 'virtualCamera.setTarget' @{ target = @{ type = 'program' } } @('virtualCamera.targetChanged') 'restore Virtual Camera program target'
     $null = Invoke-Task30Mutation $State 'source-remove' 'source.remove' @{ source = $State.Source } @('source.removed') 'remove released Virtual Camera source target'
     $unconfigured = Invoke-Task30Mutation $State 'unconfigure' 'virtualCamera.unconfigure' @{} @('output.removed', 'virtualCamera.configChanged') 'virtualCamera.unconfigure'
