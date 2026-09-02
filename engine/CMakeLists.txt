@@ -11,6 +11,7 @@ target_sources(
     runtime_service_v2.cpp
     runtime_output_v2.cpp
     runtime_recording_v2.cpp
+    runtime_streaming_v2.cpp
     runtime_hotkey_v2.cpp
     events.cpp
     events.hpp

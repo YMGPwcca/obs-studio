@@ -205,6 +205,22 @@ enum class RecordingMethod {
 	Unknown,
 };
 
+enum class StreamingMethod {
+	GetConfig,
+	Configure,
+	Unconfigure,
+	Start,
+	Stop,
+	ForceStop,
+	GetState,
+	GetStats,
+	GetService,
+	SetService,
+	GetReconnectState,
+	GetLastError,
+	Unknown,
+};
+
 struct Phase3Dispatch {
 	AudioMethod audio = AudioMethod::Unknown;
 	HotkeyMethod hotkey = HotkeyMethod::Unknown;
@@ -213,12 +229,14 @@ struct Phase3Dispatch {
 	ServiceMethod service = ServiceMethod::Unknown;
 	OutputMethod output = OutputMethod::Unknown;
 	RecordingMethod recording = RecordingMethod::Unknown;
+	StreamingMethod streaming = StreamingMethod::Unknown;
 	bool is_hotkey = false;
 	bool is_encoder = false;
 	bool is_encoder_group = false;
 	bool is_service = false;
 	bool is_output = false;
 	bool is_recording = false;
+	bool is_streaming = false;
 	bool mutating = false;
 };
 
@@ -384,6 +402,26 @@ constexpr RecordingMethodName kRecordingMethods[] = {
 	{"recording.getLastFile", RecordingMethod::GetLastFile},
 };
 
+struct StreamingMethodName {
+	std::string_view name;
+	StreamingMethod method;
+};
+
+constexpr StreamingMethodName kStreamingMethods[] = {
+	{"streaming.getConfig", StreamingMethod::GetConfig},
+	{"streaming.configure", StreamingMethod::Configure},
+	{"streaming.unconfigure", StreamingMethod::Unconfigure},
+	{"streaming.start", StreamingMethod::Start},
+	{"streaming.stop", StreamingMethod::Stop},
+	{"streaming.forceStop", StreamingMethod::ForceStop},
+	{"streaming.getState", StreamingMethod::GetState},
+	{"streaming.getStats", StreamingMethod::GetStats},
+	{"streaming.getService", StreamingMethod::GetService},
+	{"streaming.setService", StreamingMethod::SetService},
+	{"streaming.getReconnectState", StreamingMethod::GetReconnectState},
+	{"streaming.getLastError", StreamingMethod::GetLastError},
+};
+
 constexpr AudioMethod kMutatingMethods[] = {
 	AudioMethod::SetMute,
 	AudioMethod::ToggleMute,
@@ -463,6 +501,15 @@ constexpr RecordingMethod kRecordingMutatingMethods[] = {
 	RecordingMethod::TogglePause,
 	RecordingMethod::SplitFile,
 	RecordingMethod::AddChapter,
+};
+
+constexpr StreamingMethod kStreamingMutatingMethods[] = {
+	StreamingMethod::Configure,
+	StreamingMethod::Unconfigure,
+	StreamingMethod::Start,
+	StreamingMethod::Stop,
+	StreamingMethod::ForceStop,
+	StreamingMethod::SetService,
 };
 
 using AudioMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
@@ -670,6 +717,28 @@ constexpr RecordingHandlerEntry kRecordingHandlers[] = {
 	{RecordingMethod::GetLastFile, &Engine::v2_recording_get_last_file},
 };
 
+using StreamingMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
+
+struct StreamingHandlerEntry {
+	StreamingMethod method;
+	StreamingMethodHandler handler;
+};
+
+constexpr StreamingHandlerEntry kStreamingHandlers[] = {
+	{StreamingMethod::GetConfig, &Engine::v2_streaming_get_config},
+	{StreamingMethod::Configure, &Engine::v2_streaming_configure},
+	{StreamingMethod::Unconfigure, &Engine::v2_streaming_unconfigure},
+	{StreamingMethod::Start, &Engine::v2_streaming_start},
+	{StreamingMethod::Stop, &Engine::v2_streaming_stop},
+	{StreamingMethod::ForceStop, &Engine::v2_streaming_force_stop},
+	{StreamingMethod::GetState, &Engine::v2_streaming_get_state},
+	{StreamingMethod::GetStats, &Engine::v2_streaming_get_stats},
+	{StreamingMethod::GetService, &Engine::v2_streaming_get_service},
+	{StreamingMethod::SetService, &Engine::v2_streaming_set_service},
+	{StreamingMethod::GetReconnectState, &Engine::v2_streaming_get_reconnect_state},
+	{StreamingMethod::GetLastError, &Engine::v2_streaming_get_last_error},
+};
+
 AudioMethod classify(std::string_view name)
 {
 	for (const AudioMethodName &entry : kAudioMethods) {
@@ -733,6 +802,15 @@ RecordingMethod classify_recording(std::string_view name)
 	return RecordingMethod::Unknown;
 }
 
+StreamingMethod classify_streaming(std::string_view name)
+{
+	for (const StreamingMethodName &entry : kStreamingMethods) {
+		if (entry.name == name)
+			return entry.method;
+	}
+	return StreamingMethod::Unknown;
+}
+
 bool is_mutating(AudioMethod method)
 {
 	for (const AudioMethod candidate : kMutatingMethods) {
@@ -790,6 +868,15 @@ bool is_mutating(OutputMethod method)
 bool is_mutating(RecordingMethod method)
 {
 	for (const RecordingMethod candidate : kRecordingMutatingMethods) {
+		if (candidate == method)
+			return true;
+	}
+	return false;
+}
+
+bool is_mutating(StreamingMethod method)
+{
+	for (const StreamingMethod candidate : kStreamingMutatingMethods) {
 		if (candidate == method)
 			return true;
 	}
@@ -859,12 +946,21 @@ RecordingMethodHandler recording_handler_for(RecordingMethod method)
 	return nullptr;
 }
 
+StreamingMethodHandler streaming_handler_for(StreamingMethod method)
+{
+	for (const StreamingHandlerEntry &entry : kStreamingHandlers) {
+		if (entry.method == method)
+			return entry.handler;
+	}
+	return nullptr;
+}
+
 bool phase3_dispatch_empty(const Phase3Dispatch &dispatch)
 {
 	return dispatch.audio == AudioMethod::Unknown && dispatch.hotkey == HotkeyMethod::Unknown &&
 	       dispatch.encoder == EncoderMethod::Unknown && dispatch.encoder_group == EncoderGroupMethod::Unknown &&
 	       dispatch.service == ServiceMethod::Unknown && dispatch.output == OutputMethod::Unknown &&
-	       dispatch.recording == RecordingMethod::Unknown;
+	       dispatch.recording == RecordingMethod::Unknown && dispatch.streaming == StreamingMethod::Unknown;
 }
 
 bool phase3_dispatch_is_mutating(const Phase3Dispatch &dispatch)
@@ -873,6 +969,8 @@ bool phase3_dispatch_is_mutating(const Phase3Dispatch &dispatch)
 		return is_mutating(dispatch.output);
 	if (dispatch.is_recording)
 		return is_mutating(dispatch.recording);
+	if (dispatch.is_streaming)
+		return is_mutating(dispatch.streaming);
 	if (dispatch.is_service)
 		return is_mutating(dispatch.service);
 	if (dispatch.is_encoder_group)
@@ -893,6 +991,7 @@ bool classify_phase3(std::string_view name, Phase3Dispatch &dispatch)
 	dispatch.service = classify_service(name);
 	dispatch.output = classify_output(name);
 	dispatch.recording = classify_recording(name);
+	dispatch.streaming = classify_streaming(name);
 	if (phase3_dispatch_empty(dispatch))
 		return false;
 	dispatch.is_hotkey = dispatch.hotkey != HotkeyMethod::Unknown;
@@ -901,6 +1000,7 @@ bool classify_phase3(std::string_view name, Phase3Dispatch &dispatch)
 	dispatch.is_service = dispatch.service != ServiceMethod::Unknown;
 	dispatch.is_output = dispatch.output != OutputMethod::Unknown;
 	dispatch.is_recording = dispatch.recording != RecordingMethod::Unknown;
+	dispatch.is_streaming = dispatch.streaming != StreamingMethod::Unknown;
 	dispatch.mutating = phase3_dispatch_is_mutating(dispatch);
 	return true;
 }
@@ -1064,6 +1164,18 @@ bool execute_recording(Engine &engine, RecordingMethod method, const V2Request &
 	return (engine.*handler)(request.params.get(), result, error);
 }
 
+bool execute_streaming(Engine &engine, StreamingMethod method, const V2Request &request, RuntimeV2Result &result,
+			       RuntimeV2Error &error)
+{
+	const StreamingMethodHandler handler = streaming_handler_for(method);
+	if (!handler) {
+		error.code = "internal_error";
+		error.message = "streaming method dispatch failed";
+		return false;
+	}
+	return (engine.*handler)(request.params.get(), result, error);
+}
+
 bool execute_phase3(Engine &engine, const Phase3Dispatch &dispatch, const V2Request &request,
 			   RuntimeV2Result &result, RuntimeV2Error &error)
 {
@@ -1071,6 +1183,8 @@ bool execute_phase3(Engine &engine, const Phase3Dispatch &dispatch, const V2Requ
 		return execute_output(engine, dispatch.output, request, result, error);
 	if (dispatch.is_recording)
 		return execute_recording(engine, dispatch.recording, request, result, error);
+	if (dispatch.is_streaming)
+		return execute_streaming(engine, dispatch.streaming, request, result, error);
 	if (dispatch.is_service)
 		return execute_service(engine, dispatch.service, request, result, error);
 	if (dispatch.is_encoder_group)
@@ -1126,7 +1240,8 @@ bool is_phase3_method(std::string_view method)
 	       classify_encoder_group(method) != EncoderGroupMethod::Unknown ||
 	       classify_service(method) != ServiceMethod::Unknown ||
 	       classify_output(method) != OutputMethod::Unknown ||
-	       classify_recording(method) != RecordingMethod::Unknown;
+	       classify_recording(method) != RecordingMethod::Unknown ||
+	       classify_streaming(method) != StreamingMethod::Unknown;
 }
 
 bool handle_phase3_request(Engine &engine, RevisionState &revisions, EventDispatcher &events,

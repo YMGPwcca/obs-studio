@@ -846,6 +846,7 @@ std::string Engine::v2_sanitize_output_error(const OutputEntry &entry) const
 			continue;
 		static constexpr uint32_t kSecretTypes[] = {
 			OBS_SERVICE_CONNECT_INFO_STREAM_KEY,
+			OBS_SERVICE_CONNECT_INFO_STREAM_ID,
 			OBS_SERVICE_CONNECT_INFO_USERNAME,
 			OBS_SERVICE_CONNECT_INFO_PASSWORD,
 			OBS_SERVICE_CONNECT_INFO_ENCRYPT_PASSPHRASE,
@@ -884,6 +885,9 @@ ObsDataPtr Engine::v2_output_state(uint64_t handle, const OutputEntry &entry) co
 	if (recording_.output == handle) {
 		obs_data_set_string(data.get(), "role", "recording");
 		obs_data_set_string(data.get(), "managedBy", "recording");
+	} else if (streaming_.output == handle) {
+		obs_data_set_string(data.get(), "role", "streaming");
+		obs_data_set_string(data.get(), "managedBy", "streaming");
 	}
 	ObsDataPtr delay(obs_data_create());
 	obs_data_set_int(delay.get(), "seconds", obs_output_get_delay(entry.output));
@@ -1566,6 +1570,8 @@ bool Engine::v2_output_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 		return fail(error, "object_in_use", "output has bound Service or Encoder objects");
 	if (recording_.output == handle)
 		return fail(error, "object_in_use", "output is assigned to the recording role");
+	if (streaming_.output == handle)
+		return fail(error, "object_in_use", "output is assigned to the streaming role");
 	if (entry->observer) {
 		disconnect_output_observer(*entry->observer, entry->output);
 		v2_wait_for_output_event_callbacks();

@@ -100,6 +100,10 @@ struct RecordingEntry {
 	std::shared_ptr<RecordingV2Observer> observer;
 };
 
+struct StreamingEntry {
+	uint64_t output = 0;
+};
+
 struct RuntimeV2Error {
 	std::string code;
 	std::string message;
@@ -172,6 +176,7 @@ public:
 	void v2_prepare_service_shutdown() noexcept;
 	void v2_prepare_output_shutdown() noexcept;
 	void v2_prepare_recording_shutdown() noexcept;
+	void v2_prepare_streaming_shutdown() noexcept;
 	void v2_bind_output_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_begin_output_event_capture(RuntimeV2Result &result);
 	void v2_wait_for_output_event_callbacks();
@@ -289,6 +294,19 @@ public:
 	bool v2_recording_get_stats(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_recording_get_current_path(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_recording_get_last_file(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+
+	bool v2_streaming_get_config(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_streaming_configure(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_streaming_unconfigure(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_streaming_start(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_streaming_stop(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_streaming_force_stop(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_streaming_get_state(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_streaming_get_stats(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_streaming_get_service(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_streaming_set_service(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_streaming_get_reconnect_state(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_streaming_get_last_error(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	void v2_bind_audio_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_begin_audio_event_capture(RuntimeV2Result &result);
 	void v2_wait_for_audio_event_callbacks();
@@ -618,6 +636,7 @@ private:
 	bool v2_get_output_entry(obs_data_t *params, uint64_t &handle, OutputEntry *&entry,
 					RuntimeV2Error &error) const;
 	bool v2_get_recording_output(uint64_t &handle, OutputEntry *&entry, RuntimeV2Error &error) const;
+	bool v2_get_streaming_output(uint64_t &handle, OutputEntry *&entry, RuntimeV2Error &error) const;
 	bool v2_validate_recording_configuration(obs_data_t *params, uint64_t &handle, OutputEntry *&entry,
 						RuntimeV2Error &error) const;
 	bool v2_apply_recording_configuration_settings(OutputEntry &entry, uint64_t handle, obs_data_t *params,
@@ -774,6 +793,7 @@ private:
 	std::unordered_map<uint64_t, ServiceEntry> services_;
 	std::unordered_map<uint64_t, OutputEntry> outputs_;
 	RecordingEntry recording_;
+	StreamingEntry streaming_;
 	std::shared_ptr<OutputV2State> output_v2_state_;
 	RevisionState *output_revisions_ = nullptr;
 	EventDispatcher *output_events_ = nullptr;

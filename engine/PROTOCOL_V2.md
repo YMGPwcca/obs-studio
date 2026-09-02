@@ -981,6 +981,7 @@ Methods:
 
 - `streaming.getConfig`
 - `streaming.configure`
+- `streaming.unconfigure`
 - `streaming.start`
 - `streaming.stop`
 - `streaming.forceStop`
@@ -991,7 +992,14 @@ Methods:
 - `streaming.getReconnectState`
 - `streaming.getLastError`
 
-Events use `streaming.*` and cover start/stop/reconnect/error transitions.
+Streaming assigns an existing service-backed encoded Output and does not create
+a hidden Output, Encoder, or Service. `streaming.start` validates that the
+Output is live and protocol-compatible, has a bound initialized Service, has a
+configured credential without exposing its value, and has usable media
+encoders. Lifecycle remains owned by `output.*`; streaming emits only
+`streaming.configChanged`. Service, reconnect, and last-error accessors
+delegate to the canonical Output relationship/state and use the common secret
+redactor.
 
 ## 32. Replay buffer API
 
