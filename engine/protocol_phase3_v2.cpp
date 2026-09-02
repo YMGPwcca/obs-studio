@@ -186,6 +186,25 @@ enum class OutputMethod {
 	Unknown,
 };
 
+enum class RecordingMethod {
+	GetConfig,
+	Configure,
+	Unconfigure,
+	Start,
+	Stop,
+	ForceStop,
+	Pause,
+	Resume,
+	TogglePause,
+	SplitFile,
+	AddChapter,
+	GetState,
+	GetStats,
+	GetCurrentPath,
+	GetLastFile,
+	Unknown,
+};
+
 struct Phase3Dispatch {
 	AudioMethod audio = AudioMethod::Unknown;
 	HotkeyMethod hotkey = HotkeyMethod::Unknown;
@@ -193,11 +212,13 @@ struct Phase3Dispatch {
 	EncoderGroupMethod encoder_group = EncoderGroupMethod::Unknown;
 	ServiceMethod service = ServiceMethod::Unknown;
 	OutputMethod output = OutputMethod::Unknown;
+	RecordingMethod recording = RecordingMethod::Unknown;
 	bool is_hotkey = false;
 	bool is_encoder = false;
 	bool is_encoder_group = false;
 	bool is_service = false;
 	bool is_output = false;
+	bool is_recording = false;
 	bool mutating = false;
 };
 
@@ -340,6 +361,29 @@ constexpr OutputMethodName kOutputMethods[] = {
 	{"output.getSupportedCodecs", OutputMethod::GetSupportedCodecs},
 };
 
+struct RecordingMethodName {
+	std::string_view name;
+	RecordingMethod method;
+};
+
+constexpr RecordingMethodName kRecordingMethods[] = {
+	{"recording.getConfig", RecordingMethod::GetConfig},
+	{"recording.configure", RecordingMethod::Configure},
+	{"recording.unconfigure", RecordingMethod::Unconfigure},
+	{"recording.start", RecordingMethod::Start},
+	{"recording.stop", RecordingMethod::Stop},
+	{"recording.forceStop", RecordingMethod::ForceStop},
+	{"recording.pause", RecordingMethod::Pause},
+	{"recording.resume", RecordingMethod::Resume},
+	{"recording.togglePause", RecordingMethod::TogglePause},
+	{"recording.splitFile", RecordingMethod::SplitFile},
+	{"recording.addChapter", RecordingMethod::AddChapter},
+	{"recording.getState", RecordingMethod::GetState},
+	{"recording.getStats", RecordingMethod::GetStats},
+	{"recording.getCurrentPath", RecordingMethod::GetCurrentPath},
+	{"recording.getLastFile", RecordingMethod::GetLastFile},
+};
+
 constexpr AudioMethod kMutatingMethods[] = {
 	AudioMethod::SetMute,
 	AudioMethod::ToggleMute,
@@ -406,6 +450,19 @@ constexpr OutputMethod kOutputMutatingMethods[] = {
 	OutputMethod::SetPaused,
 	OutputMethod::SetDelay,
 	OutputMethod::SetReconnect,
+};
+
+constexpr RecordingMethod kRecordingMutatingMethods[] = {
+	RecordingMethod::Configure,
+	RecordingMethod::Unconfigure,
+	RecordingMethod::Start,
+	RecordingMethod::Stop,
+	RecordingMethod::ForceStop,
+	RecordingMethod::Pause,
+	RecordingMethod::Resume,
+	RecordingMethod::TogglePause,
+	RecordingMethod::SplitFile,
+	RecordingMethod::AddChapter,
 };
 
 using AudioMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
@@ -588,6 +645,31 @@ constexpr OutputHandlerEntry kOutputHandlers[] = {
 	{OutputMethod::GetSupportedCodecs, &Engine::v2_output_get_supported_codecs},
 };
 
+using RecordingMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
+
+struct RecordingHandlerEntry {
+	RecordingMethod method;
+	RecordingMethodHandler handler;
+};
+
+constexpr RecordingHandlerEntry kRecordingHandlers[] = {
+	{RecordingMethod::GetConfig, &Engine::v2_recording_get_config},
+	{RecordingMethod::Configure, &Engine::v2_recording_configure},
+	{RecordingMethod::Unconfigure, &Engine::v2_recording_unconfigure},
+	{RecordingMethod::Start, &Engine::v2_recording_start},
+	{RecordingMethod::Stop, &Engine::v2_recording_stop},
+	{RecordingMethod::ForceStop, &Engine::v2_recording_force_stop},
+	{RecordingMethod::Pause, &Engine::v2_recording_pause},
+	{RecordingMethod::Resume, &Engine::v2_recording_resume},
+	{RecordingMethod::TogglePause, &Engine::v2_recording_toggle_pause},
+	{RecordingMethod::SplitFile, &Engine::v2_recording_split_file},
+	{RecordingMethod::AddChapter, &Engine::v2_recording_add_chapter},
+	{RecordingMethod::GetState, &Engine::v2_recording_get_state},
+	{RecordingMethod::GetStats, &Engine::v2_recording_get_stats},
+	{RecordingMethod::GetCurrentPath, &Engine::v2_recording_get_current_path},
+	{RecordingMethod::GetLastFile, &Engine::v2_recording_get_last_file},
+};
+
 AudioMethod classify(std::string_view name)
 {
 	for (const AudioMethodName &entry : kAudioMethods) {
@@ -642,6 +724,15 @@ OutputMethod classify_output(std::string_view name)
 	return OutputMethod::Unknown;
 }
 
+RecordingMethod classify_recording(std::string_view name)
+{
+	for (const RecordingMethodName &entry : kRecordingMethods) {
+		if (entry.name == name)
+			return entry.method;
+	}
+	return RecordingMethod::Unknown;
+}
+
 bool is_mutating(AudioMethod method)
 {
 	for (const AudioMethod candidate : kMutatingMethods) {
@@ -690,6 +781,15 @@ bool is_mutating(ServiceMethod method)
 bool is_mutating(OutputMethod method)
 {
 	for (const OutputMethod candidate : kOutputMutatingMethods) {
+		if (candidate == method)
+			return true;
+	}
+	return false;
+}
+
+bool is_mutating(RecordingMethod method)
+{
+	for (const RecordingMethod candidate : kRecordingMutatingMethods) {
 		if (candidate == method)
 			return true;
 	}
@@ -750,17 +850,29 @@ OutputMethodHandler output_handler_for(OutputMethod method)
 	return nullptr;
 }
 
+RecordingMethodHandler recording_handler_for(RecordingMethod method)
+{
+	for (const RecordingHandlerEntry &entry : kRecordingHandlers) {
+		if (entry.method == method)
+			return entry.handler;
+	}
+	return nullptr;
+}
+
 bool phase3_dispatch_empty(const Phase3Dispatch &dispatch)
 {
 	return dispatch.audio == AudioMethod::Unknown && dispatch.hotkey == HotkeyMethod::Unknown &&
 	       dispatch.encoder == EncoderMethod::Unknown && dispatch.encoder_group == EncoderGroupMethod::Unknown &&
-	       dispatch.service == ServiceMethod::Unknown && dispatch.output == OutputMethod::Unknown;
+	       dispatch.service == ServiceMethod::Unknown && dispatch.output == OutputMethod::Unknown &&
+	       dispatch.recording == RecordingMethod::Unknown;
 }
 
 bool phase3_dispatch_is_mutating(const Phase3Dispatch &dispatch)
 {
 	if (dispatch.is_output)
 		return is_mutating(dispatch.output);
+	if (dispatch.is_recording)
+		return is_mutating(dispatch.recording);
 	if (dispatch.is_service)
 		return is_mutating(dispatch.service);
 	if (dispatch.is_encoder_group)
@@ -780,6 +892,7 @@ bool classify_phase3(std::string_view name, Phase3Dispatch &dispatch)
 	dispatch.encoder_group = classify_encoder_group(name);
 	dispatch.service = classify_service(name);
 	dispatch.output = classify_output(name);
+	dispatch.recording = classify_recording(name);
 	if (phase3_dispatch_empty(dispatch))
 		return false;
 	dispatch.is_hotkey = dispatch.hotkey != HotkeyMethod::Unknown;
@@ -787,6 +900,7 @@ bool classify_phase3(std::string_view name, Phase3Dispatch &dispatch)
 	dispatch.is_encoder_group = dispatch.encoder_group != EncoderGroupMethod::Unknown;
 	dispatch.is_service = dispatch.service != ServiceMethod::Unknown;
 	dispatch.is_output = dispatch.output != OutputMethod::Unknown;
+	dispatch.is_recording = dispatch.recording != RecordingMethod::Unknown;
 	dispatch.mutating = phase3_dispatch_is_mutating(dispatch);
 	return true;
 }
@@ -938,11 +1052,25 @@ bool execute_output(Engine &engine, OutputMethod method, const V2Request &reques
 	return (engine.*handler)(request.params.get(), result, error);
 }
 
+bool execute_recording(Engine &engine, RecordingMethod method, const V2Request &request, RuntimeV2Result &result,
+			       RuntimeV2Error &error)
+{
+	const RecordingMethodHandler handler = recording_handler_for(method);
+	if (!handler) {
+		error.code = "internal_error";
+		error.message = "recording method dispatch failed";
+		return false;
+	}
+	return (engine.*handler)(request.params.get(), result, error);
+}
+
 bool execute_phase3(Engine &engine, const Phase3Dispatch &dispatch, const V2Request &request,
 			   RuntimeV2Result &result, RuntimeV2Error &error)
 {
 	if (dispatch.is_output)
 		return execute_output(engine, dispatch.output, request, result, error);
+	if (dispatch.is_recording)
+		return execute_recording(engine, dispatch.recording, request, result, error);
 	if (dispatch.is_service)
 		return execute_service(engine, dispatch.service, request, result, error);
 	if (dispatch.is_encoder_group)
@@ -997,7 +1125,8 @@ bool is_phase3_method(std::string_view method)
 	       classify_encoder(method) != EncoderMethod::Unknown ||
 	       classify_encoder_group(method) != EncoderGroupMethod::Unknown ||
 	       classify_service(method) != ServiceMethod::Unknown ||
-	       classify_output(method) != OutputMethod::Unknown;
+	       classify_output(method) != OutputMethod::Unknown ||
+	       classify_recording(method) != RecordingMethod::Unknown;
 }
 
 bool handle_phase3_request(Engine &engine, RevisionState &revisions, EventDispatcher &events,

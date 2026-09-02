@@ -30,6 +30,7 @@ struct FilterV2State;
 struct SourceV2Observer;
 struct SourceV2State;
 struct OutputV2State;
+struct RecordingV2Observer;
 
 struct ItemEntry {
 	uint64_t scene_id = 0;
@@ -92,6 +93,11 @@ struct OutputEntry {
 	bool reconnect_enabled = true;
 	int retry_count = 20;
 	int retry_delay_seconds = 2;
+};
+
+struct RecordingEntry {
+	uint64_t output = 0;
+	std::shared_ptr<RecordingV2Observer> observer;
 };
 
 struct RuntimeV2Error {
@@ -165,6 +171,7 @@ public:
 	void v2_prepare_encoder_group_shutdown() noexcept;
 	void v2_prepare_service_shutdown() noexcept;
 	void v2_prepare_output_shutdown() noexcept;
+	void v2_prepare_recording_shutdown() noexcept;
 	void v2_bind_output_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_begin_output_event_capture(RuntimeV2Result &result);
 	void v2_wait_for_output_event_callbacks();
@@ -172,6 +179,8 @@ public:
 	void v2_drain_deferred_output_events(RevisionState::MutationGuard &guard);
 	void v2_flush_deferred_output_events(RevisionState::MutationGuard &guard);
 	void v2_sync_output_observers();
+	void v2_publish_output_callback_events(std::vector<RuntimeV2Event> events);
+	void v2_append_recording_output_events(uint64_t output_handle, std::vector<RuntimeV2Event> &events);
 
 	bool v2_encoder_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_encoder_kind_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -264,6 +273,22 @@ public:
 	bool v2_output_get_last_error(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_output_get_supported_codecs(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	void v2_append_output_dependency_events(uint64_t output_handle, std::vector<RuntimeV2Event> &events);
+
+	bool v2_recording_get_config(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_recording_configure(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_recording_unconfigure(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_recording_start(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_recording_stop(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_recording_force_stop(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_recording_pause(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_recording_resume(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_recording_toggle_pause(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_recording_split_file(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_recording_add_chapter(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_recording_get_state(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_recording_get_stats(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_recording_get_current_path(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_recording_get_last_file(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	void v2_bind_audio_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_begin_audio_event_capture(RuntimeV2Result &result);
 	void v2_wait_for_audio_event_callbacks();
@@ -592,6 +617,8 @@ private:
 					RuntimeV2Error &error) const;
 	bool v2_get_output_entry(obs_data_t *params, uint64_t &handle, OutputEntry *&entry,
 					RuntimeV2Error &error) const;
+	bool v2_get_recording_output(uint64_t &handle, OutputEntry *&entry, RuntimeV2Error &error) const;
+	bool v2_output_is_inactive(const OutputEntry &entry, RuntimeV2Error &error) const;
 	bool v2_update_output_settings(OutputEntry &entry, uint64_t handle, obs_data_t *requested, bool replace,
 				       RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_read_output_encoder_binding(OutputEntry &entry, obs_data_t *params, bool video, size_t &slot,
@@ -741,6 +768,7 @@ private:
 	std::unordered_map<uint64_t, EncoderGroupEntry> encoder_groups_;
 	std::unordered_map<uint64_t, ServiceEntry> services_;
 	std::unordered_map<uint64_t, OutputEntry> outputs_;
+	RecordingEntry recording_;
 	std::shared_ptr<OutputV2State> output_v2_state_;
 	RevisionState *output_revisions_ = nullptr;
 	EventDispatcher *output_events_ = nullptr;

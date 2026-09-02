@@ -10,6 +10,7 @@ target_sources(
     runtime_encoder_group_v2.cpp
     runtime_service_v2.cpp
     runtime_output_v2.cpp
+    runtime_recording_v2.cpp
     runtime_hotkey_v2.cpp
     events.cpp
     events.hpp
@@ -223,6 +224,20 @@ target_link_libraries(obs-engine-task26-output-plugin PRIVATE OBS::libobs)
 set_target_properties(
   obs-engine-task26-output-plugin
   PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task26-output"
+)
+
+# Task 27 deterministic recording Output fixture. It exposes only the audited
+# split/chapter procedures needed by the recording role and has no install rule.
+add_library(obs-engine-task27-recording-plugin MODULE EXCLUDE_FROM_ALL task27_recording_plugin.cpp)
+target_compile_features(obs-engine-task27-recording-plugin PRIVATE cxx_std_20)
+target_compile_definitions(
+  obs-engine-task27-recording-plugin
+  PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+)
+target_link_libraries(obs-engine-task27-recording-plugin PRIVATE OBS::libobs)
+set_target_properties(
+  obs-engine-task27-recording-plugin
+  PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task27-recording"
 )
 
 # Task 23 active-update bridge test. It uses the packaged null output only to

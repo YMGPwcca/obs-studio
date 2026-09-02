@@ -945,6 +945,7 @@ Methods:
 
 - `recording.getConfig`
 - `recording.configure`
+- `recording.unconfigure`
 - `recording.start`
 - `recording.stop`
 - `recording.forceStop`
@@ -958,9 +959,21 @@ Methods:
 - `recording.getCurrentPath`
 - `recording.getLastFile`
 
-This API orchestrates underlying encoder/output objects for OBS-Studio-like workflows while leaving low-level objects available through `encoder.*` and `output.*`.
+This API assigns an existing file-compatible Output; it does not create a
+hidden Encoder or Output graph. Lifecycle remains owned by `output.*`, so
+recording does not emit duplicate `recording.started` or `recording.stopped`
+events. `recording.configure` accepts an optional absolute local `path`,
+explicit `overwrite`, and explicit `createDirectory` policy. Paths are
+UTF-8/NUL checked, canonicalized, bounded, and reject URLs and unsupported
+Windows device namespaces. File splitting and chapters call only audited
+built-in Output procedures and return `unsupported_capability` when the
+selected Output does not provide them.
 
-Events use the `recording.*` namespace and include state, file and error changes.
+Recording-unique events are `recording.configChanged`,
+`recording.fileChanged`, `recording.fileFinalized`, and
+`recording.chapterAdded`. Current/final paths are reported only from Output
+settings or observed file-change/finalization state; a request path is not
+treated as proof of a file having been written.
 
 ## 31. Streaming convenience API
 

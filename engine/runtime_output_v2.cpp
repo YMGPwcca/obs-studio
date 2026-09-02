@@ -561,6 +561,8 @@ void collect_output_signal(OutputV2Observer &observer, OutputSignalKind kind, ca
 	obs_output_release(output);
 	if (state->engine && !defer_dependency_sync)
 		state->engine->v2_append_output_dependency_events(observer.handle, generated);
+	if (state->engine)
+		state->engine->v2_append_recording_output_events(observer.handle, generated);
 	publish_output_events(*state, std::move(generated));
 }
 
@@ -879,6 +881,10 @@ ObsDataPtr Engine::v2_output_state(uint64_t handle, const OutputEntry &entry) co
 	else
 		obs_data_set_obj(data.get(), "service", nullptr);
 	append_output_slots(data.get(), entry);
+	if (recording_.output == handle) {
+		obs_data_set_string(data.get(), "role", "recording");
+		obs_data_set_string(data.get(), "managedBy", "recording");
+	}
 	ObsDataPtr delay(obs_data_create());
 	obs_data_set_int(delay.get(), "seconds", obs_output_get_delay(entry.output));
 	obs_data_set_int(delay.get(), "activeSeconds", obs_output_get_active_delay(entry.output));
@@ -918,6 +924,11 @@ bool Engine::v2_get_output_entry(obs_data_t *params, uint64_t &handle, OutputEnt
 	return true;
 }
 
+bool Engine::v2_output_is_inactive(const OutputEntry &entry, RuntimeV2Error &error) const
+{
+	return output_is_inactive(entry, error);
+}
+
 void Engine::v2_bind_output_events(RevisionState *revisions, EventDispatcher *events)
 {
 	if (!output_v2_state_)
@@ -931,6 +942,12 @@ void Engine::v2_bind_output_events(RevisionState *revisions, EventDispatcher *ev
 	}
 	output_revisions_ = revisions;
 	output_events_ = events;
+}
+
+void Engine::v2_publish_output_callback_events(std::vector<RuntimeV2Event> events)
+{
+	if (output_v2_state_)
+		publish_output_events(*output_v2_state_, std::move(events));
 }
 
 void Engine::v2_begin_output_event_capture(RuntimeV2Result &result)
@@ -1547,6 +1564,8 @@ bool Engine::v2_output_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 	if (entry->service || std::any_of(entry->video_encoders.begin(), entry->video_encoders.end(), [](uint64_t v) { return v != 0; }) ||
 	    std::any_of(entry->audio_encoders.begin(), entry->audio_encoders.end(), [](uint64_t v) { return v != 0; }))
 		return fail(error, "object_in_use", "output has bound Service or Encoder objects");
+	if (recording_.output == handle)
+		return fail(error, "object_in_use", "output is assigned to the recording role");
 	if (entry->observer) {
 		disconnect_output_observer(*entry->observer, entry->output);
 		v2_wait_for_output_event_callbacks();

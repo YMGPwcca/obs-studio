@@ -988,6 +988,7 @@ void Engine::v2_prepare_shutdown() noexcept
 	v2_prepare_transition_shutdown();
 	v2_prepare_filter_shutdown();
 	v2_prepare_media_shutdown();
+	v2_prepare_recording_shutdown();
 	v2_prepare_output_shutdown();
 	v2_prepare_service_shutdown();
 	v2_prepare_encoder_group_shutdown();
