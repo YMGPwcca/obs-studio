@@ -15,7 +15,7 @@
     }
   ],
   "operatorAuthoredCommitCountInLineage": 64,
-  "operatorAuthoredCodeCommitCountInScope": 163,
+  "operatorAuthoredCodeCommitCountInScope": 166,
   "operatorAuthoredCommits": [
     {
       "hash": "ffffcfd1a65677a16d9ec596103d99bde080deb8",
@@ -1868,6 +1868,110 @@
       ]
     },
     {
+      "path": ".github/scripts/engine-protocol-v2-task29-build-fixture.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task29-package-audit.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task29-physical.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 13,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task29-physical.ps1|Fail-Task29Physical|Fail-Task29Physical",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29-physical.ps1|Start-Task29PhysicalEngine|Start-Task29PhysicalEngine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29-physical.ps1|Stop-Task29PhysicalEngine|Stop-Task29PhysicalEngine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29-physical.ps1|Read-Task29PhysicalMessage|Read-Task29PhysicalMessage",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29-physical.ps1|Send-Task29Physical|Send-Task29Physical",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29-physical.ps1|Assert-PhysicalOk|Assert-PhysicalOk",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29-physical.ps1|Read-Task29PhysicalEvent|Read-Task29PhysicalEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29-physical.ps1|Invoke-Task29PhysicalMutation|Invoke-Task29PhysicalMutation",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29-physical.ps1|Initialize-Task29PhysicalSession|Initialize-Task29PhysicalSession",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29-physical.ps1|Invoke-Task29PhysicalSetup|Invoke-Task29PhysicalSetup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29-physical.ps1|Invoke-Task29PhysicalReplay|Invoke-Task29PhysicalReplay",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29-physical.ps1|Assert-Task29PhysicalFile|Assert-Task29PhysicalFile",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29-physical.ps1|Invoke-Task29PhysicalCleanup|Invoke-Task29PhysicalCleanup"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task29-remove-fixture.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task29-stage-fixture.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task29.ps1",
+      "language": "PowerShell",
+      "status": "M",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 17,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Fail-Task29|Fail-Task29",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Start-Task29Engine|Start-Task29Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Stop-Task29Engine|Stop-Task29Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Read-Task29Message|Read-Task29Message",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Send-Task29|Send-Task29",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Read-Task29Event|Read-Task29Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Invoke-Task29Mutation|Invoke-Task29Mutation",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Initialize-Task29Session|Initialize-Task29Session",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Invoke-Task29Create|Invoke-Task29Create",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Invoke-Task29Configure|Invoke-Task29Configure",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Invoke-Task29Save|Invoke-Task29Save",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Invoke-Task29SaveRace|Invoke-Task29SaveRace",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Invoke-Task29FailedSave|Invoke-Task29FailedSave",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Invoke-Task29Lifecycle|Invoke-Task29Lifecycle",
+        "powershell|function|.github/scripts/engine-protocol-v2-task29.ps1|Invoke-Task29Cleanup|Invoke-Task29Cleanup"
+      ]
+    },
+    {
       "path": ".github/scripts/engine-protocol-v2-task3-capabilities.ps1",
       "language": "PowerShell",
       "status": "A",
@@ -2666,7 +2770,7 @@
       "path": "engine/protocol_filter_v2.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 22,
+      "operatorCommitCount": 23,
       "operatorCommits": [
         "bb227ad223b21d42c6381f6765213a36d2fa2665",
         "fbab77143a84bc101e9444f0dd2a516aab8d008a",
@@ -2689,7 +2793,8 @@
         "c02d8a8ee16a69141a46b27acc55dab63139be5a",
         "62fc044d485a8e27795c8b77cfd6909881fe9c1a",
         "8225a05c1b83e65ec5b3f6a16c311d024b630feb",
-        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b",
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
       ],
       "operatorBlameLineCount": 455,
       "scopedFunctionCount": 21,
@@ -2771,7 +2876,7 @@
       "path": "engine/protocol_phase3_v2.cpp",
       "language": "C/C++",
       "status": "A",
-      "operatorCommitCount": 8,
+      "operatorCommitCount": 9,
       "operatorCommits": [
         "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20",
         "6c8b194267516e3589f7d93cc1616359804abb05",
@@ -2780,10 +2885,11 @@
         "c02d8a8ee16a69141a46b27acc55dab63139be5a",
         "62fc044d485a8e27795c8b77cfd6909881fe9c1a",
         "8225a05c1b83e65ec5b3f6a16c311d024b630feb",
-        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b",
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
       ],
       "operatorBlameLineCount": 0,
-      "scopedFunctionCount": 47,
+      "scopedFunctionCount": 51,
       "currentFunctionKeys": [
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify|obs_engine::classify( std :: string_view name)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_hotkey|obs_engine::classify_hotkey( std :: string_view name)",
@@ -2793,6 +2899,7 @@
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_output|obs_engine::classify_output( std :: string_view name)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_recording|obs_engine::classify_recording( std :: string_view name)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_streaming|obs_engine::classify_streaming( std :: string_view name)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_replay_buffer|obs_engine::classify_replay_buffer( std :: string_view name)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( AudioMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( HotkeyMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( EncoderMethod method)",
@@ -2801,6 +2908,7 @@
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( OutputMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( RecordingMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( StreamingMethod method)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( ReplayBufferMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::handler_for|obs_engine::handler_for( AudioMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::hotkey_handler_for|obs_engine::hotkey_handler_for( HotkeyMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::encoder_handler_for|obs_engine::encoder_handler_for( EncoderMethod method)",
@@ -2809,6 +2917,7 @@
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::output_handler_for|obs_engine::output_handler_for( OutputMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::recording_handler_for|obs_engine::recording_handler_for( RecordingMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::streaming_handler_for|obs_engine::streaming_handler_for( StreamingMethod method)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::replay_buffer_handler_for|obs_engine::replay_buffer_handler_for( ReplayBufferMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::phase3_dispatch_empty|obs_engine::phase3_dispatch_empty( const Phase3Dispatch & dispatch)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::phase3_dispatch_is_mutating|obs_engine::phase3_dispatch_is_mutating( const Phase3Dispatch & dispatch)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_phase3|obs_engine::classify_phase3( std :: string_view name , Phase3Dispatch & dispatch)",
@@ -2826,6 +2935,7 @@
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_output|obs_engine::execute_output( Engine & engine , OutputMethod method , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_recording|obs_engine::execute_recording( Engine & engine , RecordingMethod method , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_streaming|obs_engine::execute_streaming( Engine & engine , StreamingMethod method , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_replay_buffer|obs_engine::execute_replay_buffer( Engine & engine , ReplayBufferMethod method , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_phase3|obs_engine::execute_phase3( Engine & engine , const Phase3Dispatch & dispatch , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::publish_events|obs_engine::publish_events( EventDispatcher & events , uint64_t revision , RuntimeV2Result & result)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::fail_phase3_request|obs_engine::fail_phase3_request( const V2Request & request , RevisionState & revisions , RuntimeV2Error & error , std :: optional<Phase3CaptureScope> & capture , std :: optional<RevisionState::MutationGuard> & guard)",
@@ -3760,12 +3870,14 @@
     {
       "path": "engine/runtime_output_v2.cpp",
       "language": "C/C++",
-      "status": "M",
-      "operatorCommitCount": 3,
+      "status": "A",
+      "operatorCommitCount": 5,
       "operatorCommits": [
         "62fc044d485a8e27795c8b77cfd6909881fe9c1a",
         "8225a05c1b83e65ec5b3f6a16c311d024b630feb",
-        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b",
+        "e0c9dc93e053bed443763decb8aabf7b0d3883da",
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 139,
@@ -3809,7 +3921,7 @@
         "cpp|function|engine/runtime_output_v2.cpp|obs_engine::disconnect_output_observer|obs_engine::disconnect_output_observer( OutputV2Observer & observer , obs_output_t * output)",
         "cpp|function|engine/runtime_output_v2.cpp|obs_engine::release_output_observer_weak|obs_engine::release_output_observer_weak( OutputV2Observer & observer)",
         "cpp|function|engine/runtime_output_v2.cpp|obs_engine::output_starting|obs_engine::output_starting( const OutputEntry & entry)",
-        "cpp|function|engine/runtime_output_v2.cpp|obs_engine::output_role_error|obs_engine::output_role_error( uint64_t handle , uint64_t recording_output , uint64_t streaming_output)",
+        "cpp|function|engine/runtime_output_v2.cpp|obs_engine::output_role_error|obs_engine::output_role_error( uint64_t handle , uint64_t recording_output , uint64_t streaming_output , uint64_t replay_output)",
         "cpp|function|engine/runtime_output_v2.cpp|obs_engine::output_stopping|obs_engine::output_stopping( const OutputEntry & entry)",
         "cpp|function|engine/runtime_output_v2.cpp|obs_engine::set_output_starting|obs_engine::set_output_starting( OutputEntry & entry , bool value)",
         "cpp|function|engine/runtime_output_v2.cpp|obs_engine::set_output_stopping|obs_engine::set_output_stopping( OutputEntry & entry , bool value)",
@@ -4145,11 +4257,12 @@
       "path": "engine/runtime_recording_v2.cpp",
       "language": "C/C++",
       "status": "A",
-      "operatorCommitCount": 3,
+      "operatorCommitCount": 4,
       "operatorCommits": [
         "8225a05c1b83e65ec5b3f6a16c311d024b630feb",
         "d9088c1f6971871f3ebd1d3804bd4232be2a1925",
-        "c8ac896c5983284b2049c65730e68a93495eb95b"
+        "c8ac896c5983284b2049c65730e68a93495eb95b",
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 43,
@@ -4197,6 +4310,50 @@
         "cpp|function|engine/runtime_recording_v2.cpp|obs_engine::Engine::v2_recording_get_current_path|obs_engine::Engine::v2_recording_get_current_path( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/runtime_recording_v2.cpp|obs_engine::Engine::v2_recording_get_last_file|obs_engine::Engine::v2_recording_get_last_file( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/runtime_recording_v2.cpp|obs_engine::Engine::v2_append_recording_output_events|obs_engine::Engine::v2_append_recording_output_events( uint64_t output_handle , std :: vector<RuntimeV2Event> & events)"
+      ]
+    },
+    {
+      "path": "engine/runtime_replay_buffer_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 31,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::reset_result|obs_engine::reset_result( RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::fail|obs_engine::fail( RuntimeV2Error & error , const char * code , const char * message)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::output_is_replay_compatible|obs_engine::output_is_replay_compatible( const OutputEntry & entry , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::dangerous_replay_path|obs_engine::dangerous_replay_path( std :: string_view path)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::make_replay_filesystem_path|obs_engine::make_replay_filesystem_path( std :: string_view text , std :: filesystem :: path & path)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::replay_path_to_utf8|obs_engine::replay_path_to_utf8( const std :: filesystem :: path & path)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::normalize_replay_path|obs_engine::normalize_replay_path( std :: string_view raw , std :: string & path)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::replay_file_size|obs_engine::replay_file_size( std :: string_view path)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::make_replay_config|obs_engine::make_replay_config( uint64_t output_handle , bool configured)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::replay_output_params|obs_engine::replay_output_params( uint64_t output_handle)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::make_replay_path_result|obs_engine::make_replay_path_result( uint64_t output_handle , const std :: string & path)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::make_replay_saved_event|obs_engine::make_replay_saved_event( uint64_t output_handle , const std :: string & path)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::make_replay_save_result|obs_engine::make_replay_save_result( uint64_t output_handle , bool pending , const std :: string & last_file)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::ReplayCallbackScope::ReplayCallbackScope|obs_engine::ReplayCallbackScope::ReplayCallbackScope( ReplayV2Observer & observer)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::ReplayCallbackScope::~ReplayCallbackScope|obs_engine::ReplayCallbackScope::~ReplayCallbackScope()",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::ReplayCallbackScope::accepted|obs_engine::ReplayCallbackScope::accepted() const",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::read_last_replay_path|obs_engine::read_last_replay_path( obs_output_t * output , std :: string & path)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::replay_saved_callback|obs_engine::replay_saved_callback( * data , calldata_t *)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::connect_replay_observer|obs_engine::connect_replay_observer( ReplayV2Observer & observer , obs_output_t * output)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::disconnect_replay_observer|obs_engine::disconnect_replay_observer( ReplayV2Observer & observer , obs_output_t * output)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::Engine::v2_get_replay_buffer_output|obs_engine::Engine::v2_get_replay_buffer_output( uint64_t & handle , OutputEntry * & entry , RuntimeV2Error & error) const",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::Engine::v2_prepare_replay_shutdown|obs_engine::Engine::v2_prepare_replay_shutdown()",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::Engine::v2_replay_buffer_get_config|obs_engine::Engine::v2_replay_buffer_get_config( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::Engine::v2_replay_buffer_configure|obs_engine::Engine::v2_replay_buffer_configure( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::Engine::v2_replay_buffer_unconfigure|obs_engine::Engine::v2_replay_buffer_unconfigure( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::Engine::v2_replay_buffer_start|obs_engine::Engine::v2_replay_buffer_start( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::Engine::v2_replay_buffer_stop|obs_engine::Engine::v2_replay_buffer_stop( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::Engine::v2_replay_buffer_save|obs_engine::Engine::v2_replay_buffer_save( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::Engine::v2_replay_buffer_get_state|obs_engine::Engine::v2_replay_buffer_get_state( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::Engine::v2_replay_buffer_get_stats|obs_engine::Engine::v2_replay_buffer_get_stats( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_replay_buffer_v2.cpp|obs_engine::Engine::v2_replay_buffer_get_last_file|obs_engine::Engine::v2_replay_buffer_get_last_file( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)"
       ]
     },
     {
@@ -4354,7 +4511,7 @@
       "path": "engine/runtime_source_v2.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 14,
+      "operatorCommitCount": 15,
       "operatorCommits": [
         "f13431c2dd72109b9ec8dbebb3c0174f7d119a15",
         "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
@@ -4369,7 +4526,8 @@
         "c02d8a8ee16a69141a46b27acc55dab63139be5a",
         "62fc044d485a8e27795c8b77cfd6909881fe9c1a",
         "8225a05c1b83e65ec5b3f6a16c311d024b630feb",
-        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b",
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
       ],
       "operatorBlameLineCount": 1276,
       "scopedFunctionCount": 81,
@@ -4461,9 +4619,10 @@
       "path": "engine/runtime_streaming_v2.cpp",
       "language": "C/C++",
       "status": "A",
-      "operatorCommitCount": 1,
+      "operatorCommitCount": 2,
       "operatorCommits": [
-        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b",
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 23,
@@ -4688,7 +4847,7 @@
       "path": "engine/runtime.hpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 30,
+      "operatorCommitCount": 31,
       "operatorCommits": [
         "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
         "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc",
@@ -4719,7 +4878,8 @@
         "62fc044d485a8e27795c8b77cfd6909881fe9c1a",
         "8225a05c1b83e65ec5b3f6a16c311d024b630feb",
         "d9088c1f6971871f3ebd1d3804bd4232be2a1925",
-        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b",
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
       ],
       "operatorBlameLineCount": 228,
       "scopedFunctionCount": 0,
@@ -4882,6 +5042,20 @@
       "scopedFunctionCount": 1,
       "currentFunctionKeys": [
         "cpp|function|engine/task27_recording_plugin.cpp|obs_module_load|obs_module_load()"
+      ]
+    },
+    {
+      "path": "engine/task29_replay_plugin.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "d5ff07702595f471e07bc5a02389be164081ba0b"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 1,
+      "currentFunctionKeys": [
+        "cpp|function|engine/task29_replay_plugin.cpp|obs_module_load|obs_module_load()"
       ]
     },
     {
@@ -5117,7 +5291,7 @@
       "path": "tools/check-complexity.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 37,
+      "operatorCommitCount": 38,
       "operatorCommits": [
         "a6b2b65df6cbcb289e4b81af1ca898a5397c3992",
         "979148802c665938cd7532c4c50fedf9259d725e",
@@ -5155,7 +5329,8 @@
         "e17f34014a940d9148fd828ee884dff12833cdf3",
         "688b51df9415bbe26cf1b5eb83a595a9771db51e",
         "18a4984a1bcea29b54ac80127bc17d451c583112",
-        "8ef8bc09cfe5d24d57f583e14fb8136de6ad78ba"
+        "8ef8bc09cfe5d24d57f583e14fb8136de6ad78ba",
+        "e0c9dc93e053bed443763decb8aabf7b0d3883da"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 165,
@@ -5459,6 +5634,11 @@
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
     {
+      "path": ".github/workflows/engine-protocol-v2-task29.yaml",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
       "path": ".github/workflows/engine-protocol-v2-task3.yaml",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
@@ -5680,6 +5860,11 @@
     },
     {
       "path": "docs/libobs-engine/TASK28_ACCEPTANCE.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/TASK29_ACCEPTANCE.md",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },

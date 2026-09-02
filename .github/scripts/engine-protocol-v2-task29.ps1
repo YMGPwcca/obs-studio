@@ -132,9 +132,7 @@ function Invoke-Task29Save($State, [string] $Id, [string] $EventId) {
     if ([string]$saved.data.output -ne $State.Output -or [string]$saved.data.path -ne $State.Path) { Fail-Task29 "replayBuffer.saved $EventId had the wrong output or path." }
 }
 
-function Invoke-Task29Lifecycle($State) {
-    $start = Invoke-Task29Mutation $State 'start' 'replayBuffer.start' @{} @('output.started', 'encoder.activeChanged', 'encoder.activeChanged') 'replayBuffer.start'
-    if ([string]$start.data.state.state -ne 'active') { Fail-Task29 'replay buffer did not become active.' }
+function Invoke-Task29SaveRace($State) {
     $first = Invoke-Task29Mutation $State 'save-one' 'replayBuffer.save' @{} @() 'first replayBuffer.save'
     if (-not $first.data.pending) { Fail-Task29 'first save did not remain pending.' }
     $repeat = Send-Task29 @{ op = 'request'; id = 'save-repeat'; method = 'replayBuffer.save'; params = @{} }
@@ -157,6 +155,9 @@ function Invoke-Task29Lifecycle($State) {
     if ([string]$saved_after_stop.data.path -ne $State.Path) { Fail-Task29 'save-after-stop completion path was wrong.' }
     $stateResponse = Send-Task29 @{ op = 'request'; id = 'state-after-save'; method = 'replayBuffer.getState'; params = @{} }; Assert-Ok $stateResponse $State.Current 'replayBuffer.getState after stop/save race'
     if ($stateResponse.data.pendingSave) { Fail-Task29 'pendingSave remained set after saved callback.' }
+}
+
+function Invoke-Task29FailedSave($State) {
     $null = Invoke-Task29Mutation $State 'fail-settings' 'output.patchSettings' @{ output = $State.Output; settings = @{ fail_save = $true; save_delay_ms = 100 } } @('output.configurationChanged') 'replay save failure settings'
     $restart = Invoke-Task29Mutation $State 'restart' 'replayBuffer.start' @{} @('output.started', 'encoder.activeChanged', 'encoder.activeChanged') 'replayBuffer.start for failed save'
     if ([string]$restart.data.state.state -ne 'active') { Fail-Task29 'replay buffer did not restart for failed save.' }
@@ -172,6 +173,13 @@ function Invoke-Task29Lifecycle($State) {
     Read-Task29Event 'encoder.activeChanged' $failedNext | Out-Null
     Read-Task29Event 'encoder.activeChanged' $failedNext | Out-Null
     $State.Current = $failedNext
+}
+
+function Invoke-Task29Lifecycle($State) {
+    $start = Invoke-Task29Mutation $State 'start' 'replayBuffer.start' @{} @('output.started', 'encoder.activeChanged', 'encoder.activeChanged') 'replayBuffer.start'
+    if ([string]$start.data.state.state -ne 'active') { Fail-Task29 'replay buffer did not become active.' }
+    Invoke-Task29SaveRace $State
+    Invoke-Task29FailedSave $State
 }
 
 function Invoke-Task29Cleanup($State) {
