@@ -55,6 +55,13 @@ function Assert-Ok($Response, [int64] $Revision, [string] $Label) {
     if (-not $Response.status.ok -or [int64]$Response.revision -ne $Revision) { Fail-Task30 "$Label did not succeed at revision $Revision (actual=$($Response.revision) code=$code)." }
 }
 
+function Assert-OkAtOrAfter($Response, [int64] $MinimumRevision, [string] $Label) {
+    $code = if ($null -ne $Response.status.PSObject.Properties['code']) { [string]$Response.status.code } else { '<missing>' }
+    if (-not $Response.status.ok -or [int64]$Response.revision -lt $MinimumRevision) {
+        Fail-Task30 "$Label did not succeed at or after revision $MinimumRevision (actual=$($Response.revision) code=$code)."
+    }
+}
+
 function Assert-Error($Response, [string] $Code, [int64] $Revision, [string] $Label) {
     $actual = if ($null -ne $Response.status.PSObject.Properties['code']) { [string]$Response.status.code } else { '<missing>' }
     if ($Response.status.ok -or $actual -ne $Code -or [int64]$Response.revision -ne $Revision) { Fail-Task30 "$Label did not return $Code at revision $Revision (actual=$actual revision=$($Response.revision))." }
@@ -82,7 +89,7 @@ function Read-Task30Event([string] $Name, [int64] $Revision) {
 function Invoke-Task30Mutation($State, [string] $Id, [string] $Method, [hashtable] $Params,
     [string[]] $Events, [string] $Label) {
     $response = Send-Task30 @{ op = 'request'; id = $Id; method = $Method; params = $Params }
-    Assert-Ok $response ($State.Current + 1) $Label; $State.Current++
+    Assert-OkAtOrAfter $response ($State.Current + 1) $Label; $State.Current = [int64]$response.revision
     foreach ($event in $Events) { Read-Task30Event $event $State.Current | Out-Null }
     return $response
 }
