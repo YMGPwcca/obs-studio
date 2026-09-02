@@ -137,6 +137,13 @@ function Read-Task22Event([string] $Name, [int64] $Revision, [bool] $Telemetry =
     }
 }
 
+function Assert-Task22ClickTelemetry([int64] $Revision, [string] $Label) {
+    $first = Read-Task22Event 'hotkey.triggered' $Revision $true
+    if (-not [bool]$first.data.pressed) { return }
+    $release = Read-Task22Event 'hotkey.triggered' $Revision $true
+    if ([bool]$release.data.pressed) { Fail-Task22 "$Label did not settle at release." }
+}
+
 function New-Task22Binding([string] $Key, [string[]] $Modifiers) {
     return @{ key = $Key; modifiers = @($Modifiers | ForEach-Object { @{ name = $_ } }) }
 }
@@ -298,8 +305,7 @@ function Invoke-Task22TriggerChecks($State) {
     $trigger = Send-Task22 @{ op = 'request'; id = 't22-trigger'; method = 'hotkey.trigger'; ifRevision = $State.Current; params = @{
             registerer = @{ type = 'frontend' }; name = 'task22.frontend'; action = 'click' } }
     Assert-Ok $trigger $State.Current 'hotkey.trigger click'
-    $triggerEvent = Read-Task22Event 'hotkey.triggered' $State.Current $true
-    if ([bool]$triggerEvent.data.pressed) { Fail-Task22 'click trigger did not settle at release.' }
+    Assert-Task22ClickTelemetry $State.Current 'click trigger'
     $sourceTrigger = Send-Task22 @{ op = 'request'; id = 't22-source-trigger'; method = 'hotkey.trigger'; ifRevision = $State.Current; params = @{
             registerer = $State.Source.registerer; name = 'task22.source'; action = 'click' } }
     Assert-Ok $sourceTrigger $State.Current 'source hotkey trigger'
