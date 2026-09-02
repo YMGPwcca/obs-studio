@@ -622,6 +622,15 @@ bool output_starting(const OutputEntry &entry)
 	return entry.observer->starting;
 }
 
+const char *output_role_error(uint64_t handle, uint64_t recording_output, uint64_t streaming_output)
+{
+	if (recording_output == handle)
+		return "output is assigned to the recording role";
+	if (streaming_output == handle)
+		return "output is assigned to the streaming role";
+	return nullptr;
+}
+
 bool output_stopping(const OutputEntry &entry)
 {
 	std::lock_guard lock(entry.observer->mutex);
@@ -1568,10 +1577,9 @@ bool Engine::v2_output_remove(obs_data_t *params, RuntimeV2Result &result, Runti
 	if (entry->service || std::any_of(entry->video_encoders.begin(), entry->video_encoders.end(), [](uint64_t v) { return v != 0; }) ||
 	    std::any_of(entry->audio_encoders.begin(), entry->audio_encoders.end(), [](uint64_t v) { return v != 0; }))
 		return fail(error, "object_in_use", "output has bound Service or Encoder objects");
-	if (recording_.output == handle)
-		return fail(error, "object_in_use", "output is assigned to the recording role");
-	if (streaming_.output == handle)
-		return fail(error, "object_in_use", "output is assigned to the streaming role");
+	const char *role_error = output_role_error(handle, recording_.output, streaming_.output);
+	if (role_error)
+		return fail(error, "object_in_use", role_error);
 	if (entry->observer) {
 		disconnect_output_observer(*entry->observer, entry->output);
 		v2_wait_for_output_event_callbacks();

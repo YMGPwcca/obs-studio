@@ -15,7 +15,7 @@
     }
   ],
   "operatorAuthoredCommitCountInLineage": 64,
-  "operatorAuthoredCodeCommitCountInScope": 160,
+  "operatorAuthoredCodeCommitCountInScope": 163,
   "operatorAuthoredCommits": [
     {
       "hash": "ffffcfd1a65677a16d9ec596103d99bde080deb8",
@@ -1687,10 +1687,11 @@
     {
       "path": ".github/scripts/engine-protocol-v2-task27-physical.ps1",
       "language": "PowerShell",
-      "status": "M",
-      "operatorCommitCount": 1,
+      "status": "A",
+      "operatorCommitCount": 2,
       "operatorCommits": [
-        "7d092edbe2efb3e433d98e83cd3e87154322a15f"
+        "7d092edbe2efb3e433d98e83cd3e87154322a15f",
+        "8ef8bc09cfe5d24d57f583e14fb8136de6ad78ba"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 14,
@@ -1759,6 +1760,111 @@
         "powershell|function|.github/scripts/engine-protocol-v2-task27.ps1|Invoke-Task27CreateAndConfigure|Invoke-Task27CreateAndConfigure",
         "powershell|function|.github/scripts/engine-protocol-v2-task27.ps1|Invoke-Task27Lifecycle|Invoke-Task27Lifecycle",
         "powershell|function|.github/scripts/engine-protocol-v2-task27.ps1|Invoke-Task27StopAndCleanup|Invoke-Task27StopAndCleanup"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task28-build-fixture.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task28-package-audit.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task28-physical.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "77e8a7ff9235755e6176b9d06e2cb3722756f272"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 16,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Fail-Task28Physical|Fail-Task28Physical",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Start-Task28PhysicalEngine|Start-Task28PhysicalEngine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Start-Task28LoopbackReceiver|Start-Task28LoopbackReceiver",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Stop-Task28LoopbackReceiver|Stop-Task28LoopbackReceiver",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Stop-Task28PhysicalEngine|Stop-Task28PhysicalEngine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Read-Task28PhysicalMessage|Read-Task28PhysicalMessage",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Assert-NoSentinel|Assert-NoSentinel",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Send-Task28Physical|Send-Task28Physical",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Assert-PhysicalOk|Assert-PhysicalOk",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Read-PhysicalEvent|Read-PhysicalEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Invoke-Task28PhysicalMutation|Invoke-Task28PhysicalMutation",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Initialize-Task28PhysicalSession|Initialize-Task28PhysicalSession",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Invoke-Task28PhysicalSetup|Invoke-Task28PhysicalSetup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Invoke-Task28PhysicalStream|Invoke-Task28PhysicalStream",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Assert-Task28LoopbackFiles|Assert-Task28LoopbackFiles",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28-physical.ps1|Invoke-Task28PhysicalCleanup|Invoke-Task28PhysicalCleanup"
+      ]
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task28-remove-fixture.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task28-stage-fixture.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 0,
+      "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task28.ps1",
+      "language": "PowerShell",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 15,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Fail-Task28|Fail-Task28",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Start-Task28Engine|Start-Task28Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Stop-Task28Engine|Stop-Task28Engine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Read-Task28Message|Read-Task28Message",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Assert-NoSentinel|Assert-NoSentinel",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Send-Task28|Send-Task28",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Read-Task28Event|Read-Task28Event",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Invoke-Task28Mutation|Invoke-Task28Mutation",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Initialize-Task28Session|Initialize-Task28Session",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Invoke-Task28Create|Invoke-Task28Create",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Invoke-Task28Configure|Invoke-Task28Configure",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Invoke-Task28Lifecycle|Invoke-Task28Lifecycle",
+        "powershell|function|.github/scripts/engine-protocol-v2-task28.ps1|Invoke-Task28Cleanup|Invoke-Task28Cleanup"
       ]
     },
     {
@@ -2560,7 +2666,7 @@
       "path": "engine/protocol_filter_v2.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 21,
+      "operatorCommitCount": 22,
       "operatorCommits": [
         "bb227ad223b21d42c6381f6765213a36d2fa2665",
         "fbab77143a84bc101e9444f0dd2a516aab8d008a",
@@ -2582,7 +2688,8 @@
         "6626a37b187a0ebc3ca9662a6397b1b330c45d74",
         "c02d8a8ee16a69141a46b27acc55dab63139be5a",
         "62fc044d485a8e27795c8b77cfd6909881fe9c1a",
-        "8225a05c1b83e65ec5b3f6a16c311d024b630feb"
+        "8225a05c1b83e65ec5b3f6a16c311d024b630feb",
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
       ],
       "operatorBlameLineCount": 455,
       "scopedFunctionCount": 21,
@@ -2664,7 +2771,7 @@
       "path": "engine/protocol_phase3_v2.cpp",
       "language": "C/C++",
       "status": "A",
-      "operatorCommitCount": 7,
+      "operatorCommitCount": 8,
       "operatorCommits": [
         "ca0d6a4405b59bce74c77c2e89b11ee6ac891f20",
         "6c8b194267516e3589f7d93cc1616359804abb05",
@@ -2672,10 +2779,11 @@
         "6626a37b187a0ebc3ca9662a6397b1b330c45d74",
         "c02d8a8ee16a69141a46b27acc55dab63139be5a",
         "62fc044d485a8e27795c8b77cfd6909881fe9c1a",
-        "8225a05c1b83e65ec5b3f6a16c311d024b630feb"
+        "8225a05c1b83e65ec5b3f6a16c311d024b630feb",
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
       ],
       "operatorBlameLineCount": 0,
-      "scopedFunctionCount": 43,
+      "scopedFunctionCount": 47,
       "currentFunctionKeys": [
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify|obs_engine::classify( std :: string_view name)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_hotkey|obs_engine::classify_hotkey( std :: string_view name)",
@@ -2684,6 +2792,7 @@
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_service|obs_engine::classify_service( std :: string_view name)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_output|obs_engine::classify_output( std :: string_view name)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_recording|obs_engine::classify_recording( std :: string_view name)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_streaming|obs_engine::classify_streaming( std :: string_view name)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( AudioMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( HotkeyMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( EncoderMethod method)",
@@ -2691,6 +2800,7 @@
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( ServiceMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( OutputMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( RecordingMethod method)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::is_mutating|obs_engine::is_mutating( StreamingMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::handler_for|obs_engine::handler_for( AudioMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::hotkey_handler_for|obs_engine::hotkey_handler_for( HotkeyMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::encoder_handler_for|obs_engine::encoder_handler_for( EncoderMethod method)",
@@ -2698,6 +2808,7 @@
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::service_handler_for|obs_engine::service_handler_for( ServiceMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::output_handler_for|obs_engine::output_handler_for( OutputMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::recording_handler_for|obs_engine::recording_handler_for( RecordingMethod method)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::streaming_handler_for|obs_engine::streaming_handler_for( StreamingMethod method)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::phase3_dispatch_empty|obs_engine::phase3_dispatch_empty( const Phase3Dispatch & dispatch)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::phase3_dispatch_is_mutating|obs_engine::phase3_dispatch_is_mutating( const Phase3Dispatch & dispatch)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::classify_phase3|obs_engine::classify_phase3( std :: string_view name , Phase3Dispatch & dispatch)",
@@ -2714,6 +2825,7 @@
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_service|obs_engine::execute_service( Engine & engine , ServiceMethod method , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_output|obs_engine::execute_output( Engine & engine , OutputMethod method , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_recording|obs_engine::execute_recording( Engine & engine , RecordingMethod method , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_streaming|obs_engine::execute_streaming( Engine & engine , StreamingMethod method , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::execute_phase3|obs_engine::execute_phase3( Engine & engine , const Phase3Dispatch & dispatch , const V2Request & request , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::publish_events|obs_engine::publish_events( EventDispatcher & events , uint64_t revision , RuntimeV2Result & result)",
         "cpp|function|engine/protocol_phase3_v2.cpp|obs_engine::fail_phase3_request|obs_engine::fail_phase3_request( const V2Request & request , RevisionState & revisions , RuntimeV2Error & error , std :: optional<Phase3CaptureScope> & capture , std :: optional<RevisionState::MutationGuard> & guard)",
@@ -3648,14 +3760,15 @@
     {
       "path": "engine/runtime_output_v2.cpp",
       "language": "C/C++",
-      "status": "A",
-      "operatorCommitCount": 2,
+      "status": "M",
+      "operatorCommitCount": 3,
       "operatorCommits": [
         "62fc044d485a8e27795c8b77cfd6909881fe9c1a",
-        "8225a05c1b83e65ec5b3f6a16c311d024b630feb"
+        "8225a05c1b83e65ec5b3f6a16c311d024b630feb",
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
       ],
       "operatorBlameLineCount": 0,
-      "scopedFunctionCount": 138,
+      "scopedFunctionCount": 139,
       "currentFunctionKeys": [
         "cpp|function|engine/runtime_output_v2.cpp|obs_engine::ObsPropertiesDeleter::operator ( )|obs_engine::ObsPropertiesDeleter::operator ( )( obs_properties_t * properties) const",
         "cpp|function|engine/runtime_output_v2.cpp|obs_engine::reset_result|obs_engine::reset_result( RuntimeV2Result & result , RuntimeV2Error & error)",
@@ -3696,6 +3809,7 @@
         "cpp|function|engine/runtime_output_v2.cpp|obs_engine::disconnect_output_observer|obs_engine::disconnect_output_observer( OutputV2Observer & observer , obs_output_t * output)",
         "cpp|function|engine/runtime_output_v2.cpp|obs_engine::release_output_observer_weak|obs_engine::release_output_observer_weak( OutputV2Observer & observer)",
         "cpp|function|engine/runtime_output_v2.cpp|obs_engine::output_starting|obs_engine::output_starting( const OutputEntry & entry)",
+        "cpp|function|engine/runtime_output_v2.cpp|obs_engine::output_role_error|obs_engine::output_role_error( uint64_t handle , uint64_t recording_output , uint64_t streaming_output)",
         "cpp|function|engine/runtime_output_v2.cpp|obs_engine::output_stopping|obs_engine::output_stopping( const OutputEntry & entry)",
         "cpp|function|engine/runtime_output_v2.cpp|obs_engine::set_output_starting|obs_engine::set_output_starting( OutputEntry & entry , bool value)",
         "cpp|function|engine/runtime_output_v2.cpp|obs_engine::set_output_stopping|obs_engine::set_output_stopping( OutputEntry & entry , bool value)",
@@ -4240,7 +4354,7 @@
       "path": "engine/runtime_source_v2.cpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 13,
+      "operatorCommitCount": 14,
       "operatorCommits": [
         "f13431c2dd72109b9ec8dbebb3c0174f7d119a15",
         "e3ced05dc6f1e19a50e7da25c8f603b8f3ad90ff",
@@ -4254,7 +4368,8 @@
         "6626a37b187a0ebc3ca9662a6397b1b330c45d74",
         "c02d8a8ee16a69141a46b27acc55dab63139be5a",
         "62fc044d485a8e27795c8b77cfd6909881fe9c1a",
-        "8225a05c1b83e65ec5b3f6a16c311d024b630feb"
+        "8225a05c1b83e65ec5b3f6a16c311d024b630feb",
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
       ],
       "operatorBlameLineCount": 1276,
       "scopedFunctionCount": 81,
@@ -4340,6 +4455,42 @@
         "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_refresh|obs_engine::Engine::v2_source_refresh( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_save_state|obs_engine::Engine::v2_source_save_state( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
         "cpp|function|engine/runtime_source_v2.cpp|obs_engine::Engine::v2_source_load_state|obs_engine::Engine::v2_source_load_state( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)"
+      ]
+    },
+    {
+      "path": "engine/runtime_streaming_v2.cpp",
+      "language": "C/C++",
+      "status": "A",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 23,
+      "currentFunctionKeys": [
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::reset_result|obs_engine::reset_result( RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::fail|obs_engine::fail( RuntimeV2Error & error , const char * code , const char * message)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::protocol_supported|obs_engine::protocol_supported( const char * protocols , const char * protocol)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::streaming_output_compatible|obs_engine::streaming_output_compatible( const OutputEntry & entry , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::service_has_stream_credential|obs_engine::service_has_stream_credential( obs_service_t * service)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::streaming_service_compatible|obs_engine::streaming_service_compatible( const OutputEntry & entry , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::make_streaming_config|obs_engine::make_streaming_config( uint64_t output_handle , bool configured)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::streaming_output_params|obs_engine::streaming_output_params( uint64_t output_handle)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::make_streaming_service_params|obs_engine::make_streaming_service_params( uint64_t output_handle , obs_data_t * input , ObsDataPtr & forwarded , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::Engine::v2_get_streaming_output|obs_engine::Engine::v2_get_streaming_output( uint64_t & handle , OutputEntry * & entry , RuntimeV2Error & error) const",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::Engine::v2_prepare_streaming_shutdown|obs_engine::Engine::v2_prepare_streaming_shutdown()",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::Engine::v2_streaming_get_config|obs_engine::Engine::v2_streaming_get_config( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::Engine::v2_streaming_configure|obs_engine::Engine::v2_streaming_configure( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::Engine::v2_streaming_unconfigure|obs_engine::Engine::v2_streaming_unconfigure( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::Engine::v2_streaming_start|obs_engine::Engine::v2_streaming_start( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::Engine::v2_streaming_stop|obs_engine::Engine::v2_streaming_stop( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::Engine::v2_streaming_force_stop|obs_engine::Engine::v2_streaming_force_stop( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::Engine::v2_streaming_get_state|obs_engine::Engine::v2_streaming_get_state( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::Engine::v2_streaming_get_stats|obs_engine::Engine::v2_streaming_get_stats( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::Engine::v2_streaming_get_service|obs_engine::Engine::v2_streaming_get_service( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::Engine::v2_streaming_set_service|obs_engine::Engine::v2_streaming_set_service( obs_data_t * params , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::Engine::v2_streaming_get_reconnect_state|obs_engine::Engine::v2_streaming_get_reconnect_state( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)",
+        "cpp|function|engine/runtime_streaming_v2.cpp|obs_engine::Engine::v2_streaming_get_last_error|obs_engine::Engine::v2_streaming_get_last_error( obs_data_t * , RuntimeV2Result & result , RuntimeV2Error & error)"
       ]
     },
     {
@@ -4537,7 +4688,7 @@
       "path": "engine/runtime.hpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 29,
+      "operatorCommitCount": 30,
       "operatorCommits": [
         "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
         "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc",
@@ -4567,7 +4718,8 @@
         "c02d8a8ee16a69141a46b27acc55dab63139be5a",
         "62fc044d485a8e27795c8b77cfd6909881fe9c1a",
         "8225a05c1b83e65ec5b3f6a16c311d024b630feb",
-        "d9088c1f6971871f3ebd1d3804bd4232be2a1925"
+        "d9088c1f6971871f3ebd1d3804bd4232be2a1925",
+        "34b59dd246fc8f5cab276e802e64c7f34a08e70b"
       ],
       "operatorBlameLineCount": 228,
       "scopedFunctionCount": 0,
@@ -4965,7 +5117,7 @@
       "path": "tools/check-complexity.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 36,
+      "operatorCommitCount": 37,
       "operatorCommits": [
         "a6b2b65df6cbcb289e4b81af1ca898a5397c3992",
         "979148802c665938cd7532c4c50fedf9259d725e",
@@ -5002,7 +5154,8 @@
         "140b566da93e134145c2ed204d8fbddf29694ae1",
         "e17f34014a940d9148fd828ee884dff12833cdf3",
         "688b51df9415bbe26cf1b5eb83a595a9771db51e",
-        "18a4984a1bcea29b54ac80127bc17d451c583112"
+        "18a4984a1bcea29b54ac80127bc17d451c583112",
+        "8ef8bc09cfe5d24d57f583e14fb8136de6ad78ba"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 165,
@@ -5301,6 +5454,11 @@
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
     {
+      "path": ".github/workflows/engine-protocol-v2-task28.yaml",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
       "path": ".github/workflows/engine-protocol-v2-task3.yaml",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
@@ -5521,6 +5679,11 @@
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
     {
+      "path": "docs/libobs-engine/TASK28_ACCEPTANCE.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
       "path": "engine/AUDIO_V1.md",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
@@ -5637,6 +5800,11 @@
     },
     {
       "path": "engine/SOURCE_V1.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
+      "path": "engine/STREAMING_V1.md",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },
