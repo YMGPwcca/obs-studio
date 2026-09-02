@@ -45,7 +45,7 @@ $knownOperatorEmails = @(
     'ymgpwcca@proton.me'
 )
 $knownOperatorName = 'YMGPwcca'
-$acceptedBaselineBlob = '1821be458420846ec65b946a1c2ed789c1f736a1'
+$acceptedBaselineBlob = '14d7e91d1daf54191ce61cf6887c4c644002fed9'
 $limitations = [System.Collections.Generic.List[object]]::new()
 
 function Get-RepoFilePath {

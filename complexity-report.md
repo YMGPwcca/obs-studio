@@ -1,19 +1,19 @@
 # Phase-1 Complexity Hardening Report
 
 Accepted starting SHA: `3fc2e678d10809a4dca8b28107710534160803ab`
-Candidate measurement HEAD: `62fc044d485a8e27795c8b77cfd6909881fe9c1a`
+Candidate measurement HEAD: `d9088c1f6971871f3ebd1d3804bd4232be2a1925`
 
 ## Named-function before/after summary
 
 | Measure | Before | After |
 |---|---:|---:|
-| Named functions | 543 | 2434 |
-| Average named-function CC | 5.703 | 4.011 |
-| Median named-function CC | 4 | 4 |
+| Named functions | 543 | 2497 |
+| Average named-function CC | 5.703 | 4.007 |
+| Median named-function CC | 4 | 3 |
 | 90th percentile named-function CC | 13 | 8 |
 | Maximum named-function CC | 61 | 13 |
-| Named functions with CC > 5 | 171 | 604 |
-| Named functions with CC > 7 | 115 | 271 |
+| Named functions with CC > 5 | 171 | 617 |
+| Named functions with CC > 7 | 115 | 278 |
 | Named functions with CC > 10 | 71 | 1 |
 
 The p90 is nearest-rank `ceil(0.90 * N)`. The named-function summary excludes PowerShell top-level script bodies; script bodies are measured and enforced separately. GitHub Actions run blocks are parsed as executable policy targets: only trivial wrappers remain inline. The historical Before snapshot contains only bodies present in that accepted historical scope, while After includes the complete current project-owned script-body scope.
@@ -22,8 +22,8 @@ The p90 is nearest-rank `ceil(0.90 * N)`. The named-function summary excludes Po
 
 | Measure | Before | After |
 |---|---:|---:|
-| Script bodies | 5 | 82 |
-| Average Script bodies CC | 36.2 | 2.512 |
+| Script bodies | 5 | 87 |
+| Average Script bodies CC | 36.2 | 2.54 |
 | Median Script bodies CC | 26 | 2 |
 | 90th percentile Script bodies CC | 80 | 5 |
 | Maximum Script bodies CC | 80 | 8 |
@@ -35,20 +35,20 @@ The p90 is nearest-rank `ceil(0.90 * N)`. The named-function summary excludes Po
 
 | Measure | Before | After |
 |---|---:|---:|
-| Enforced scopes | 548 | 2516 |
-| Average Enforced scopes CC | 5.982 | 3.962 |
+| Enforced scopes | 548 | 2584 |
+| Average Enforced scopes CC | 5.982 | 3.957 |
 | Median Enforced scopes CC | 4 | 3 |
 | 90th percentile Enforced scopes CC | 13 | 8 |
 | Maximum Enforced scopes CC | 80 | 13 |
-| Enforced scopes with CC > 5 | 175 | 612 |
-| Enforced scopes with CC > 7 | 119 | 272 |
+| Enforced scopes with CC > 5 | 175 | 625 |
+| Enforced scopes with CC > 7 | 119 | 279 |
 | Enforced scopes with CC > 10 | 74 | 1 |
 
 ## GitHub Actions executable-block policy
 
 Workflow YAML is parsed structurally. Trivial launcher/setup wrappers remain inline; substantial PowerShell must be extracted into measured `.ps1` code, and substantial unsupported shell/interpreter code fails closed.
 
-Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial blocks: 0
+Owned run blocks: 98; substantial inline PowerShell: 0; unsupported substantial blocks: 0
 
 | Workflow | Job | Step | Shell | Lines | NLOC | Classification | Features |
 |---|---|---|---|---:|---:|---|---|
@@ -120,6 +120,12 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `.github/workflows/engine-protocol-v2-task26.yaml` | `output-v1` | Run Task 26 output integration | `pwsh` | 38-38 | 1 | TRIVIAL_WRAPPER | — |
 | `.github/workflows/engine-protocol-v2-task26.yaml` | `output-v1` | Remove CI-only output fixtures | `pwsh` | 42-42 | 1 | TRIVIAL_WRAPPER | — |
 | `.github/workflows/engine-protocol-v2-task26.yaml` | `output-v1` | Audit package after fixture cleanup | `pwsh` | 46-46 | 1 | TRIVIAL_WRAPPER | — |
+| `.github/workflows/engine-protocol-v2-task27.yaml` | `recording-v1` | Audit normal package | `pwsh` | 29-29 | 1 | TRIVIAL_WRAPPER | — |
+| `.github/workflows/engine-protocol-v2-task27.yaml` | `recording-v1` | Build CI-only recording fixtures | `pwsh` | 32-32 | 1 | TRIVIAL_WRAPPER | — |
+| `.github/workflows/engine-protocol-v2-task27.yaml` | `recording-v1` | Stage CI-only recording fixtures | `pwsh` | 35-35 | 1 | TRIVIAL_WRAPPER | — |
+| `.github/workflows/engine-protocol-v2-task27.yaml` | `recording-v1` | Run Task 27 recording integration | `pwsh` | 38-38 | 1 | TRIVIAL_WRAPPER | — |
+| `.github/workflows/engine-protocol-v2-task27.yaml` | `recording-v1` | Remove CI-only recording fixtures | `pwsh` | 42-42 | 1 | TRIVIAL_WRAPPER | — |
+| `.github/workflows/engine-protocol-v2-task27.yaml` | `recording-v1` | Audit package after fixture cleanup | `pwsh` | 46-46 | 1 | TRIVIAL_WRAPPER | — |
 | `.github/workflows/engine-protocol-v2-task3.yaml` | `build-smoke-package-x64` | Smoke test protocol v2 capabilities | `pwsh` | 33-35 | 2 | TRIVIAL_WRAPPER | — |
 | `.github/workflows/engine-protocol-v2-task3.yaml` | `build-smoke-package-x64` | Enforce Task 3 smoke result | `pwsh` | 49-50 | 1 | TRIVIAL_WRAPPER | — |
 | `.github/workflows/engine-protocol-v2-task4.yaml` | `build-smoke-package-x64` | Smoke test protocol v2 revisions | `pwsh` | 33-35 | 2 | TRIVIAL_WRAPPER | — |
@@ -157,6 +163,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Invoke-CheckMode` | `tools/check-complexity.ps1` | — | 10 | — | 39 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_preview_data` | `engine/runtime_preview_v2.cpp` | — | 10 | — | 38 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::apply_program_scene_route` | `engine/runtime_program_v2.cpp` | — | 10 | — | 38 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_recording_add_chapter` | `engine/runtime_recording_v2.cpp` | — | 10 | — | 37 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_scene_create` | `engine/runtime_v2.cpp` | 10 | 10 | 37 | 37 | unchanged |
 | `obs_engine::Engine::v2_canvas_set_channel` | `engine/runtime_canvas_v2.cpp` | — | 10 | — | 36 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_sync_source_observers` | `engine/runtime_source_v2.cpp` | 15 | 10 | 58 | 36 | reduced by 5 |
@@ -179,6 +186,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Get-WorkflowPowerShellAstMetrics` | `tools/check-complexity.ps1` | — | 10 | — | 30 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_filter_set_order` | `engine/runtime_filter_v2.cpp` | 12 | 10 | 33 | 29 | reduced by 2 |
 | `obs_engine::collect_output_start_signal` | `engine/runtime_output_v2.cpp` | — | 10 | — | 29 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_output_remove` | `engine/runtime_output_v2.cpp` | — | 10 | — | 28 | new cohesive helper/function in scoped file |
 | `Initialize-Task23Session` | `.github/scripts/engine-protocol-v2-task23.ps1` | — | 10 | — | 27 | new cohesive helper/function in scoped file |
 | `obs_engine::prepare_v2_request` | `engine/protocol_v2.cpp` | — | 10 | — | 27 | new cohesive helper/function in scoped file |
 | `obs_engine::read_saved_bindings` | `engine/runtime_hotkey_v2.cpp` | — | 10 | — | 27 | new cohesive helper/function in scoped file |
@@ -207,6 +215,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Get-Task22HotkeyFixtures` | `.github/scripts/engine-protocol-v2-task22.ps1` | — | 10 | — | 15 | new cohesive helper/function in scoped file |
 | `obs_engine::read_scaled_dimensions` | `engine/runtime_encoder_v2.cpp` | — | 10 | — | 15 | new cohesive helper/function in scoped file |
 | `Get-WorkflowInterpreter` | `tools/check-complexity.ps1` | — | 10 | — | 14 | new cohesive helper/function in scoped file |
+| `obs_engine::output_kind_supports_proc` | `engine/runtime_recording_v2.cpp` | — | 10 | — | 12 | new cohesive helper/function in scoped file |
 | `Assert-ColorEvidence` | `.github/scripts/engine-protocol-v2-task17.ps1` | — | 10 | — | 9 | new cohesive helper/function in scoped file |
 | `Assert-Task17ProgramDescriptor` | `.github/scripts/engine-protocol-v2-task17.ps1` | — | 10 | — | 6 | new cohesive helper/function in scoped file |
 | `Invoke-Task11FilterMutations` | `.github/scripts/engine-protocol-v2-task11.ps1` | — | 9 | — | 75 | new cohesive helper/function in scoped file |
@@ -243,6 +252,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::Engine::v2_encoder_rename` | `engine/runtime_encoder_v2.cpp` | — | 9 | — | 29 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_sanitize_output_error` | `engine/runtime_output_v2.cpp` | — | 9 | — | 29 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_output_rename` | `engine/runtime_output_v2.cpp` | — | 9 | — | 29 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_recording_split_file` | `engine/runtime_recording_v2.cpp` | — | 9 | — | 29 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_service_rename` | `engine/runtime_service_v2.cpp` | — | 9 | — | 29 | new cohesive helper/function in scoped file |
 | `obs_engine::audio_meter_tick` | `engine/runtime_audio_v2.cpp` | — | 9 | — | 28 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_encoder_group_remove_encoder` | `engine/runtime_encoder_group_v2.cpp` | — | 9 | — | 28 | new cohesive helper/function in scoped file |
@@ -256,11 +266,12 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::read_canvas_dimensions` | `engine/runtime_canvas_v2.cpp` | — | 9 | — | 26 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_item_remove_from_group` | `engine/runtime_item_v2.cpp` | — | 9 | — | 26 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_start_output_entry` | `engine/runtime_output_v2.cpp` | — | 9 | — | 26 | new cohesive helper/function in scoped file |
-| `obs_engine::Engine::v2_output_remove` | `engine/runtime_output_v2.cpp` | — | 9 | — | 26 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_update_output_settings` | `engine/runtime_output_v2.cpp` | — | 9 | — | 26 | new cohesive helper/function in scoped file |
 | `obs_engine::create_preview_output_binding` | `engine/runtime_preview_output_v2.cpp` | — | 9 | — | 26 | new cohesive helper/function in scoped file |
 | `obs_engine::canonicalize_source_result` | `engine/runtime_source_settle_v2.cpp` | 9 | 9 | 26 | 26 | unchanged |
 | `Read-IdentityMigrationEntries` | `tools/check-complexity.ps1` | — | 9 | — | 26 | new cohesive helper/function in scoped file |
+| `obs_engine::collect_output_signal` | `engine/runtime_output_v2.cpp` | — | 9 | — | 25 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_recording_configure` | `engine/runtime_recording_v2.cpp` | — | 9 | — | 25 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_settle_source_mutation` | `engine/runtime_source_settle_v2.cpp` | 9 | 9 | 25 | 25 | unchanged |
 | `Assert-TrustedBaselineScope` | `tools/check-complexity.ps1` | — | 9 | — | 25 | new cohesive helper/function in scoped file |
 | `obs_engine::read_import_update` | `engine/runtime_hotkey_v2.cpp` | — | 9 | — | 24 | new cohesive helper/function in scoped file |
@@ -279,6 +290,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Assert-TrustedBaselineReportShape` | `tools/check-complexity.ps1` | — | 9 | — | 19 | new cohesive helper/function in scoped file |
 | `Invoke-Task17RouteSwitch` | `.github/scripts/engine-protocol-v2-task17.ps1` | — | 9 | — | 18 | new cohesive helper/function in scoped file |
 | `obs_engine::read_preview_output_create_dimensions` | `engine/runtime_preview_output_v2.cpp` | — | 9 | — | 18 | new cohesive helper/function in scoped file |
+| `obs_engine::read_recording_path_options` | `engine/runtime_recording_v2.cpp` | — | 9 | — | 18 | new cohesive helper/function in scoped file |
 | `obs_engine::collect_sensitive_recursive` | `engine/properties_sensitive.cpp` | 9 | 9 | 17 | 17 | unchanged |
 | `obs_engine::read_encoder_create_options` | `engine/runtime_encoder_v2.cpp` | — | 9 | — | 17 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_read_source_create_options` | `engine/runtime_v2.cpp` | — | 9 | — | 17 | new cohesive helper/function in scoped file |
@@ -297,6 +309,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Initialize-Task10Sources` | `.github/scripts/engine-protocol-v2-task10.ps1` | — | 8 | — | 56 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::replace_preview_output_resource` | `engine/runtime_preview_output_v2.cpp` | — | 8 | — | 43 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_source_remove` | `engine/runtime_v2.cpp` | 9 | 8 | 40 | 41 | reduced by 1 |
+| `Invoke-Task27CreateAndConfigure` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 8 | — | 39 | new cohesive helper/function in scoped file |
 | `main` | `engine/host.cpp` | 16 | 8 | 69 | 38 | reduced by 8 |
 | `obs_engine::Engine::v2_item_ungroup` | `engine/runtime_item_v2.cpp` | — | 8 | — | 38 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_properties_get_list_items` | `engine/runtime_properties_v2.cpp` | 8 | 8 | 37 | 37 | unchanged |
@@ -329,6 +342,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::Engine::v2_canvas_rename` | `engine/runtime_canvas_v2.cpp` | — | 8 | — | 28 | new cohesive helper/function in scoped file |
 | `obs_engine::settle_pending_update` | `engine/runtime_encoder_v2.cpp` | — | 8 | — | 28 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_add_filter_observer` | `engine/runtime_filter_v2.cpp` | — | 8 | — | 28 | new cohesive helper/function in scoped file |
+| `obs_engine::recording_file_changed_callback` | `engine/runtime_recording_v2.cpp` | — | 8 | — | 28 | new cohesive helper/function in scoped file |
 | `obs_canvas_reset_video_internal` | `libobs/obs-canvas.c` | — | 8 | — | 28 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_audio_set_monitoring_device` | `engine/runtime_audio_v2.cpp` | — | 8 | — | 27 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_encoder_roi_remove` | `engine/runtime_encoder_v2.cpp` | — | 8 | — | 27 | new cohesive helper/function in scoped file |
@@ -352,7 +366,6 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::Engine::v2_append_output_encoder_dependency_events` | `engine/runtime_output_v2.cpp` | — | 8 | — | 24 | new cohesive helper/function in scoped file |
 | `obs_engine::publish_source_events` | `engine/runtime_source_v2.cpp` | 16 | 8 | 50 | 24 | reduced by 8 |
 | `obs_engine::Engine::finish_studio_transition` | `engine/runtime_transition_v2.cpp` | — | 8 | — | 24 | new cohesive helper/function in scoped file |
-| `obs_engine::collect_output_signal` | `engine/runtime_output_v2.cpp` | — | 8 | — | 23 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_output_set_paused` | `engine/runtime_output_v2.cpp` | — | 8 | — | 23 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_source_rename` | `engine/runtime_source_v2.cpp` | 9 | 8 | 25 | 23 | reduced by 1 |
 | `obs_engine::read_duplicate_target` | `engine/runtime_item_v2.cpp` | — | 8 | — | 22 | new cohesive helper/function in scoped file |
@@ -484,6 +497,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::read_bindings` | `engine/runtime_hotkey_v2.cpp` | — | 7 | — | 20 | new cohesive helper/function in scoped file |
 | `obs_engine::read_group_items` | `engine/runtime_item_v2.cpp` | — | 7 | — | 20 | new cohesive helper/function in scoped file |
 | `obs_engine::preview_output_dimension_canvas` | `engine/runtime_preview_output_v2.cpp` | — | 7 | — | 20 | new cohesive helper/function in scoped file |
+| `obs_engine::canonicalize_recording_path` | `engine/runtime_recording_v2.cpp` | — | 7 | — | 20 | new cohesive helper/function in scoped file |
 | `obs_engine::module_load_state_name` | `engine/runtime_encoder_v2.cpp` | — | 7 | — | 19 | new cohesive helper/function in scoped file |
 | `obs_engine::parse_modifiers` | `engine/runtime_interaction_v2.cpp` | 7 | 7 | 19 | 19 | unchanged |
 | `obs_engine::module_load_state_name` | `engine/runtime_output_v2.cpp` | — | 7 | — | 19 | new cohesive helper/function in scoped file |
@@ -499,14 +513,18 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::promote_deferred_media_action_locked` | `engine/runtime_media_v2.cpp` | 7 | 7 | 18 | 18 | unchanged |
 | `obs_engine::Engine::v2_apply_output_service_binding` | `engine/runtime_output_v2.cpp` | — | 7 | — | 18 | new cohesive helper/function in scoped file |
 | `obs_engine::phase2_scale_filter_name` | `engine/runtime_phase2_common.cpp` | — | 7 | — | 18 | new cohesive helper/function in scoped file |
+| `obs_engine::prepare_recording_path_parent` | `engine/runtime_recording_v2.cpp` | — | 7 | — | 18 | new cohesive helper/function in scoped file |
 | `Read-Event` | `.github/scripts/engine-protocol-v2-task10.ps1` | 11 | 7 | 30 | 17 | reduced by 4 |
 | `Read-StateEvent` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 7 | 7 | 17 | 17 | unchanged |
 | `obs_engine::validate_property_patch` | `engine/properties.cpp` | 7 | 7 | 17 | 17 | unchanged |
+| `obs_engine::execute_phase3` | `engine/protocol_phase3_v2.cpp` | — | 7 | — | 17 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_apply_recording_configuration_settings` | `engine/runtime_recording_v2.cpp` | — | 7 | — | 17 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_transition_set_duration` | `engine/runtime_transition_v2.cpp` | — | 7 | — | 17 | new cohesive helper/function in scoped file |
 | `Read-P2PhysicalEventsThrough` | `.github/scripts/engine-protocol-v2-phase2-physical.ps1` | — | 7 | — | 16 | new cohesive helper/function in scoped file |
 | `Invoke-Task14CanvasSetup` | `.github/scripts/engine-protocol-v2-task14.ps1` | — | 7 | — | 16 | new cohesive helper/function in scoped file |
 | `Invoke-Task16Bootstrap` | `.github/scripts/engine-protocol-v2-task16.ps1` | — | 7 | — | 16 | new cohesive helper/function in scoped file |
 | `Invoke-Task4StaleClose` | `.github/scripts/engine-protocol-v2-task4-revisions.ps1` | — | 7 | — | 16 | new cohesive helper/function in scoped file |
+| `obs_engine::phase3_dispatch_is_mutating` | `engine/protocol_phase3_v2.cpp` | — | 7 | — | 16 | new cohesive helper/function in scoped file |
 | `obs_engine::audio_meter_callback` | `engine/runtime_audio_v2.cpp` | — | 7 | — | 16 | new cohesive helper/function in scoped file |
 | `obs_engine::validate_studio_transition_request` | `engine/runtime_studio_v2.cpp` | — | 7 | — | 16 | new cohesive helper/function in scoped file |
 | `start_runtime` | `engine/task23_encoder_bridge_test.cpp` | — | 7 | — | 16 | new cohesive helper/function in scoped file |
@@ -527,6 +545,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Read-Task18Message` | `.github/scripts/engine-protocol-v2-task18.ps1` | — | 7 | — | 13 | new cohesive helper/function in scoped file |
 | `Read-Task19Message` | `.github/scripts/engine-protocol-v2-task19.ps1` | — | 7 | — | 13 | new cohesive helper/function in scoped file |
 | `Read-Task20Message` | `.github/scripts/engine-protocol-v2-task20.ps1` | — | 7 | — | 13 | new cohesive helper/function in scoped file |
+| `Read-Task27Event` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 7 | — | 13 | new cohesive helper/function in scoped file |
 | `Invoke-Task8Duplicate` | `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1` | — | 7 | — | 13 | new cohesive helper/function in scoped file |
 | `obs_engine::parse_v2_request_options` | `engine/protocol_v2.cpp` | — | 7 | — | 13 | new cohesive helper/function in scoped file |
 | `obs_engine::registerer_matches` | `engine/runtime_hotkey_v2.cpp` | — | 7 | — | 13 | new cohesive helper/function in scoped file |
@@ -549,8 +568,10 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Read-Task20EventsThrough` | `.github/scripts/engine-protocol-v2-task20.ps1` | — | 7 | — | 9 | new cohesive helper/function in scoped file |
 | `Assert-FiniteMeter` | `.github/scripts/engine-protocol-v2-task21.ps1` | — | 7 | — | 9 | new cohesive helper/function in scoped file |
 | `Invoke-Task25SecretChecks` | `.github/scripts/engine-protocol-v2-task25.ps1` | — | 7 | — | 9 | new cohesive helper/function in scoped file |
+| `obs_engine::is_phase3_method` | `engine/protocol_phase3_v2.cpp` | — | 7 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::read_key_input` | `engine/runtime_interaction_v2.cpp` | — | 7 | — | 9 | new cohesive helper/function in scoped file |
 | `Invoke-Task8SaveState` | `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1` | — | 7 | — | 7 | new cohesive helper/function in scoped file |
+| `obs_engine::phase3_dispatch_empty` | `engine/protocol_phase3_v2.cpp` | — | 7 | — | 7 | new cohesive helper/function in scoped file |
 | `obs_engine::canvas_video_complete` | `engine/runtime_canvas_v2.cpp` | — | 7 | — | 5 | new cohesive helper/function in scoped file |
 | `Invoke-Task8CaptureRouting` | `.github/scripts/engine-protocol-v2-task8-concurrency-capture-routing.ps1` | — | 6 | — | 59 | new cohesive helper/function in scoped file |
 | `New-HistoryContext` | `tools/check-complexity.ps1` | — | 6 | — | 49 | new cohesive helper/function in scoped file |
@@ -558,7 +579,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::Engine::v2_preview_output_create` | `engine/runtime_preview_output_v2.cpp` | — | 6 | — | 41 | new cohesive helper/function in scoped file |
 | `Get-PowerShellFileMetrics` | `tools/check-complexity.ps1` | — | 6 | — | 40 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_build_property_target` | `engine/runtime_properties_v2.cpp` | 27 | 6 | 86 | 39 | reduced by 21 |
-| `obs_engine::Engine::v2_prepare_shutdown` | `engine/runtime_source_v2.cpp` | 6 | 6 | 31 | 38 | unchanged |
+| `obs_engine::Engine::v2_prepare_shutdown` | `engine/runtime_source_v2.cpp` | 6 | 6 | 31 | 39 | unchanged |
 | `Invoke-Task10RestartAndStop` | `.github/scripts/engine-protocol-v2-task10.ps1` | — | 6 | — | 37 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_source_create` | `engine/runtime_v2.cpp` | 13 | 6 | 47 | 37 | reduced by 7 |
 | `obs_engine::Engine::refresh_preview_output_after_canvas_video` | `engine/runtime_preview_output_v2.cpp` | — | 6 | — | 35 | new cohesive helper/function in scoped file |
@@ -634,6 +655,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::collect_filter_ref` | `engine/runtime_filter_v2.cpp` | 6 | 6 | 19 | 19 | unchanged |
 | `obs_engine::collect_filter_state_events` | `engine/runtime_filter_v2.cpp` | — | 6 | — | 19 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_forget_audio_hotkey` | `engine/runtime_hotkey_v2.cpp` | — | 6 | — | 19 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_append_recording_output_events` | `engine/runtime_recording_v2.cpp` | — | 6 | — | 19 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_source_kind_defaults` | `engine/runtime_v2.cpp` | 6 | 6 | 19 | 19 | unchanged |
 | `obs_engine::apply_legacy_transform_alignment` | `engine/runtime.cpp` | — | 6 | — | 19 | new cohesive helper/function in scoped file |
 | `Stop-Task12Engine` | `.github/scripts/engine-protocol-v2-task12.ps1` | — | 6 | — | 18 | new cohesive helper/function in scoped file |
@@ -657,6 +679,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::apply_transform_alignment` | `engine/runtime_v2.cpp` | — | 6 | — | 17 | new cohesive helper/function in scoped file |
 | `Get-WorkflowLexicalFeatures` | `tools/check-complexity.ps1` | — | 6 | — | 17 | new cohesive helper/function in scoped file |
 | `Invoke-Task13TransformChecks` | `.github/scripts/engine-protocol-v2-task13.ps1` | — | 6 | — | 16 | new cohesive helper/function in scoped file |
+| `Invoke-Task27Lifecycle` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 6 | — | 16 | new cohesive helper/function in scoped file |
 | `Invoke-Task7ListItems` | `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1` | — | 6 | — | 16 | new cohesive helper/function in scoped file |
 | `Invoke-Task8SourceSmoke` | `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1` | — | 6 | — | 16 | new cohesive helper/function in scoped file |
 | `obs_engine::read_subscription_entry` | `engine/protocol_v2.cpp` | — | 6 | — | 16 | new cohesive helper/function in scoped file |
@@ -669,7 +692,6 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Select-Phase2CanvasFailureGenerator` | `.github/scripts/engine-protocol-v2-task14-canvas-failure-lane.ps1` | — | 6 | — | 15 | new cohesive helper/function in scoped file |
 | `setup_telemetry_policy` | `engine/events_test.cpp` | — | 6 | — | 15 | new cohesive helper/function in scoped file |
 | `parse_luid` | `engine/preview_consumer_test.cpp` | — | 6 | — | 15 | new cohesive helper/function in scoped file |
-| `obs_engine::execute_phase3` | `engine/protocol_phase3_v2.cpp` | — | 6 | — | 15 | new cohesive helper/function in scoped file |
 | `obs_engine::AudioCallbackScope::AudioCallbackScope` | `engine/runtime_audio_v2.cpp` | — | 6 | — | 15 | new cohesive helper/function in scoped file |
 | `obs_engine::FilterCallbackScope::FilterCallbackScope` | `engine/runtime_filter_v2.cpp` | 6 | 6 | 15 | 15 | unchanged |
 | `obs_engine::read_alignment_field` | `engine/runtime_item_v2.cpp` | — | 6 | — | 15 | new cohesive helper/function in scoped file |
@@ -684,7 +706,6 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Send-Task18Guarded` | `.github/scripts/engine-protocol-v2-task18.ps1` | — | 6 | — | 14 | new cohesive helper/function in scoped file |
 | `Send-Task20Guarded` | `.github/scripts/engine-protocol-v2-task20.ps1` | — | 6 | — | 14 | new cohesive helper/function in scoped file |
 | `Invoke-Task7Validate` | `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1` | — | 6 | — | 14 | new cohesive helper/function in scoped file |
-| `obs_engine::phase3_dispatch_is_mutating` | `engine/protocol_phase3_v2.cpp` | — | 6 | — | 14 | new cohesive helper/function in scoped file |
 | `obs_engine::hotkey_snapshot_less` | `engine/runtime_hotkey_v2.cpp` | — | 6 | — | 14 | new cohesive helper/function in scoped file |
 | `obs_engine::read_key_text` | `engine/runtime_interaction_v2.cpp` | — | 6 | — | 14 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_validate_output_start` | `engine/runtime_output_v2.cpp` | — | 6 | — | 14 | new cohesive helper/function in scoped file |
@@ -733,7 +754,6 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::read_action` | `engine/runtime_hotkey_v2.cpp` | — | 6 | — | 9 | new cohesive helper/function in scoped file |
 | `parse_consumer_options` | `engine/preview_consumer_test.cpp` | — | 6 | — | 8 | new cohesive helper/function in scoped file |
 | `check_url_button` | `engine/properties_test.cpp` | — | 6 | — | 8 | new cohesive helper/function in scoped file |
-| `obs_engine::is_phase3_method` | `engine/protocol_phase3_v2.cpp` | — | 6 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::collect_monitoring_device` | `engine/runtime_audio_v2.cpp` | — | 6 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::point_inside_source` | `engine/runtime_interaction_v2.cpp` | 6 | 6 | 8 | 8 | unchanged |
 | `obs_engine::read_finite_field` | `engine/runtime_item_v2.cpp` | — | 6 | — | 8 | new cohesive helper/function in scoped file |
@@ -750,7 +770,6 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Invoke-Task8KindGet` | `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1` | — | 6 | — | 7 | new cohesive helper/function in scoped file |
 | `Invoke-Task8ActivityState` | `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1` | — | 6 | — | 7 | new cohesive helper/function in scoped file |
 | `Invoke-Task8LiveProperties` | `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1` | — | 6 | — | 6 | new cohesive helper/function in scoped file |
-| `obs_engine::phase3_dispatch_empty` | `engine/protocol_phase3_v2.cpp` | — | 6 | — | 6 | new cohesive helper/function in scoped file |
 | `obs_engine::key_matches` | `engine/runtime_interaction_v2.cpp` | 6 | 6 | 6 | 6 | unchanged |
 | `obs_engine::transform_vectors_equal` | `engine/runtime_item_v2.cpp` | — | 6 | — | 5 | new cohesive helper/function in scoped file |
 | `Invoke-Task9PruneScenario` | `.github/scripts/engine-protocol-v2-task9.ps1` | — | 5 | — | 51 | new cohesive helper/function in scoped file |
@@ -790,6 +809,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::Engine::v2_item_set_blend_mode` | `engine/runtime_item_v2.cpp` | — | 5 | — | 23 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_item_set_blend_method` | `engine/runtime_item_v2.cpp` | — | 5 | — | 23 | new cohesive helper/function in scoped file |
 | `obs_engine::append_output_slots` | `engine/runtime_output_v2.cpp` | — | 5 | — | 23 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_recording_get_state` | `engine/runtime_recording_v2.cpp` | — | 5 | — | 23 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::shutdown` | `engine/runtime.cpp` | 5 | 5 | 19 | 23 | unchanged |
 | `Get-RelatedBaselineMetrics` | `tools/check-complexity.ps1` | — | 5 | — | 23 | new cohesive helper/function in scoped file |
 | `Invoke-Task1Footprint` | `.github/scripts/engine-protocol-v2-task1-footprint.ps1` | — | 5 | — | 22 | new cohesive helper/function in scoped file |
@@ -948,6 +968,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::run_media_action` | `engine/runtime_media_v2.cpp` | — | 5 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::read_output_slot_request` | `engine/runtime_output_v2.cpp` | — | 5 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::read_preview_output_create_transport` | `engine/runtime_preview_output_v2.cpp` | — | 5 | — | 11 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_validate_recording_configuration` | `engine/runtime_recording_v2.cpp` | — | 5 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_prepare_service_shutdown` | `engine/runtime_service_v2.cpp` | — | 5 | — | 11 | new cohesive helper/function in scoped file |
 | `Test-ExceptionIdentity` | `tools/check-complexity.ps1` | — | 5 | — | 11 | new cohesive helper/function in scoped file |
 | `Read-Task21Event` | `.github/scripts/engine-protocol-v2-task21.ps1` | — | 5 | — | 10 | new cohesive helper/function in scoped file |
@@ -970,6 +991,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Send-Task24` | `.github/scripts/engine-protocol-v2-task24.ps1` | — | 5 | — | 9 | new cohesive helper/function in scoped file |
 | `Send-Task25` | `.github/scripts/engine-protocol-v2-task25.ps1` | — | 5 | — | 9 | new cohesive helper/function in scoped file |
 | `Send-Task26` | `.github/scripts/engine-protocol-v2-task26.ps1` | — | 5 | — | 9 | new cohesive helper/function in scoped file |
+| `Send-Task27` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 5 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::read_bounded_canvas_integer` | `engine/runtime_canvas_v2.cpp` | — | 5 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::read_channel_index` | `engine/runtime_canvas_v2.cpp` | — | 5 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_encoder_group_is_active` | `engine/runtime_encoder_group_v2.cpp` | — | 5 | — | 9 | new cohesive helper/function in scoped file |
@@ -992,6 +1014,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::read_registerer_handle` | `engine/runtime_hotkey_v2.cpp` | — | 5 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::read_bounded_output_integer` | `engine/runtime_output_v2.cpp` | — | 5 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::append_preview_render_job` | `engine/runtime_preview_output_v2.cpp` | — | 5 | — | 8 | new cohesive helper/function in scoped file |
+| `obs_engine::validate_recording_path_text` | `engine/runtime_recording_v2.cpp` | — | 5 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::read_source_state_name` | `engine/runtime_source_v2.cpp` | — | 5 | — | 8 | new cohesive helper/function in scoped file |
 | `Assert-P2PhysicalOk` | `.github/scripts/engine-protocol-v2-phase2-physical.ps1` | — | 5 | — | 7 | new cohesive helper/function in scoped file |
 | `Assert-Error` | `.github/scripts/engine-protocol-v2-task26.ps1` | — | 5 | — | 7 | new cohesive helper/function in scoped file |
@@ -1004,6 +1027,8 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_service_set_name` | `libobs/obs-service.c` | — | 5 | — | 7 | new cohesive helper/function in scoped file |
 | `Test-UnsupportedProjectPath` | `tools/check-complexity.ps1` | — | 5 | — | 7 | new cohesive helper/function in scoped file |
 | `Stop-Task24Engine` | `.github/scripts/engine-protocol-v2-task24.ps1` | — | 5 | — | 6 | new cohesive helper/function in scoped file |
+| `Stop-Task27Engine` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 5 | — | 6 | new cohesive helper/function in scoped file |
+| `Assert-Error` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 5 | — | 6 | new cohesive helper/function in scoped file |
 | `obs_engine::encoder_settings_equal` | `engine/runtime_encoder_v2.cpp` | — | 5 | — | 6 | new cohesive helper/function in scoped file |
 | `obs_engine::is_canonical_handle` | `engine/runtime_hotkey_v2.cpp` | — | 5 | — | 6 | new cohesive helper/function in scoped file |
 | `obs_engine::transform_bounds_equal` | `engine/runtime_item_v2.cpp` | — | 5 | — | 6 | new cohesive helper/function in scoped file |
@@ -1101,6 +1126,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::make_service_summary` | `engine/runtime_service_v2.cpp` | — | 4 | — | 18 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_service_remove` | `engine/runtime_service_v2.cpp` | — | 4 | — | 18 | new cohesive helper/function in scoped file |
 | `Invoke-AfterMode` | `tools/check-complexity.ps1` | — | 4 | — | 18 | new cohesive helper/function in scoped file |
+| `Initialize-Task27Session` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 4 | — | 17 | new cohesive helper/function in scoped file |
 | `obs_engine::EventDispatcher::publish` | `engine/events.cpp` | 12 | 4 | 52 | 17 | reduced by 8 |
 | `obs_engine::read_string_field` | `engine/protocol_v2.cpp` | 4 | 4 | 17 | 17 | unchanged |
 | `obs_engine::read_string_field` | `engine/runtime_audio_v2.cpp` | — | 4 | — | 17 | new cohesive helper/function in scoped file |
@@ -1111,6 +1137,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::read_string_field` | `engine/runtime_media_v2.cpp` | 4 | 4 | 17 | 17 | unchanged |
 | `obs_engine::phase2_read_string` | `engine/runtime_phase2_common.cpp` | — | 4 | — | 17 | new cohesive helper/function in scoped file |
 | `obs_engine::read_string_field` | `engine/runtime_properties_v2.cpp` | 4 | 4 | 17 | 17 | unchanged |
+| `obs_engine::Engine::v2_recording_unconfigure` | `engine/runtime_recording_v2.cpp` | — | 4 | — | 17 | new cohesive helper/function in scoped file |
 | `obs_engine::read_string_field` | `engine/runtime_source_v2.cpp` | 4 | 4 | 17 | 17 | unchanged |
 | `obs_engine::set_source_identity` | `engine/runtime_transition_v2.cpp` | — | 4 | — | 17 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_prepare_transition_shutdown` | `engine/runtime_transition_v2.cpp` | — | 4 | — | 17 | new cohesive helper/function in scoped file |
@@ -1144,6 +1171,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_encoder_remove_roi` | `libobs/obs-encoder.c` | — | 4 | — | 16 | new cohesive helper/function in scoped file |
 | `Test-LineIntersection` | `tools/check-complexity.ps1` | — | 4 | — | 16 | new cohesive helper/function in scoped file |
 | `Get-OperatorCommitPathRecords` | `tools/check-complexity.ps1` | — | 4 | — | 16 | new cohesive helper/function in scoped file |
+| `Start-Task27Engine` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 4 | — | 15 | new cohesive helper/function in scoped file |
 | `Invoke-Task7SourceFixture` | `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1` | — | 4 | — | 15 | new cohesive helper/function in scoped file |
 | `obs_engine::ProtocolWriter::start` | `engine/protocol.cpp` | 4 | 4 | 15 | 15 | unchanged |
 | `obs_engine::read_integer` | `engine/protocol.cpp` | 4 | 4 | 15 | 15 | unchanged |
@@ -1167,6 +1195,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::enqueue_media_action` | `engine/runtime_media_v2.cpp` | — | 4 | — | 14 | new cohesive helper/function in scoped file |
 | `obs_engine::queue_deferred_output_events_locked` | `engine/runtime_output_v2.cpp` | — | 4 | — | 14 | new cohesive helper/function in scoped file |
 | `obs_engine::commit_direct_output_events_locked` | `engine/runtime_output_v2.cpp` | — | 4 | — | 14 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_recording_get_stats` | `engine/runtime_recording_v2.cpp` | — | 4 | — | 14 | new cohesive helper/function in scoped file |
 | `obs_engine::read_optional_canvas` | `engine/runtime_scene_v2.cpp` | — | 4 | — | 14 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_studio_get_transition_duration` | `engine/runtime_studio_v2.cpp` | — | 4 | — | 14 | new cohesive helper/function in scoped file |
 | `Get-PathScopeExclusion` | `tools/check-complexity.ps1` | — | 4 | — | 14 | new cohesive helper/function in scoped file |
@@ -1239,6 +1268,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::bind_canvas_target` | `engine/runtime_preview_output_v2.cpp` | — | 4 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::read_optional_transport_string` | `engine/runtime_preview_output_v2.cpp` | — | 4 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_program_data` | `engine/runtime_program_v2.cpp` | — | 4 | — | 11 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_get_recording_output` | `engine/runtime_recording_v2.cpp` | — | 4 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::make_service_candidate` | `engine/runtime_service_v2.cpp` | — | 4 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_get_service_entry` | `engine/runtime_service_v2.cpp` | — | 4 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_get_transition_entry` | `engine/runtime_transition_v2.cpp` | — | 4 | — | 11 | new cohesive helper/function in scoped file |
@@ -1294,6 +1324,8 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::read_output_service_handle` | `engine/runtime_output_v2.cpp` | — | 4 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::filter_type_exists` | `engine/runtime_properties_v2.cpp` | 4 | 4 | 9 | 9 | unchanged |
 | `obs_engine::transition_kind_exists` | `engine/runtime_properties_v2.cpp` | — | 4 | — | 9 | new cohesive helper/function in scoped file |
+| `obs_engine::output_is_recording_compatible` | `engine/runtime_recording_v2.cpp` | — | 4 | — | 9 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_prepare_recording_shutdown` | `engine/runtime_recording_v2.cpp` | — | 4 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::service_kind_exists` | `engine/runtime_service_v2.cpp` | — | 4 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::result_has_source_event` | `engine/runtime_source_settle_v2.cpp` | 4 | 4 | 9 | 9 | unchanged |
 | `obs_engine::result_has_source_event` | `engine/runtime_source_v2.cpp` | 4 | 4 | 9 | 9 | unchanged |
@@ -1321,6 +1353,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Read-Task24Message` | `.github/scripts/engine-protocol-v2-task24.ps1` | — | 4 | — | 7 | new cohesive helper/function in scoped file |
 | `Read-Task25Message` | `.github/scripts/engine-protocol-v2-task25.ps1` | — | 4 | — | 7 | new cohesive helper/function in scoped file |
 | `Read-Task26Message` | `.github/scripts/engine-protocol-v2-task26.ps1` | — | 4 | — | 7 | new cohesive helper/function in scoped file |
+| `Read-Task27Message` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 4 | — | 7 | new cohesive helper/function in scoped file |
 | `check_overlap_output` | `engine/events_test.cpp` | — | 4 | — | 7 | new cohesive helper/function in scoped file |
 | `obs_engine::filter_settings_are_equal` | `engine/runtime_filter_v2.cpp` | — | 4 | — | 7 | new cohesive helper/function in scoped file |
 | `obs_engine::parse_key_name` | `engine/runtime_hotkey_v2.cpp` | — | 4 | — | 7 | new cohesive helper/function in scoped file |
@@ -1373,6 +1406,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::make_preview_output_info` | `engine/runtime_preview_output_v2.cpp` | — | 3 | — | 40 | new cohesive helper/function in scoped file |
 | `Get-Statistics` | `tools/check-complexity.ps1` | — | 3 | — | 38 | new cohesive helper/function in scoped file |
 | `New-MeasurementContext` | `tools/check-complexity.ps1` | — | 3 | — | 37 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_output_state` | `engine/runtime_output_v2.cpp` | — | 3 | — | 34 | new cohesive helper/function in scoped file |
 | `Invoke-Task21Cleanup` | `.github/scripts/engine-protocol-v2-task21.ps1` | — | 3 | — | 32 | new cohesive helper/function in scoped file |
 | `Invoke-Task9ValidationScenario` | `.github/scripts/engine-protocol-v2-task9.ps1` | — | 3 | — | 32 | new cohesive helper/function in scoped file |
 | `New-PathScopeResult` | `tools/check-complexity.ps1` | — | 3 | — | 31 | new cohesive helper/function in scoped file |
@@ -1527,6 +1561,8 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::mark_output_reconnecting` | `engine/runtime_output_v2.cpp` | — | 3 | — | 15 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_output_list` | `engine/runtime_output_v2.cpp` | — | 3 | — | 15 | new cohesive helper/function in scoped file |
 | `obs_engine::phase2_parse_blend_mode` | `engine/runtime_phase2_common.cpp` | — | 3 | — | 15 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_recording_get_current_path` | `engine/runtime_recording_v2.cpp` | — | 3 | — | 15 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_recording_get_last_file` | `engine/runtime_recording_v2.cpp` | — | 3 | — | 15 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_service_list` | `engine/runtime_service_v2.cpp` | — | 3 | — | 15 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::command_source_defaults` | `engine/runtime.cpp` | 3 | 3 | 15 | 15 | unchanged |
 | `start_game_capture` | `plugins/win-capture/plugin-main.c` | — | 3 | — | 15 | new cohesive helper/function in scoped file |
@@ -1558,6 +1594,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::read_transform_crop_flag` | `engine/runtime_item_v2.cpp` | — | 3 | — | 13 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_output_kind_list` | `engine/runtime_output_v2.cpp` | — | 3 | — | 13 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_preview_output_resize` | `engine/runtime_preview_output_v2.cpp` | — | 3 | — | 13 | new cohesive helper/function in scoped file |
+| `obs_engine::make_recording_filesystem_path` | `engine/runtime_recording_v2.cpp` | — | 3 | — | 13 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::update_registered_scene_item` | `engine/runtime_scene_v2.cpp` | — | 3 | — | 13 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_scene_get` | `engine/runtime_scene_v2.cpp` | — | 3 | — | 13 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_service_kind_list` | `engine/runtime_service_v2.cpp` | — | 3 | — | 13 | new cohesive helper/function in scoped file |
@@ -1698,6 +1735,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::capture_output_events_locked` | `engine/runtime_output_v2.cpp` | — | 3 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_wait_for_output_event_callbacks` | `engine/runtime_output_v2.cpp` | — | 3 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::validate_output_settings` | `engine/runtime_output_v2.cpp` | — | 3 | — | 9 | new cohesive helper/function in scoped file |
+| `obs_engine::RecordingCallbackScope::~RecordingCallbackScope` | `engine/runtime_recording_v2.cpp` | — | 3 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::clone_data` | `engine/runtime_source_v2.cpp` | 3 | 3 | 9 | 9 | unchanged |
 | `obs_engine::SourceCallbackScope::~SourceCallbackScope` | `engine/runtime_source_v2.cpp` | 3 | 3 | 9 | 9 | unchanged |
 | `obs_engine::Engine::v2_bind_transition_events` | `engine/runtime_transition_v2.cpp` | — | 3 | — | 9 | new cohesive helper/function in scoped file |
@@ -1721,6 +1759,8 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::classify_encoder_group` | `engine/protocol_phase3_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::classify_service` | `engine/protocol_phase3_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::classify_output` | `engine/protocol_phase3_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
+| `obs_engine::classify_recording` | `engine/protocol_phase3_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
+| `obs_engine::is_mutating` | `engine/protocol_phase3_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::is_mutating` | `engine/protocol_phase3_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::is_mutating` | `engine/protocol_phase3_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::is_mutating` | `engine/protocol_phase3_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
@@ -1733,6 +1773,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::encoder_group_handler_for` | `engine/protocol_phase3_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::service_handler_for` | `engine/protocol_phase3_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::output_handler_for` | `engine/protocol_phase3_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
+| `obs_engine::recording_handler_for` | `engine/protocol_phase3_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::classify_method` | `engine/protocol_v2.cpp` | 61 | 3 | 124 | 8 | reduced by 58 |
 | `obs_engine::method_is_mutating` | `engine/protocol_v2.cpp` | 24 | 3 | 31 | 8 | reduced by 21 |
 | `obs_engine::method_is_runtime` | `engine/protocol_v2.cpp` | 54 | 3 | 61 | 8 | reduced by 51 |
@@ -1743,6 +1784,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::Engine::release_item_handles` | `engine/runtime_item_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::bind_scene_target` | `engine/runtime_preview_output_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::read_handle_field` | `engine/runtime_properties_v2.cpp` | 3 | 3 | 8 | 8 | unchanged |
+| `obs_engine::is_dangerous_recording_path` | `engine/runtime_recording_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_source_handle_for_pointer` | `engine/runtime_scene_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::read_handle_field` | `engine/runtime_source_v2.cpp` | 3 | 3 | 8 | 8 | unchanged |
 | `obs_engine::end_transition_callback` | `engine/runtime_transition_v2.cpp` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
@@ -1789,6 +1831,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::phase2_fail` | `engine/runtime_phase2_common.cpp` | — | 3 | — | 6 | new cohesive helper/function in scoped file |
 | `obs_engine::phase2_read_handle` | `engine/runtime_phase2_common.cpp` | — | 3 | — | 6 | new cohesive helper/function in scoped file |
 | `obs_engine::fail` | `engine/runtime_properties_v2.cpp` | 3 | 3 | 6 | 6 | unchanged |
+| `obs_engine::fail` | `engine/runtime_recording_v2.cpp` | — | 3 | — | 6 | new cohesive helper/function in scoped file |
 | `obs_engine::fail` | `engine/runtime_service_v2.cpp` | — | 3 | — | 6 | new cohesive helper/function in scoped file |
 | `obs_engine::fail` | `engine/runtime_source_v2.cpp` | 3 | 3 | 6 | 6 | unchanged |
 | `obs_engine::append_source_dimensions_event` | `engine/runtime_source_v2.cpp` | — | 3 | — | 6 | new cohesive helper/function in scoped file |
@@ -1816,6 +1859,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Assert-Ok` | `.github/scripts/engine-protocol-v2-task22.ps1` | — | 3 | — | 4 | new cohesive helper/function in scoped file |
 | `Assert-Ok` | `.github/scripts/engine-protocol-v2-task23.ps1` | — | 3 | — | 4 | new cohesive helper/function in scoped file |
 | `Assert-Ok` | `.github/scripts/engine-protocol-v2-task24.ps1` | — | 3 | — | 4 | new cohesive helper/function in scoped file |
+| `Assert-Ok` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 3 | — | 4 | new cohesive helper/function in scoped file |
 | `Invoke-Task8KindDefaults` | `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1` | — | 3 | — | 4 | new cohesive helper/function in scoped file |
 | `Invoke-Task8InitialSourceList` | `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1` | — | 3 | — | 4 | new cohesive helper/function in scoped file |
 | `obs_engine::canvas_video_format_equal` | `engine/runtime_canvas_v2.cpp` | — | 3 | — | 4 | new cohesive helper/function in scoped file |
@@ -1840,7 +1884,6 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Add-ScopeMarkdown` | `tools/check-complexity.ps1` | — | 2 | — | 37 | new cohesive helper/function in scoped file |
 | `New-Fixture` | `tools/check-complexity.tests.ps1` | — | 2 | — | 37 | new cohesive helper/function in scoped file |
 | `Invoke-P2PhysicalItemCoverage` | `.github/scripts/engine-protocol-v2-phase2-physical.ps1` | — | 2 | — | 33 | new cohesive helper/function in scoped file |
-| `obs_engine::Engine::v2_output_state` | `engine/runtime_output_v2.cpp` | — | 2 | — | 30 | new cohesive helper/function in scoped file |
 | `Add-ComparisonScopeSummary` | `tools/check-complexity.ps1` | — | 2 | — | 29 | new cohesive helper/function in scoped file |
 | `Invoke-Task18SecondTransition` | `.github/scripts/engine-protocol-v2-task18.ps1` | — | 2 | — | 28 | new cohesive helper/function in scoped file |
 | `obs_engine::make_meter_payload` | `engine/runtime_audio_v2.cpp` | — | 2 | — | 28 | new cohesive helper/function in scoped file |
@@ -1855,15 +1898,16 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::make_roi_list` | `engine/runtime_encoder_v2.cpp` | — | 2 | — | 23 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::reset_video` | `engine/runtime.cpp` | — | 2 | — | 23 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::command_hello` | `engine/runtime.cpp` | — | 2 | — | 23 | new cohesive helper/function in scoped file |
+| `Invoke-Task27StopAndCleanup` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 2 | — | 22 | new cohesive helper/function in scoped file |
 | `Invoke-Task13GroupingChecks` | `.github/scripts/engine-protocol-v2-task13.ps1` | — | 2 | — | 20 | new cohesive helper/function in scoped file |
 | `Run-CaseD` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 2 | 2 | 20 | 20 | unchanged |
+| `obs_engine::classify_phase3` | `engine/protocol_phase3_v2.cpp` | — | 2 | — | 20 | new cohesive helper/function in scoped file |
 | `Remove-Task10Sources` | `.github/scripts/engine-protocol-v2-task10.ps1` | — | 2 | — | 19 | new cohesive helper/function in scoped file |
 | `Invoke-Task11Overflow` | `.github/scripts/engine-protocol-v2-task11.ps1` | — | 2 | — | 19 | new cohesive helper/function in scoped file |
 | `obs_engine::advance_filter_update_generation` | `engine/runtime_filter_v2.cpp` | — | 2 | — | 19 | new cohesive helper/function in scoped file |
 | `Invoke-Task11PackageAudit` | `.github/scripts/engine-protocol-v2-task11-package-audit.ps1` | — | 2 | — | 18 | new cohesive helper/function in scoped file |
 | `Remove-Task11DuplicateSource` | `.github/scripts/engine-protocol-v2-task11.ps1` | — | 2 | — | 18 | new cohesive helper/function in scoped file |
 | `New-TestSource` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 2 | 2 | 18 | 18 | unchanged |
-| `obs_engine::classify_phase3` | `engine/protocol_phase3_v2.cpp` | — | 2 | — | 18 | new cohesive helper/function in scoped file |
 | `Add-ComparisonMetricSection` | `tools/check-complexity.ps1` | — | 2 | — | 18 | new cohesive helper/function in scoped file |
 | `obs_engine::send_v2_ok` | `engine/protocol_v2.cpp` | 2 | 2 | 17 | 17 | unchanged |
 | `obs_engine::Engine::v2_service_get_max_bitrates` | `engine/runtime_service_v2.cpp` | — | 2 | — | 17 | new cohesive helper/function in scoped file |
@@ -1933,6 +1977,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::release_interaction_keys` | `engine/runtime_interaction_v2.cpp` | — | 2 | — | 12 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_preview_output_invalidate_canvas_video` | `engine/runtime_preview_output_v2.cpp` | — | 2 | — | 12 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_clear_preview_source` | `engine/runtime_preview_v2.cpp` | — | 2 | — | 12 | new cohesive helper/function in scoped file |
+| `obs_engine::make_recording_file_event` | `engine/runtime_recording_v2.cpp` | — | 2 | — | 12 | new cohesive helper/function in scoped file |
 | `obs_engine::apply_service_settings` | `engine/runtime_service_v2.cpp` | — | 2 | — | 12 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_begin_event_capture` | `engine/runtime_source_v2.cpp` | 2 | 2 | 10 | 12 | unchanged |
 | `obs_source_dosignal_update` | `libobs/obs-internal.h` | 2 | 2 | 12 | 12 | unchanged |
@@ -1946,6 +1991,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::execute_encoder_group` | `engine/protocol_phase3_v2.cpp` | — | 2 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::execute_service` | `engine/protocol_phase3_v2.cpp` | — | 2 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::execute_output` | `engine/protocol_phase3_v2.cpp` | — | 2 | — | 11 | new cohesive helper/function in scoped file |
+| `obs_engine::execute_recording` | `engine/protocol_phase3_v2.cpp` | — | 2 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::make_capabilities_array` | `engine/protocol_v2.cpp` | 2 | 2 | 11 | 11 | unchanged |
 | `obs_engine::set_subscriptions` | `engine/protocol_v2.cpp` | 2 | 2 | 11 | 11 | unchanged |
 | `obs_engine::Engine::v2_audio_get_monitoring_device` | `engine/runtime_audio_v2.cpp` | — | 2 | — | 11 | new cohesive helper/function in scoped file |
@@ -1953,6 +1999,9 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::Engine::v2_filter_get` | `engine/runtime_filter_v2.cpp` | 4 | 2 | 16 | 11 | reduced by 2 |
 | `obs_engine::apply_binding_update` | `engine/runtime_hotkey_v2.cpp` | — | 2 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_preview_output_get_info` | `engine/runtime_preview_output_v2.cpp` | — | 2 | — | 11 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_recording_pause` | `engine/runtime_recording_v2.cpp` | — | 2 | — | 11 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_recording_resume` | `engine/runtime_recording_v2.cpp` | — | 2 | — | 11 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_recording_toggle_pause` | `engine/runtime_recording_v2.cpp` | — | 2 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_service_get_preferred_output_kind` | `engine/runtime_service_v2.cpp` | — | 2 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_drain_deferred_source_events` | `engine/runtime_source_v2.cpp` | 2 | 2 | 9 | 11 | unchanged |
 | `obs_engine::Engine::v2_flush_deferred_source_events` | `engine/runtime_source_v2.cpp` | 2 | 2 | 9 | 11 | unchanged |
@@ -1985,6 +2034,8 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::Engine::v2_output_get_delay` | `engine/runtime_output_v2.cpp` | — | 2 | — | 10 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_output_get_reconnect` | `engine/runtime_output_v2.cpp` | — | 2 | — | 10 | new cohesive helper/function in scoped file |
 | `obs_engine::finalize_property_target` | `engine/runtime_properties_v2.cpp` | — | 2 | — | 10 | new cohesive helper/function in scoped file |
+| `obs_engine::make_recording_config` | `engine/runtime_recording_v2.cpp` | — | 2 | — | 10 | new cohesive helper/function in scoped file |
+| `obs_engine::make_recording_path_result` | `engine/runtime_recording_v2.cpp` | — | 2 | — | 10 | new cohesive helper/function in scoped file |
 | `obs_engine::make_service_info_result` | `engine/runtime_service_v2.cpp` | — | 2 | — | 10 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_service_get` | `engine/runtime_service_v2.cpp` | — | 2 | — | 10 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_service_get_settings` | `engine/runtime_service_v2.cpp` | — | 2 | — | 10 | new cohesive helper/function in scoped file |
@@ -2034,6 +2085,9 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::Engine::v2_output_start` | `engine/runtime_output_v2.cpp` | — | 2 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_output_stop` | `engine/runtime_output_v2.cpp` | — | 2 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_output_force_stop` | `engine/runtime_output_v2.cpp` | — | 2 | — | 9 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_recording_start` | `engine/runtime_recording_v2.cpp` | — | 2 | — | 9 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_recording_stop` | `engine/runtime_recording_v2.cpp` | — | 2 | — | 9 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_recording_force_stop` | `engine/runtime_recording_v2.cpp` | — | 2 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_register_scene_items` | `engine/runtime_scene_v2.cpp` | — | 2 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::append_source_active_event` | `engine/runtime_source_v2.cpp` | — | 2 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::append_source_showing_event` | `engine/runtime_source_v2.cpp` | — | 2 | — | 9 | new cohesive helper/function in scoped file |
@@ -2069,6 +2123,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::set_output_starting` | `engine/runtime_output_v2.cpp` | — | 2 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_begin_output_event_capture` | `engine/runtime_output_v2.cpp` | — | 2 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::prepare_preview_output_target` | `engine/runtime_preview_output_v2.cpp` | — | 2 | — | 8 | new cohesive helper/function in scoped file |
+| `obs_engine::RecordingCallbackScope::RecordingCallbackScope` | `engine/runtime_recording_v2.cpp` | — | 2 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::redact_known_service_fields` | `engine/runtime_service_v2.cpp` | — | 2 | — | 8 | new cohesive helper/function in scoped file |
 | `obs_engine::source_update_cb` | `engine/runtime_source_v2.cpp` | 2 | 2 | 8 | 8 | unchanged |
 | `obs_engine::source_rename_cb` | `engine/runtime_source_v2.cpp` | 2 | 2 | 8 | 8 | unchanged |
@@ -2081,6 +2136,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Test-AstType` | `tools/check-complexity.ps1` | — | 2 | — | 8 | new cohesive helper/function in scoped file |
 | `Invoke-Task10FixtureBuild` | `.github/scripts/engine-protocol-v2-task10-build-fixture.ps1` | — | 2 | — | 7 | new cohesive helper/function in scoped file |
 | `Invoke-Task11FixtureBuild` | `.github/scripts/engine-protocol-v2-task11-build-fixture.ps1` | — | 2 | — | 7 | new cohesive helper/function in scoped file |
+| `Invoke-Task27Mutation` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 2 | — | 7 | new cohesive helper/function in scoped file |
 | `Invoke-Task8ConcurrencyFixtureBuild` | `.github/scripts/engine-protocol-v2-task8-concurrency-build-fixture.ps1` | — | 2 | — | 7 | new cohesive helper/function in scoped file |
 | `Invoke-Task9FixtureBuild` | `.github/scripts/engine-protocol-v2-task9-build-fixture.ps1` | — | 2 | — | 7 | new cohesive helper/function in scoped file |
 | `require` | `engine/events_test.cpp` | 2 | 2 | 7 | 7 | unchanged |
@@ -2163,6 +2219,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::ObsPropertiesDeleter::operator ( )` | `engine/runtime_output_v2.cpp` | — | 2 | — | 5 | new cohesive helper/function in scoped file |
 | `obs_engine::note_output_signal` | `engine/runtime_output_v2.cpp` | — | 2 | — | 5 | new cohesive helper/function in scoped file |
 | `obs_engine::output_signal_callback` | `engine/runtime_output_v2.cpp` | — | 2 | — | 5 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_publish_output_callback_events` | `engine/runtime_output_v2.cpp` | — | 2 | — | 5 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_drain_deferred_output_events` | `engine/runtime_output_v2.cpp` | — | 2 | — | 5 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_flush_deferred_output_events` | `engine/runtime_output_v2.cpp` | — | 2 | — | 5 | new cohesive helper/function in scoped file |
 | `obs_engine::output_settings` | `engine/runtime_output_v2.cpp` | — | 2 | — | 5 | new cohesive helper/function in scoped file |
@@ -2280,6 +2337,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Invoke-Task21Scenario` | `.github/scripts/engine-protocol-v2-task21.ps1` | — | 1 | — | 12 | new cohesive helper/function in scoped file |
 | `Run-CaseA` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 1 | 1 | 12 | 12 | unchanged |
 | `obs_engine::read_service_settings` | `engine/runtime_service_v2.cpp` | — | 1 | — | 12 | new cohesive helper/function in scoped file |
+| `obs_engine::disconnect_recording_observer` | `engine/runtime_recording_v2.cpp` | — | 1 | — | 11 | new cohesive helper/function in scoped file |
 | `obs_engine::connect_observer` | `engine/runtime_source_v2.cpp` | 1 | 1 | 11 | 11 | unchanged |
 | `update_callback` | `engine/task23_encoder_bridge_test.cpp` | — | 1 | — | 11 | new cohesive helper/function in scoped file |
 | `Get-FunctionRanges` | `tools/check-complexity.ps1` | — | 1 | — | 11 | new cohesive helper/function in scoped file |
@@ -2308,6 +2366,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::make_output_settings_result` | `engine/runtime_output_v2.cpp` | — | 1 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::make_output_delay_result` | `engine/runtime_output_v2.cpp` | — | 1 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::make_output_reconnect_result` | `engine/runtime_output_v2.cpp` | — | 1 | — | 9 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_register_recording_role` | `engine/runtime_recording_v2.cpp` | — | 1 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::discard_scene_entry` | `engine/runtime_scene_v2.cpp` | — | 1 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::make_service_settings_result` | `engine/runtime_service_v2.cpp` | — | 1 | — | 9 | new cohesive helper/function in scoped file |
 | `obs_engine::source_update_settle_cb` | `engine/runtime_source_settle_v2.cpp` | 1 | 1 | 9 | 9 | unchanged |
@@ -2361,6 +2420,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::format_adapter_luid` | `engine/runtime_preview_output_v2.cpp` | — | 1 | — | 7 | new cohesive helper/function in scoped file |
 | `obs_engine::make_cancelled_transition_event_data` | `engine/runtime_program_v2.cpp` | — | 1 | — | 7 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_program_get_scene` | `engine/runtime_program_v2.cpp` | — | 1 | — | 7 | new cohesive helper/function in scoped file |
+| `obs_engine::make_recording_finalized_event` | `engine/runtime_recording_v2.cpp` | — | 1 | — | 7 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_scene_ordered_item_handles` | `engine/runtime_scene_v2.cpp` | — | 1 | — | 7 | new cohesive helper/function in scoped file |
 | `obs_engine::append_event` | `engine/runtime_source_v2.cpp` | 1 | 1 | 7 | 7 | unchanged |
 | `obs_engine::make_flags_data` | `engine/runtime_source_v2.cpp` | 1 | 1 | 7 | 7 | unchanged |
@@ -2411,11 +2471,14 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::clear_deferred_output_events` | `engine/runtime_output_v2.cpp` | — | 1 | — | 6 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_preview_get_scene` | `engine/runtime_preview_v2.cpp` | — | 1 | — | 6 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_preview_get_info` | `engine/runtime_preview_v2.cpp` | — | 1 | — | 6 | new cohesive helper/function in scoped file |
+| `obs_engine::recording_output_params` | `engine/runtime_recording_v2.cpp` | — | 1 | — | 6 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_recording_get_config` | `engine/runtime_recording_v2.cpp` | — | 1 | — | 6 | new cohesive helper/function in scoped file |
 | `obs_engine::set_secret_metadata` | `engine/runtime_service_v2.cpp` | — | 1 | — | 6 | new cohesive helper/function in scoped file |
 | `obs_engine::clear_deferred_source_events` | `engine/runtime_source_v2.cpp` | 1 | 1 | 6 | 6 | unchanged |
 | `obs_engine::make_source_event_data` | `engine/runtime_source_v2.cpp` | — | 1 | — | 6 | new cohesive helper/function in scoped file |
 | `obs_module_load` | `engine/task25_service_plugin.cpp` | — | 1 | — | 6 | new cohesive helper/function in scoped file |
 | `obs_module_load` | `engine/task26_output_plugin.cpp` | — | 1 | — | 6 | new cohesive helper/function in scoped file |
+| `obs_module_load` | `engine/task27_recording_plugin.cpp` | — | 1 | — | 6 | new cohesive helper/function in scoped file |
 | `phase2_consume_canvas_video_mix_failure` | `libobs/obs-canvas.c` | — | 1 | — | 6 | new cohesive helper/function in scoped file |
 | `Get-ScriptBodyWarnings` | `tools/check-complexity.ps1` | — | 1 | — | 6 | new cohesive helper/function in scoped file |
 | `Invoke-Task12Scenario` | `.github/scripts/engine-protocol-v2-task12.ps1` | — | 1 | — | 5 | new cohesive helper/function in scoped file |
@@ -2466,6 +2529,9 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::phase2_set_handle` | `engine/runtime_phase2_common.cpp` | — | 1 | — | 5 | new cohesive helper/function in scoped file |
 | `obs_engine::reset_result` | `engine/runtime_properties_v2.cpp` | 1 | 1 | 5 | 5 | unchanged |
 | `obs_engine::set_handle` | `engine/runtime_properties_v2.cpp` | 1 | 1 | 5 | 5 | unchanged |
+| `obs_engine::reset_result` | `engine/runtime_recording_v2.cpp` | — | 1 | — | 5 | new cohesive helper/function in scoped file |
+| `obs_engine::path_to_utf8` | `engine/runtime_recording_v2.cpp` | — | 1 | — | 5 | new cohesive helper/function in scoped file |
+| `obs_engine::connect_recording_observer` | `engine/runtime_recording_v2.cpp` | — | 1 | — | 5 | new cohesive helper/function in scoped file |
 | `obs_engine::reset_result` | `engine/runtime_service_v2.cpp` | — | 1 | — | 5 | new cohesive helper/function in scoped file |
 | `obs_engine::mark_source_settlement_lost` | `engine/runtime_source_settle_v2.cpp` | 1 | 1 | 5 | 5 | unchanged |
 | `obs_engine::reset_result` | `engine/runtime_source_v2.cpp` | 1 | 1 | 5 | 5 | unchanged |
@@ -2526,8 +2592,10 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `obs_engine::output_flag` | `engine/runtime_output_v2.cpp` | — | 1 | — | 4 | new cohesive helper/function in scoped file |
 | `obs_engine::append_output_signal_pause_event` | `engine/runtime_output_v2.cpp` | — | 1 | — | 4 | new cohesive helper/function in scoped file |
 | `obs_engine::OutputCallbackScope::accepted` | `engine/runtime_output_v2.cpp` | — | 1 | — | 4 | new cohesive helper/function in scoped file |
+| `obs_engine::Engine::v2_output_is_inactive` | `engine/runtime_output_v2.cpp` | — | 1 | — | 4 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_preview_output_capable` | `engine/runtime_preview_output_v2.cpp` | — | 1 | — | 4 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::v2_preview_output_get` | `engine/runtime_preview_output_v2.cpp` | — | 1 | — | 4 | new cohesive helper/function in scoped file |
+| `obs_engine::RecordingCallbackScope::accepted` | `engine/runtime_recording_v2.cpp` | — | 1 | — | 4 | new cohesive helper/function in scoped file |
 | `obs_engine::SourceCallbackScope::accepted` | `engine/runtime_source_v2.cpp` | 1 | 1 | 4 | 4 | unchanged |
 | `obs_engine::SourceCallbackScope::suppressed` | `engine/runtime_source_v2.cpp` | 1 | 1 | 4 | 4 | unchanged |
 | `obs_engine::Engine::~Engine` | `engine/runtime.cpp` | 1 | 1 | 4 | 4 | unchanged |
@@ -2578,6 +2646,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `Fail-Task24` | `.github/scripts/engine-protocol-v2-task24.ps1` | — | 1 | — | 1 | new cohesive helper/function in scoped file |
 | `Fail-Task25` | `.github/scripts/engine-protocol-v2-task25.ps1` | — | 1 | — | 1 | new cohesive helper/function in scoped file |
 | `Fail-Task26` | `.github/scripts/engine-protocol-v2-task26.ps1` | — | 1 | — | 1 | new cohesive helper/function in scoped file |
+| `Fail-Task27` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 1 | — | 1 | new cohesive helper/function in scoped file |
 | `obs_engine::EventDispatcher::EventDispatcher` | `engine/events.cpp` | 1 | 1 | 1 | 1 | unchanged |
 | `obs_engine::RevisionState::MutationGuard::MutationGuard` | `engine/revision.hpp` | 1 | 1 | 1 | 1 | unchanged |
 | `obs_engine::AudioCallbackScope::accepted` | `engine/runtime_audio_v2.cpp` | — | 1 | — | 1 | new cohesive helper/function in scoped file |
@@ -2606,12 +2675,15 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task23-stage-fixture.ps1` | — | 4 | — | 16 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task22-package-audit.ps1` | — | 4 | — | 14 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task26-stage-fixture.ps1` | — | 4 | — | 14 | new cohesive helper/function in scoped file |
+| `<script-body>` | `.github/scripts/engine-protocol-v2-task27-stage-fixture.ps1` | — | 4 | — | 14 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task23-package-audit.ps1` | — | 4 | — | 12 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task23-remove-fixture.ps1` | — | 4 | — | 12 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task22-remove-fixture.ps1` | — | 4 | — | 11 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task21-remove-fixture.ps1` | — | 4 | — | 9 | new cohesive helper/function in scoped file |
+| `<script-body>` | `.github/scripts/engine-protocol-v2-task27-package-audit.ps1` | — | 4 | — | 8 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task25.ps1` | — | 3 | — | 23 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task11-timeout-race.ps1` | 3 | 3 | 22 | 22 | unchanged |
+| `<script-body>` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 3 | — | 16 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task26.ps1` | — | 3 | — | 15 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task21-package-audit.ps1` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task21-stage-fixture.ps1` | — | 3 | — | 8 | new cohesive helper/function in scoped file |
@@ -2629,12 +2701,14 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task24-package-audit.ps1` | — | 2 | — | 7 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task25-package-audit.ps1` | — | 2 | — | 7 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task26-remove-fixture.ps1` | — | 2 | — | 6 | new cohesive helper/function in scoped file |
+| `<script-body>` | `.github/scripts/engine-protocol-v2-task27-remove-fixture.ps1` | — | 2 | — | 6 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task21-build-fixture.ps1` | — | 2 | — | 3 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task22-build-fixture.ps1` | — | 2 | — | 3 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task23-build-fixture.ps1` | — | 2 | — | 3 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task24-build-fixture.ps1` | — | 2 | — | 3 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task25-build-fixture.ps1` | — | 2 | — | 3 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task26-build-fixture.ps1` | — | 2 | — | 3 | new cohesive helper/function in scoped file |
+| `<script-body>` | `.github/scripts/engine-protocol-v2-task27-build-fixture.ps1` | — | 2 | — | 3 | new cohesive helper/function in scoped file |
 | `<script-body>` | `tools/check-complexity.ps1` | — | 1 | — | 47 | new cohesive helper/function in scoped file |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-task9.ps1` | 26 | 1 | 265 | 17 | reduced by 25 |
 | `<script-body>` | `.github/scripts/engine-protocol-v2-phase2-lane.ps1` | — | 1 | — | 11 | new cohesive helper/function in scoped file |
@@ -2681,10 +2755,11 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Invoke-CheckMode` — `tools/check-complexity.ps1:3501-3540`, CC 10, NLOC 39, params 1
 - `obs_engine::Engine::v2_preview_data` — `engine/runtime_preview_v2.cpp:32-70`, CC 10, NLOC 38, params 0
 - `obs_engine::Engine::apply_program_scene_route` — `engine/runtime_program_v2.cpp:100-139`, CC 10, NLOC 38, params 5
+- `obs_engine::Engine::v2_recording_add_chapter` — `engine/runtime_recording_v2.cpp:522-558`, CC 10, NLOC 37, params 3
 - `obs_engine::Engine::v2_scene_create` — `engine/runtime_v2.cpp:460-502`, CC 10, NLOC 37, params 3
 - `obs_engine::Engine::v2_canvas_set_channel` — `engine/runtime_canvas_v2.cpp:709-744`, CC 10, NLOC 36, params 3
 - `obs_engine::Engine::v2_sync_source_observers` — `engine/runtime_source_v2.cpp:946-984`, CC 10, NLOC 36, params 0
-- `obs_engine::Engine::v2_source_duplicate` — `engine/runtime_source_v2.cpp:1094-1132`, CC 10, NLOC 35, params 3
+- `obs_engine::Engine::v2_source_duplicate` — `engine/runtime_source_v2.cpp:1095-1133`, CC 10, NLOC 35, params 3
 - `Get-WorkflowRunBlocks` — `tools/check-complexity.ps1:344-379`, CC 10, NLOC 35, params 1
 - `main` — `engine/preview_consumer_test.cpp:248-284`, CC 10, NLOC 34, params 2
 - `obs_engine::collect_filter_signal` — `engine/runtime_filter_v2.cpp:935-972`, CC 10, NLOC 34, params 3
@@ -2703,6 +2778,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Get-WorkflowPowerShellAstMetrics` — `tools/check-complexity.ps1:448-478`, CC 10, NLOC 30, params 1
 - `obs_engine::Engine::v2_filter_set_order` — `engine/runtime_filter_v2.cpp:1990-2018`, CC 10, NLOC 29, params 3
 - `obs_engine::collect_output_start_signal` — `engine/runtime_output_v2.cpp:394-422`, CC 10, NLOC 29, params 5
+- `obs_engine::Engine::v2_output_remove` — `engine/runtime_output_v2.cpp:1555-1582`, CC 10, NLOC 28, params 3
 - `Initialize-Task23Session` — `.github/scripts/engine-protocol-v2-task23.ps1:128-154`, CC 10, NLOC 27, params 1
 - `obs_engine::prepare_v2_request` — `engine/protocol_v2.cpp:845-872`, CC 10, NLOC 27, params 7
 - `obs_engine::read_saved_bindings` — `engine/runtime_hotkey_v2.cpp:391-417`, CC 10, NLOC 27, params 1
@@ -2715,7 +2791,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::prepare` — `engine/protocol_phase2_v2.cpp:408-429`, CC 10, NLOC 22, params 7
 - `obs_engine::publish_deferred_audio_snapshot` — `engine/runtime_audio_v2.cpp:472-493`, CC 10, NLOC 22, params 2
 - `obs_engine::read_track_mixers` — `engine/runtime_audio_v2.cpp:1020-1041`, CC 10, NLOC 22, params 3
-- `obs_engine::Engine::v2_shutdown_output_entry` — `engine/runtime_output_v2.cpp:1031-1052`, CC 10, NLOC 22, params 2
+- `obs_engine::Engine::v2_shutdown_output_entry` — `engine/runtime_output_v2.cpp:1048-1069`, CC 10, NLOC 22, params 2
 - `obs_engine::snapshot_active_transition` — `engine/runtime_transition_v2.cpp:326-347`, CC 10, NLOC 22, params 5
 - `obs_engine::collect_scene_item` — `engine/runtime_scene_v2.cpp:52-72`, CC 10, NLOC 21, params 2
 - `obs_engine::read_encoder_video_input` — `engine/runtime_encoder_v2.cpp:152-171`, CC 10, NLOC 20, params 5
@@ -2731,6 +2807,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Get-Task22HotkeyFixtures` — `.github/scripts/engine-protocol-v2-task22.ps1:155-169`, CC 10, NLOC 15, params 1
 - `obs_engine::read_scaled_dimensions` — `engine/runtime_encoder_v2.cpp:583-597`, CC 10, NLOC 15, params 4
 - `Get-WorkflowInterpreter` — `tools/check-complexity.ps1:499-513`, CC 10, NLOC 14, params 1
+- `obs_engine::output_kind_supports_proc` — `engine/runtime_recording_v2.cpp:213-224`, CC 10, NLOC 12, params 2
 - `Assert-ColorEvidence` — `.github/scripts/engine-protocol-v2-task17.ps1:145-153`, CC 10, NLOC 9, params 4
 - `Assert-Task17ProgramDescriptor` — `.github/scripts/engine-protocol-v2-task17.ps1:155-160`, CC 10, NLOC 6, params 1
 - `Invoke-Task11FilterMutations` — `.github/scripts/engine-protocol-v2-task11.ps1:461-538`, CC 9, NLOC 75, params 1
@@ -2753,20 +2830,21 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::begin_studio_transition` — `engine/runtime_studio_v2.cpp:160-194`, CC 9, NLOC 35, params 5
 - `process_media_action` — `libobs/obs-source.c:1398-1431`, CC 9, NLOC 34, params 2
 - `obs_engine::Engine::v2_canvas_remove` — `engine/runtime_canvas_v2.cpp:556-588`, CC 9, NLOC 33, params 3
-- `obs_engine::Engine::v2_set_output_encoder_slot` — `engine/runtime_output_v2.cpp:1744-1775`, CC 9, NLOC 32, params 6
-- `obs_engine::Engine::v2_output_set_reconnect` — `engine/runtime_output_v2.cpp:2043-2074`, CC 9, NLOC 32, params 3
+- `obs_engine::Engine::v2_set_output_encoder_slot` — `engine/runtime_output_v2.cpp:1763-1794`, CC 9, NLOC 32, params 6
+- `obs_engine::Engine::v2_output_set_reconnect` — `engine/runtime_output_v2.cpp:2062-2093`, CC 9, NLOC 32, params 3
 - `obs_engine::Engine::command_source_create` — `engine/runtime.cpp:337-372`, CC 9, NLOC 32, params 2
 - `obs_source_media_action_enqueue` — `libobs/obs-source.c:5924-5958`, CC 9, NLOC 32, params 4
 - `Get-PathScopeLines` — `tools/check-complexity.ps1:2995-3027`, CC 9, NLOC 32, params 1
 - `obs_engine::update_scalar_audio_observer` — `engine/runtime_audio_v2.cpp:605-635`, CC 9, NLOC 31, params 3
 - `Invoke-Task6Transform` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:328-357`, CC 9, NLOC 30, params 1
-- `obs_engine::handle_filter_request` — `engine/protocol_filter_v2.cpp:651-689`, CC 9, NLOC 30, params 5
+- `obs_engine::handle_filter_request` — `engine/protocol_filter_v2.cpp:667-705`, CC 9, NLOC 30, params 5
 - `obs_engine::Engine::v2_start_transition` — `engine/runtime_transition_v2.cpp:737-766`, CC 9, NLOC 30, params 6
 - `obs_engine::Engine::command_item_transform` — `engine/runtime.cpp:574-605`, CC 9, NLOC 30, params 2
 - `Update-PostAcceptedPathProvenance` — `tools/check-complexity.ps1:867-897`, CC 9, NLOC 30, params 1
 - `obs_engine::Engine::v2_encoder_rename` — `engine/runtime_encoder_v2.cpp:811-839`, CC 9, NLOC 29, params 3
-- `obs_engine::Engine::v2_sanitize_output_error` — `engine/runtime_output_v2.cpp:836-864`, CC 9, NLOC 29, params 1
-- `obs_engine::Engine::v2_output_rename` — `engine/runtime_output_v2.cpp:1565-1593`, CC 9, NLOC 29, params 3
+- `obs_engine::Engine::v2_sanitize_output_error` — `engine/runtime_output_v2.cpp:838-866`, CC 9, NLOC 29, params 1
+- `obs_engine::Engine::v2_output_rename` — `engine/runtime_output_v2.cpp:1584-1612`, CC 9, NLOC 29, params 3
+- `obs_engine::Engine::v2_recording_split_file` — `engine/runtime_recording_v2.cpp:492-520`, CC 9, NLOC 29, params 2
 - `obs_engine::Engine::v2_service_rename` — `engine/runtime_service_v2.cpp:493-521`, CC 9, NLOC 29, params 3
 - `obs_engine::audio_meter_tick` — `engine/runtime_audio_v2.cpp:885-912`, CC 9, NLOC 28, params 2
 - `obs_engine::Engine::v2_encoder_group_remove_encoder` — `engine/runtime_encoder_group_v2.cpp:213-242`, CC 9, NLOC 28, params 3
@@ -2779,18 +2857,19 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::publish_deferred_source_snapshot` — `engine/runtime_source_v2.cpp:480-508`, CC 9, NLOC 27, params 2
 - `obs_engine::read_canvas_dimensions` — `engine/runtime_canvas_v2.cpp:166-191`, CC 9, NLOC 26, params 3
 - `obs_engine::Engine::v2_item_remove_from_group` — `engine/runtime_item_v2.cpp:1031-1056`, CC 9, NLOC 26, params 3
-- `obs_engine::Engine::v2_start_output_entry` — `engine/runtime_output_v2.cpp:1207-1232`, CC 9, NLOC 26, params 4
-- `obs_engine::Engine::v2_output_remove` — `engine/runtime_output_v2.cpp:1538-1563`, CC 9, NLOC 26, params 3
-- `obs_engine::Engine::v2_update_output_settings` — `engine/runtime_output_v2.cpp:1595-1620`, CC 9, NLOC 26, params 6
+- `obs_engine::Engine::v2_start_output_entry` — `engine/runtime_output_v2.cpp:1224-1249`, CC 9, NLOC 26, params 4
+- `obs_engine::Engine::v2_update_output_settings` — `engine/runtime_output_v2.cpp:1614-1639`, CC 9, NLOC 26, params 6
 - `obs_engine::create_preview_output_binding` — `engine/runtime_preview_output_v2.cpp:219-244`, CC 9, NLOC 26, params 4
 - `obs_engine::canonicalize_source_result` — `engine/runtime_source_settle_v2.cpp:228-256`, CC 9, NLOC 26, params 2
 - `Read-IdentityMigrationEntries` — `tools/check-complexity.ps1:1318-1344`, CC 9, NLOC 26, params 1
+- `obs_engine::collect_output_signal` — `engine/runtime_output_v2.cpp:540-567`, CC 9, NLOC 25, params 3
+- `obs_engine::Engine::v2_recording_configure` — `engine/runtime_recording_v2.cpp:382-406`, CC 9, NLOC 25, params 3
 - `obs_engine::Engine::v2_settle_source_mutation` — `engine/runtime_source_settle_v2.cpp:314-340`, CC 9, NLOC 25, params 2
 - `Assert-TrustedBaselineScope` — `tools/check-complexity.ps1:146-171`, CC 9, NLOC 25, params 1
 - `obs_engine::read_import_update` — `engine/runtime_hotkey_v2.cpp:824-847`, CC 9, NLOC 24, params 5
 - `obs_engine::Engine::v2_program_set_scene` — `engine/runtime_program_v2.cpp:75-98`, CC 9, NLOC 24, params 3
 - `obs_engine::speaker_layout_name` — `engine/runtime_audio_v2.cpp:284-305`, CC 9, NLOC 22, params 1
-- `obs_engine::publish_deferred_output_snapshot` — `engine/runtime_output_v2.cpp:811-832`, CC 9, NLOC 22, params 2
+- `obs_engine::publish_deferred_output_snapshot` — `engine/runtime_output_v2.cpp:813-834`, CC 9, NLOC 22, params 2
 - `Invoke-Task15ProgramRouting` — `.github/scripts/engine-protocol-v2-task15.ps1:121-141`, CC 9, NLOC 21, params 1
 - `check_dynamic_properties` — `engine/properties_test.cpp:217-239`, CC 9, NLOC 21, params 1
 - `obs_engine::Engine::v2_prepare_encoder_group_shutdown` — `engine/runtime_encoder_group_v2.cpp:90-110`, CC 9, NLOC 21, params 0
@@ -2803,6 +2882,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Assert-TrustedBaselineReportShape` — `tools/check-complexity.ps1:125-144`, CC 9, NLOC 19, params 1
 - `Invoke-Task17RouteSwitch` — `.github/scripts/engine-protocol-v2-task17.ps1:231-248`, CC 9, NLOC 18, params 1
 - `obs_engine::read_preview_output_create_dimensions` — `engine/runtime_preview_output_v2.cpp:778-795`, CC 9, NLOC 18, params 5
+- `obs_engine::read_recording_path_options` — `engine/runtime_recording_v2.cpp:151-168`, CC 9, NLOC 18, params 3
 - `obs_engine::collect_sensitive_recursive` — `engine/properties_sensitive.cpp:6-22`, CC 9, NLOC 17, params 2
 - `obs_engine::read_encoder_create_options` — `engine/runtime_encoder_v2.cpp:182-198`, CC 9, NLOC 17, params 6
 - `obs_engine::Engine::v2_read_source_create_options` — `engine/runtime_v2.cpp:240-256`, CC 9, NLOC 17, params 5
@@ -2814,17 +2894,18 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::validate_roi` — `engine/runtime_encoder_v2.cpp:541-554`, CC 9, NLOC 14, params 3
 - `Invoke-Task8SourceRemoval` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:285-298`, CC 9, NLOC 12, params 2
 - `obs_engine::parse_u32` — `engine/config.cpp:18-31`, CC 9, NLOC 12, params 4
-- `obs_engine::validate_output_start_slots` — `engine/runtime_output_v2.cpp:1179-1190`, CC 9, NLOC 12, params 3
+- `obs_engine::validate_output_start_slots` — `engine/runtime_output_v2.cpp:1196-1207`, CC 9, NLOC 12, params 3
 - `Read-Task20Event` — `.github/scripts/engine-protocol-v2-task20.ps1:97-106`, CC 9, NLOC 10, params 3
 - `Invoke-Task8SourceIdentity` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:167-176`, CC 9, NLOC 10, params 2
 - `Assert-Task18ProgressSample` — `.github/scripts/engine-protocol-v2-task18.ps1:299-305`, CC 9, NLOC 7, params 2
 - `Initialize-Task10Sources` — `.github/scripts/engine-protocol-v2-task10.ps1:210-268`, CC 8, NLOC 56, params 1
 - `obs_engine::Engine::replace_preview_output_resource` — `engine/runtime_preview_output_v2.cpp:876-918`, CC 8, NLOC 43, params 5
 - `obs_engine::Engine::v2_source_remove` — `engine/runtime_v2.cpp:411-457`, CC 8, NLOC 41, params 3
+- `Invoke-Task27CreateAndConfigure` — `.github/scripts/engine-protocol-v2-task27.ps1:105-143`, CC 8, NLOC 39, params 1
 - `main` — `engine/host.cpp:241-283`, CC 8, NLOC 38, params 2
 - `obs_engine::Engine::v2_item_ungroup` — `engine/runtime_item_v2.cpp:1058-1095`, CC 8, NLOC 38, params 3
 - `obs_engine::Engine::v2_properties_get_list_items` — `engine/runtime_properties_v2.cpp:499-538`, CC 8, NLOC 37, params 3
-- `obs_engine::Engine::v2_source_get_missing_files` — `engine/runtime_source_v2.cpp:1300-1338`, CC 8, NLOC 37, params 3
+- `obs_engine::Engine::v2_source_get_missing_files` — `engine/runtime_source_v2.cpp:1301-1339`, CC 8, NLOC 37, params 3
 - `obs_engine::Engine::v2_audio_forget_source` — `engine/runtime_audio_v2.cpp:1230-1265`, CC 8, NLOC 36, params 1
 - `obs_encoder_destroy` — `libobs/obs-encoder.c:468-509`, CC 8, NLOC 36, params 1
 - `New-WorkflowRunBlockRecord` — `tools/check-complexity.ps1:306-342`, CC 8, NLOC 36, params 1
@@ -2842,17 +2923,18 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::v2_item_duplicate` — `engine/runtime_item_v2.cpp:561-594`, CC 8, NLOC 32, params 3
 - `obs_engine::queue_transition_signal` — `engine/runtime_transition_v2.cpp:93-124`, CC 8, NLOC 32, params 2
 - `obs_engine::serialize_property_list_items` — `engine/properties.cpp:581-612`, CC 8, NLOC 31, params 1
-- `obs_engine::handle_phase3_request` — `engine/protocol_phase3_v2.cpp:1003-1037`, CC 8, NLOC 31, params 4
+- `obs_engine::handle_phase3_request` — `engine/protocol_phase3_v2.cpp:1132-1166`, CC 8, NLOC 31, params 4
 - `obs_engine::Engine::v2_encoder_create` — `engine/runtime_encoder_v2.cpp:756-785`, CC 8, NLOC 30, params 3
 - `obs_engine::Engine::v2_service_get_encoder_recommendations` — `engine/runtime_service_v2.cpp:726-755`, CC 8, NLOC 30, params 3
 - `obs_engine::parse_subscription_list` — `engine/protocol_v2.cpp:529-557`, CC 8, NLOC 29, params 3
 - `obs_engine::Engine::v2_item_set_order` — `engine/runtime_item_v2.cpp:792-820`, CC 8, NLOC 29, params 3
-- `obs_engine::Engine::v2_output_create` — `engine/runtime_output_v2.cpp:1508-1536`, CC 8, NLOC 29, params 3
+- `obs_engine::Engine::v2_output_create` — `engine/runtime_output_v2.cpp:1525-1553`, CC 8, NLOC 29, params 3
 - `Invoke-Task6SourceRemoval` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:464-492`, CC 8, NLOC 28, params 2
 - `obs_engine::parse_args` — `engine/config.cpp:100-131`, CC 8, NLOC 28, params 3
 - `obs_engine::Engine::v2_canvas_rename` — `engine/runtime_canvas_v2.cpp:590-617`, CC 8, NLOC 28, params 3
 - `obs_engine::settle_pending_update` — `engine/runtime_encoder_v2.cpp:408-435`, CC 8, NLOC 28, params 7
 - `obs_engine::Engine::v2_add_filter_observer` — `engine/runtime_filter_v2.cpp:1312-1341`, CC 8, NLOC 28, params 1
+- `obs_engine::recording_file_changed_callback` — `engine/runtime_recording_v2.cpp:264-291`, CC 8, NLOC 28, params 2
 - `obs_canvas_reset_video_internal` — `libobs/obs-canvas.c:320-351`, CC 8, NLOC 28, params 2
 - `obs_engine::Engine::v2_audio_set_monitoring_device` — `engine/runtime_audio_v2.cpp:1764-1790`, CC 8, NLOC 27, params 3
 - `obs_engine::Engine::v2_encoder_roi_remove` — `engine/runtime_encoder_v2.cpp:1129-1155`, CC 8, NLOC 27, params 3
@@ -2860,7 +2942,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Get-AstDecisionWeight` — `tools/check-complexity.ps1:1101-1128`, CC 8, NLOC 27, params 1
 - `obs_engine::Engine::v2_hotkey_trigger` — `engine/runtime_hotkey_v2.cpp:1051-1076`, CC 8, NLOC 26, params 3
 - `obs_engine::decode_utf8_scalars` — `engine/runtime_interaction_v2.cpp:266-291`, CC 8, NLOC 26, params 3
-- `obs_engine::Engine::v2_stop_output_entry` — `engine/runtime_output_v2.cpp:1234-1259`, CC 8, NLOC 26, params 5
+- `obs_engine::Engine::v2_stop_output_entry` — `engine/runtime_output_v2.cpp:1251-1276`, CC 8, NLOC 26, params 5
 - `obs_engine::Engine::v2_studio_set_transition` — `engine/runtime_studio_v2.cpp:96-121`, CC 8, NLOC 26, params 3
 - `Read-EngineMessage` — `.github/scripts/engine-protocol-v2-task11.ps1:49-73`, CC 8, NLOC 25, params 1
 - `test_state_overflow_requires_resync` — `engine/events_test.cpp:94-119`, CC 8, NLOC 25, params 0
@@ -2873,18 +2955,17 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::v2_item_add_to_group` — `engine/runtime_item_v2.cpp:1006-1029`, CC 8, NLOC 24, params 3
 - `obs_engine::publish_media_batch` — `engine/runtime_media_v2.cpp:368-391`, CC 8, NLOC 24, params 3
 - `obs_engine::publish_output_events` — `engine/runtime_output_v2.cpp:354-379`, CC 8, NLOC 24, params 2
-- `obs_engine::Engine::v2_append_output_encoder_dependency_events` — `engine/runtime_output_v2.cpp:1136-1159`, CC 8, NLOC 24, params 3
+- `obs_engine::Engine::v2_append_output_encoder_dependency_events` — `engine/runtime_output_v2.cpp:1153-1176`, CC 8, NLOC 24, params 3
 - `obs_engine::publish_source_events` — `engine/runtime_source_v2.cpp:563-590`, CC 8, NLOC 24, params 3
 - `obs_engine::Engine::finish_studio_transition` — `engine/runtime_transition_v2.cpp:835-858`, CC 8, NLOC 24, params 3
-- `obs_engine::collect_output_signal` — `engine/runtime_output_v2.cpp:540-565`, CC 8, NLOC 23, params 3
-- `obs_engine::Engine::v2_output_set_paused` — `engine/runtime_output_v2.cpp:1967-1989`, CC 8, NLOC 23, params 3
-- `obs_engine::Engine::v2_source_rename` — `engine/runtime_source_v2.cpp:1134-1159`, CC 8, NLOC 23, params 3
+- `obs_engine::Engine::v2_output_set_paused` — `engine/runtime_output_v2.cpp:1986-2008`, CC 8, NLOC 23, params 3
+- `obs_engine::Engine::v2_source_rename` — `engine/runtime_source_v2.cpp:1135-1160`, CC 8, NLOC 23, params 3
 - `obs_engine::read_duplicate_target` — `engine/runtime_item_v2.cpp:397-418`, CC 8, NLOC 22, params 7
 - `obs_engine::inspect_shared_texture_handle` — `engine/runtime_preview_output_v2.cpp:294-316`, CC 8, NLOC 22, params 3
 - `Test-MetricInScope` — `tools/check-complexity.ps1:1831-1853`, CC 8, NLOC 22, params 1
 - `obs_engine::collect_audio_observer_changes` — `engine/runtime_audio_v2.cpp:1149-1169`, CC 8, NLOC 21, params 4
 - `obs_engine::split_semicolon_values` — `engine/runtime_output_v2.cpp:170-190`, CC 8, NLOC 21, params 1
-- `obs_engine::Engine::v2_record_output_encoder_slot` — `engine/runtime_output_v2.cpp:1680-1700`, CC 8, NLOC 21, params 6
+- `obs_engine::Engine::v2_record_output_encoder_slot` — `engine/runtime_output_v2.cpp:1699-1719`, CC 8, NLOC 21, params 6
 - `obs_engine::resolve_preview_render_target` — `engine/runtime_preview_output_v2.cpp:562-582`, CC 8, NLOC 21, params 5
 - `Read-Task12Event` — `.github/scripts/engine-protocol-v2-task12.ps1:124-143`, CC 8, NLOC 20, params 2
 - `obs_engine::phase2_blend_mode_name` — `engine/runtime_phase2_common.cpp:235-254`, CC 8, NLOC 20, params 1
@@ -2905,7 +2986,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::collect_group_item` — `engine/runtime_scene_v2.cpp:34-50`, CC 8, NLOC 17, params 2
 - `Read-P2PhysicalMessage` — `.github/scripts/engine-protocol-v2-phase2-physical.ps1:55-70`, CC 8, NLOC 16, params 1
 - `Sync-P2PhysicalReadRevision` — `.github/scripts/engine-protocol-v2-phase2-physical.ps1:202-217`, CC 8, NLOC 16, params 3
-- `obs_engine::read_delay_request` — `engine/runtime_output_v2.cpp:1320-1335`, CC 8, NLOC 16, params 4
+- `obs_engine::read_delay_request` — `engine/runtime_output_v2.cpp:1337-1352`, CC 8, NLOC 16, params 4
 - `Stop-Task11AfterFailure` — `.github/scripts/engine-protocol-v2-task11.ps1:930-944`, CC 8, NLOC 15, params 1
 - `obs_engine::Engine::v2_prepare_filter_settlement` — `engine/runtime_filter_v2.cpp:1583-1597`, CC 8, NLOC 15, params 5
 - `obs_engine::fill_source_registerer` — `engine/runtime_hotkey_v2.cpp:450-464`, CC 8, NLOC 15, params 3
@@ -2915,7 +2996,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::parse_handle_text` — `engine/runtime_filter_v2.cpp:180-193`, CC 8, NLOC 14, params 2
 - `obs_engine::parse_handle_text` — `engine/runtime_interaction_v2.cpp:149-162`, CC 8, NLOC 14, params 2
 - `obs_engine::parse_handle_text` — `engine/runtime_media_v2.cpp:145-160`, CC 8, NLOC 14, params 2
-- `obs_engine::validate_output_service_target` — `engine/runtime_output_v2.cpp:1895-1908`, CC 8, NLOC 14, params 4
+- `obs_engine::validate_output_service_target` — `engine/runtime_output_v2.cpp:1914-1927`, CC 8, NLOC 14, params 4
 - `obs_engine::parse_handle_text` — `engine/runtime_properties_v2.cpp:94-107`, CC 8, NLOC 14, params 2
 - `obs_engine::parse_handle_text` — `engine/runtime_source_settle_v2.cpp:56-69`, CC 8, NLOC 14, params 2
 - `obs_engine::parse_handle_text` — `engine/runtime_source_v2.cpp:110-123`, CC 8, NLOC 14, params 2
@@ -2964,20 +3045,20 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::v2_cancel_studio_transition` — `engine/runtime_transition_v2.cpp:860-890`, CC 7, NLOC 31, params 1
 - `Merge-IdentityMigrationMaps` — `tools/check-complexity.ps1:1474-1505`, CC 7, NLOC 31, params 1
 - `obs_engine::take_deferred_audio_events` — `engine/runtime_audio_v2.cpp:441-470`, CC 7, NLOC 30, params 3
-- `obs_engine::take_deferred_output_events` — `engine/runtime_output_v2.cpp:780-809`, CC 7, NLOC 30, params 3
+- `obs_engine::take_deferred_output_events` — `engine/runtime_output_v2.cpp:782-811`, CC 7, NLOC 30, params 3
 - `Invoke-WorkflowExecutableAudit` — `tools/check-complexity.ps1:584-614`, CC 7, NLOC 30, params 1
-- `obs_engine::Engine::v2_prepare_output_shutdown` — `engine/runtime_output_v2.cpp:1054-1082`, CC 7, NLOC 29, params 0
+- `obs_engine::Engine::v2_prepare_output_shutdown` — `engine/runtime_output_v2.cpp:1071-1099`, CC 7, NLOC 29, params 0
 - `obs_engine::Engine::v2_update_encoder_settings` — `engine/runtime_encoder_v2.cpp:869-896`, CC 7, NLOC 28, params 6
 - `obs_engine::queue_deferred_media_events_locked` — `engine/runtime_media_v2.cpp:412-439`, CC 7, NLOC 28, params 6
 - `obs_engine::Engine::v2_end_event_capture` — `engine/runtime_source_v2.cpp:892-920`, CC 7, NLOC 28, params 0
 - `Find-BeforeMetric` — `tools/check-complexity.ps1:2364-2392`, CC 7, NLOC 28, params 1
 - `obs_engine::Engine::v2_filter_set_enabled` — `engine/runtime_filter_v2.cpp:1944-1970`, CC 7, NLOC 27, params 3
 - `obs_engine::read_vec2_fields` — `engine/runtime_item_v2.cpp:71-97`, CC 7, NLOC 27, params 7
-- `obs_engine::Engine::v2_output_set_service` — `engine/runtime_output_v2.cpp:1806-1832`, CC 7, NLOC 27, params 3
+- `obs_engine::Engine::v2_output_set_service` — `engine/runtime_output_v2.cpp:1825-1851`, CC 7, NLOC 27, params 3
 - `obs_engine::Engine::v2_scene_rename` — `engine/runtime_scene_v2.cpp:555-581`, CC 7, NLOC 27, params 3
 - `obs_engine::Engine::v2_studio_transition` — `engine/runtime_studio_v2.cpp:196-223`, CC 7, NLOC 27, params 2
 - `obs_engine::read_canvas_target` — `engine/runtime_canvas_v2.cpp:350-375`, CC 7, NLOC 26, params 4
-- `obs_engine::Engine::v2_output_set_delay` — `engine/runtime_output_v2.cpp:2005-2030`, CC 7, NLOC 26, params 3
+- `obs_engine::Engine::v2_output_set_delay` — `engine/runtime_output_v2.cpp:2024-2049`, CC 7, NLOC 26, params 3
 - `obs_engine::apply_transform_vector` — `engine/runtime_v2.cpp:154-180`, CC 7, NLOC 26, params 10
 - `obs_engine::Engine::prepare_startup_environment` — `engine/runtime.cpp:88-116`, CC 7, NLOC 26, params 0
 - `obs_engine::handle_session_method` — `engine/protocol_v2.cpp:698-721`, CC 7, NLOC 24, params 4
@@ -2998,7 +3079,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::v2_end_audio_event_capture` — `engine/runtime_audio_v2.cpp:1110-1130`, CC 7, NLOC 21, params 0
 - `obs_engine::Engine::v2_audio_set_volume_db` — `engine/runtime_audio_v2.cpp:1385-1405`, CC 7, NLOC 21, params 3
 - `obs_engine::collect_media_signal` — `engine/runtime_media_v2.cpp:718-742`, CC 7, NLOC 21, params 3
-- `obs_engine::Engine::v2_end_output_event_capture` — `engine/runtime_output_v2.cpp:955-975`, CC 7, NLOC 21, params 0
+- `obs_engine::Engine::v2_end_output_event_capture` — `engine/runtime_output_v2.cpp:972-992`, CC 7, NLOC 21, params 0
 - `obs_engine::collect_source_signal` — `engine/runtime_source_v2.cpp:684-708`, CC 7, NLOC 21, params 2
 - `Get-WorkingTreeRecreatedPaths` — `tools/check-complexity.ps1:815-836`, CC 7, NLOC 21, params 1
 - `Get-NonCyclomaticCategory` — `tools/check-complexity.ps1:3258-3279`, CC 7, NLOC 21, params 1
@@ -3008,6 +3089,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::read_bindings` — `engine/runtime_hotkey_v2.cpp:344-363`, CC 7, NLOC 20, params 3
 - `obs_engine::read_group_items` — `engine/runtime_item_v2.cpp:477-496`, CC 7, NLOC 20, params 6
 - `obs_engine::preview_output_dimension_canvas` — `engine/runtime_preview_output_v2.cpp:734-753`, CC 7, NLOC 20, params 7
+- `obs_engine::canonicalize_recording_path` — `engine/runtime_recording_v2.cpp:122-141`, CC 7, NLOC 20, params 4
 - `obs_engine::module_load_state_name` — `engine/runtime_encoder_v2.cpp:79-97`, CC 7, NLOC 19, params 1
 - `obs_engine::parse_modifiers` — `engine/runtime_interaction_v2.cpp:212-231`, CC 7, NLOC 19, params 3
 - `obs_engine::module_load_state_name` — `engine/runtime_output_v2.cpp:125-143`, CC 7, NLOC 19, params 1
@@ -3021,16 +3103,20 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::read_filter_settings_input` — `engine/runtime_filter_v2.cpp:254-271`, CC 7, NLOC 18, params 5
 - `obs_engine::resolve_uncertain_filter_updates_locked` — `engine/runtime_filter_v2.cpp:432-450`, CC 7, NLOC 18, params 3
 - `obs_engine::promote_deferred_media_action_locked` — `engine/runtime_media_v2.cpp:558-576`, CC 7, NLOC 18, params 5
-- `obs_engine::Engine::v2_apply_output_service_binding` — `engine/runtime_output_v2.cpp:1787-1804`, CC 7, NLOC 18, params 5
+- `obs_engine::Engine::v2_apply_output_service_binding` — `engine/runtime_output_v2.cpp:1806-1823`, CC 7, NLOC 18, params 5
 - `obs_engine::phase2_scale_filter_name` — `engine/runtime_phase2_common.cpp:205-222`, CC 7, NLOC 18, params 1
+- `obs_engine::prepare_recording_path_parent` — `engine/runtime_recording_v2.cpp:103-120`, CC 7, NLOC 18, params 3
 - `Read-Event` — `.github/scripts/engine-protocol-v2-task10.ps1:114-130`, CC 7, NLOC 17, params 3
 - `Read-StateEvent` — `.github/scripts/engine-protocol-v2-task8-concurrency.ps1:53-69`, CC 7, NLOC 17, params 3
 - `obs_engine::validate_property_patch` — `engine/properties.cpp:614-631`, CC 7, NLOC 17, params 2
+- `obs_engine::execute_phase3` — `engine/protocol_phase3_v2.cpp:1067-1083`, CC 7, NLOC 17, params 5
+- `obs_engine::Engine::v2_apply_recording_configuration_settings` — `engine/runtime_recording_v2.cpp:354-370`, CC 7, NLOC 17, params 5
 - `obs_engine::Engine::v2_transition_set_duration` — `engine/runtime_transition_v2.cpp:691-707`, CC 7, NLOC 17, params 3
 - `Read-P2PhysicalEventsThrough` — `.github/scripts/engine-protocol-v2-phase2-physical.ps1:223-238`, CC 7, NLOC 16, params 2
 - `Invoke-Task14CanvasSetup` — `.github/scripts/engine-protocol-v2-task14.ps1:105-120`, CC 7, NLOC 16, params 1
 - `Invoke-Task16Bootstrap` — `.github/scripts/engine-protocol-v2-task16.ps1:91-106`, CC 7, NLOC 16, params 1
 - `Invoke-Task4StaleClose` — `.github/scripts/engine-protocol-v2-task4-revisions.ps1:101-116`, CC 7, NLOC 16, params 1
+- `obs_engine::phase3_dispatch_is_mutating` — `engine/protocol_phase3_v2.cpp:870-885`, CC 7, NLOC 16, params 1
 - `obs_engine::audio_meter_callback` — `engine/runtime_audio_v2.cpp:788-803`, CC 7, NLOC 16, params 1
 - `obs_engine::validate_studio_transition_request` — `engine/runtime_studio_v2.cpp:33-48`, CC 7, NLOC 16, params 5
 - `start_runtime` — `engine/task23_encoder_bridge_test.cpp:114-129`, CC 7, NLOC 16, params 0
@@ -3039,7 +3125,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::batch_matches_source_update` — `engine/runtime_source_settle_v2.cpp:120-134`, CC 7, NLOC 15, params 3
 - `Read-Task26Event` — `.github/scripts/engine-protocol-v2-task26.ps1:75-88`, CC 7, NLOC 14, params 2
 - `obs_engine::read_modifier_entry` — `engine/runtime_hotkey_v2.cpp:280-293`, CC 7, NLOC 14, params 3
-- `obs_engine::validate_output_encoder_target` — `engine/runtime_output_v2.cpp:1702-1715`, CC 7, NLOC 14, params 4
+- `obs_engine::validate_output_encoder_target` — `engine/runtime_output_v2.cpp:1721-1734`, CC 7, NLOC 14, params 4
 - `obs_engine::read_preview_output_target` — `engine/runtime_preview_output_v2.cpp:177-190`, CC 7, NLOC 14, params 4
 - `finish_nonactive_encoder_update` — `libobs/obs-encoder.c:690-703`, CC 7, NLOC 14, params 5
 - `Read-Task13Message` — `.github/scripts/engine-protocol-v2-task13.ps1:52-64`, CC 7, NLOC 13, params 1
@@ -3051,6 +3137,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Read-Task18Message` — `.github/scripts/engine-protocol-v2-task18.ps1:48-60`, CC 7, NLOC 13, params 1
 - `Read-Task19Message` — `.github/scripts/engine-protocol-v2-task19.ps1:47-59`, CC 7, NLOC 13, params 1
 - `Read-Task20Message` — `.github/scripts/engine-protocol-v2-task20.ps1:47-59`, CC 7, NLOC 13, params 1
+- `Read-Task27Event` — `.github/scripts/engine-protocol-v2-task27.ps1:65-77`, CC 7, NLOC 13, params 2
 - `Invoke-Task8Duplicate` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:213-225`, CC 7, NLOC 13, params 1
 - `obs_engine::parse_v2_request_options` — `engine/protocol_v2.cpp:831-843`, CC 7, NLOC 13, params 3
 - `obs_engine::registerer_matches` — `engine/runtime_hotkey_v2.cpp:571-583`, CC 7, NLOC 13, params 2
@@ -3073,8 +3160,10 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Read-Task20EventsThrough` — `.github/scripts/engine-protocol-v2-task20.ps1:108-116`, CC 7, NLOC 9, params 3
 - `Assert-FiniteMeter` — `.github/scripts/engine-protocol-v2-task21.ps1:149-157`, CC 7, NLOC 9, params 1
 - `Invoke-Task25SecretChecks` — `.github/scripts/engine-protocol-v2-task25.ps1:111-119`, CC 7, NLOC 9, params 3
+- `obs_engine::is_phase3_method` — `engine/protocol_phase3_v2.cpp:1122-1130`, CC 7, NLOC 9, params 1
 - `obs_engine::read_key_input` — `engine/runtime_interaction_v2.cpp:700-708`, CC 7, NLOC 9, params 3
 - `Invoke-Task8SaveState` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:243-249`, CC 7, NLOC 7, params 2
+- `obs_engine::phase3_dispatch_empty` — `engine/protocol_phase3_v2.cpp:862-868`, CC 7, NLOC 7, params 1
 - `obs_engine::canvas_video_complete` — `engine/runtime_canvas_v2.cpp:255-259`, CC 7, NLOC 5, params 1
 - `Invoke-Task8CaptureRouting` — `.github/scripts/engine-protocol-v2-task8-concurrency-capture-routing.ps1:3-79`, CC 6, NLOC 59, params 1
 - `New-HistoryContext` — `tools/check-complexity.ps1:2794-2843`, CC 6, NLOC 49, params 1
@@ -3082,7 +3171,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::v2_preview_output_create` — `engine/runtime_preview_output_v2.cpp:920-962`, CC 6, NLOC 41, params 3
 - `Get-PowerShellFileMetrics` — `tools/check-complexity.ps1:1947-1987`, CC 6, NLOC 40, params 1
 - `obs_engine::Engine::v2_build_property_target` — `engine/runtime_properties_v2.cpp:412-454`, CC 6, NLOC 39, params 6
-- `obs_engine::Engine::v2_prepare_shutdown` — `engine/runtime_source_v2.cpp:986-1025`, CC 6, NLOC 38, params 0
+- `obs_engine::Engine::v2_prepare_shutdown` — `engine/runtime_source_v2.cpp:986-1026`, CC 6, NLOC 39, params 0
 - `Invoke-Task10RestartAndStop` — `.github/scripts/engine-protocol-v2-task10.ps1:358-396`, CC 6, NLOC 37, params 1
 - `obs_engine::Engine::v2_source_create` — `engine/runtime_v2.cpp:311-353`, CC 6, NLOC 37, params 3
 - `obs_engine::Engine::refresh_preview_output_after_canvas_video` — `engine/runtime_preview_output_v2.cpp:1194-1228`, CC 6, NLOC 35, params 2
@@ -3103,7 +3192,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::handle_phase2_request` — `engine/protocol_phase2_v2.cpp:479-510`, CC 6, NLOC 29, params 4
 - `obs_engine::Engine::v2_media_set_position` — `engine/runtime_media_v2.cpp:1243-1272`, CC 6, NLOC 29, params 3
 - `obs_engine::Engine::v2_service_get_supported_resolutions` — `engine/runtime_service_v2.cpp:634-662`, CC 6, NLOC 29, params 3
-- `obs_engine::Engine::v2_source_load_state` — `engine/runtime_source_v2.cpp:1366-1397`, CC 6, NLOC 29, params 3
+- `obs_engine::Engine::v2_source_load_state` — `engine/runtime_source_v2.cpp:1367-1398`, CC 6, NLOC 29, params 3
 - `Invoke-Task22AudioRoutingCheck` — `.github/scripts/engine-protocol-v2-task22.ps1:268-295`, CC 6, NLOC 28, params 1
 - `obs_engine::Engine::v2_canvas_create` — `engine/runtime_canvas_v2.cpp:527-554`, CC 6, NLOC 28, params 3
 - `obs_engine::Engine::v2_add_source_observer` — `engine/runtime_source_v2.cpp:816-844`, CC 6, NLOC 28, params 3
@@ -3158,6 +3247,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::collect_filter_ref` — `engine/runtime_filter_v2.cpp:833-851`, CC 6, NLOC 19, params 2
 - `obs_engine::collect_filter_state_events` — `engine/runtime_filter_v2.cpp:913-933`, CC 6, NLOC 19, params 4
 - `obs_engine::Engine::v2_forget_audio_hotkey` — `engine/runtime_hotkey_v2.cpp:911-929`, CC 6, NLOC 19, params 1
+- `obs_engine::Engine::v2_append_recording_output_events` — `engine/runtime_recording_v2.cpp:631-649`, CC 6, NLOC 19, params 2
 - `obs_engine::Engine::v2_source_kind_defaults` — `engine/runtime_v2.cpp:288-309`, CC 6, NLOC 19, params 3
 - `obs_engine::apply_legacy_transform_alignment` — `engine/runtime.cpp:51-69`, CC 6, NLOC 19, params 3
 - `Stop-Task12Engine` — `.github/scripts/engine-protocol-v2-task12.ps1:53-70`, CC 6, NLOC 18, params 1
@@ -3181,6 +3271,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::apply_transform_alignment` — `engine/runtime_v2.cpp:195-212`, CC 6, NLOC 17, params 4
 - `Get-WorkflowLexicalFeatures` — `tools/check-complexity.ps1:480-497`, CC 6, NLOC 17, params 1
 - `Invoke-Task13TransformChecks` — `.github/scripts/engine-protocol-v2-task13.ps1:118-133`, CC 6, NLOC 16, params 1
+- `Invoke-Task27Lifecycle` — `.github/scripts/engine-protocol-v2-task27.ps1:145-160`, CC 6, NLOC 16, params 1
 - `Invoke-Task7ListItems` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:120-135`, CC 6, NLOC 16, params 1
 - `Invoke-Task8SourceSmoke` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:340-355`, CC 6, NLOC 16, params 1
 - `obs_engine::read_subscription_entry` — `engine/protocol_v2.cpp:512-527`, CC 6, NLOC 16, params 3
@@ -3193,7 +3284,6 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Select-Phase2CanvasFailureGenerator` — `.github/scripts/engine-protocol-v2-task14-canvas-failure-lane.ps1:4-18`, CC 6, NLOC 15, params 1
 - `setup_telemetry_policy` — `engine/events_test.cpp:169-183`, CC 6, NLOC 15, params 2
 - `parse_luid` — `engine/preview_consumer_test.cpp:42-56`, CC 6, NLOC 15, params 2
-- `obs_engine::execute_phase3` — `engine/protocol_phase3_v2.cpp:941-955`, CC 6, NLOC 15, params 5
 - `obs_engine::AudioCallbackScope::AudioCallbackScope` — `engine/runtime_audio_v2.cpp:391-405`, CC 6, NLOC 15, params 2
 - `obs_engine::FilterCallbackScope::FilterCallbackScope` — `engine/runtime_filter_v2.cpp:349-363`, CC 6, NLOC 15, params 2
 - `obs_engine::read_alignment_field` — `engine/runtime_item_v2.cpp:55-69`, CC 6, NLOC 15, params 6
@@ -3208,10 +3298,9 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Send-Task18Guarded` — `.github/scripts/engine-protocol-v2-task18.ps1:75-88`, CC 6, NLOC 14, params 4
 - `Send-Task20Guarded` — `.github/scripts/engine-protocol-v2-task20.ps1:74-87`, CC 6, NLOC 14, params 4
 - `Invoke-Task7Validate` — `.github/scripts/engine-protocol-v2-task7-properties-smoke.ps1:148-161`, CC 6, NLOC 14, params 1
-- `obs_engine::phase3_dispatch_is_mutating` — `engine/protocol_phase3_v2.cpp:760-773`, CC 6, NLOC 14, params 1
 - `obs_engine::hotkey_snapshot_less` — `engine/runtime_hotkey_v2.cpp:540-553`, CC 6, NLOC 14, params 2
 - `obs_engine::read_key_text` — `engine/runtime_interaction_v2.cpp:674-687`, CC 6, NLOC 14, params 3
-- `obs_engine::Engine::v2_validate_output_start` — `engine/runtime_output_v2.cpp:1192-1205`, CC 6, NLOC 14, params 2
+- `obs_engine::Engine::v2_validate_output_start` — `engine/runtime_output_v2.cpp:1209-1222`, CC 6, NLOC 14, params 2
 - `obs_engine::parse_preview_output_scale` — `engine/runtime_preview_output_v2.cpp:116-129`, CC 6, NLOC 14, params 2
 - `Assert-CompleteBaselineSummary` — `tools/check-complexity.tests.ps1:131-145`, CC 6, NLOC 14, params 1
 - `obs_engine::erase_password_settings` — `engine/properties.cpp:154-166`, CC 6, NLOC 13, params 2
@@ -3257,7 +3346,6 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::read_action` — `engine/runtime_hotkey_v2.cpp:814-822`, CC 6, NLOC 9, params 3
 - `parse_consumer_options` — `engine/preview_consumer_test.cpp:116-123`, CC 6, NLOC 8, params 3
 - `check_url_button` — `engine/properties_test.cpp:251-258`, CC 6, NLOC 8, params 1
-- `obs_engine::is_phase3_method` — `engine/protocol_phase3_v2.cpp:994-1001`, CC 6, NLOC 8, params 1
 - `obs_engine::collect_monitoring_device` — `engine/runtime_audio_v2.cpp:1620-1627`, CC 6, NLOC 8, params 3
 - `obs_engine::point_inside_source` — `engine/runtime_interaction_v2.cpp:314-321`, CC 6, NLOC 8, params 3
 - `obs_engine::read_finite_field` — `engine/runtime_item_v2.cpp:46-53`, CC 6, NLOC 8, params 8
@@ -3274,7 +3362,6 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Invoke-Task8KindGet` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:128-134`, CC 6, NLOC 7, params 1
 - `Invoke-Task8ActivityState` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:183-189`, CC 6, NLOC 7, params 1
 - `Invoke-Task8LiveProperties` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:191-196`, CC 6, NLOC 6, params 1
-- `obs_engine::phase3_dispatch_empty` — `engine/protocol_phase3_v2.cpp:753-758`, CC 6, NLOC 6, params 1
 - `obs_engine::key_matches` — `engine/runtime_interaction_v2.cpp:293-298`, CC 6, NLOC 6, params 4
 - `obs_engine::transform_vectors_equal` — `engine/runtime_item_v2.cpp:246-250`, CC 6, NLOC 5, params 2
 
@@ -3288,10 +3375,11 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Invoke-CheckMode` — `tools/check-complexity.ps1:3501-3540`, CC 10, NLOC 39, params 1
 - `obs_engine::Engine::v2_preview_data` — `engine/runtime_preview_v2.cpp:32-70`, CC 10, NLOC 38, params 0
 - `obs_engine::Engine::apply_program_scene_route` — `engine/runtime_program_v2.cpp:100-139`, CC 10, NLOC 38, params 5
+- `obs_engine::Engine::v2_recording_add_chapter` — `engine/runtime_recording_v2.cpp:522-558`, CC 10, NLOC 37, params 3
 - `obs_engine::Engine::v2_scene_create` — `engine/runtime_v2.cpp:460-502`, CC 10, NLOC 37, params 3
 - `obs_engine::Engine::v2_canvas_set_channel` — `engine/runtime_canvas_v2.cpp:709-744`, CC 10, NLOC 36, params 3
 - `obs_engine::Engine::v2_sync_source_observers` — `engine/runtime_source_v2.cpp:946-984`, CC 10, NLOC 36, params 0
-- `obs_engine::Engine::v2_source_duplicate` — `engine/runtime_source_v2.cpp:1094-1132`, CC 10, NLOC 35, params 3
+- `obs_engine::Engine::v2_source_duplicate` — `engine/runtime_source_v2.cpp:1095-1133`, CC 10, NLOC 35, params 3
 - `Get-WorkflowRunBlocks` — `tools/check-complexity.ps1:344-379`, CC 10, NLOC 35, params 1
 - `main` — `engine/preview_consumer_test.cpp:248-284`, CC 10, NLOC 34, params 2
 - `obs_engine::collect_filter_signal` — `engine/runtime_filter_v2.cpp:935-972`, CC 10, NLOC 34, params 3
@@ -3310,6 +3398,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Get-WorkflowPowerShellAstMetrics` — `tools/check-complexity.ps1:448-478`, CC 10, NLOC 30, params 1
 - `obs_engine::Engine::v2_filter_set_order` — `engine/runtime_filter_v2.cpp:1990-2018`, CC 10, NLOC 29, params 3
 - `obs_engine::collect_output_start_signal` — `engine/runtime_output_v2.cpp:394-422`, CC 10, NLOC 29, params 5
+- `obs_engine::Engine::v2_output_remove` — `engine/runtime_output_v2.cpp:1555-1582`, CC 10, NLOC 28, params 3
 - `Initialize-Task23Session` — `.github/scripts/engine-protocol-v2-task23.ps1:128-154`, CC 10, NLOC 27, params 1
 - `obs_engine::prepare_v2_request` — `engine/protocol_v2.cpp:845-872`, CC 10, NLOC 27, params 7
 - `obs_engine::read_saved_bindings` — `engine/runtime_hotkey_v2.cpp:391-417`, CC 10, NLOC 27, params 1
@@ -3322,7 +3411,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::prepare` — `engine/protocol_phase2_v2.cpp:408-429`, CC 10, NLOC 22, params 7
 - `obs_engine::publish_deferred_audio_snapshot` — `engine/runtime_audio_v2.cpp:472-493`, CC 10, NLOC 22, params 2
 - `obs_engine::read_track_mixers` — `engine/runtime_audio_v2.cpp:1020-1041`, CC 10, NLOC 22, params 3
-- `obs_engine::Engine::v2_shutdown_output_entry` — `engine/runtime_output_v2.cpp:1031-1052`, CC 10, NLOC 22, params 2
+- `obs_engine::Engine::v2_shutdown_output_entry` — `engine/runtime_output_v2.cpp:1048-1069`, CC 10, NLOC 22, params 2
 - `obs_engine::snapshot_active_transition` — `engine/runtime_transition_v2.cpp:326-347`, CC 10, NLOC 22, params 5
 - `obs_engine::collect_scene_item` — `engine/runtime_scene_v2.cpp:52-72`, CC 10, NLOC 21, params 2
 - `obs_engine::read_encoder_video_input` — `engine/runtime_encoder_v2.cpp:152-171`, CC 10, NLOC 20, params 5
@@ -3338,6 +3427,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Get-Task22HotkeyFixtures` — `.github/scripts/engine-protocol-v2-task22.ps1:155-169`, CC 10, NLOC 15, params 1
 - `obs_engine::read_scaled_dimensions` — `engine/runtime_encoder_v2.cpp:583-597`, CC 10, NLOC 15, params 4
 - `Get-WorkflowInterpreter` — `tools/check-complexity.ps1:499-513`, CC 10, NLOC 14, params 1
+- `obs_engine::output_kind_supports_proc` — `engine/runtime_recording_v2.cpp:213-224`, CC 10, NLOC 12, params 2
 - `Assert-ColorEvidence` — `.github/scripts/engine-protocol-v2-task17.ps1:145-153`, CC 10, NLOC 9, params 4
 - `Assert-Task17ProgramDescriptor` — `.github/scripts/engine-protocol-v2-task17.ps1:155-160`, CC 10, NLOC 6, params 1
 - `Invoke-Task11FilterMutations` — `.github/scripts/engine-protocol-v2-task11.ps1:461-538`, CC 9, NLOC 75, params 1
@@ -3360,20 +3450,21 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::begin_studio_transition` — `engine/runtime_studio_v2.cpp:160-194`, CC 9, NLOC 35, params 5
 - `process_media_action` — `libobs/obs-source.c:1398-1431`, CC 9, NLOC 34, params 2
 - `obs_engine::Engine::v2_canvas_remove` — `engine/runtime_canvas_v2.cpp:556-588`, CC 9, NLOC 33, params 3
-- `obs_engine::Engine::v2_set_output_encoder_slot` — `engine/runtime_output_v2.cpp:1744-1775`, CC 9, NLOC 32, params 6
-- `obs_engine::Engine::v2_output_set_reconnect` — `engine/runtime_output_v2.cpp:2043-2074`, CC 9, NLOC 32, params 3
+- `obs_engine::Engine::v2_set_output_encoder_slot` — `engine/runtime_output_v2.cpp:1763-1794`, CC 9, NLOC 32, params 6
+- `obs_engine::Engine::v2_output_set_reconnect` — `engine/runtime_output_v2.cpp:2062-2093`, CC 9, NLOC 32, params 3
 - `obs_engine::Engine::command_source_create` — `engine/runtime.cpp:337-372`, CC 9, NLOC 32, params 2
 - `obs_source_media_action_enqueue` — `libobs/obs-source.c:5924-5958`, CC 9, NLOC 32, params 4
 - `Get-PathScopeLines` — `tools/check-complexity.ps1:2995-3027`, CC 9, NLOC 32, params 1
 - `obs_engine::update_scalar_audio_observer` — `engine/runtime_audio_v2.cpp:605-635`, CC 9, NLOC 31, params 3
 - `Invoke-Task6Transform` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:328-357`, CC 9, NLOC 30, params 1
-- `obs_engine::handle_filter_request` — `engine/protocol_filter_v2.cpp:651-689`, CC 9, NLOC 30, params 5
+- `obs_engine::handle_filter_request` — `engine/protocol_filter_v2.cpp:667-705`, CC 9, NLOC 30, params 5
 - `obs_engine::Engine::v2_start_transition` — `engine/runtime_transition_v2.cpp:737-766`, CC 9, NLOC 30, params 6
 - `obs_engine::Engine::command_item_transform` — `engine/runtime.cpp:574-605`, CC 9, NLOC 30, params 2
 - `Update-PostAcceptedPathProvenance` — `tools/check-complexity.ps1:867-897`, CC 9, NLOC 30, params 1
 - `obs_engine::Engine::v2_encoder_rename` — `engine/runtime_encoder_v2.cpp:811-839`, CC 9, NLOC 29, params 3
-- `obs_engine::Engine::v2_sanitize_output_error` — `engine/runtime_output_v2.cpp:836-864`, CC 9, NLOC 29, params 1
-- `obs_engine::Engine::v2_output_rename` — `engine/runtime_output_v2.cpp:1565-1593`, CC 9, NLOC 29, params 3
+- `obs_engine::Engine::v2_sanitize_output_error` — `engine/runtime_output_v2.cpp:838-866`, CC 9, NLOC 29, params 1
+- `obs_engine::Engine::v2_output_rename` — `engine/runtime_output_v2.cpp:1584-1612`, CC 9, NLOC 29, params 3
+- `obs_engine::Engine::v2_recording_split_file` — `engine/runtime_recording_v2.cpp:492-520`, CC 9, NLOC 29, params 2
 - `obs_engine::Engine::v2_service_rename` — `engine/runtime_service_v2.cpp:493-521`, CC 9, NLOC 29, params 3
 - `obs_engine::audio_meter_tick` — `engine/runtime_audio_v2.cpp:885-912`, CC 9, NLOC 28, params 2
 - `obs_engine::Engine::v2_encoder_group_remove_encoder` — `engine/runtime_encoder_group_v2.cpp:213-242`, CC 9, NLOC 28, params 3
@@ -3386,18 +3477,19 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::publish_deferred_source_snapshot` — `engine/runtime_source_v2.cpp:480-508`, CC 9, NLOC 27, params 2
 - `obs_engine::read_canvas_dimensions` — `engine/runtime_canvas_v2.cpp:166-191`, CC 9, NLOC 26, params 3
 - `obs_engine::Engine::v2_item_remove_from_group` — `engine/runtime_item_v2.cpp:1031-1056`, CC 9, NLOC 26, params 3
-- `obs_engine::Engine::v2_start_output_entry` — `engine/runtime_output_v2.cpp:1207-1232`, CC 9, NLOC 26, params 4
-- `obs_engine::Engine::v2_output_remove` — `engine/runtime_output_v2.cpp:1538-1563`, CC 9, NLOC 26, params 3
-- `obs_engine::Engine::v2_update_output_settings` — `engine/runtime_output_v2.cpp:1595-1620`, CC 9, NLOC 26, params 6
+- `obs_engine::Engine::v2_start_output_entry` — `engine/runtime_output_v2.cpp:1224-1249`, CC 9, NLOC 26, params 4
+- `obs_engine::Engine::v2_update_output_settings` — `engine/runtime_output_v2.cpp:1614-1639`, CC 9, NLOC 26, params 6
 - `obs_engine::create_preview_output_binding` — `engine/runtime_preview_output_v2.cpp:219-244`, CC 9, NLOC 26, params 4
 - `obs_engine::canonicalize_source_result` — `engine/runtime_source_settle_v2.cpp:228-256`, CC 9, NLOC 26, params 2
 - `Read-IdentityMigrationEntries` — `tools/check-complexity.ps1:1318-1344`, CC 9, NLOC 26, params 1
+- `obs_engine::collect_output_signal` — `engine/runtime_output_v2.cpp:540-567`, CC 9, NLOC 25, params 3
+- `obs_engine::Engine::v2_recording_configure` — `engine/runtime_recording_v2.cpp:382-406`, CC 9, NLOC 25, params 3
 - `obs_engine::Engine::v2_settle_source_mutation` — `engine/runtime_source_settle_v2.cpp:314-340`, CC 9, NLOC 25, params 2
 - `Assert-TrustedBaselineScope` — `tools/check-complexity.ps1:146-171`, CC 9, NLOC 25, params 1
 - `obs_engine::read_import_update` — `engine/runtime_hotkey_v2.cpp:824-847`, CC 9, NLOC 24, params 5
 - `obs_engine::Engine::v2_program_set_scene` — `engine/runtime_program_v2.cpp:75-98`, CC 9, NLOC 24, params 3
 - `obs_engine::speaker_layout_name` — `engine/runtime_audio_v2.cpp:284-305`, CC 9, NLOC 22, params 1
-- `obs_engine::publish_deferred_output_snapshot` — `engine/runtime_output_v2.cpp:811-832`, CC 9, NLOC 22, params 2
+- `obs_engine::publish_deferred_output_snapshot` — `engine/runtime_output_v2.cpp:813-834`, CC 9, NLOC 22, params 2
 - `Invoke-Task15ProgramRouting` — `.github/scripts/engine-protocol-v2-task15.ps1:121-141`, CC 9, NLOC 21, params 1
 - `check_dynamic_properties` — `engine/properties_test.cpp:217-239`, CC 9, NLOC 21, params 1
 - `obs_engine::Engine::v2_prepare_encoder_group_shutdown` — `engine/runtime_encoder_group_v2.cpp:90-110`, CC 9, NLOC 21, params 0
@@ -3410,6 +3502,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Assert-TrustedBaselineReportShape` — `tools/check-complexity.ps1:125-144`, CC 9, NLOC 19, params 1
 - `Invoke-Task17RouteSwitch` — `.github/scripts/engine-protocol-v2-task17.ps1:231-248`, CC 9, NLOC 18, params 1
 - `obs_engine::read_preview_output_create_dimensions` — `engine/runtime_preview_output_v2.cpp:778-795`, CC 9, NLOC 18, params 5
+- `obs_engine::read_recording_path_options` — `engine/runtime_recording_v2.cpp:151-168`, CC 9, NLOC 18, params 3
 - `obs_engine::collect_sensitive_recursive` — `engine/properties_sensitive.cpp:6-22`, CC 9, NLOC 17, params 2
 - `obs_engine::read_encoder_create_options` — `engine/runtime_encoder_v2.cpp:182-198`, CC 9, NLOC 17, params 6
 - `obs_engine::Engine::v2_read_source_create_options` — `engine/runtime_v2.cpp:240-256`, CC 9, NLOC 17, params 5
@@ -3421,17 +3514,18 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::validate_roi` — `engine/runtime_encoder_v2.cpp:541-554`, CC 9, NLOC 14, params 3
 - `Invoke-Task8SourceRemoval` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:285-298`, CC 9, NLOC 12, params 2
 - `obs_engine::parse_u32` — `engine/config.cpp:18-31`, CC 9, NLOC 12, params 4
-- `obs_engine::validate_output_start_slots` — `engine/runtime_output_v2.cpp:1179-1190`, CC 9, NLOC 12, params 3
+- `obs_engine::validate_output_start_slots` — `engine/runtime_output_v2.cpp:1196-1207`, CC 9, NLOC 12, params 3
 - `Read-Task20Event` — `.github/scripts/engine-protocol-v2-task20.ps1:97-106`, CC 9, NLOC 10, params 3
 - `Invoke-Task8SourceIdentity` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:167-176`, CC 9, NLOC 10, params 2
 - `Assert-Task18ProgressSample` — `.github/scripts/engine-protocol-v2-task18.ps1:299-305`, CC 9, NLOC 7, params 2
 - `Initialize-Task10Sources` — `.github/scripts/engine-protocol-v2-task10.ps1:210-268`, CC 8, NLOC 56, params 1
 - `obs_engine::Engine::replace_preview_output_resource` — `engine/runtime_preview_output_v2.cpp:876-918`, CC 8, NLOC 43, params 5
 - `obs_engine::Engine::v2_source_remove` — `engine/runtime_v2.cpp:411-457`, CC 8, NLOC 41, params 3
+- `Invoke-Task27CreateAndConfigure` — `.github/scripts/engine-protocol-v2-task27.ps1:105-143`, CC 8, NLOC 39, params 1
 - `main` — `engine/host.cpp:241-283`, CC 8, NLOC 38, params 2
 - `obs_engine::Engine::v2_item_ungroup` — `engine/runtime_item_v2.cpp:1058-1095`, CC 8, NLOC 38, params 3
 - `obs_engine::Engine::v2_properties_get_list_items` — `engine/runtime_properties_v2.cpp:499-538`, CC 8, NLOC 37, params 3
-- `obs_engine::Engine::v2_source_get_missing_files` — `engine/runtime_source_v2.cpp:1300-1338`, CC 8, NLOC 37, params 3
+- `obs_engine::Engine::v2_source_get_missing_files` — `engine/runtime_source_v2.cpp:1301-1339`, CC 8, NLOC 37, params 3
 - `obs_engine::Engine::v2_audio_forget_source` — `engine/runtime_audio_v2.cpp:1230-1265`, CC 8, NLOC 36, params 1
 - `obs_encoder_destroy` — `libobs/obs-encoder.c:468-509`, CC 8, NLOC 36, params 1
 - `New-WorkflowRunBlockRecord` — `tools/check-complexity.ps1:306-342`, CC 8, NLOC 36, params 1
@@ -3449,17 +3543,18 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::v2_item_duplicate` — `engine/runtime_item_v2.cpp:561-594`, CC 8, NLOC 32, params 3
 - `obs_engine::queue_transition_signal` — `engine/runtime_transition_v2.cpp:93-124`, CC 8, NLOC 32, params 2
 - `obs_engine::serialize_property_list_items` — `engine/properties.cpp:581-612`, CC 8, NLOC 31, params 1
-- `obs_engine::handle_phase3_request` — `engine/protocol_phase3_v2.cpp:1003-1037`, CC 8, NLOC 31, params 4
+- `obs_engine::handle_phase3_request` — `engine/protocol_phase3_v2.cpp:1132-1166`, CC 8, NLOC 31, params 4
 - `obs_engine::Engine::v2_encoder_create` — `engine/runtime_encoder_v2.cpp:756-785`, CC 8, NLOC 30, params 3
 - `obs_engine::Engine::v2_service_get_encoder_recommendations` — `engine/runtime_service_v2.cpp:726-755`, CC 8, NLOC 30, params 3
 - `obs_engine::parse_subscription_list` — `engine/protocol_v2.cpp:529-557`, CC 8, NLOC 29, params 3
 - `obs_engine::Engine::v2_item_set_order` — `engine/runtime_item_v2.cpp:792-820`, CC 8, NLOC 29, params 3
-- `obs_engine::Engine::v2_output_create` — `engine/runtime_output_v2.cpp:1508-1536`, CC 8, NLOC 29, params 3
+- `obs_engine::Engine::v2_output_create` — `engine/runtime_output_v2.cpp:1525-1553`, CC 8, NLOC 29, params 3
 - `Invoke-Task6SourceRemoval` — `.github/scripts/engine-protocol-v2-task6-runtime-smoke.ps1:464-492`, CC 8, NLOC 28, params 2
 - `obs_engine::parse_args` — `engine/config.cpp:100-131`, CC 8, NLOC 28, params 3
 - `obs_engine::Engine::v2_canvas_rename` — `engine/runtime_canvas_v2.cpp:590-617`, CC 8, NLOC 28, params 3
 - `obs_engine::settle_pending_update` — `engine/runtime_encoder_v2.cpp:408-435`, CC 8, NLOC 28, params 7
 - `obs_engine::Engine::v2_add_filter_observer` — `engine/runtime_filter_v2.cpp:1312-1341`, CC 8, NLOC 28, params 1
+- `obs_engine::recording_file_changed_callback` — `engine/runtime_recording_v2.cpp:264-291`, CC 8, NLOC 28, params 2
 - `obs_canvas_reset_video_internal` — `libobs/obs-canvas.c:320-351`, CC 8, NLOC 28, params 2
 - `obs_engine::Engine::v2_audio_set_monitoring_device` — `engine/runtime_audio_v2.cpp:1764-1790`, CC 8, NLOC 27, params 3
 - `obs_engine::Engine::v2_encoder_roi_remove` — `engine/runtime_encoder_v2.cpp:1129-1155`, CC 8, NLOC 27, params 3
@@ -3467,7 +3562,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `Get-AstDecisionWeight` — `tools/check-complexity.ps1:1101-1128`, CC 8, NLOC 27, params 1
 - `obs_engine::Engine::v2_hotkey_trigger` — `engine/runtime_hotkey_v2.cpp:1051-1076`, CC 8, NLOC 26, params 3
 - `obs_engine::decode_utf8_scalars` — `engine/runtime_interaction_v2.cpp:266-291`, CC 8, NLOC 26, params 3
-- `obs_engine::Engine::v2_stop_output_entry` — `engine/runtime_output_v2.cpp:1234-1259`, CC 8, NLOC 26, params 5
+- `obs_engine::Engine::v2_stop_output_entry` — `engine/runtime_output_v2.cpp:1251-1276`, CC 8, NLOC 26, params 5
 - `obs_engine::Engine::v2_studio_set_transition` — `engine/runtime_studio_v2.cpp:96-121`, CC 8, NLOC 26, params 3
 - `Read-EngineMessage` — `.github/scripts/engine-protocol-v2-task11.ps1:49-73`, CC 8, NLOC 25, params 1
 - `test_state_overflow_requires_resync` — `engine/events_test.cpp:94-119`, CC 8, NLOC 25, params 0
@@ -3480,18 +3575,17 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::Engine::v2_item_add_to_group` — `engine/runtime_item_v2.cpp:1006-1029`, CC 8, NLOC 24, params 3
 - `obs_engine::publish_media_batch` — `engine/runtime_media_v2.cpp:368-391`, CC 8, NLOC 24, params 3
 - `obs_engine::publish_output_events` — `engine/runtime_output_v2.cpp:354-379`, CC 8, NLOC 24, params 2
-- `obs_engine::Engine::v2_append_output_encoder_dependency_events` — `engine/runtime_output_v2.cpp:1136-1159`, CC 8, NLOC 24, params 3
+- `obs_engine::Engine::v2_append_output_encoder_dependency_events` — `engine/runtime_output_v2.cpp:1153-1176`, CC 8, NLOC 24, params 3
 - `obs_engine::publish_source_events` — `engine/runtime_source_v2.cpp:563-590`, CC 8, NLOC 24, params 3
 - `obs_engine::Engine::finish_studio_transition` — `engine/runtime_transition_v2.cpp:835-858`, CC 8, NLOC 24, params 3
-- `obs_engine::collect_output_signal` — `engine/runtime_output_v2.cpp:540-565`, CC 8, NLOC 23, params 3
-- `obs_engine::Engine::v2_output_set_paused` — `engine/runtime_output_v2.cpp:1967-1989`, CC 8, NLOC 23, params 3
-- `obs_engine::Engine::v2_source_rename` — `engine/runtime_source_v2.cpp:1134-1159`, CC 8, NLOC 23, params 3
+- `obs_engine::Engine::v2_output_set_paused` — `engine/runtime_output_v2.cpp:1986-2008`, CC 8, NLOC 23, params 3
+- `obs_engine::Engine::v2_source_rename` — `engine/runtime_source_v2.cpp:1135-1160`, CC 8, NLOC 23, params 3
 - `obs_engine::read_duplicate_target` — `engine/runtime_item_v2.cpp:397-418`, CC 8, NLOC 22, params 7
 - `obs_engine::inspect_shared_texture_handle` — `engine/runtime_preview_output_v2.cpp:294-316`, CC 8, NLOC 22, params 3
 - `Test-MetricInScope` — `tools/check-complexity.ps1:1831-1853`, CC 8, NLOC 22, params 1
 - `obs_engine::collect_audio_observer_changes` — `engine/runtime_audio_v2.cpp:1149-1169`, CC 8, NLOC 21, params 4
 - `obs_engine::split_semicolon_values` — `engine/runtime_output_v2.cpp:170-190`, CC 8, NLOC 21, params 1
-- `obs_engine::Engine::v2_record_output_encoder_slot` — `engine/runtime_output_v2.cpp:1680-1700`, CC 8, NLOC 21, params 6
+- `obs_engine::Engine::v2_record_output_encoder_slot` — `engine/runtime_output_v2.cpp:1699-1719`, CC 8, NLOC 21, params 6
 - `obs_engine::resolve_preview_render_target` — `engine/runtime_preview_output_v2.cpp:562-582`, CC 8, NLOC 21, params 5
 - `Read-Task12Event` — `.github/scripts/engine-protocol-v2-task12.ps1:124-143`, CC 8, NLOC 20, params 2
 - `obs_engine::phase2_blend_mode_name` — `engine/runtime_phase2_common.cpp:235-254`, CC 8, NLOC 20, params 1
@@ -3512,7 +3606,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::collect_group_item` — `engine/runtime_scene_v2.cpp:34-50`, CC 8, NLOC 17, params 2
 - `Read-P2PhysicalMessage` — `.github/scripts/engine-protocol-v2-phase2-physical.ps1:55-70`, CC 8, NLOC 16, params 1
 - `Sync-P2PhysicalReadRevision` — `.github/scripts/engine-protocol-v2-phase2-physical.ps1:202-217`, CC 8, NLOC 16, params 3
-- `obs_engine::read_delay_request` — `engine/runtime_output_v2.cpp:1320-1335`, CC 8, NLOC 16, params 4
+- `obs_engine::read_delay_request` — `engine/runtime_output_v2.cpp:1337-1352`, CC 8, NLOC 16, params 4
 - `Stop-Task11AfterFailure` — `.github/scripts/engine-protocol-v2-task11.ps1:930-944`, CC 8, NLOC 15, params 1
 - `obs_engine::Engine::v2_prepare_filter_settlement` — `engine/runtime_filter_v2.cpp:1583-1597`, CC 8, NLOC 15, params 5
 - `obs_engine::fill_source_registerer` — `engine/runtime_hotkey_v2.cpp:450-464`, CC 8, NLOC 15, params 3
@@ -3522,7 +3616,7 @@ Owned run blocks: 92; substantial inline PowerShell: 0; unsupported substantial 
 - `obs_engine::parse_handle_text` — `engine/runtime_filter_v2.cpp:180-193`, CC 8, NLOC 14, params 2
 - `obs_engine::parse_handle_text` — `engine/runtime_interaction_v2.cpp:149-162`, CC 8, NLOC 14, params 2
 - `obs_engine::parse_handle_text` — `engine/runtime_media_v2.cpp:145-160`, CC 8, NLOC 14, params 2
-- `obs_engine::validate_output_service_target` — `engine/runtime_output_v2.cpp:1895-1908`, CC 8, NLOC 14, params 4
+- `obs_engine::validate_output_service_target` — `engine/runtime_output_v2.cpp:1914-1927`, CC 8, NLOC 14, params 4
 - `obs_engine::parse_handle_text` — `engine/runtime_properties_v2.cpp:94-107`, CC 8, NLOC 14, params 2
 - `obs_engine::parse_handle_text` — `engine/runtime_source_settle_v2.cpp:56-69`, CC 8, NLOC 14, params 2
 - `obs_engine::parse_handle_text` — `engine/runtime_source_v2.cpp:110-123`, CC 8, NLOC 14, params 2
