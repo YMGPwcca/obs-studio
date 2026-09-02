@@ -15,7 +15,7 @@
     }
   ],
   "operatorAuthoredCommitCountInLineage": 64,
-  "operatorAuthoredCodeCommitCountInScope": 157,
+  "operatorAuthoredCodeCommitCountInScope": 160,
   "operatorAuthoredCommits": [
     {
       "hash": "ffffcfd1a65677a16d9ec596103d99bde080deb8",
@@ -1683,6 +1683,33 @@
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 0,
       "currentFunctionKeys": []
+    },
+    {
+      "path": ".github/scripts/engine-protocol-v2-task27-physical.ps1",
+      "language": "PowerShell",
+      "status": "M",
+      "operatorCommitCount": 1,
+      "operatorCommits": [
+        "7d092edbe2efb3e433d98e83cd3e87154322a15f"
+      ],
+      "operatorBlameLineCount": 0,
+      "scopedFunctionCount": 14,
+      "currentFunctionKeys": [
+        "powershell|function|.github/scripts/engine-protocol-v2-task27-physical.ps1|Fail-Task27Physical|Fail-Task27Physical",
+        "powershell|function|.github/scripts/engine-protocol-v2-task27-physical.ps1|Start-Task27PhysicalEngine|Start-Task27PhysicalEngine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task27-physical.ps1|Stop-Task27PhysicalEngine|Stop-Task27PhysicalEngine",
+        "powershell|function|.github/scripts/engine-protocol-v2-task27-physical.ps1|Read-Task27PhysicalMessage|Read-Task27PhysicalMessage",
+        "powershell|function|.github/scripts/engine-protocol-v2-task27-physical.ps1|Send-Task27Physical|Send-Task27Physical",
+        "powershell|function|.github/scripts/engine-protocol-v2-task27-physical.ps1|Assert-PhysicalOk|Assert-PhysicalOk",
+        "powershell|function|.github/scripts/engine-protocol-v2-task27-physical.ps1|Read-PhysicalEvent|Read-PhysicalEvent",
+        "powershell|function|.github/scripts/engine-protocol-v2-task27-physical.ps1|Invoke-PhysicalMutation|Invoke-PhysicalMutation",
+        "powershell|function|.github/scripts/engine-protocol-v2-task27-physical.ps1|Initialize-Task27PhysicalSession|Initialize-Task27PhysicalSession",
+        "powershell|function|.github/scripts/engine-protocol-v2-task27-physical.ps1|Invoke-PhysicalSetup|Invoke-PhysicalSetup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task27-physical.ps1|Invoke-PhysicalRecording|Invoke-PhysicalRecording",
+        "powershell|function|.github/scripts/engine-protocol-v2-task27-physical.ps1|Invoke-PhysicalCleanup|Invoke-PhysicalCleanup",
+        "powershell|function|.github/scripts/engine-protocol-v2-task27-physical.ps1|Assert-PhysicalFile|Assert-PhysicalFile",
+        "powershell|function|.github/scripts/engine-protocol-v2-task27-physical.ps1|Assert-PhysicalFiles|Assert-PhysicalFiles"
+      ]
     },
     {
       "path": ".github/scripts/engine-protocol-v2-task27-remove-fixture.ps1",
@@ -4004,10 +4031,11 @@
       "path": "engine/runtime_recording_v2.cpp",
       "language": "C/C++",
       "status": "A",
-      "operatorCommitCount": 2,
+      "operatorCommitCount": 3,
       "operatorCommits": [
         "8225a05c1b83e65ec5b3f6a16c311d024b630feb",
-        "d9088c1f6971871f3ebd1d3804bd4232be2a1925"
+        "d9088c1f6971871f3ebd1d3804bd4232be2a1925",
+        "c8ac896c5983284b2049c65730e68a93495eb95b"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 43,
@@ -4937,7 +4965,7 @@
       "path": "tools/check-complexity.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 35,
+      "operatorCommitCount": 36,
       "operatorCommits": [
         "a6b2b65df6cbcb289e4b81af1ca898a5397c3992",
         "979148802c665938cd7532c4c50fedf9259d725e",
@@ -4973,7 +5001,8 @@
         "1ef1dc372c51cef5cfae08ce1ad999177502f59c",
         "140b566da93e134145c2ed204d8fbddf29694ae1",
         "e17f34014a940d9148fd828ee884dff12833cdf3",
-        "688b51df9415bbe26cf1b5eb83a595a9771db51e"
+        "688b51df9415bbe26cf1b5eb83a595a9771db51e",
+        "18a4984a1bcea29b54ac80127bc17d451c583112"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 165,
@@ -5483,6 +5512,11 @@
     },
     {
       "path": "docs/libobs-engine/TASK11_IMPLEMENTATION_AUDIT.md",
+      "status": "current",
+      "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
+    },
+    {
+      "path": "docs/libobs-engine/TASK27_ACCEPTANCE.md",
       "status": "current",
       "category": "Declaration/configuration/documentation path; excluded from cyclomatic targets."
     },

@@ -158,25 +158,26 @@ function Invoke-PhysicalCleanup($State) {
     Stop-Task27PhysicalEngine
 }
 
+function Assert-PhysicalFile($Ffprobe, [string] $Path) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { Fail-Task27Physical "recording file was not created: $Path" }
+    if ((Get-Item -LiteralPath $Path).Length -le 0) { Fail-Task27Physical "recording file is empty: $Path" }
+    $json = & $Ffprobe.Source -v error -show_entries stream=codec_type,width,height -show_entries format=duration -of json -- $Path
+    if ($LASTEXITCODE -ne 0) { Fail-Task27Physical "ffprobe could not parse $Path." }
+    $probe = $json | ConvertFrom-Json
+    $streams = @($probe.streams)
+    $hasVideo = @($streams | Where-Object { [string]$_.codec_type -eq 'video' }).Count -ne 0
+    $hasAudio = @($streams | Where-Object { [string]$_.codec_type -eq 'audio' }).Count -ne 0
+    if (-not $hasVideo -or -not $hasAudio) { Fail-Task27Physical "recording lacks both video and audio streams: $Path" }
+    $duration = [double]$probe.format.duration
+    if ($duration -le 0.25) { Fail-Task27Physical "recording duration is not reasonable: $Path ($duration)." }
+}
+
 function Assert-PhysicalFiles([System.Collections.Generic.List[string]] $Paths) {
     $ffprobe = Get-Command ffprobe.exe -ErrorAction SilentlyContinue
     if ($null -eq $ffprobe) { Fail-Task27Physical 'ffprobe.exe is required for the physical parser check.' }
     $unique = @($Paths | Where-Object { $_ } | Select-Object -Unique)
     if ($unique.Count -eq 0) { Fail-Task27Physical 'no finalized recording path was reported.' }
-    foreach ($path in $unique) {
-        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { Fail-Task27Physical "recording file was not created: $path" }
-        if ((Get-Item -LiteralPath $path).Length -le 0) { Fail-Task27Physical "recording file is empty: $path" }
-        $json = & $ffprobe.Source -v error -show_entries stream=codec_type,width,height -show_entries format=duration -of json -- $path
-        if ($LASTEXITCODE -ne 0) { Fail-Task27Physical "ffprobe could not parse $path." }
-        $probe = $json | ConvertFrom-Json
-        $streams = @($probe.streams)
-        if (@($streams | Where-Object { [string]$_.codec_type -eq 'video' }).Count -eq 0 -or
-            @($streams | Where-Object { [string]$_.codec_type -eq 'audio' }).Count -eq 0) {
-            Fail-Task27Physical "recording lacks both video and audio streams: $path"
-        }
-        $duration = [double]$probe.format.duration
-        if ($duration -le 0.25) { Fail-Task27Physical "recording duration is not reasonable: $path ($duration)." }
-    }
+    foreach ($path in $unique) { Assert-PhysicalFile $ffprobe $path }
     Write-Output ("Task 27 physical recording: PASS ({0} file(s))" -f $unique.Count)
 }
 

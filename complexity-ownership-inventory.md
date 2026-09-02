@@ -9,7 +9,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 
 - GitHub account: **YMGPwcca**
 - Author-authored commits in accepted lineage: **64**
-- Author-authored commits touching current executable scope: **157**
+- Author-authored commits touching current executable scope: **160**
 
 | Author name | Author email |
 |---|---|
@@ -83,6 +83,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `.github/scripts/engine-protocol-v2-task26.ps1` | PowerShell | A | 1 | 0 | 20 |
 | `.github/scripts/engine-protocol-v2-task27-build-fixture.ps1` | PowerShell | A | 1 | 0 | 0 |
 | `.github/scripts/engine-protocol-v2-task27-package-audit.ps1` | PowerShell | A | 1 | 0 | 0 |
+| `.github/scripts/engine-protocol-v2-task27-physical.ps1` | PowerShell | M | 1 | 0 | 14 |
 | `.github/scripts/engine-protocol-v2-task27-remove-fixture.ps1` | PowerShell | A | 1 | 0 | 0 |
 | `.github/scripts/engine-protocol-v2-task27-stage-fixture.ps1` | PowerShell | A | 1 | 0 | 0 |
 | `.github/scripts/engine-protocol-v2-task27.ps1` | PowerShell | A | 1 | 0 | 13 |
@@ -144,7 +145,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `engine/runtime_preview_v2.cpp` | C/C++ | A | 3 | 0 | 7 |
 | `engine/runtime_program_v2.cpp` | C/C++ | A | 5 | 0 | 8 |
 | `engine/runtime_properties_v2.cpp` | C/C++ | M | 4 | 515 | 34 |
-| `engine/runtime_recording_v2.cpp` | C/C++ | A | 2 | 0 | 43 |
+| `engine/runtime_recording_v2.cpp` | C/C++ | A | 3 | 0 | 43 |
 | `engine/runtime_scene_v2.cpp` | C/C++ | A | 8 | 0 | 39 |
 | `engine/runtime_service_v2.cpp` | C/C++ | A | 1 | 0 | 48 |
 | `engine/runtime_source_settle_v2.cpp` | C/C++ | A | 4 | 366 | 15 |
@@ -176,7 +177,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `libobs/obs-source.c` | C/C++ | M | 4 | 164 | 22 |
 | `libobs/obs.h` | C/C++ | M | 3 | 0 | 0 |
 | `plugins/win-capture/plugin-main.c` | C/C++ | M | 2 | 42 | 6 |
-| `tools/check-complexity.ps1` | PowerShell | A | 35 | 0 | 165 |
+| `tools/check-complexity.ps1` | PowerShell | A | 36 | 0 | 165 |
 | `tools/check-complexity.tests.ps1` | PowerShell | A | 24 | 0 | 23 |
 
 ## Non-CC changed paths
@@ -239,6 +240,7 @@ These paths remain part of the authorship audit but are not function-level cyclo
 - `docs/libobs-engine/TASK11_ACCEPTANCE.md` — Declaration/configuration/documentation path; excluded from cyclomatic targets.
 - `docs/libobs-engine/TASK11_FILTER_PLAN.md` — Declaration/configuration/documentation path; excluded from cyclomatic targets.
 - `docs/libobs-engine/TASK11_IMPLEMENTATION_AUDIT.md` — Declaration/configuration/documentation path; excluded from cyclomatic targets.
+- `docs/libobs-engine/TASK27_ACCEPTANCE.md` — Declaration/configuration/documentation path; excluded from cyclomatic targets.
 - `engine/AUDIO_V1.md` — Declaration/configuration/documentation path; excluded from cyclomatic targets.
 - `engine/CANVAS_V1.md` — Declaration/configuration/documentation path; excluded from cyclomatic targets.
 - `engine/CMakeLists.txt` — Declaration/configuration/documentation path; excluded from cyclomatic targets.
