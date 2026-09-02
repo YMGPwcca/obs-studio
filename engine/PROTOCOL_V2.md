@@ -895,12 +895,28 @@ Runtime methods:
 - `output.setDelay`
 - `output.getDelay`
 - `output.setReconnect`
+- `output.getReconnect`
 - `output.getStats`
 - `output.getLastError`
 - `output.getSupportedCodecs`
-- `output.sendCaption`
 
 Kind capabilities expose video/audio, encoded/raw, service requirement, multitrack video/audio and pause support.
+
+Output encoder slots are explicit zero-based video/audio array indexes and are
+distinct from the one-based logical audio-track identity used by `encoder.*`.
+Encoder and service binding, settings, delay, and reconnect-policy mutations
+require an inactive output. Encoder binding validates media type, codec,
+input liveness, and the output's declared slot capability before reading the
+canonical binding back from libobs. Service binding also validates the output
+protocol.
+
+`output.getState` reports `idle`, `starting`, `active`, `reconnecting`, or
+`stopping`, plus pause, service, encoder-slot, delay, reconnect-policy,
+last-stop-code, and sanitized-last-error state. Output lifecycle callbacks are
+normalized into the events below; command-owned events use the command's
+revision and asynchronous callbacks use a later independent revision. The
+response is written before command-owned events. `output.sendCaption` is not a
+stable Phase-3 method; caption submission is reserved for Task 32.
 
 Stats include, where supported:
 

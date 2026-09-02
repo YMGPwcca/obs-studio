@@ -8,6 +8,7 @@
 #include <obs-properties.h>
 
 #include <cstdint>
+#include <array>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -28,6 +29,7 @@ struct MediaV2Observer;
 struct FilterV2State;
 struct SourceV2Observer;
 struct SourceV2State;
+struct OutputV2State;
 
 struct ItemEntry {
 	uint64_t scene_id = 0;
@@ -64,6 +66,7 @@ struct EncoderEntry {
 	uint64_t audio_track = 0;
 	uint64_t group = 0;
 	std::unordered_set<uint64_t> bound_outputs;
+	bool observed_active = false;
 };
 
 struct EncoderGroupEntry {
@@ -74,6 +77,21 @@ struct EncoderGroupEntry {
 struct ServiceEntry {
 	obs_service_t *service = nullptr;
 	uint64_t bound_output = 0;
+	bool observed_active = false;
+};
+
+struct OutputV2Observer;
+
+struct OutputEntry {
+	obs_output_t *output = nullptr;
+	std::shared_ptr<OutputV2Observer> observer;
+	std::array<uint64_t, MAX_OUTPUT_VIDEO_ENCODERS> video_encoders{};
+	std::array<uint64_t, MAX_OUTPUT_AUDIO_ENCODERS> audio_encoders{};
+	uint64_t service = 0;
+	uint32_t delay_flags = 0;
+	bool reconnect_enabled = true;
+	int retry_count = 20;
+	int retry_delay_seconds = 2;
 };
 
 struct RuntimeV2Error {
@@ -146,6 +164,14 @@ public:
 	void v2_prepare_encoder_shutdown() noexcept;
 	void v2_prepare_encoder_group_shutdown() noexcept;
 	void v2_prepare_service_shutdown() noexcept;
+	void v2_prepare_output_shutdown() noexcept;
+	void v2_bind_output_events(RevisionState *revisions, EventDispatcher *events);
+	void v2_begin_output_event_capture(RuntimeV2Result &result);
+	void v2_wait_for_output_event_callbacks();
+	void v2_end_output_event_capture() noexcept;
+	void v2_drain_deferred_output_events(RevisionState::MutationGuard &guard);
+	void v2_flush_deferred_output_events(RevisionState::MutationGuard &guard);
+	void v2_sync_output_observers();
 
 	bool v2_encoder_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_encoder_kind_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
@@ -204,6 +230,40 @@ public:
 	bool v2_service_get_supported_audio_codecs(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_service_get_encoder_recommendations(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
 	bool v2_service_can_connect(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+
+	bool v2_output_kind_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_kind_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_kind_defaults(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_kind_properties(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_kind_capabilities(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_list(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_get(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_create(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_rename(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_get_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_patch_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_replace_settings(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_get_properties(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_set_service(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_get_service(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_set_video_encoder(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_set_audio_encoder(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_get_encoders(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_start(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_stop(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_force_stop(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_get_state(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_set_paused(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_get_paused(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_set_delay(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_get_delay(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_set_reconnect(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_get_reconnect(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_get_stats(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_get_last_error(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_output_get_supported_codecs(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error);
+	void v2_append_output_dependency_events(uint64_t output_handle, std::vector<RuntimeV2Event> &events);
 	void v2_bind_audio_events(RevisionState *revisions, EventDispatcher *events);
 	void v2_begin_audio_event_capture(RuntimeV2Result &result);
 	void v2_wait_for_audio_event_callbacks();
@@ -530,6 +590,40 @@ private:
 	bool v2_encoder_group_is_active(const EncoderGroupEntry &entry) const;
 	bool v2_get_service_entry(obs_data_t *params, uint64_t &handle, ServiceEntry *&entry,
 					RuntimeV2Error &error) const;
+	bool v2_get_output_entry(obs_data_t *params, uint64_t &handle, OutputEntry *&entry,
+					RuntimeV2Error &error) const;
+	bool v2_update_output_settings(OutputEntry &entry, uint64_t handle, obs_data_t *requested, bool replace,
+				       RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_read_output_encoder_binding(OutputEntry &entry, obs_data_t *params, bool video, size_t &slot,
+					   uint64_t &requested, EncoderEntry *&target, RuntimeV2Error &error);
+	bool v2_read_output_service_binding(OutputEntry &entry, uint64_t output_handle, obs_data_t *params,
+					   uint64_t &requested,
+					   ServiceEntry *&service_entry, RuntimeV2Error &error);
+	uint64_t v2_service_handle_for_pointer(obs_service_t *service) const;
+	bool v2_apply_output_service_binding(OutputEntry &entry, uint64_t output_handle, uint64_t requested,
+					     ServiceEntry *service_entry, RuntimeV2Error &error);
+	uint64_t v2_apply_output_encoder_binding(OutputEntry &entry, EncoderEntry *target, bool video, size_t slot);
+	bool v2_set_output_encoder_slot(OutputEntry &entry, uint64_t output_handle, obs_data_t *params, bool video,
+					RuntimeV2Result &result, RuntimeV2Error &error);
+	void v2_record_output_encoder_slot(OutputEntry &entry, uint64_t output_handle, bool video, size_t slot,
+					   uint64_t previous, uint64_t actual);
+	ObsDataPtr v2_output_summary(uint64_t handle, const OutputEntry &entry) const;
+	ObsDataPtr v2_output_state(uint64_t handle, const OutputEntry &entry) const;
+	std::string v2_sanitize_output_error(const OutputEntry &entry) const;
+	void v2_sync_encoder_active_events(RuntimeV2Result &result);
+	void v2_sync_service_active_events(RuntimeV2Result &result);
+	void v2_append_output_encoder_dependency_events(const OutputEntry &output, std::vector<RuntimeV2Event> &events,
+							std::unordered_set<uint64_t> &seen);
+	void v2_append_output_service_dependency_event(const OutputEntry &output, std::vector<RuntimeV2Event> &events);
+	bool v2_validate_output_start(const OutputEntry &entry, RuntimeV2Error &error) const;
+	bool v2_register_output_entry(uint64_t output_handle, obs_output_t *output, RuntimeV2Error &error);
+	void v2_shutdown_output_entry(uint64_t output_handle, OutputEntry &entry) noexcept;
+	void v2_detach_output_encoders(uint64_t output_handle, OutputEntry &entry) noexcept;
+	void v2_detach_output_video_encoders(uint64_t output_handle, OutputEntry &entry) noexcept;
+	void v2_detach_output_audio_encoders(uint64_t output_handle, OutputEntry &entry) noexcept;
+	bool v2_start_output_entry(OutputEntry &entry, uint64_t handle, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_stop_output_entry(OutputEntry &entry, uint64_t handle, bool force, RuntimeV2Result &result,
+				 RuntimeV2Error &error);
 	bool v2_update_encoder_settings(EncoderEntry &entry, uint64_t handle, obs_data_t *requested, bool replace,
 				       RuntimeV2Result &result, RuntimeV2Error &error);
 
@@ -646,6 +740,10 @@ private:
 	std::unordered_map<uint64_t, EncoderEntry> encoders_;
 	std::unordered_map<uint64_t, EncoderGroupEntry> encoder_groups_;
 	std::unordered_map<uint64_t, ServiceEntry> services_;
+	std::unordered_map<uint64_t, OutputEntry> outputs_;
+	std::shared_ptr<OutputV2State> output_v2_state_;
+	RevisionState *output_revisions_ = nullptr;
+	EventDispatcher *output_events_ = nullptr;
 };
 
 } // namespace obs_engine

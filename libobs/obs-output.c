@@ -356,6 +356,19 @@ const char *obs_output_get_name(const obs_output_t *output)
 	return obs_output_valid(output, "obs_output_get_name") ? output->context.name : NULL;
 }
 
+void obs_output_set_name(obs_output_t *output, const char *name)
+{
+	if (!obs_output_valid(output, "obs_output_set_name") || !name || !*name)
+		return;
+	if (strcmp(name, output->context.name) != 0)
+		obs_context_data_setname(&output->context, name);
+}
+
+bool obs_output_initialized(const obs_output_t *output)
+{
+	return obs_output_valid(output, "obs_output_initialized") && output->context.data != NULL;
+}
+
 bool obs_output_actual_start(obs_output_t *output)
 {
 	bool success = false;
@@ -1149,7 +1162,15 @@ void obs_output_set_service(obs_output_t *output, obs_service_t *service)
 {
 	if (!obs_output_valid(output, "obs_output_set_service"))
 		return;
-	if (!log_flag_service(output, __FUNCTION__) || active(output) || !service || service->active)
+	if (!log_flag_service(output, __FUNCTION__) || active(output))
+		return;
+	if (!service) {
+		if (output->service)
+			output->service->output = NULL;
+		output->service = NULL;
+		return;
+	}
+	if (service->active)
 		return;
 
 	if (service->output)
@@ -3255,6 +3276,24 @@ const char *obs_output_get_supported_video_codecs(const obs_output_t *output)
 	return obs_output_valid(output, __FUNCTION__) ? output->info.encoded_video_codecs : NULL;
 }
 
+const char *obs_get_output_supported_video_codecs(const char *id)
+{
+	const struct obs_output_info *info = find_output(id);
+	return info ? info->encoded_video_codecs : NULL;
+}
+
+const char *obs_get_output_supported_audio_codecs(const char *id)
+{
+	const struct obs_output_info *info = find_output(id);
+	return info ? info->encoded_audio_codecs : NULL;
+}
+
+const char *obs_get_output_protocols(const char *id)
+{
+	const struct obs_output_info *info = find_output(id);
+	return info ? info->protocols : NULL;
+}
+
 const char *obs_output_get_supported_audio_codecs(const obs_output_t *output)
 {
 	return obs_output_valid(output, __FUNCTION__) ? output->info.encoded_audio_codecs : NULL;
@@ -3289,18 +3328,6 @@ void obs_enum_output_types_with_protocol(const char *protocol, void *data, bool 
 			substr = next ? next + 1 : NULL;
 		}
 	}
-}
-
-const char *obs_get_output_supported_video_codecs(const char *id)
-{
-	const struct obs_output_info *info = find_output(id);
-	return info ? info->encoded_video_codecs : NULL;
-}
-
-const char *obs_get_output_supported_audio_codecs(const char *id)
-{
-	const struct obs_output_info *info = find_output(id);
-	return info ? info->encoded_audio_codecs : NULL;
 }
 
 void obs_output_add_packet_callback(obs_output_t *output,

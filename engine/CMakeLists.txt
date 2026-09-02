@@ -9,6 +9,7 @@ target_sources(
     runtime_encoder_v2.cpp
     runtime_encoder_group_v2.cpp
     runtime_service_v2.cpp
+    runtime_output_v2.cpp
     runtime_hotkey_v2.cpp
     events.cpp
     events.hpp
@@ -208,6 +209,20 @@ target_link_libraries(obs-engine-task25-service-plugin PRIVATE OBS::libobs)
 set_target_properties(
   obs-engine-task25-service-plugin
   PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task25-service"
+)
+
+# Task 26 deterministic Output fixture. It is staged only by the output
+# integration lane and has no install rule.
+add_library(obs-engine-task26-output-plugin MODULE EXCLUDE_FROM_ALL task26_output_plugin.cpp)
+target_compile_features(obs-engine-task26-output-plugin PRIVATE cxx_std_20)
+target_compile_definitions(
+  obs-engine-task26-output-plugin
+  PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+)
+target_link_libraries(obs-engine-task26-output-plugin PRIVATE OBS::libobs)
+set_target_properties(
+  obs-engine-task26-output-plugin
+  PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task26-output"
 )
 
 # Task 23 active-update bridge test. It uses the packaged null output only to

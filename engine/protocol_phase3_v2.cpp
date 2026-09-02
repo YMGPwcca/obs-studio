@@ -150,16 +150,54 @@ enum class ServiceMethod {
 	Unknown,
 };
 
+enum class OutputMethod {
+	KindList,
+	KindGet,
+	KindDefaults,
+	KindProperties,
+	KindCapabilities,
+	List,
+	Get,
+	Create,
+	Remove,
+	Rename,
+	GetSettings,
+	PatchSettings,
+	ReplaceSettings,
+	GetProperties,
+	SetService,
+	GetService,
+	SetVideoEncoder,
+	SetAudioEncoder,
+	GetEncoders,
+	Start,
+	Stop,
+	ForceStop,
+	GetState,
+	SetPaused,
+	GetPaused,
+	SetDelay,
+	GetDelay,
+	SetReconnect,
+	GetReconnect,
+	GetStats,
+	GetLastError,
+	GetSupportedCodecs,
+	Unknown,
+};
+
 struct Phase3Dispatch {
 	AudioMethod audio = AudioMethod::Unknown;
 	HotkeyMethod hotkey = HotkeyMethod::Unknown;
 	EncoderMethod encoder = EncoderMethod::Unknown;
 	EncoderGroupMethod encoder_group = EncoderGroupMethod::Unknown;
 	ServiceMethod service = ServiceMethod::Unknown;
+	OutputMethod output = OutputMethod::Unknown;
 	bool is_hotkey = false;
 	bool is_encoder = false;
 	bool is_encoder_group = false;
 	bool is_service = false;
+	bool is_output = false;
 	bool mutating = false;
 };
 
@@ -262,6 +300,46 @@ constexpr ServiceMethodName kServiceMethods[] = {
 	{"service.canConnect", ServiceMethod::CanConnect},
 };
 
+struct OutputMethodName {
+	std::string_view name;
+	OutputMethod method;
+};
+
+constexpr OutputMethodName kOutputMethods[] = {
+	{"output.kindList", OutputMethod::KindList},
+	{"output.kindGet", OutputMethod::KindGet},
+	{"output.kindDefaults", OutputMethod::KindDefaults},
+	{"output.kindProperties", OutputMethod::KindProperties},
+	{"output.kindCapabilities", OutputMethod::KindCapabilities},
+	{"output.list", OutputMethod::List},
+	{"output.get", OutputMethod::Get},
+	{"output.create", OutputMethod::Create},
+	{"output.remove", OutputMethod::Remove},
+	{"output.rename", OutputMethod::Rename},
+	{"output.getSettings", OutputMethod::GetSettings},
+	{"output.patchSettings", OutputMethod::PatchSettings},
+	{"output.replaceSettings", OutputMethod::ReplaceSettings},
+	{"output.getProperties", OutputMethod::GetProperties},
+	{"output.setService", OutputMethod::SetService},
+	{"output.getService", OutputMethod::GetService},
+	{"output.setVideoEncoder", OutputMethod::SetVideoEncoder},
+	{"output.setAudioEncoder", OutputMethod::SetAudioEncoder},
+	{"output.getEncoders", OutputMethod::GetEncoders},
+	{"output.start", OutputMethod::Start},
+	{"output.stop", OutputMethod::Stop},
+	{"output.forceStop", OutputMethod::ForceStop},
+	{"output.getState", OutputMethod::GetState},
+	{"output.setPaused", OutputMethod::SetPaused},
+	{"output.getPaused", OutputMethod::GetPaused},
+	{"output.setDelay", OutputMethod::SetDelay},
+	{"output.getDelay", OutputMethod::GetDelay},
+	{"output.setReconnect", OutputMethod::SetReconnect},
+	{"output.getReconnect", OutputMethod::GetReconnect},
+	{"output.getStats", OutputMethod::GetStats},
+	{"output.getLastError", OutputMethod::GetLastError},
+	{"output.getSupportedCodecs", OutputMethod::GetSupportedCodecs},
+};
+
 constexpr AudioMethod kMutatingMethods[] = {
 	AudioMethod::SetMute,
 	AudioMethod::ToggleMute,
@@ -311,6 +389,23 @@ constexpr ServiceMethod kServiceMutatingMethods[] = {
 	ServiceMethod::Rename,
 	ServiceMethod::PatchSettings,
 	ServiceMethod::ReplaceSettings,
+};
+
+constexpr OutputMethod kOutputMutatingMethods[] = {
+	OutputMethod::Create,
+	OutputMethod::Remove,
+	OutputMethod::Rename,
+	OutputMethod::PatchSettings,
+	OutputMethod::ReplaceSettings,
+	OutputMethod::SetService,
+	OutputMethod::SetVideoEncoder,
+	OutputMethod::SetAudioEncoder,
+	OutputMethod::Start,
+	OutputMethod::Stop,
+	OutputMethod::ForceStop,
+	OutputMethod::SetPaused,
+	OutputMethod::SetDelay,
+	OutputMethod::SetReconnect,
 };
 
 using AudioMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
@@ -451,6 +546,48 @@ constexpr ServiceHandlerEntry kServiceHandlers[] = {
 	{ServiceMethod::CanConnect, &Engine::v2_service_can_connect},
 };
 
+using OutputMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
+
+struct OutputHandlerEntry {
+	OutputMethod method;
+	OutputMethodHandler handler;
+};
+
+constexpr OutputHandlerEntry kOutputHandlers[] = {
+	{OutputMethod::KindList, &Engine::v2_output_kind_list},
+	{OutputMethod::KindGet, &Engine::v2_output_kind_get},
+	{OutputMethod::KindDefaults, &Engine::v2_output_kind_defaults},
+	{OutputMethod::KindProperties, &Engine::v2_output_kind_properties},
+	{OutputMethod::KindCapabilities, &Engine::v2_output_kind_capabilities},
+	{OutputMethod::List, &Engine::v2_output_list},
+	{OutputMethod::Get, &Engine::v2_output_get},
+	{OutputMethod::Create, &Engine::v2_output_create},
+	{OutputMethod::Remove, &Engine::v2_output_remove},
+	{OutputMethod::Rename, &Engine::v2_output_rename},
+	{OutputMethod::GetSettings, &Engine::v2_output_get_settings},
+	{OutputMethod::PatchSettings, &Engine::v2_output_patch_settings},
+	{OutputMethod::ReplaceSettings, &Engine::v2_output_replace_settings},
+	{OutputMethod::GetProperties, &Engine::v2_output_get_properties},
+	{OutputMethod::SetService, &Engine::v2_output_set_service},
+	{OutputMethod::GetService, &Engine::v2_output_get_service},
+	{OutputMethod::SetVideoEncoder, &Engine::v2_output_set_video_encoder},
+	{OutputMethod::SetAudioEncoder, &Engine::v2_output_set_audio_encoder},
+	{OutputMethod::GetEncoders, &Engine::v2_output_get_encoders},
+	{OutputMethod::Start, &Engine::v2_output_start},
+	{OutputMethod::Stop, &Engine::v2_output_stop},
+	{OutputMethod::ForceStop, &Engine::v2_output_force_stop},
+	{OutputMethod::GetState, &Engine::v2_output_get_state},
+	{OutputMethod::SetPaused, &Engine::v2_output_set_paused},
+	{OutputMethod::GetPaused, &Engine::v2_output_get_paused},
+	{OutputMethod::SetDelay, &Engine::v2_output_set_delay},
+	{OutputMethod::GetDelay, &Engine::v2_output_get_delay},
+	{OutputMethod::SetReconnect, &Engine::v2_output_set_reconnect},
+	{OutputMethod::GetReconnect, &Engine::v2_output_get_reconnect},
+	{OutputMethod::GetStats, &Engine::v2_output_get_stats},
+	{OutputMethod::GetLastError, &Engine::v2_output_get_last_error},
+	{OutputMethod::GetSupportedCodecs, &Engine::v2_output_get_supported_codecs},
+};
+
 AudioMethod classify(std::string_view name)
 {
 	for (const AudioMethodName &entry : kAudioMethods) {
@@ -496,6 +633,15 @@ ServiceMethod classify_service(std::string_view name)
 	return ServiceMethod::Unknown;
 }
 
+OutputMethod classify_output(std::string_view name)
+{
+	for (const OutputMethodName &entry : kOutputMethods) {
+		if (entry.name == name)
+			return entry.method;
+	}
+	return OutputMethod::Unknown;
+}
+
 bool is_mutating(AudioMethod method)
 {
 	for (const AudioMethod candidate : kMutatingMethods) {
@@ -535,6 +681,15 @@ bool is_mutating(EncoderGroupMethod method)
 bool is_mutating(ServiceMethod method)
 {
 	for (const ServiceMethod candidate : kServiceMutatingMethods) {
+		if (candidate == method)
+			return true;
+	}
+	return false;
+}
+
+bool is_mutating(OutputMethod method)
+{
+	for (const OutputMethod candidate : kOutputMutatingMethods) {
 		if (candidate == method)
 			return true;
 	}
@@ -586,6 +741,37 @@ ServiceMethodHandler service_handler_for(ServiceMethod method)
 	return nullptr;
 }
 
+OutputMethodHandler output_handler_for(OutputMethod method)
+{
+	for (const OutputHandlerEntry &entry : kOutputHandlers) {
+		if (entry.method == method)
+			return entry.handler;
+	}
+	return nullptr;
+}
+
+bool phase3_dispatch_empty(const Phase3Dispatch &dispatch)
+{
+	return dispatch.audio == AudioMethod::Unknown && dispatch.hotkey == HotkeyMethod::Unknown &&
+	       dispatch.encoder == EncoderMethod::Unknown && dispatch.encoder_group == EncoderGroupMethod::Unknown &&
+	       dispatch.service == ServiceMethod::Unknown && dispatch.output == OutputMethod::Unknown;
+}
+
+bool phase3_dispatch_is_mutating(const Phase3Dispatch &dispatch)
+{
+	if (dispatch.is_output)
+		return is_mutating(dispatch.output);
+	if (dispatch.is_service)
+		return is_mutating(dispatch.service);
+	if (dispatch.is_encoder_group)
+		return is_mutating(dispatch.encoder_group);
+	if (dispatch.is_encoder)
+		return is_mutating(dispatch.encoder);
+	if (dispatch.is_hotkey)
+		return is_mutating(dispatch.hotkey);
+	return is_mutating(dispatch.audio);
+}
+
 bool classify_phase3(std::string_view name, Phase3Dispatch &dispatch)
 {
 	dispatch.audio = classify(name);
@@ -593,18 +779,15 @@ bool classify_phase3(std::string_view name, Phase3Dispatch &dispatch)
 	dispatch.encoder = classify_encoder(name);
 	dispatch.encoder_group = classify_encoder_group(name);
 	dispatch.service = classify_service(name);
-	if (dispatch.audio == AudioMethod::Unknown && dispatch.hotkey == HotkeyMethod::Unknown &&
-	    dispatch.encoder == EncoderMethod::Unknown && dispatch.encoder_group == EncoderGroupMethod::Unknown &&
-	    dispatch.service == ServiceMethod::Unknown)
+	dispatch.output = classify_output(name);
+	if (phase3_dispatch_empty(dispatch))
 		return false;
 	dispatch.is_hotkey = dispatch.hotkey != HotkeyMethod::Unknown;
 	dispatch.is_encoder = dispatch.encoder != EncoderMethod::Unknown;
 	dispatch.is_encoder_group = dispatch.encoder_group != EncoderGroupMethod::Unknown;
 	dispatch.is_service = dispatch.service != ServiceMethod::Unknown;
-	dispatch.mutating = dispatch.is_service ? is_mutating(dispatch.service)
-						: dispatch.is_encoder_group ? is_mutating(dispatch.encoder_group)
-						: dispatch.is_encoder ? is_mutating(dispatch.encoder)
-						: dispatch.is_hotkey ? is_mutating(dispatch.hotkey) : is_mutating(dispatch.audio);
+	dispatch.is_output = dispatch.output != OutputMethod::Unknown;
+	dispatch.mutating = phase3_dispatch_is_mutating(dispatch);
 	return true;
 }
 
@@ -743,9 +926,23 @@ bool execute_service(Engine &engine, ServiceMethod method, const V2Request &requ
 	return (engine.*handler)(request.params.get(), result, error);
 }
 
+bool execute_output(Engine &engine, OutputMethod method, const V2Request &request, RuntimeV2Result &result,
+			    RuntimeV2Error &error)
+{
+	const OutputMethodHandler handler = output_handler_for(method);
+	if (!handler) {
+		error.code = "internal_error";
+		error.message = "output method dispatch failed";
+		return false;
+	}
+	return (engine.*handler)(request.params.get(), result, error);
+}
+
 bool execute_phase3(Engine &engine, const Phase3Dispatch &dispatch, const V2Request &request,
 			   RuntimeV2Result &result, RuntimeV2Error &error)
 {
+	if (dispatch.is_output)
+		return execute_output(engine, dispatch.output, request, result, error);
 	if (dispatch.is_service)
 		return execute_service(engine, dispatch.service, request, result, error);
 	if (dispatch.is_encoder_group)
@@ -799,7 +996,8 @@ bool is_phase3_method(std::string_view method)
 	return classify(method) != AudioMethod::Unknown || classify_hotkey(method) != HotkeyMethod::Unknown ||
 	       classify_encoder(method) != EncoderMethod::Unknown ||
 	       classify_encoder_group(method) != EncoderGroupMethod::Unknown ||
-	       classify_service(method) != ServiceMethod::Unknown;
+	       classify_service(method) != ServiceMethod::Unknown ||
+	       classify_output(method) != OutputMethod::Unknown;
 }
 
 bool handle_phase3_request(Engine &engine, RevisionState &revisions, EventDispatcher &events,

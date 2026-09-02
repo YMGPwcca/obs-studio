@@ -1917,6 +1917,9 @@ EXPORT obs_output_t *obs_weak_output_get_output(obs_weak_output_t *weak);
 EXPORT bool obs_weak_output_references_output(obs_weak_output_t *weak, obs_output_t *output);
 
 EXPORT const char *obs_output_get_name(const obs_output_t *output);
+EXPORT void obs_output_set_name(obs_output_t *output, const char *name);
+/** Returns whether the output plugin context was created successfully. */
+EXPORT bool obs_output_initialized(const obs_output_t *output);
 
 /** Starts the output. */
 EXPORT bool obs_output_start(obs_output_t *output);
@@ -2143,6 +2146,9 @@ EXPORT const char *obs_output_get_last_error(obs_output_t *output);
 
 EXPORT const char *obs_output_get_supported_video_codecs(const obs_output_t *output);
 EXPORT const char *obs_output_get_supported_audio_codecs(const obs_output_t *output);
+EXPORT const char *obs_get_output_supported_video_codecs(const char *id);
+EXPORT const char *obs_get_output_supported_audio_codecs(const char *id);
+EXPORT const char *obs_get_output_protocols(const char *id);
 
 EXPORT const char *obs_output_get_protocols(const obs_output_t *output);
 
@@ -2152,10 +2158,6 @@ EXPORT bool obs_enum_output_protocols(size_t idx, char **protocol);
 
 EXPORT void obs_enum_output_types_with_protocol(const char *protocol, void *data,
 						bool (*enum_cb)(void *data, const char *id));
-
-EXPORT const char *obs_get_output_supported_video_codecs(const char *id);
-
-EXPORT const char *obs_get_output_supported_audio_codecs(const char *id);
 
 /* Add/remove packet-processing callbacks that are invoked in
  * send_interleaved(), before forwarding packets to the output service.

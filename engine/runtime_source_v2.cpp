@@ -857,6 +857,7 @@ void Engine::v2_bind_source_events(RevisionState *revisions, EventDispatcher *ev
 	v2_bind_audio_events(revisions, events);
 	v2_bind_hotkey_events(revisions, events);
 	v2_bind_encoder_events(revisions, events);
+	v2_bind_output_events(revisions, events);
 	v2_bind_filter_events(revisions, events);
 	v2_bind_transition_events(revisions, events);
 }
@@ -871,6 +872,7 @@ void Engine::v2_begin_event_capture(RuntimeV2Result &result)
 	v2_begin_media_event_capture(result);
 	v2_begin_audio_event_capture(result);
 	v2_begin_filter_event_capture(result);
+	v2_begin_output_event_capture(result);
 }
 
 void Engine::v2_wait_for_event_capture_callbacks()
@@ -884,6 +886,7 @@ void Engine::v2_wait_for_event_capture_callbacks()
 	v2_wait_for_media_event_callbacks();
 	v2_wait_for_audio_event_callbacks();
 	v2_wait_for_filter_event_callbacks();
+	v2_wait_for_output_event_callbacks();
 }
 
 void Engine::v2_end_event_capture() noexcept
@@ -913,6 +916,7 @@ void Engine::v2_end_event_capture() noexcept
 	v2_end_media_event_capture();
 	v2_end_audio_event_capture();
 	v2_end_filter_event_capture();
+	v2_end_output_event_capture();
 }
 
 void Engine::v2_drain_deferred_source_events(RevisionState::MutationGuard &guard)
@@ -924,6 +928,7 @@ void Engine::v2_drain_deferred_source_events(RevisionState::MutationGuard &guard
 	v2_drain_deferred_media_events(guard);
 	v2_drain_deferred_audio_events(guard);
 	v2_drain_deferred_filter_events(guard);
+	v2_drain_deferred_output_events(guard);
 }
 
 void Engine::v2_flush_deferred_source_events(RevisionState::MutationGuard &guard)
@@ -935,6 +940,7 @@ void Engine::v2_flush_deferred_source_events(RevisionState::MutationGuard &guard
 	v2_flush_deferred_media_events(guard);
 	v2_flush_deferred_audio_events(guard);
 	v2_flush_deferred_filter_events(guard);
+	v2_flush_deferred_output_events(guard);
 }
 
 void Engine::v2_sync_source_observers()
@@ -982,6 +988,7 @@ void Engine::v2_prepare_shutdown() noexcept
 	v2_prepare_transition_shutdown();
 	v2_prepare_filter_shutdown();
 	v2_prepare_media_shutdown();
+	v2_prepare_output_shutdown();
 	v2_prepare_service_shutdown();
 	v2_prepare_encoder_group_shutdown();
 	v2_prepare_encoder_shutdown();

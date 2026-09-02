@@ -199,6 +199,39 @@ constexpr CapabilityDescriptor kCapabilities[] = {
 	{"service.getSupportedAudioCodecs.v1", false},
 	{"service.getEncoderRecommendations.v1", false},
 	{"service.canConnect.v1", false},
+	{"output.v1", false},
+	{"output.kindList.v1", false},
+	{"output.kindGet.v1", false},
+	{"output.kindDefaults.v1", false},
+	{"output.kindProperties.v1", false},
+	{"output.kindCapabilities.v1", false},
+	{"output.list.v1", false},
+	{"output.get.v1", false},
+	{"output.create.v1", false},
+	{"output.remove.v1", false},
+	{"output.rename.v1", false},
+	{"output.getSettings.v1", false},
+	{"output.patchSettings.v1", false},
+	{"output.replaceSettings.v1", false},
+	{"output.getProperties.v1", false},
+	{"output.setService.v1", false},
+	{"output.getService.v1", false},
+	{"output.setVideoEncoder.v1", false},
+	{"output.setAudioEncoder.v1", false},
+	{"output.getEncoders.v1", false},
+	{"output.start.v1", false},
+	{"output.stop.v1", false},
+	{"output.forceStop.v1", false},
+	{"output.getState.v1", false},
+	{"output.setPaused.v1", false},
+	{"output.getPaused.v1", false},
+	{"output.setDelay.v1", false},
+	{"output.getDelay.v1", false},
+	{"output.setReconnect.v1", false},
+	{"output.getReconnect.v1", false},
+	{"output.getStats.v1", false},
+	{"output.getLastError.v1", false},
+	{"output.getSupportedCodecs.v1", false},
 	{"properties.v1", false},
 	{"properties.get.v1", false},
 	{"properties.getListItems.v1", false},
@@ -661,6 +694,7 @@ bool handle_v2_request(Engine &engine, const Config &config, RevisionState &revi
 			       const V2Request &request)
 {
 	engine.v2_sync_transition_observers();
+	engine.v2_sync_output_observers();
 	if (is_capability_request(request.method))
 		return handle_capability_request(engine, revisions, request);
 
