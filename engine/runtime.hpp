@@ -618,6 +618,11 @@ private:
 	bool v2_get_output_entry(obs_data_t *params, uint64_t &handle, OutputEntry *&entry,
 					RuntimeV2Error &error) const;
 	bool v2_get_recording_output(uint64_t &handle, OutputEntry *&entry, RuntimeV2Error &error) const;
+	bool v2_validate_recording_configuration(obs_data_t *params, uint64_t &handle, OutputEntry *&entry,
+						RuntimeV2Error &error) const;
+	bool v2_apply_recording_configuration_settings(OutputEntry &entry, uint64_t handle, obs_data_t *params,
+						RuntimeV2Result &result, RuntimeV2Error &error);
+	void v2_register_recording_role(uint64_t handle, OutputEntry &entry);
 	bool v2_output_is_inactive(const OutputEntry &entry, RuntimeV2Error &error) const;
 	bool v2_update_output_settings(OutputEntry &entry, uint64_t handle, obs_data_t *requested, bool replace,
 				       RuntimeV2Result &result, RuntimeV2Error &error);

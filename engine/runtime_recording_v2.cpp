@@ -77,14 +77,18 @@ std::string path_to_utf8(const std::filesystem::path &path)
 	return std::string(reinterpret_cast<const char *>(value.data()), value.size());
 }
 
-bool canonicalize_recording_path(const std::string &input, bool create_directory, std::string &canonical,
-					 RuntimeV2Error &error)
+bool validate_recording_path_text(const std::string &input, RuntimeV2Error &error)
 {
 	if (input.empty() || input.size() > kMaxRecordingPathBytes || input.find('\0') != std::string::npos)
 		return fail(error, "bad_request", "recording path must be a bounded UTF-8 path without NUL");
 	if (input.find("://") != std::string::npos)
 		return fail(error, "bad_request", "recording path must be a local filesystem path");
-	std::filesystem::path requested;
+	return true;
+}
+
+bool make_recording_filesystem_path(const std::string &input, std::filesystem::path &requested,
+					    RuntimeV2Error &error)
+{
 	try {
 		const auto *bytes = reinterpret_cast<const char8_t *>(input.data());
 		requested = std::filesystem::path(std::u8string(bytes, bytes + input.size()));
@@ -93,12 +97,16 @@ bool canonicalize_recording_path(const std::string &input, bool create_directory
 	}
 	if (!requested.is_absolute())
 		return fail(error, "bad_request", "recording path must be absolute");
-	const std::filesystem::path normalized = requested.lexically_normal();
+	return true;
+}
+
+bool prepare_recording_path_parent(const std::filesystem::path &normalized, bool create_directory,
+					   RuntimeV2Error &error)
+{
 	if (is_dangerous_recording_path(path_to_utf8(normalized)))
 		return fail(error, "permission_denied", "Windows device namespace recording paths are not supported");
 	if (normalized.extension().empty())
 		return fail(error, "bad_request", "recording path must include a file extension");
-
 	const std::filesystem::path parent = normalized.parent_path();
 	std::error_code filesystem_error;
 	if (create_directory) {
@@ -108,6 +116,21 @@ bool canonicalize_recording_path(const std::string &input, bool create_directory
 	}
 	if (!std::filesystem::is_directory(parent, filesystem_error) || filesystem_error)
 		return fail(error, "not_available", "recording parent directory is not available");
+	return true;
+}
+
+bool canonicalize_recording_path(const std::string &input, bool create_directory, std::string &canonical,
+					 RuntimeV2Error &error)
+{
+	if (!validate_recording_path_text(input, error))
+		return false;
+	std::filesystem::path requested;
+	if (!make_recording_filesystem_path(input, requested, error))
+		return false;
+	const std::filesystem::path normalized = requested.lexically_normal();
+	if (!prepare_recording_path_parent(normalized, create_directory, error))
+		return false;
+	std::error_code filesystem_error;
 	const std::filesystem::path resolved = std::filesystem::weakly_canonical(normalized, filesystem_error);
 	if (filesystem_error)
 		return fail(error, "bad_request", "recording path could not be canonicalized");
@@ -316,23 +339,21 @@ bool Engine::v2_recording_get_config(obs_data_t *, RuntimeV2Result &result, Runt
 	return true;
 }
 
-bool Engine::v2_recording_configure(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
+bool Engine::v2_validate_recording_configuration(obs_data_t *params, uint64_t &handle, OutputEntry *&entry,
+							RuntimeV2Error &error) const
 {
-	reset_result(result, error);
-	uint64_t output_handle = 0;
-	if (!phase2_read_handle(params, "output", output_handle))
-		return fail(error, "bad_request", "params.output must be a canonical output handle string");
-	OutputEntry *entry = nullptr;
-	const auto output = outputs_.find(output_handle);
-	if (output == outputs_.end() || !output->second.output)
-		return fail(error, "not_found", "output handle was not found");
-	entry = &output->second;
+	if (!v2_get_output_entry(params, handle, entry, error))
+		return false;
 	if (!output_is_recording_compatible(*entry, error))
 		return false;
-	if (recording_.output && recording_.output != output_handle)
+	if (recording_.output && recording_.output != handle)
 		return fail(error, "object_in_use", "another Output is already assigned to recording");
-	if (!v2_output_is_inactive(*entry, error))
-		return false;
+	return v2_output_is_inactive(*entry, error);
+}
+
+bool Engine::v2_apply_recording_configuration_settings(OutputEntry &entry, uint64_t handle, obs_data_t *params,
+							RuntimeV2Result &result, RuntimeV2Error &error)
+{
 	RecordingPathOptions options;
 	if (!read_recording_path_options(params, options, error))
 		return false;
@@ -342,17 +363,34 @@ bool Engine::v2_recording_configure(obs_data_t *params, RuntimeV2Result &result,
 	if (options.overwrite_present)
 		obs_data_set_bool(patch.get(), "allow_overwrite", options.overwrite);
 	if (options.path_present || options.overwrite_present) {
-		if (!v2_update_output_settings(*entry, output_handle, patch.get(), false, result, error))
+		if (!v2_update_output_settings(entry, handle, patch.get(), false, result, error))
 			return false;
 	}
+	return true;
+}
+
+void Engine::v2_register_recording_role(uint64_t handle, OutputEntry &entry)
+{
+	auto observer = std::make_shared<RecordingV2Observer>();
+	observer->engine = this;
+	observer->output_handle = handle;
+	connect_recording_observer(*observer, entry.output);
+	recording_.output = handle;
+	recording_.observer = std::move(observer);
+}
+
+bool Engine::v2_recording_configure(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
+{
+	reset_result(result, error);
+	uint64_t output_handle = 0;
+	OutputEntry *entry = nullptr;
+	if (!v2_validate_recording_configuration(params, output_handle, entry, error))
+		return false;
+	if (!v2_apply_recording_configuration_settings(*entry, output_handle, params, result, error))
+		return false;
 	const bool newly_configured = recording_.output == 0;
-	if (newly_configured) {
-		recording_.output = output_handle;
-		recording_.observer = std::make_shared<RecordingV2Observer>();
-		recording_.observer->engine = this;
-		recording_.observer->output_handle = output_handle;
-		connect_recording_observer(*recording_.observer, entry->output);
-	}
+	if (newly_configured)
+		v2_register_recording_role(output_handle, *entry);
 	ObsDataPtr live(obs_output_get_settings(entry->output));
 	const char *live_path = live ? obs_data_get_string(live.get(), "path") : nullptr;
 	if (recording_.observer && live_path && *live_path) {
