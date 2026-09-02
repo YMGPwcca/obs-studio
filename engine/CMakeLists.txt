@@ -12,6 +12,7 @@ target_sources(
     runtime_output_v2.cpp
     runtime_recording_v2.cpp
     runtime_streaming_v2.cpp
+    runtime_replay_buffer_v2.cpp
     runtime_hotkey_v2.cpp
     events.cpp
     events.hpp
@@ -239,6 +240,20 @@ target_link_libraries(obs-engine-task27-recording-plugin PRIVATE OBS::libobs)
 set_target_properties(
   obs-engine-task27-recording-plugin
   PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task27-recording"
+)
+
+# Task 29 deterministic replay-buffer Output. It is staged only by the
+# replay-buffer integration lane and has no install rule.
+add_library(obs-engine-task29-replay-plugin MODULE EXCLUDE_FROM_ALL task29_replay_plugin.cpp)
+target_compile_features(obs-engine-task29-replay-plugin PRIVATE cxx_std_20)
+target_compile_definitions(
+  obs-engine-task29-replay-plugin
+  PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+)
+target_link_libraries(obs-engine-task29-replay-plugin PRIVATE OBS::libobs)
+set_target_properties(
+  obs-engine-task29-replay-plugin
+  PROPERTIES FOLDER "engine/tests" PREFIX "" OUTPUT_NAME "task29-replay"
 )
 
 # Task 23 active-update bridge test. It uses the packaged null output only to

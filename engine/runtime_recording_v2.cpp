@@ -355,6 +355,8 @@ bool Engine::v2_validate_recording_configuration(obs_data_t *params, uint64_t &h
 		return false;
 	if (recording_.output && recording_.output != handle)
 		return fail(error, "object_in_use", "another Output is already assigned to recording");
+	if (streaming_.output == handle || replay_.output == handle)
+		return fail(error, "object_in_use", "Output is already assigned to another convenience role");
 	return v2_output_is_inactive(*entry, error);
 }
 

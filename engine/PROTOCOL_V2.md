@@ -1007,6 +1007,7 @@ Methods:
 
 - `replayBuffer.getConfig`
 - `replayBuffer.configure`
+- `replayBuffer.unconfigure`
 - `replayBuffer.start`
 - `replayBuffer.stop`
 - `replayBuffer.save`

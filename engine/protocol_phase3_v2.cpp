@@ -221,6 +221,19 @@ enum class StreamingMethod {
 	Unknown,
 };
 
+enum class ReplayBufferMethod {
+	GetConfig,
+	Configure,
+	Unconfigure,
+	Start,
+	Stop,
+	Save,
+	GetState,
+	GetStats,
+	GetLastFile,
+	Unknown,
+};
+
 struct Phase3Dispatch {
 	AudioMethod audio = AudioMethod::Unknown;
 	HotkeyMethod hotkey = HotkeyMethod::Unknown;
@@ -230,6 +243,7 @@ struct Phase3Dispatch {
 	OutputMethod output = OutputMethod::Unknown;
 	RecordingMethod recording = RecordingMethod::Unknown;
 	StreamingMethod streaming = StreamingMethod::Unknown;
+	ReplayBufferMethod replay_buffer = ReplayBufferMethod::Unknown;
 	bool is_hotkey = false;
 	bool is_encoder = false;
 	bool is_encoder_group = false;
@@ -237,6 +251,7 @@ struct Phase3Dispatch {
 	bool is_output = false;
 	bool is_recording = false;
 	bool is_streaming = false;
+	bool is_replay_buffer = false;
 	bool mutating = false;
 };
 
@@ -422,6 +437,23 @@ constexpr StreamingMethodName kStreamingMethods[] = {
 	{"streaming.getLastError", StreamingMethod::GetLastError},
 };
 
+struct ReplayBufferMethodName {
+	std::string_view name;
+	ReplayBufferMethod method;
+};
+
+constexpr ReplayBufferMethodName kReplayBufferMethods[] = {
+	{"replayBuffer.getConfig", ReplayBufferMethod::GetConfig},
+	{"replayBuffer.configure", ReplayBufferMethod::Configure},
+	{"replayBuffer.unconfigure", ReplayBufferMethod::Unconfigure},
+	{"replayBuffer.start", ReplayBufferMethod::Start},
+	{"replayBuffer.stop", ReplayBufferMethod::Stop},
+	{"replayBuffer.save", ReplayBufferMethod::Save},
+	{"replayBuffer.getState", ReplayBufferMethod::GetState},
+	{"replayBuffer.getStats", ReplayBufferMethod::GetStats},
+	{"replayBuffer.getLastFile", ReplayBufferMethod::GetLastFile},
+};
+
 constexpr AudioMethod kMutatingMethods[] = {
 	AudioMethod::SetMute,
 	AudioMethod::ToggleMute,
@@ -510,6 +542,14 @@ constexpr StreamingMethod kStreamingMutatingMethods[] = {
 	StreamingMethod::Stop,
 	StreamingMethod::ForceStop,
 	StreamingMethod::SetService,
+};
+
+constexpr ReplayBufferMethod kReplayBufferMutatingMethods[] = {
+	ReplayBufferMethod::Configure,
+	ReplayBufferMethod::Unconfigure,
+	ReplayBufferMethod::Start,
+	ReplayBufferMethod::Stop,
+	ReplayBufferMethod::Save,
 };
 
 using AudioMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
@@ -739,6 +779,25 @@ constexpr StreamingHandlerEntry kStreamingHandlers[] = {
 	{StreamingMethod::GetLastError, &Engine::v2_streaming_get_last_error},
 };
 
+using ReplayBufferMethodHandler = bool (Engine::*)(obs_data_t *, RuntimeV2Result &, RuntimeV2Error &);
+
+struct ReplayBufferHandlerEntry {
+	ReplayBufferMethod method;
+	ReplayBufferMethodHandler handler;
+};
+
+constexpr ReplayBufferHandlerEntry kReplayBufferHandlers[] = {
+	{ReplayBufferMethod::GetConfig, &Engine::v2_replay_buffer_get_config},
+	{ReplayBufferMethod::Configure, &Engine::v2_replay_buffer_configure},
+	{ReplayBufferMethod::Unconfigure, &Engine::v2_replay_buffer_unconfigure},
+	{ReplayBufferMethod::Start, &Engine::v2_replay_buffer_start},
+	{ReplayBufferMethod::Stop, &Engine::v2_replay_buffer_stop},
+	{ReplayBufferMethod::Save, &Engine::v2_replay_buffer_save},
+	{ReplayBufferMethod::GetState, &Engine::v2_replay_buffer_get_state},
+	{ReplayBufferMethod::GetStats, &Engine::v2_replay_buffer_get_stats},
+	{ReplayBufferMethod::GetLastFile, &Engine::v2_replay_buffer_get_last_file},
+};
+
 AudioMethod classify(std::string_view name)
 {
 	for (const AudioMethodName &entry : kAudioMethods) {
@@ -811,6 +870,15 @@ StreamingMethod classify_streaming(std::string_view name)
 	return StreamingMethod::Unknown;
 }
 
+ReplayBufferMethod classify_replay_buffer(std::string_view name)
+{
+	for (const ReplayBufferMethodName &entry : kReplayBufferMethods) {
+		if (entry.name == name)
+			return entry.method;
+	}
+	return ReplayBufferMethod::Unknown;
+}
+
 bool is_mutating(AudioMethod method)
 {
 	for (const AudioMethod candidate : kMutatingMethods) {
@@ -877,6 +945,15 @@ bool is_mutating(RecordingMethod method)
 bool is_mutating(StreamingMethod method)
 {
 	for (const StreamingMethod candidate : kStreamingMutatingMethods) {
+		if (candidate == method)
+			return true;
+	}
+	return false;
+}
+
+bool is_mutating(ReplayBufferMethod method)
+{
+	for (const ReplayBufferMethod candidate : kReplayBufferMutatingMethods) {
 		if (candidate == method)
 			return true;
 	}
@@ -955,12 +1032,22 @@ StreamingMethodHandler streaming_handler_for(StreamingMethod method)
 	return nullptr;
 }
 
+ReplayBufferMethodHandler replay_buffer_handler_for(ReplayBufferMethod method)
+{
+	for (const ReplayBufferHandlerEntry &entry : kReplayBufferHandlers) {
+		if (entry.method == method)
+			return entry.handler;
+	}
+	return nullptr;
+}
+
 bool phase3_dispatch_empty(const Phase3Dispatch &dispatch)
 {
 	return dispatch.audio == AudioMethod::Unknown && dispatch.hotkey == HotkeyMethod::Unknown &&
 	       dispatch.encoder == EncoderMethod::Unknown && dispatch.encoder_group == EncoderGroupMethod::Unknown &&
 	       dispatch.service == ServiceMethod::Unknown && dispatch.output == OutputMethod::Unknown &&
-	       dispatch.recording == RecordingMethod::Unknown && dispatch.streaming == StreamingMethod::Unknown;
+	       dispatch.recording == RecordingMethod::Unknown && dispatch.streaming == StreamingMethod::Unknown &&
+	       dispatch.replay_buffer == ReplayBufferMethod::Unknown;
 }
 
 bool phase3_dispatch_is_mutating(const Phase3Dispatch &dispatch)
@@ -971,6 +1058,8 @@ bool phase3_dispatch_is_mutating(const Phase3Dispatch &dispatch)
 		return is_mutating(dispatch.recording);
 	if (dispatch.is_streaming)
 		return is_mutating(dispatch.streaming);
+	if (dispatch.is_replay_buffer)
+		return is_mutating(dispatch.replay_buffer);
 	if (dispatch.is_service)
 		return is_mutating(dispatch.service);
 	if (dispatch.is_encoder_group)
@@ -992,6 +1081,7 @@ bool classify_phase3(std::string_view name, Phase3Dispatch &dispatch)
 	dispatch.output = classify_output(name);
 	dispatch.recording = classify_recording(name);
 	dispatch.streaming = classify_streaming(name);
+	dispatch.replay_buffer = classify_replay_buffer(name);
 	if (phase3_dispatch_empty(dispatch))
 		return false;
 	dispatch.is_hotkey = dispatch.hotkey != HotkeyMethod::Unknown;
@@ -1001,6 +1091,7 @@ bool classify_phase3(std::string_view name, Phase3Dispatch &dispatch)
 	dispatch.is_output = dispatch.output != OutputMethod::Unknown;
 	dispatch.is_recording = dispatch.recording != RecordingMethod::Unknown;
 	dispatch.is_streaming = dispatch.streaming != StreamingMethod::Unknown;
+	dispatch.is_replay_buffer = dispatch.replay_buffer != ReplayBufferMethod::Unknown;
 	dispatch.mutating = phase3_dispatch_is_mutating(dispatch);
 	return true;
 }
@@ -1176,6 +1267,18 @@ bool execute_streaming(Engine &engine, StreamingMethod method, const V2Request &
 	return (engine.*handler)(request.params.get(), result, error);
 }
 
+bool execute_replay_buffer(Engine &engine, ReplayBufferMethod method, const V2Request &request,
+				   RuntimeV2Result &result, RuntimeV2Error &error)
+{
+	const ReplayBufferMethodHandler handler = replay_buffer_handler_for(method);
+	if (!handler) {
+		error.code = "internal_error";
+		error.message = "replay buffer method dispatch failed";
+		return false;
+	}
+	return (engine.*handler)(request.params.get(), result, error);
+}
+
 bool execute_phase3(Engine &engine, const Phase3Dispatch &dispatch, const V2Request &request,
 			   RuntimeV2Result &result, RuntimeV2Error &error)
 {
@@ -1185,6 +1288,8 @@ bool execute_phase3(Engine &engine, const Phase3Dispatch &dispatch, const V2Requ
 		return execute_recording(engine, dispatch.recording, request, result, error);
 	if (dispatch.is_streaming)
 		return execute_streaming(engine, dispatch.streaming, request, result, error);
+	if (dispatch.is_replay_buffer)
+		return execute_replay_buffer(engine, dispatch.replay_buffer, request, result, error);
 	if (dispatch.is_service)
 		return execute_service(engine, dispatch.service, request, result, error);
 	if (dispatch.is_encoder_group)
@@ -1241,7 +1346,8 @@ bool is_phase3_method(std::string_view method)
 	       classify_service(method) != ServiceMethod::Unknown ||
 	       classify_output(method) != OutputMethod::Unknown ||
 	       classify_recording(method) != RecordingMethod::Unknown ||
-	       classify_streaming(method) != StreamingMethod::Unknown;
+	       classify_streaming(method) != StreamingMethod::Unknown ||
+	       classify_replay_buffer(method) != ReplayBufferMethod::Unknown;
 }
 
 bool handle_phase3_request(Engine &engine, RevisionState &revisions, EventDispatcher &events,
