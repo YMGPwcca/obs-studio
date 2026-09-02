@@ -15,7 +15,7 @@
     }
   ],
   "operatorAuthoredCommitCountInLineage": 64,
-  "operatorAuthoredCodeCommitCountInScope": 168,
+  "operatorAuthoredCodeCommitCountInScope": 175,
   "operatorAuthoredCommits": [
     {
       "hash": "ffffcfd1a65677a16d9ec596103d99bde080deb8",
@@ -1312,9 +1312,11 @@
       "path": ".github/scripts/engine-protocol-v2-task22.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 1,
+      "operatorCommitCount": 3,
       "operatorCommits": [
-        "6c8b194267516e3589f7d93cc1616359804abb05"
+        "6c8b194267516e3589f7d93cc1616359804abb05",
+        "93412ba5d383acd57d49860c58803bce732ed342",
+        "5d603325f229c391ed2539dfba24e6be0e920935"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 21,
@@ -2050,13 +2052,16 @@
     {
       "path": ".github/scripts/engine-protocol-v2-task30.ps1",
       "language": "PowerShell",
-      "status": "M",
-      "operatorCommitCount": 1,
+      "status": "A",
+      "operatorCommitCount": 4,
       "operatorCommits": [
-        "f18b9ce59af4191a0e22eac9692f3af64b996c75"
+        "f18b9ce59af4191a0e22eac9692f3af64b996c75",
+        "ef25953c8c2492d9aeec3a262a82ac7631b972d2",
+        "b98a21a8ef0f9f1398d781bb44276d53f7570c55",
+        "1d6cefedc23112848c0ff5c9152372f15635d479"
       ],
       "operatorBlameLineCount": 0,
-      "scopedFunctionCount": 13,
+      "scopedFunctionCount": 15,
       "currentFunctionKeys": [
         "powershell|function|.github/scripts/engine-protocol-v2-task30.ps1|Fail-Task30|Fail-Task30",
         "powershell|function|.github/scripts/engine-protocol-v2-task30.ps1|Start-Task30Engine|Start-Task30Engine",
@@ -2064,7 +2069,9 @@
         "powershell|function|.github/scripts/engine-protocol-v2-task30.ps1|Read-Task30Message|Read-Task30Message",
         "powershell|function|.github/scripts/engine-protocol-v2-task30.ps1|Send-Task30|Send-Task30",
         "powershell|function|.github/scripts/engine-protocol-v2-task30.ps1|Assert-Ok|Assert-Ok",
+        "powershell|function|.github/scripts/engine-protocol-v2-task30.ps1|Assert-OkAtOrAfter|Assert-OkAtOrAfter",
         "powershell|function|.github/scripts/engine-protocol-v2-task30.ps1|Assert-Error|Assert-Error",
+        "powershell|function|.github/scripts/engine-protocol-v2-task30.ps1|Assert-ErrorAtOrAfter|Assert-ErrorAtOrAfter",
         "powershell|function|.github/scripts/engine-protocol-v2-task30.ps1|Read-Task30Event|Read-Task30Event",
         "powershell|function|.github/scripts/engine-protocol-v2-task30.ps1|Invoke-Task30Mutation|Invoke-Task30Mutation",
         "powershell|function|.github/scripts/engine-protocol-v2-task30.ps1|Initialize-Task30Session|Initialize-Task30Session",
@@ -3307,8 +3314,8 @@
     {
       "path": "engine/runtime_canvas_v2.cpp",
       "language": "C/C++",
-      "status": "M",
-      "operatorCommitCount": 7,
+      "status": "A",
+      "operatorCommitCount": 8,
       "operatorCommits": [
         "47ddc99c15f95de87a895d3e1ca3dd66bac3befe",
         "94c52dc5d0728ea4bd75efa95a04568f614eebdf",
@@ -3316,7 +3323,8 @@
         "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
         "71e65a5b4bbf63347ebc67b01593a49ed38095cd",
         "30b064bc394b157f8ca8d06cfd36c675cd379410",
-        "f18b9ce59af4191a0e22eac9692f3af64b996c75"
+        "f18b9ce59af4191a0e22eac9692f3af64b996c75",
+        "ef25953c8c2492d9aeec3a262a82ac7631b972d2"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 45,
@@ -4234,13 +4242,14 @@
     {
       "path": "engine/runtime_preview_v2.cpp",
       "language": "C/C++",
-      "status": "M",
-      "operatorCommitCount": 4,
+      "status": "A",
+      "operatorCommitCount": 5,
       "operatorCommits": [
         "438ee2328c8f82f363ef551e8ff85b96b1e076d6",
         "cde3063445f7a8977b40a09cab3e547203657d68",
         "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
-        "f18b9ce59af4191a0e22eac9692f3af64b996c75"
+        "f18b9ce59af4191a0e22eac9692f3af64b996c75",
+        "ef25953c8c2492d9aeec3a262a82ac7631b972d2"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 8,
@@ -4393,11 +4402,12 @@
     {
       "path": "engine/runtime_replay_buffer_v2.cpp",
       "language": "C/C++",
-      "status": "M",
-      "operatorCommitCount": 2,
+      "status": "A",
+      "operatorCommitCount": 3,
       "operatorCommits": [
         "d5ff07702595f471e07bc5a02389be164081ba0b",
-        "f18b9ce59af4191a0e22eac9692f3af64b996c75"
+        "f18b9ce59af4191a0e22eac9692f3af64b996c75",
+        "ef25953c8c2492d9aeec3a262a82ac7631b972d2"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 32,
@@ -4439,8 +4449,8 @@
     {
       "path": "engine/runtime_scene_v2.cpp",
       "language": "C/C++",
-      "status": "M",
-      "operatorCommitCount": 9,
+      "status": "A",
+      "operatorCommitCount": 10,
       "operatorCommits": [
         "6be51d166b03474765d0f8242af441c61748a03f",
         "141906c4249d1ecdbf4e79188dbcb8016d04a3c2",
@@ -4450,7 +4460,8 @@
         "42c724c1d247bc64f15475c3edc1d39393ba2f7c",
         "0748d0f323d1b2ee9a4403b01004718e4cbf6f99",
         "7e476bbf384d9bdca37dc9a7f405a430ef1a8190",
-        "f18b9ce59af4191a0e22eac9692f3af64b996c75"
+        "f18b9ce59af4191a0e22eac9692f3af64b996c75",
+        "ef25953c8c2492d9aeec3a262a82ac7631b972d2"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 40,
@@ -4879,10 +4890,11 @@
     {
       "path": "engine/runtime_virtual_camera_v2.cpp",
       "language": "C/C++",
-      "status": "M",
-      "operatorCommitCount": 1,
+      "status": "A",
+      "operatorCommitCount": 2,
       "operatorCommits": [
-        "f18b9ce59af4191a0e22eac9692f3af64b996c75"
+        "f18b9ce59af4191a0e22eac9692f3af64b996c75",
+        "ef25953c8c2492d9aeec3a262a82ac7631b972d2"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 32,
@@ -4977,7 +4989,7 @@
       "path": "engine/runtime.hpp",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 32,
+      "operatorCommitCount": 33,
       "operatorCommits": [
         "f3075c2700fd4f5ce1221d29817c2f29645f7daf",
         "689ee85ae26f583802a4c94a1aa0f8eba58ee1dc",
@@ -5010,7 +5022,8 @@
         "d9088c1f6971871f3ebd1d3804bd4232be2a1925",
         "34b59dd246fc8f5cab276e802e64c7f34a08e70b",
         "d5ff07702595f471e07bc5a02389be164081ba0b",
-        "f18b9ce59af4191a0e22eac9692f3af64b996c75"
+        "f18b9ce59af4191a0e22eac9692f3af64b996c75",
+        "ef25953c8c2492d9aeec3a262a82ac7631b972d2"
       ],
       "operatorBlameLineCount": 228,
       "scopedFunctionCount": 0,
@@ -5254,12 +5267,13 @@
       "path": "libobs/obs-encoder.c",
       "language": "C/C++",
       "status": "M",
-      "operatorCommitCount": 1,
+      "operatorCommitCount": 2,
       "operatorCommits": [
-        "30b064bc394b157f8ca8d06cfd36c675cd379410"
+        "30b064bc394b157f8ca8d06cfd36c675cd379410",
+        "5c268ff77599cfe7d7831ef8d57de92cb1a6a399"
       ],
       "operatorBlameLineCount": 0,
-      "scopedFunctionCount": 16,
+      "scopedFunctionCount": 17,
       "currentFunctionKeys": [
         "cpp|function|libobs/obs-encoder.c|init_encoder|init_encoder( struct obs_encoder * encoder , const char * name , obs_data_t * settings , obs_data_t * hotkey_data)",
         "cpp|function|libobs/obs-encoder.c|remove_connection|remove_connection( struct obs_encoder * encoder , bool shutdown)",
@@ -5276,7 +5290,8 @@
         "cpp|function|libobs/obs-encoder.c|obs_encoder_update|obs_encoder_update( obs_encoder_t * encoder , obs_data_t * settings)",
         "cpp|function|libobs/obs-encoder.c|obs_encoder_initialized|obs_encoder_initialized( const obs_encoder_t * encoder)",
         "cpp|function|libobs/obs-encoder.c|do_encode|do_encode( struct obs_encoder * encoder , struct encoder_frame * frame , const uint64_t * frame_cts)",
-        "cpp|function|libobs/obs-encoder.c|obs_encoder_remove_roi|obs_encoder_remove_roi( obs_encoder_t * encoder , size_t index)"
+        "cpp|function|libobs/obs-encoder.c|obs_encoder_remove_roi|obs_encoder_remove_roi( obs_encoder_t * encoder , size_t index)",
+        "cpp|function|libobs/obs-encoder.c|obs_encoder_set_group|obs_encoder_set_group( obs_encoder_t * encoder , obs_encoder_group_t * group)"
       ]
     },
     {
@@ -5422,7 +5437,7 @@
       "path": "tools/check-complexity.ps1",
       "language": "PowerShell",
       "status": "A",
-      "operatorCommitCount": 39,
+      "operatorCommitCount": 40,
       "operatorCommits": [
         "a6b2b65df6cbcb289e4b81af1ca898a5397c3992",
         "979148802c665938cd7532c4c50fedf9259d725e",
@@ -5462,7 +5477,8 @@
         "18a4984a1bcea29b54ac80127bc17d451c583112",
         "8ef8bc09cfe5d24d57f583e14fb8136de6ad78ba",
         "e0c9dc93e053bed443763decb8aabf7b0d3883da",
-        "08419fafbae1c845fab920ce6bc8aad4efec224f"
+        "08419fafbae1c845fab920ce6bc8aad4efec224f",
+        "ef25953c8c2492d9aeec3a262a82ac7631b972d2"
       ],
       "operatorBlameLineCount": 0,
       "scopedFunctionCount": 165,

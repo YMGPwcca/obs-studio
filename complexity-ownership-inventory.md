@@ -9,7 +9,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 
 - GitHub account: **YMGPwcca**
 - Author-authored commits in accepted lineage: **64**
-- Author-authored commits touching current executable scope: **168**
+- Author-authored commits touching current executable scope: **175**
 
 | Author name | Author email |
 |---|---|
@@ -59,7 +59,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `.github/scripts/engine-protocol-v2-task22-package-audit.ps1` | PowerShell | A | 1 | 0 | 0 |
 | `.github/scripts/engine-protocol-v2-task22-remove-fixture.ps1` | PowerShell | A | 1 | 0 | 0 |
 | `.github/scripts/engine-protocol-v2-task22-stage-fixture.ps1` | PowerShell | A | 1 | 0 | 0 |
-| `.github/scripts/engine-protocol-v2-task22.ps1` | PowerShell | A | 1 | 0 | 21 |
+| `.github/scripts/engine-protocol-v2-task22.ps1` | PowerShell | A | 3 | 0 | 21 |
 | `.github/scripts/engine-protocol-v2-task23-build-fixture.ps1` | PowerShell | A | 1 | 0 | 0 |
 | `.github/scripts/engine-protocol-v2-task23-package-audit.ps1` | PowerShell | A | 1 | 0 | 0 |
 | `.github/scripts/engine-protocol-v2-task23-remove-fixture.ps1` | PowerShell | A | 1 | 0 | 0 |
@@ -102,7 +102,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `.github/scripts/engine-protocol-v2-task3-capabilities.ps1` | PowerShell | A | 2 | 0 | 21 |
 | `.github/scripts/engine-protocol-v2-task30-package-audit.ps1` | PowerShell | A | 1 | 0 | 0 |
 | `.github/scripts/engine-protocol-v2-task30-physical.ps1` | PowerShell | A | 1 | 0 | 15 |
-| `.github/scripts/engine-protocol-v2-task30.ps1` | PowerShell | M | 1 | 0 | 13 |
+| `.github/scripts/engine-protocol-v2-task30.ps1` | PowerShell | A | 4 | 0 | 15 |
 | `.github/scripts/engine-protocol-v2-task4-revisions.ps1` | PowerShell | A | 1 | 0 | 15 |
 | `.github/scripts/engine-protocol-v2-task5-event-queue-policy.ps1` | PowerShell | A | 1 | 0 | 1 |
 | `.github/scripts/engine-protocol-v2-task5-subscriptions.ps1` | PowerShell | A | 1 | 0 | 18 |
@@ -145,7 +145,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `engine/protocol.hpp` | C/C++ | A | 3 | 47 | 2 |
 | `engine/revision.hpp` | C/C++ | A | 3 | 96 | 12 |
 | `engine/runtime_audio_v2.cpp` | C/C++ | A | 2 | 0 | 104 |
-| `engine/runtime_canvas_v2.cpp` | C/C++ | M | 7 | 0 | 45 |
+| `engine/runtime_canvas_v2.cpp` | C/C++ | A | 8 | 0 | 45 |
 | `engine/runtime_encoder_group_v2.cpp` | C/C++ | A | 1 | 0 | 16 |
 | `engine/runtime_encoder_v2.cpp` | C/C++ | A | 1 | 0 | 72 |
 | `engine/runtime_filter_v2.cpp` | C/C++ | M | 5 | 1949 | 117 |
@@ -157,12 +157,12 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `engine/runtime_phase2_common.cpp` | C/C++ | A | 2 | 0 | 23 |
 | `engine/runtime_phase2_common.hpp` | C/C++ | A | 2 | 0 | 0 |
 | `engine/runtime_preview_output_v2.cpp` | C/C++ | A | 4 | 0 | 67 |
-| `engine/runtime_preview_v2.cpp` | C/C++ | M | 4 | 0 | 8 |
+| `engine/runtime_preview_v2.cpp` | C/C++ | A | 5 | 0 | 8 |
 | `engine/runtime_program_v2.cpp` | C/C++ | A | 5 | 0 | 8 |
 | `engine/runtime_properties_v2.cpp` | C/C++ | M | 4 | 515 | 34 |
 | `engine/runtime_recording_v2.cpp` | C/C++ | A | 5 | 0 | 43 |
-| `engine/runtime_replay_buffer_v2.cpp` | C/C++ | M | 2 | 0 | 32 |
-| `engine/runtime_scene_v2.cpp` | C/C++ | M | 9 | 0 | 40 |
+| `engine/runtime_replay_buffer_v2.cpp` | C/C++ | A | 3 | 0 | 32 |
+| `engine/runtime_scene_v2.cpp` | C/C++ | A | 10 | 0 | 40 |
 | `engine/runtime_service_v2.cpp` | C/C++ | A | 1 | 0 | 48 |
 | `engine/runtime_source_settle_v2.cpp` | C/C++ | A | 4 | 366 | 15 |
 | `engine/runtime_source_v2.cpp` | C/C++ | M | 16 | 1276 | 81 |
@@ -170,9 +170,9 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `engine/runtime_studio_v2.cpp` | C/C++ | A | 3 | 0 | 11 |
 | `engine/runtime_transition_v2.cpp` | C/C++ | A | 4 | 0 | 50 |
 | `engine/runtime_v2.cpp` | C/C++ | M | 8 | 619 | 28 |
-| `engine/runtime_virtual_camera_v2.cpp` | C/C++ | M | 1 | 0 | 32 |
+| `engine/runtime_virtual_camera_v2.cpp` | C/C++ | A | 2 | 0 | 32 |
 | `engine/runtime.cpp` | C/C++ | M | 7 | 621 | 33 |
-| `engine/runtime.hpp` | C/C++ | M | 32 | 228 | 0 |
+| `engine/runtime.hpp` | C/C++ | M | 33 | 228 | 0 |
 | `engine/source_event_capture.hpp` | C/C++ | A | 1 | 43 | 4 |
 | `engine/task10_media_source.cpp` | C/C++ | A | 2 | 395 | 1 |
 | `engine/task11_filter_source.cpp` | C/C++ | A | 1 | 214 | 1 |
@@ -188,7 +188,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `engine/task9_interaction_source.cpp` | C/C++ | A | 1 | 99 | 1 |
 | `engine/validation.hpp` | C/C++ | M | 2 | 24 | 2 |
 | `libobs/obs-canvas.c` | C/C++ | M | 1 | 0 | 3 |
-| `libobs/obs-encoder.c` | C/C++ | M | 1 | 0 | 16 |
+| `libobs/obs-encoder.c` | C/C++ | M | 2 | 0 | 17 |
 | `libobs/obs-internal.h` | C/C++ | M | 4 | 36 | 3 |
 | `libobs/obs-output.c` | C/C++ | M | 1 | 0 | 6 |
 | `libobs/obs-service.c` | C/C++ | M | 1 | 0 | 4 |
@@ -196,7 +196,7 @@ Ownership was derived from `git log BASE..accepted` author metadata, then file/f
 | `libobs/obs-source.c` | C/C++ | M | 4 | 164 | 22 |
 | `libobs/obs.h` | C/C++ | M | 3 | 0 | 0 |
 | `plugins/win-capture/plugin-main.c` | C/C++ | M | 2 | 42 | 6 |
-| `tools/check-complexity.ps1` | PowerShell | A | 39 | 0 | 165 |
+| `tools/check-complexity.ps1` | PowerShell | A | 40 | 0 | 165 |
 | `tools/check-complexity.tests.ps1` | PowerShell | A | 24 | 0 | 23 |
 
 ## Non-CC changed paths

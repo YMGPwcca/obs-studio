@@ -1,19 +1,19 @@
 # Phase-1 Complexity Hardening Report
 
 Accepted starting SHA: `3fc2e678d10809a4dca8b28107710534160803ab`
-Candidate measurement HEAD: `f18b9ce59af4191a0e22eac9692f3af64b996c75`
+Candidate measurement HEAD: `5d603325f229c391ed2539dfba24e6be0e920935`
 
 ## Named-function before/after summary
 
 | Measure | Before | After |
 |---|---:|---:|
-| Named functions | 543 | 2703 |
-| Average named-function CC | 5.703 | 3.996 |
+| Named functions | 543 | 2706 |
+| Average named-function CC | 5.703 | 3.997 |
 | Median named-function CC | 4 | 3 |
 | 90th percentile named-function CC | 13 | 8 |
 | Maximum named-function CC | 61 | 13 |
-| Named functions with CC > 5 | 171 | 658 |
-| Named functions with CC > 7 | 115 | 296 |
+| Named functions with CC > 5 | 171 | 659 |
+| Named functions with CC > 7 | 115 | 297 |
 | Named functions with CC > 10 | 71 | 1 |
 
 The p90 is nearest-rank `ceil(0.90 * N)`. The named-function summary excludes PowerShell top-level script bodies; script bodies are measured and enforced separately. GitHub Actions run blocks are parsed as executable policy targets: only trivial wrappers remain inline. The historical Before snapshot contains only bodies present in that accepted historical scope, while After includes the complete current project-owned script-body scope.
@@ -35,13 +35,13 @@ The p90 is nearest-rank `ceil(0.90 * N)`. The named-function summary excludes Po
 
 | Measure | Before | After |
 |---|---:|---:|
-| Enforced scopes | 548 | 2806 |
-| Average Enforced scopes CC | 5.982 | 3.949 |
+| Enforced scopes | 548 | 2809 |
+| Average Enforced scopes CC | 5.982 | 3.951 |
 | Median Enforced scopes CC | 4 | 3 |
 | 90th percentile Enforced scopes CC | 13 | 8 |
 | Maximum Enforced scopes CC | 80 | 13 |
-| Enforced scopes with CC > 5 | 175 | 667 |
-| Enforced scopes with CC > 7 | 119 | 298 |
+| Enforced scopes with CC > 5 | 175 | 668 |
+| Enforced scopes with CC > 7 | 119 | 299 |
 | Enforced scopes with CC > 10 | 74 | 1 |
 
 ## GitHub Actions executable-block policy
@@ -337,6 +337,7 @@ Owned run blocks: 113; substantial inline PowerShell: 0; unsupported substantial
 | `Assert-Task18ProgressSample` | `.github/scripts/engine-protocol-v2-task18.ps1` | — | 9 | — | 7 | new cohesive helper/function in scoped file |
 | `Initialize-Task10Sources` | `.github/scripts/engine-protocol-v2-task10.ps1` | — | 8 | — | 56 | new cohesive helper/function in scoped file |
 | `obs_engine::Engine::replace_preview_output_resource` | `engine/runtime_preview_output_v2.cpp` | — | 8 | — | 43 | new cohesive helper/function in scoped file |
+| `obs_encoder_set_group` | `libobs/obs-encoder.c` | — | 8 | — | 40 | new cohesive helper/function in scoped file |
 | `Invoke-Task27CreateAndConfigure` | `.github/scripts/engine-protocol-v2-task27.ps1` | — | 8 | — | 39 | new cohesive helper/function in scoped file |
 | `main` | `engine/host.cpp` | 16 | 8 | 69 | 38 | reduced by 8 |
 | `obs_engine::Engine::v2_item_ungroup` | `engine/runtime_item_v2.cpp` | — | 8 | — | 38 | new cohesive helper/function in scoped file |
@@ -1121,6 +1122,7 @@ Owned run blocks: 113; substantial inline PowerShell: 0; unsupported substantial
 | `Assert-Error` | `.github/scripts/engine-protocol-v2-task28.ps1` | — | 5 | — | 4 | new cohesive helper/function in scoped file |
 | `Assert-Error` | `.github/scripts/engine-protocol-v2-task29.ps1` | — | 5 | — | 4 | new cohesive helper/function in scoped file |
 | `Assert-Error` | `.github/scripts/engine-protocol-v2-task30.ps1` | — | 5 | — | 4 | new cohesive helper/function in scoped file |
+| `Assert-ErrorAtOrAfter` | `.github/scripts/engine-protocol-v2-task30.ps1` | — | 5 | — | 4 | new cohesive helper/function in scoped file |
 | `Assert-Task18ExpectedEvent` | `.github/scripts/engine-protocol-v2-task18.ps1` | — | 5 | — | 3 | new cohesive helper/function in scoped file |
 | `New-BaselineMarkdown` | `tools/check-complexity.ps1` | — | 4 | — | 70 | new cohesive helper/function in scoped file |
 | `Invoke-Task9InitialInteraction` | `.github/scripts/engine-protocol-v2-task9.ps1` | — | 4 | — | 68 | new cohesive helper/function in scoped file |
@@ -1480,6 +1482,7 @@ Owned run blocks: 113; substantial inline PowerShell: 0; unsupported substantial
 | `Stop-Task28LoopbackReceiver` | `.github/scripts/engine-protocol-v2-task28-physical.ps1` | — | 4 | — | 6 | new cohesive helper/function in scoped file |
 | `Assert-Task3Unknown` | `.github/scripts/engine-protocol-v2-task3-capabilities.ps1` | — | 4 | — | 6 | new cohesive helper/function in scoped file |
 | `Wait-Task30Consumer` | `.github/scripts/engine-protocol-v2-task30-physical.ps1` | — | 4 | — | 6 | new cohesive helper/function in scoped file |
+| `Assert-OkAtOrAfter` | `.github/scripts/engine-protocol-v2-task30.ps1` | — | 4 | — | 6 | new cohesive helper/function in scoped file |
 | `looks_like_v2_request` | `engine/host.cpp` | 4 | 4 | 6 | 6 | unchanged |
 | `obs_engine::output_is_inactive` | `engine/runtime_output_v2.cpp` | — | 4 | — | 6 | new cohesive helper/function in scoped file |
 | `Assert-P2PhysicalEventOrder` | `.github/scripts/engine-protocol-v2-phase2-physical.ps1` | — | 4 | — | 5 | new cohesive helper/function in scoped file |
@@ -1499,6 +1502,7 @@ Owned run blocks: 113; substantial inline PowerShell: 0; unsupported substantial
 | `obs_engine::output_reconnect_expected` | `engine/runtime_output_v2.cpp` | — | 4 | — | 5 | new cohesive helper/function in scoped file |
 | `Assert-Error` | `.github/scripts/engine-protocol-v2-task25.ps1` | — | 4 | — | 4 | new cohesive helper/function in scoped file |
 | `Test-Task3AllowedExperimentalCapability` | `.github/scripts/engine-protocol-v2-task3-capabilities.ps1` | — | 4 | — | 4 | new cohesive helper/function in scoped file |
+| `Assert-Ok` | `.github/scripts/engine-protocol-v2-task30.ps1` | — | 4 | — | 4 | new cohesive helper/function in scoped file |
 | `Invoke-Task8Refresh` | `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1` | — | 4 | — | 4 | new cohesive helper/function in scoped file |
 | `obs_engine::crop_equal` | `engine/runtime_item_v2.cpp` | — | 4 | — | 4 | new cohesive helper/function in scoped file |
 | `Assert-Error` | `.github/scripts/engine-protocol-v2-task13.ps1` | — | 4 | — | 3 | new cohesive helper/function in scoped file |
@@ -1545,7 +1549,6 @@ Owned run blocks: 113; substantial inline PowerShell: 0; unsupported substantial
 | `obs_engine::Engine::v2_output_get_stats` | `engine/runtime_output_v2.cpp` | — | 3 | — | 23 | new cohesive helper/function in scoped file |
 | `New-WorkflowAssessment` | `tools/check-complexity.ps1` | — | 3 | — | 23 | new cohesive helper/function in scoped file |
 | `Test-P2PhysicalAllowedDiagnostic` | `.github/scripts/engine-protocol-v2-phase2-physical.ps1` | — | 3 | — | 22 | new cohesive helper/function in scoped file |
-| `Invoke-Task22TriggerChecks` | `.github/scripts/engine-protocol-v2-task22.ps1` | — | 3 | — | 22 | new cohesive helper/function in scoped file |
 | `Start-Task23Engine` | `.github/scripts/engine-protocol-v2-task23.ps1` | — | 3 | — | 22 | new cohesive helper/function in scoped file |
 | `Start-Task9Engine` | `.github/scripts/engine-protocol-v2-task9.ps1` | — | 3 | — | 22 | new cohesive helper/function in scoped file |
 | `obs_engine::serialize_frame_rate_property` | `engine/properties.cpp` | — | 3 | — | 22 | new cohesive helper/function in scoped file |
@@ -2028,7 +2031,6 @@ Owned run blocks: 113; substantial inline PowerShell: 0; unsupported substantial
 | `Assert-Ok` | `.github/scripts/engine-protocol-v2-task28.ps1` | — | 3 | — | 3 | new cohesive helper/function in scoped file |
 | `Assert-PhysicalOk` | `.github/scripts/engine-protocol-v2-task29-physical.ps1` | — | 3 | — | 3 | new cohesive helper/function in scoped file |
 | `Assert-Ok` | `.github/scripts/engine-protocol-v2-task29.ps1` | — | 3 | — | 3 | new cohesive helper/function in scoped file |
-| `Assert-Ok` | `.github/scripts/engine-protocol-v2-task30.ps1` | — | 3 | — | 3 | new cohesive helper/function in scoped file |
 | `Invoke-P2TransitionPhysical` | `.github/scripts/engine-protocol-v2-phase2-physical.ps1` | — | 2 | — | 52 | new cohesive helper/function in scoped file |
 | `setup_fixture` | `engine/properties_test.cpp` | — | 2 | — | 49 | new cohesive helper/function in scoped file |
 | `Invoke-Task26CreateObjects` | `.github/scripts/engine-protocol-v2-task26.ps1` | — | 2 | — | 48 | new cohesive helper/function in scoped file |
@@ -2058,6 +2060,7 @@ Owned run blocks: 113; substantial inline PowerShell: 0; unsupported substantial
 | `Run-CaseD` | `.github/scripts/engine-protocol-v2-task8-concurrency.ps1` | 2 | 2 | 20 | 20 | unchanged |
 | `Remove-Task10Sources` | `.github/scripts/engine-protocol-v2-task10.ps1` | — | 2 | — | 19 | new cohesive helper/function in scoped file |
 | `Invoke-Task11Overflow` | `.github/scripts/engine-protocol-v2-task11.ps1` | — | 2 | — | 19 | new cohesive helper/function in scoped file |
+| `Invoke-Task22TriggerChecks` | `.github/scripts/engine-protocol-v2-task22.ps1` | — | 2 | — | 19 | new cohesive helper/function in scoped file |
 | `obs_engine::advance_filter_update_generation` | `engine/runtime_filter_v2.cpp` | — | 2 | — | 19 | new cohesive helper/function in scoped file |
 | `Invoke-Task11PackageAudit` | `.github/scripts/engine-protocol-v2-task11-package-audit.ps1` | — | 2 | — | 18 | new cohesive helper/function in scoped file |
 | `Remove-Task11DuplicateSource` | `.github/scripts/engine-protocol-v2-task11.ps1` | — | 2 | — | 18 | new cohesive helper/function in scoped file |
@@ -3102,7 +3105,7 @@ Owned run blocks: 113; substantial inline PowerShell: 0; unsupported substantial
 - `obs_engine::Engine::v2_encoder_group_add` — `engine/runtime_encoder_group_v2.cpp:185-211`, CC 9, NLOC 27, params 3
 - `obs_engine::Engine::v2_hotkey_import` — `engine/runtime_hotkey_v2.cpp:1195-1221`, CC 9, NLOC 27, params 3
 - `obs_engine::publish_deferred_source_snapshot` — `engine/runtime_source_v2.cpp:480-508`, CC 9, NLOC 27, params 2
-- `Invoke-Task30Available` — `.github/scripts/engine-protocol-v2-task30.ps1:108-133`, CC 9, NLOC 26, params 1
+- `Invoke-Task30Available` — `.github/scripts/engine-protocol-v2-task30.ps1:121-146`, CC 9, NLOC 26, params 1
 - `obs_engine::read_canvas_dimensions` — `engine/runtime_canvas_v2.cpp:166-191`, CC 9, NLOC 26, params 3
 - `obs_engine::Engine::v2_item_remove_from_group` — `engine/runtime_item_v2.cpp:1031-1056`, CC 9, NLOC 26, params 3
 - `obs_engine::Engine::v2_start_output_entry` — `engine/runtime_output_v2.cpp:1248-1273`, CC 9, NLOC 26, params 4
@@ -3151,6 +3154,7 @@ Owned run blocks: 113; substantial inline PowerShell: 0; unsupported substantial
 - `Assert-Task18ProgressSample` — `.github/scripts/engine-protocol-v2-task18.ps1:299-305`, CC 9, NLOC 7, params 2
 - `Initialize-Task10Sources` — `.github/scripts/engine-protocol-v2-task10.ps1:210-268`, CC 8, NLOC 56, params 1
 - `obs_engine::Engine::replace_preview_output_resource` — `engine/runtime_preview_output_v2.cpp:876-918`, CC 8, NLOC 43, params 5
+- `obs_encoder_set_group` — `libobs/obs-encoder.c:2320-2367`, CC 8, NLOC 40, params 2
 - `Invoke-Task27CreateAndConfigure` — `.github/scripts/engine-protocol-v2-task27.ps1:105-143`, CC 8, NLOC 39, params 1
 - `main` — `engine/host.cpp:241-283`, CC 8, NLOC 38, params 2
 - `obs_engine::Engine::v2_item_ungroup` — `engine/runtime_item_v2.cpp:1058-1095`, CC 8, NLOC 38, params 3
@@ -3401,7 +3405,7 @@ Owned run blocks: 113; substantial inline PowerShell: 0; unsupported substantial
 - `Read-Task29PhysicalEvent` — `.github/scripts/engine-protocol-v2-task29-physical.ps1:57-69`, CC 7, NLOC 13, params 2
 - `Read-Task29Event` — `.github/scripts/engine-protocol-v2-task29.ps1:63-75`, CC 7, NLOC 13, params 2
 - `Read-Task30PhysicalEvent` — `.github/scripts/engine-protocol-v2-task30-physical.ps1:59-71`, CC 7, NLOC 13, params 2
-- `Read-Task30Event` — `.github/scripts/engine-protocol-v2-task30.ps1:62-74`, CC 7, NLOC 13, params 2
+- `Read-Task30Event` — `.github/scripts/engine-protocol-v2-task30.ps1:75-87`, CC 7, NLOC 13, params 2
 - `Invoke-Task8Duplicate` — `.github/scripts/engine-protocol-v2-task8-source-smoke.ps1:213-225`, CC 7, NLOC 13, params 1
 - `obs_engine::parse_v2_request_options` — `engine/protocol_v2.cpp:831-843`, CC 7, NLOC 13, params 3
 - `obs_engine::registerer_matches` — `engine/runtime_hotkey_v2.cpp:571-583`, CC 7, NLOC 13, params 2
@@ -3601,7 +3605,7 @@ Owned run blocks: 113; substantial inline PowerShell: 0; unsupported substantial
 - `obs_engine::find_unversioned_input_id` — `engine/runtime_source_settle_v2.cpp:279-290`, CC 6, NLOC 12, params 1
 - `Send-Task14CanvasFailureGuarded` — `.github/scripts/engine-protocol-v2-task14-canvas-failure.ps1:75-85`, CC 6, NLOC 11, params 3
 - `Assert-Task18IdleAgreement` — `.github/scripts/engine-protocol-v2-task18.ps1:234-244`, CC 6, NLOC 11, params 1
-- `Invoke-Task30Unavailable` — `.github/scripts/engine-protocol-v2-task30.ps1:96-106`, CC 6, NLOC 11, params 1
+- `Invoke-Task30Unavailable` — `.github/scripts/engine-protocol-v2-task30.ps1:109-119`, CC 6, NLOC 11, params 1
 - `check_pattern_cases` — `engine/events_test.cpp:39-49`, CC 6, NLOC 11, params 0
 - `obs_engine::request_handle` — `engine/protocol.cpp:204-214`, CC 6, NLOC 11, params 4
 - `obs_engine::read_requested_monitoring_device` — `engine/runtime_audio_v2.cpp:1646-1656`, CC 6, NLOC 11, params 3
@@ -3763,7 +3767,7 @@ Owned run blocks: 113; substantial inline PowerShell: 0; unsupported substantial
 - `obs_engine::Engine::v2_encoder_group_add` — `engine/runtime_encoder_group_v2.cpp:185-211`, CC 9, NLOC 27, params 3
 - `obs_engine::Engine::v2_hotkey_import` — `engine/runtime_hotkey_v2.cpp:1195-1221`, CC 9, NLOC 27, params 3
 - `obs_engine::publish_deferred_source_snapshot` — `engine/runtime_source_v2.cpp:480-508`, CC 9, NLOC 27, params 2
-- `Invoke-Task30Available` — `.github/scripts/engine-protocol-v2-task30.ps1:108-133`, CC 9, NLOC 26, params 1
+- `Invoke-Task30Available` — `.github/scripts/engine-protocol-v2-task30.ps1:121-146`, CC 9, NLOC 26, params 1
 - `obs_engine::read_canvas_dimensions` — `engine/runtime_canvas_v2.cpp:166-191`, CC 9, NLOC 26, params 3
 - `obs_engine::Engine::v2_item_remove_from_group` — `engine/runtime_item_v2.cpp:1031-1056`, CC 9, NLOC 26, params 3
 - `obs_engine::Engine::v2_start_output_entry` — `engine/runtime_output_v2.cpp:1248-1273`, CC 9, NLOC 26, params 4
@@ -3812,6 +3816,7 @@ Owned run blocks: 113; substantial inline PowerShell: 0; unsupported substantial
 - `Assert-Task18ProgressSample` — `.github/scripts/engine-protocol-v2-task18.ps1:299-305`, CC 9, NLOC 7, params 2
 - `Initialize-Task10Sources` — `.github/scripts/engine-protocol-v2-task10.ps1:210-268`, CC 8, NLOC 56, params 1
 - `obs_engine::Engine::replace_preview_output_resource` — `engine/runtime_preview_output_v2.cpp:876-918`, CC 8, NLOC 43, params 5
+- `obs_encoder_set_group` — `libobs/obs-encoder.c:2320-2367`, CC 8, NLOC 40, params 2
 - `Invoke-Task27CreateAndConfigure` — `.github/scripts/engine-protocol-v2-task27.ps1:105-143`, CC 8, NLOC 39, params 1
 - `main` — `engine/host.cpp:241-283`, CC 8, NLOC 38, params 2
 - `obs_engine::Engine::v2_item_ungroup` — `engine/runtime_item_v2.cpp:1058-1095`, CC 8, NLOC 38, params 3
