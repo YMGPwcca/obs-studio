@@ -125,7 +125,7 @@ function Invoke-Task30Available($State) {
     $State.Source = [string]$source.data.source
     $sourceTarget = Invoke-Task30Mutation $State 'source-target' 'virtualCamera.setTarget' @{ target = @{ type = 'source'; source = $State.Source } } @('virtualCamera.targetChanged') 'set Virtual Camera Source target'
     if ([string]$sourceTarget.data.target.type -ne 'source') { Fail-Task30 'Source target was not reported.' }
-    $removeSource = Send-Task30 @{ op = 'request'; id = 'remove-source'; method = 'source.remove'; params = @{ source = $State.Source } }; Assert-Error $removeSource 'object_in_use' $State.Current 'remove active Virtual Camera source target'
+    $removeSource = Send-Task30 @{ op = 'request'; id = 'remove-source'; method = 'source.remove'; params = @{ source = $State.Source } }; Assert-Error $removeSource 'object_in_use' ($State.Current + 1) 'remove active Virtual Camera source target'; $State.Current = [int64]$removeSource.revision
     $null = Invoke-Task30Mutation $State 'program-target' 'virtualCamera.setTarget' @{ target = @{ type = 'program' } } @('virtualCamera.targetChanged') 'restore Virtual Camera program target'
     $null = Invoke-Task30Mutation $State 'source-remove' 'source.remove' @{ source = $State.Source } @('source.removed') 'remove released Virtual Camera source target'
     $unconfigured = Invoke-Task30Mutation $State 'unconfigure' 'virtualCamera.unconfigure' @{} @('output.removed', 'virtualCamera.configChanged') 'virtualCamera.unconfigure'

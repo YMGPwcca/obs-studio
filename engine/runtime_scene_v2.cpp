@@ -675,6 +675,16 @@ bool Engine::v2_scene_get_state(obs_data_t *params, RuntimeV2Result &result, Run
 	return true;
 }
 
+bool Engine::v2_scene_remove_blocked(uint64_t handle, RuntimeV2Error &error) const
+{
+	if (v2_virtual_camera_scene_target_in_use(handle))
+		return phase2_fail(error, "object_in_use", "Scene is the active Virtual Camera target");
+	if (studio_transition_active_ &&
+	    (handle == studio_transition_from_scene_ || handle == studio_transition_destination_scene_))
+		return phase2_fail(error, "object_in_use", "Scene is participating in an active Studio transition");
+	return false;
+}
+
 bool Engine::v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, RuntimeV2Error &error)
 {
 	phase2_reset_result(result, error);
@@ -682,12 +692,8 @@ bool Engine::v2_scene_remove(obs_data_t *params, RuntimeV2Result &result, Runtim
 	obs_scene_t *scene = nullptr;
 	if (!v2_get_scene_entry(params, handle, scene, error))
 		return false;
-	if (v2_virtual_camera_target_in_use(VirtualCameraTargetKind::Scene, handle) ||
-	    v2_virtual_camera_target_in_use(VirtualCameraTargetKind::Preview, handle))
-		return phase2_fail(error, "object_in_use", "Scene is the active Virtual Camera target");
-	if (studio_transition_active_ &&
-	    (handle == studio_transition_from_scene_ || handle == studio_transition_destination_scene_))
-		return phase2_fail(error, "object_in_use", "Scene is participating in an active Studio transition");
+	if (v2_scene_remove_blocked(handle, error))
+		return false;
 	const uint64_t canvas_handle = scene_canvases_.contains(handle) ? scene_canvases_.at(handle) : 0;
 	const std::vector<uint64_t> all_items = v2_item_handles_for_scene(handle);
 	const bool program_was_scene = v2_current_program_scene() == handle;

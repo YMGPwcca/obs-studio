@@ -1,7 +1,7 @@
 # Task 30 Windows Virtual Camera acceptance
 
-Runtime-bearing Task 30 checkpoint is the Task 30 implementation commit
-recorded in the final Phase-3 handoff. The local build used the repository
+Runtime-bearing Task 30 checkpoint: `f18b9ce59` (`feat(engine): add Protocol v2
+Windows virtual camera`). The local build used the repository
 GUID `A3FCE0F5-3493-419F-958A-ABA1250EC20B` from `CMakePresets.json` and
 included the packaged x64 `obs-virtualcam-module64.dll` and `win-dshow.dll`.
 

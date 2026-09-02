@@ -62,6 +62,12 @@ bool output_is_replay_compatible(const OutputEntry &entry, RuntimeV2Error &error
 	return true;
 }
 
+bool output_has_other_convenience_role(uint64_t handle, uint64_t recording_output, uint64_t streaming_output,
+					       uint64_t virtual_camera_output)
+{
+	return recording_output == handle || streaming_output == handle || virtual_camera_output == handle;
+}
+
 bool dangerous_replay_path(std::string_view path)
 {
 	std::string lowered(path);
@@ -307,8 +313,8 @@ bool Engine::v2_replay_buffer_configure(obs_data_t *params, RuntimeV2Result &res
 		return false;
 	if (replay_.output && replay_.output != output_handle)
 		return fail(error, "object_in_use", "another Output is already assigned to replayBuffer");
-	if (recording_.output == output_handle || streaming_.output == output_handle ||
-	    virtual_camera_.output == output_handle)
+	if (output_has_other_convenience_role(output_handle, recording_.output, streaming_.output,
+							 virtual_camera_.output))
 		return fail(error, "object_in_use", "Output is already assigned to another convenience role");
 	if (!v2_output_is_inactive(*entry, error))
 		return false;

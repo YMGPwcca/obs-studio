@@ -468,8 +468,11 @@ bool read_canvas_create_options(obs_data_t *params, std::string &name, bool &nam
 }
 
 bool prepare_canvas_video_update(obs_data_t *params, obs_canvas_t *canvas, obs_video_info &current,
-					obs_video_info &proposed, bool &changed, RuntimeV2Error &error)
+					obs_video_info &proposed, bool &changed, bool virtual_camera_target,
+					RuntimeV2Error &error)
 {
+	if (virtual_camera_target)
+		return phase2_fail(error, "busy", "Canvas video settings cannot change while it is the Virtual Camera target");
 	ObsDataPtr settings;
 	bool present = false;
 	if (!phase2_read_object(params, "videoSettings", settings, present) || !present)
@@ -638,12 +641,11 @@ bool Engine::v2_canvas_set_video_settings(obs_data_t *params, RuntimeV2Result &r
 		return false;
 	if (entry->is_main)
 		return phase2_fail(error, "invalid_state", "Main Canvas video settings are controlled by engine startup");
-	if (v2_virtual_camera_target_in_use(VirtualCameraTargetKind::Canvas, handle))
-		return phase2_fail(error, "busy", "Canvas video settings cannot change while it is the Virtual Camera target");
 	obs_video_info current = {};
 	obs_video_info proposed = current;
 	bool changed = false;
-	if (!prepare_canvas_video_update(params, entry->canvas, current, proposed, changed, error))
+	if (!prepare_canvas_video_update(params, entry->canvas, current, proposed, changed,
+					 v2_virtual_camera_target_in_use(VirtualCameraTargetKind::Canvas, handle), error))
 		return false;
 	if (!changed) {
 		result.data = make_canvas_video_data(handle, entry->canvas);

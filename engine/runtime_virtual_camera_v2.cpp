@@ -62,10 +62,9 @@ bool parse_virtual_target_name(std::string_view value, VirtualCameraTargetKind &
 	return true;
 }
 
-bool read_virtual_target(obs_data_t *params, VirtualCameraTargetKind &target, uint64_t &handle,
-				 RuntimeV2Error &error)
+bool read_virtual_target_object(obs_data_t *params, VirtualCameraTargetKind &target, ObsDataPtr &object,
+					RuntimeV2Error &error)
 {
-	ObsDataPtr object;
 	bool present = false;
 	if (!phase2_read_object(params, "target", object, present) || !present || !object)
 		return fail(error, "bad_request", "params.target must be an object");
@@ -73,14 +72,36 @@ bool read_virtual_target(obs_data_t *params, VirtualCameraTargetKind &target, ui
 	if (!phase2_read_string(object.get(), "type", type, present) || !present ||
 	    !parse_virtual_target_name(type, target))
 		return fail(error, "bad_request", "target.type is unsupported");
+	return true;
+}
+
+const char *virtual_target_handle_field(VirtualCameraTargetKind target)
+{
+	if (target == VirtualCameraTargetKind::Scene)
+		return "scene";
+	if (target == VirtualCameraTargetKind::Source)
+		return "source";
+	if (target == VirtualCameraTargetKind::Canvas)
+		return "canvas";
+	return nullptr;
+}
+
+bool read_virtual_target_handle(obs_data_t *object, VirtualCameraTargetKind target, uint64_t &handle,
+					RuntimeV2Error &error)
+{
 	handle = 0;
-	const char *field = target == VirtualCameraTargetKind::Scene
-				    ? "scene"
-				    : target == VirtualCameraTargetKind::Source ? "source"
-									   : target == VirtualCameraTargetKind::Canvas ? "canvas" : nullptr;
-	if (field && !phase2_read_handle(object.get(), field, handle))
+	const char *field = virtual_target_handle_field(target);
+	if (field && !phase2_read_handle(object, field, handle))
 		return fail(error, "bad_request", "target handle must be canonical");
 	return true;
+}
+
+bool read_virtual_target(obs_data_t *params, VirtualCameraTargetKind &target, uint64_t &handle,
+				 RuntimeV2Error &error)
+{
+	ObsDataPtr object;
+	return read_virtual_target_object(params, target, object, error) &&
+	       read_virtual_target_handle(object.get(), target, handle, error);
 }
 
 struct VirtualTargetMedia {
@@ -101,33 +122,40 @@ void release_virtual_target_media(VirtualTargetMedia &media)
 	media = VirtualTargetMedia{};
 }
 
-bool create_private_target_media(Engine &engine, VirtualCameraTargetKind target, uint64_t handle,
-					 obs_source_t *preview_source, VirtualTargetMedia &media, RuntimeV2Error &error)
+bool bind_virtual_program_media(VirtualTargetMedia &media, RuntimeV2Error &error)
 {
-	if (target == VirtualCameraTargetKind::Program) {
-		media.video = obs_get_video();
-		return media.video || fail(error, "not_available", "program video context is unavailable");
-	}
-	if (target == VirtualCameraTargetKind::Canvas) {
-		obs_canvas_t *canvas = engine.v2_canvas_for_handle(handle);
-		if (!canvas || obs_canvas_removed(canvas))
-			return fail(error, "not_found", "Virtual Camera canvas target was not found");
-		media.held_canvas = obs_canvas_get_ref(canvas);
-		media.video = media.held_canvas ? obs_canvas_get_video(media.held_canvas) : nullptr;
-		if (!media.video) {
-			release_virtual_target_media(media);
-			return fail(error, "not_available", "Virtual Camera canvas has no video context");
-		}
-		return true;
-	}
+	media.video = obs_get_video();
+	return media.video || fail(error, "not_available", "program video context is unavailable");
+}
 
-	obs_source_t *source = preview_source;
+bool bind_virtual_canvas_media(Engine &engine, uint64_t handle, VirtualTargetMedia &media, RuntimeV2Error &error)
+{
+	obs_canvas_t *canvas = engine.v2_canvas_for_handle(handle);
+	if (!canvas || obs_canvas_removed(canvas))
+		return fail(error, "not_found", "Virtual Camera canvas target was not found");
+	media.held_canvas = obs_canvas_get_ref(canvas);
+	media.video = media.held_canvas ? obs_canvas_get_video(media.held_canvas) : nullptr;
+	if (!media.video) {
+		release_virtual_target_media(media);
+		return fail(error, "not_available", "Virtual Camera canvas has no video context");
+	}
+	return true;
+}
+
+obs_source_t *virtual_target_source(Engine &engine, VirtualCameraTargetKind target, uint64_t handle,
+					    obs_source_t *preview_source)
+{
+	if (target == VirtualCameraTargetKind::Preview)
+		return preview_source;
 	if (target == VirtualCameraTargetKind::Scene) {
 		obs_scene_t *scene = engine.v2_scene_for_handle(handle);
-		source = scene ? obs_scene_get_source(scene) : nullptr;
-	} else if (target == VirtualCameraTargetKind::Source) {
-		source = engine.v2_source_for_handle(handle);
+		return scene ? obs_scene_get_source(scene) : nullptr;
 	}
+	return target == VirtualCameraTargetKind::Source ? engine.v2_source_for_handle(handle) : nullptr;
+}
+
+bool create_private_source_media(obs_source_t *source, VirtualTargetMedia &media, RuntimeV2Error &error)
+{
 	if (!source || obs_source_removed(source))
 		return fail(error, "not_found", "Virtual Camera source target was not found");
 	obs_video_info video = {};
@@ -143,6 +171,16 @@ bool create_private_target_media(Engine &engine, VirtualCameraTargetKind target,
 		return fail(error, "not_available", "Virtual Camera target Canvas has no video context");
 	}
 	return true;
+}
+
+bool create_private_target_media(Engine &engine, VirtualCameraTargetKind target, uint64_t handle,
+					 obs_source_t *preview_source, VirtualTargetMedia &media, RuntimeV2Error &error)
+{
+	if (target == VirtualCameraTargetKind::Program)
+		return bind_virtual_program_media(media, error);
+	if (target == VirtualCameraTargetKind::Canvas)
+		return bind_virtual_canvas_media(engine, handle, media, error);
+	return create_private_source_media(virtual_target_source(engine, target, handle, preview_source), media, error);
 }
 
 ObsDataPtr make_virtual_target_data(VirtualCameraTargetKind target, uint64_t handle, bool available)
@@ -191,6 +229,75 @@ ObsDataPtr virtual_output_params(uint64_t output_handle)
 bool Engine::v2_virtual_camera_target_in_use(VirtualCameraTargetKind kind, uint64_t handle) const
 {
 	return virtual_camera_.output != 0 && virtual_camera_.target == kind && virtual_camera_.target_handle == handle;
+}
+
+bool Engine::v2_read_virtual_camera_target(obs_data_t *params, VirtualCameraTargetKind &target, uint64_t &handle,
+						   obs_source_t *&preview_source, RuntimeV2Error &error) const
+{
+	preview_source = nullptr;
+	if (!read_virtual_target(params, target, handle, error))
+		return false;
+	if (target != VirtualCameraTargetKind::Preview)
+		return true;
+	std::lock_guard lock(preview_outputs_mutex_);
+	handle = preview_scene_;
+	if (preview_source_)
+		preview_source = obs_source_get_ref(preview_source_);
+	return preview_source || fail(error, "not_available", "Preview has no selected Scene target");
+}
+
+bool Engine::v2_virtual_camera_output_idle(const OutputEntry &entry, RuntimeV2Error &error) const
+{
+	ObsDataPtr state = v2_output_state(virtual_camera_.output, entry);
+	const char *state_name = obs_data_get_string(state.get(), "state");
+	return state_name && std::string_view(state_name) == "idle"
+		       ? true
+		       : fail(error, "busy", "Virtual Camera operation requires an idle Output");
+}
+
+bool Engine::v2_virtual_camera_scene_target_in_use(uint64_t handle) const
+{
+	return v2_virtual_camera_target_in_use(VirtualCameraTargetKind::Scene, handle) ||
+	       v2_virtual_camera_target_in_use(VirtualCameraTargetKind::Preview, handle);
+}
+
+bool Engine::v2_apply_virtual_camera_target(OutputEntry &output, VirtualCameraTargetKind target, uint64_t handle,
+						    obs_source_t *preview_source, RuntimeV2Result &result,
+						    RuntimeV2Error &error)
+{
+	if (target == virtual_camera_.target && handle == virtual_camera_.target_handle) {
+		if (preview_source)
+			obs_source_release(preview_source);
+		result.data = make_virtual_config(virtual_camera_);
+		return true;
+	}
+	if (!v2_virtual_camera_output_idle(output, error)) {
+		if (preview_source)
+			obs_source_release(preview_source);
+		return false;
+	}
+	VirtualTargetMedia media;
+	const bool bound = create_private_target_media(*this, target, handle, preview_source, media, error);
+	if (preview_source)
+		obs_source_release(preview_source);
+	if (!bound)
+		return false;
+	obs_output_set_media(output.output, media.video, nullptr);
+	VirtualTargetMedia old{nullptr, virtual_camera_.private_target_canvas, virtual_camera_.held_target_canvas};
+	virtual_camera_.target = target;
+	virtual_camera_.target_handle = handle;
+	virtual_camera_.private_target_canvas = media.private_canvas;
+	virtual_camera_.held_target_canvas = media.held_canvas;
+	virtual_camera_.target_available = true;
+	media.private_canvas = nullptr;
+	media.held_canvas = nullptr;
+	release_virtual_target_media(old);
+	result.data = make_virtual_config(virtual_camera_);
+	ObsDataPtr event_data = make_virtual_target_data(target, handle, true);
+	phase2_set_handle(event_data.get(), "output", virtual_camera_.output);
+	phase2_append_event(result, "virtualCamera.targetChanged", std::move(event_data));
+	result.mutated = true;
+	return true;
 }
 
 void Engine::v2_prepare_virtual_camera_shutdown() noexcept
@@ -374,55 +481,10 @@ bool Engine::v2_virtual_camera_set_target(obs_data_t *params, RuntimeV2Result &r
 		return fail(error, "not_found", "configured Virtual Camera Output was not found");
 	VirtualCameraTargetKind target;
 	uint64_t handle = 0;
-	if (!read_virtual_target(params, target, handle, error))
-		return false;
 	obs_source_t *preview_source = nullptr;
-	if (target == VirtualCameraTargetKind::Preview) {
-		std::lock_guard lock(preview_outputs_mutex_);
-		handle = preview_scene_;
-		if (preview_source_)
-			preview_source = obs_source_get_ref(preview_source_);
-		if (!preview_source) {
-			if (preview_source)
-				obs_source_release(preview_source);
-			return fail(error, "not_available", "Preview has no selected Scene target");
-		}
-	}
-	if (target == virtual_camera_.target && handle == virtual_camera_.target_handle) {
-		if (preview_source)
-			obs_source_release(preview_source);
-		result.data = make_virtual_config(virtual_camera_);
-		return true;
-	}
-	ObsDataPtr current_state(v2_output_state(virtual_camera_.output, output->second));
-	const char *state = obs_data_get_string(current_state.get(), "state");
-	if (!state || std::string_view(state) != "idle") {
-		if (preview_source)
-			obs_source_release(preview_source);
-		return fail(error, "busy", "Virtual Camera target changes require an idle Output");
-	}
-	VirtualTargetMedia media;
-	const bool bound = create_private_target_media(*this, target, handle, preview_source, media, error);
-	if (preview_source)
-		obs_source_release(preview_source);
-	if (!bound)
+	if (!v2_read_virtual_camera_target(params, target, handle, preview_source, error))
 		return false;
-	obs_output_set_media(output->second.output, media.video, nullptr);
-	VirtualTargetMedia old{nullptr, virtual_camera_.private_target_canvas, virtual_camera_.held_target_canvas};
-	virtual_camera_.target = target;
-	virtual_camera_.target_handle = handle;
-	virtual_camera_.private_target_canvas = media.private_canvas;
-	virtual_camera_.held_target_canvas = media.held_canvas;
-	virtual_camera_.target_available = true;
-	media.private_canvas = nullptr;
-	media.held_canvas = nullptr;
-	release_virtual_target_media(old);
-	result.data = make_virtual_config(virtual_camera_);
-	ObsDataPtr event_data = make_virtual_target_data(target, handle, true);
-	phase2_set_handle(event_data.get(), "output", virtual_camera_.output);
-	phase2_append_event(result, "virtualCamera.targetChanged", std::move(event_data));
-	result.mutated = true;
-	return true;
+	return v2_apply_virtual_camera_target(output->second, target, handle, preview_source, result, error);
 }
 
 bool Engine::v2_virtual_camera_get_target(obs_data_t *, RuntimeV2Result &result, RuntimeV2Error &error)

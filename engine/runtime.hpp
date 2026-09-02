@@ -683,6 +683,14 @@ private:
 	bool v2_get_recording_output(uint64_t &handle, OutputEntry *&entry, RuntimeV2Error &error) const;
 	bool v2_get_streaming_output(uint64_t &handle, OutputEntry *&entry, RuntimeV2Error &error) const;
 	bool v2_get_replay_buffer_output(uint64_t &handle, OutputEntry *&entry, RuntimeV2Error &error) const;
+	bool v2_read_preview_scene_request(obs_data_t *params, uint64_t &requested, RuntimeV2Error &error) const;
+	bool v2_read_virtual_camera_target(obs_data_t *params, VirtualCameraTargetKind &target, uint64_t &handle,
+					   obs_source_t *&preview_source, RuntimeV2Error &error) const;
+	bool v2_virtual_camera_output_idle(const OutputEntry &entry, RuntimeV2Error &error) const;
+	bool v2_virtual_camera_scene_target_in_use(uint64_t handle) const;
+	bool v2_apply_virtual_camera_target(OutputEntry &output, VirtualCameraTargetKind target, uint64_t handle,
+					    obs_source_t *preview_source, RuntimeV2Result &result, RuntimeV2Error &error);
+	bool v2_scene_remove_blocked(uint64_t handle, RuntimeV2Error &error) const;
 	bool v2_validate_recording_configuration(obs_data_t *params, uint64_t &handle, OutputEntry *&entry,
 						RuntimeV2Error &error) const;
 	bool v2_apply_recording_configuration_settings(OutputEntry &entry, uint64_t handle, obs_data_t *params,

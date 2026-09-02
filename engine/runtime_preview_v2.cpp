@@ -29,6 +29,16 @@ bool read_preview_scene_request(obs_data_t *params, const std::unordered_map<uin
 
 } // namespace
 
+bool Engine::v2_read_preview_scene_request(obs_data_t *params, uint64_t &requested, RuntimeV2Error &error) const
+{
+	if (!read_preview_scene_request(params, scenes_, requested, error))
+		return false;
+	if (preview_scene_ != requested &&
+	    v2_virtual_camera_target_in_use(VirtualCameraTargetKind::Preview, preview_scene_))
+		return phase2_fail(error, "object_in_use", "Preview is the active Virtual Camera target");
+	return true;
+}
+
 ObsDataPtr Engine::v2_preview_data() const
 {
 	ObsDataPtr data(obs_data_create());
@@ -93,11 +103,8 @@ bool Engine::v2_preview_set_scene(obs_data_t *params, RuntimeV2Result &result, R
 {
 	phase2_reset_result(result, error);
 	uint64_t requested = 0;
-	if (!read_preview_scene_request(params, scenes_, requested, error))
+	if (!v2_read_preview_scene_request(params, requested, error))
 		return false;
-	if (preview_scene_ != requested &&
-	    v2_virtual_camera_target_in_use(VirtualCameraTargetKind::Preview, preview_scene_))
-		return phase2_fail(error, "object_in_use", "Preview is the active Virtual Camera target");
 	bool unchanged = false;
 	{
 		std::lock_guard<std::mutex> lock(preview_outputs_mutex_);
