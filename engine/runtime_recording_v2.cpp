@@ -54,6 +54,13 @@ bool fail(RuntimeV2Error &error, const char *code, const char *message)
 
 bool output_is_recording_compatible(const OutputEntry &entry, RuntimeV2Error &error)
 {
+	const char *kind = obs_output_get_id(entry.output);
+	const bool known_file_output = kind && (std::strcmp(kind, "mp4_output") == 0 ||
+								std::strcmp(kind, "mov_output") == 0 ||
+								std::strcmp(kind, "ffmpeg_muxer") == 0 ||
+								std::strcmp(kind, "task27_test_recording") == 0);
+	if (!known_file_output)
+		return fail(error, "unsupported_capability", "Output kind is not an audited recording file Output");
 	const uint32_t flags = obs_output_get_flags(entry.output);
 	if ((flags & OBS_OUTPUT_SERVICE) != 0)
 		return fail(error, "unsupported_capability", "recording requires a non-service Output");
